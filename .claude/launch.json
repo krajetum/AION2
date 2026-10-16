@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 1420
+    },
+    {
+      "name": "web-ui-alt",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "1421"],
+      "port": 1421
+    }
+  ]
+}

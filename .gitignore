@@ -1,0 +1,30 @@
+# Dependencies & build output
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local tooling
+.claude/settings.local.json
+graphify-out/
+
+# Unrelated to the app (see CLAUDE.md)
+spikes/
+~/
+
+# OS / editors
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets (e.g. Tauri updater/signing keys)
+.env
+.env.*
+*.key
+*.pem
