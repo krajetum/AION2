@@ -1,9 +1,11 @@
-# Push a tag like v0.2.0 -> builds the Windows installer, signs it and publishes a GitHub Release
+# Push a tag like v0.2.0 (or click "Run workflow" in Actions) -> builds the Windows installer, signs it and publishes a GitHub Release
 # with latest.json, which installed apps read to update themselves.
 name: release
 on:
   push:
     tags: ["v*"]
+  # Manual run: releases the version in package.json, creating the tag if missing.
+  workflow_dispatch:
 
 jobs:
   release:
