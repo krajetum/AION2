@@ -363,6 +363,7 @@ function setCount(id: string, i: number, v: number) {
   const p = prog(id);
   p.counts ??= [];
   p.counts[i] = Math.max(0, Math.min(g.target, Math.round(v) || 0));
+  p.done = task(id).goals!.every((x, j) => (p.counts![j] ?? 0) >= x.target);
 }
 
 function move(id: string, dir: -1 | 1) {
