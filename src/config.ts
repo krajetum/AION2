@@ -31,3 +31,6 @@ export const EVENTS: GameEvent[] = [
   { id: "invasion", name: "Dimensional Invasion", everyHours: 1, minute: 30, firstHour: 0 }, // TO VERIFY
   { id: "rift", name: "Spacetime Rift", everyHours: 3, minute: 0, firstHour: 0 },          // TO VERIFY (anchor hour)
 ];
+
+/** Current season: end date (00:00 in RESET_CONFIG.timeZone). Source: the user's Oath Coin sheet (2026-10-20). */
+export const SEASON = { name: "Season 1 Oath Coin", end: "2026-12-16" }; // TO VERIFY in game

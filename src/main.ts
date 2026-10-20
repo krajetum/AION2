@@ -2,20 +2,47 @@ import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { check } from "@tauri-apps/plugin-updater";
-import { EVENTS, RESET_CONFIG as C } from "./config.ts";
+import { EVENTS, RESET_CONFIG as C, SEASON } from "./config.ts";
 import { exportJson, importJson, loadData, saveData } from "./data.ts";
 import { fetchNews, isImportant, mergeNews } from "./news.ts";
 import { channelVolume, CHANNELS, checkNotifications, playSound, toast } from "./notify.ts";
 import { applyResets, formatCountdown, isDone, lastBoundary, nextBoundary, nextEvent } from "./reset.ts";
+import { emptySeason, isHardPvp, isIncluded, remainingOf, SEASONAL, seasonSummary, WEEKLY, weeksLeft } from "./season.ts";
 import { CADENCES, type AppData, type Cadence, type Goal, type Task } from "./types.ts";
 
-type Tab = Cadence | "news" | "settings";
+type Tab = Cadence | "season" | "news" | "settings";
+const TABS: Tab[] = [...CADENCES, "season", "news", "settings"];
+// 16px outline icons (1.5 stroke, currentColor). Paths are 24x24.
+const icon = (d: string) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON = {
+  daily: icon(`<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>`),
+  weekly: icon(`<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h10"/>`),
+  monthly: icon(`<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h2M11 14h2M15 14h2M7 17h2M11 17h2"/>`),
+  season: icon(`<ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/>`),
+  news: icon(`<path d="M5 4h12v16H6a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1zM17 8h3v10a2 2 0 0 1-2 2"/><path d="M8 8h6M8 12h6M8 16h4"/>`),
+  settings: icon(`<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>`),
+  close: icon(`<path d="M6 6l12 12M18 6L6 18"/>`),
+  sound: icon(`<path d="M11 5L6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>`),
+  muted: icon(`<path d="M11 5L6 9H3v6h3l5 4V5zM16 9l5 6M21 9l-5 6"/>`),
+  play: icon(`<path d="M7 5l12 7-12 7V5z"/>`),
+};
+// Sidebar label and page header tagline.
+const PAGE: Record<Tab, [string, string]> = {
+  daily: ["Daily", "The grind never sleeps. You should, though."],
+  weekly: ["Weekly", "Wednesday is coming."],
+  monthly: ["Monthly", "Long-term commitment issues."],
+  season: ["Season Coins", "Oath Coin stonks. Numbers only go up."],
+  news: ["News", "Patch notes or it didn't happen."],
+  settings: ["Settings", "Knobs. So many knobs."],
+};
+const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "daily"; };
 const LABEL: Record<Cadence, string> = { daily: "Daily", weekly: "Weekly", monthly: "Monthly" };
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 let data: AppData;
 let charId = "";
-let tab: Tab = "daily";
+let tab: Tab = tabFromHash(); // the page lives in the URL hash so a reload keeps it
 let editing = false;
 let autostart = false;
 let newsError = "";
@@ -54,7 +81,9 @@ function react() {
   clearTimeout(reactTimer);
   reactTimer = setTimeout(() => reactEl.classList.remove("on"), 1500);
 }
-const meme = (src: string | undefined, cls: string) => src ? `<img class="meme ${cls}" src="${src}" alt="">` : "";
+// w/h reserve the box so the layout doesn't jump when the image loads (object-fit keeps the real aspect).
+const meme = (src: string | undefined, cls: string, w: number, h: number) =>
+  src ? `<img class="meme ${cls}" src="${src}" alt="" width="${w}" height="${h}">` : "";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const save = () => saveData(data).catch((e) => console.error("Save failed", e));
@@ -72,31 +101,38 @@ const formatGoals = (g?: Goal[]) =>
   (g ?? []).map((x) => `${x.label ? x.label + ":" : ""}${x.target}${x.step ? "/" + x.step : ""}`).join(", ");
 
 const sorted = (cad: Cadence) => data.tasks.filter((t) => t.cadence === cad).sort((a, b) => a.order - b.order);
+const sp = () => (data.season[charId] ??= emptySeason());
+const num = (n: number) => n.toLocaleString("en-US");
 const prog = (taskId: string) => ((data.progress[charId] ??= {})[taskId] ??= { done: false });
 
 // ---------- render ----------
 function render() {
   const chars = data.characters.map((c) => `<option value="${c.id}" ${c.id === charId ? "selected" : ""}>${esc(c.name)}</option>`).join("");
   const unread = data.news.filter((n) => !n.read).length;
-  const tabName = (t: Tab) => {
-    if (t === "settings") return "Settings";
-    if (t === "news") return `News${unread ? ` <span class="badge">${unread}</span>` : ""}`;
+  const extra = (t: Tab) => {
+    if (t === "settings") return "";
+    if (t === "news") return unread ? `<span class="badge">${unread}</span>` : "";
+    if (t === "season") {
+      const left = seasonSummary(sp(), 0).seasonalRemaining;
+      return `<span class="count">${left >= 10_000 ? Math.round(left / 1000) + "k" : num(left)}</span>`;
+    }
     const tasks = data.tasks.filter((x) => x.enabled && x.cadence === t);
     const done = tasks.filter((x) => isDone(x, data.progress[charId]?.[x.id])).length;
-    return `${LABEL[t]} <span class="count">${done}/${tasks.length}</span>`;
+    return `<span class="count">${done}/${tasks.length}</span>`;
   };
-  const tabs = [...CADENCES, "news" as const, "settings" as const].map((t) =>
-    `<button class="tab" role="tab" aria-selected="${t === tab}" data-tab="${t}">${tabName(t)}</button>`).join("");
+  const tabs = TABS.map((t) =>
+    `<button class="tab" data-tab="${t}" title="${PAGE[t][0]}" ${t === tab ? `aria-current="page"` : ""}>
+      ${ICON[t]}<span class="lbl">${PAGE[t][0]}</span>${extra(t)}</button>`).join("");
   const banner = data.news.filter((n) => !n.read && isImportant(n)).map((n) =>
     `<div class="banner"><a href="${esc(n.url)}" target="_blank" rel="noopener" data-act="read" data-id="${esc(n.gid)}">${esc(n.title)}</a>
-      <button class="ghost" data-act="read" data-id="${esc(n.gid)}" aria-label="Dismiss" title="Dismiss">✕</button></div>`).join("");
+      <button class="ghost" data-act="read" data-id="${esc(n.gid)}" aria-label="Dismiss" title="Dismiss">${ICON.close}</button></div>`).join("");
   const muted = data.settings.mutedUntil > Date.now()
     ? `<span class="chip">Shhh until ${new Date(data.settings.mutedUntil).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         <button data-act="unmute">Unshhh</button></span>` : "";
   app.innerHTML = `
     <header>
-      ${data.settings.memeMascot && MEME.mascot ? `<button class="mascot" data-act="hide-mascot" aria-label="Hide mascot" title="Click to hide">${meme(MEME.mascot, "")}</button>` : ""}
-      <h1 class="brand"><b>AION 2</b><span>Companion™ <small>no bots, I swear</small></span></h1>
+      ${data.settings.memeMascot && MEME.mascot ? `<button class="mascot" data-act="hide-mascot" aria-label="Hide mascot" title="Click to hide">${meme(MEME.mascot, "", 80, 44)}</button>` : ""}
+      <div class="brand" translate="no"><b>AION 2</b><span>Companion™</span><small>no bots, I swear</small></div>
       ${muted}
       <label class="char">Character <select id="char">${chars}</select></label>
     </header>
@@ -105,9 +141,12 @@ function render() {
       ${EVENTS.map((ev) => `<div class="timer event"><small>${esc(ev.name)}</small><span data-ev="${ev.id}"></span></div>`).join("")}
     </div>
     ${banner}
-    <nav role="tablist">${tabs}</nav>
-    <main>
-      ${tab === "settings" ? settingsView() : tab === "news" ? newsView() : listView(tab)}</main>`;
+    <div class="layout">
+      <main>
+        <div class="page-head"><h1>${PAGE[tab][0]}</h1><p>${PAGE[tab][1]}</p></div>
+        ${tab === "settings" ? settingsView() : tab === "news" ? newsView() : tab === "season" ? seasonView() : listView(tab)}</main>
+      <nav class="side" aria-label="Pages">${tabs}</nav>
+    </div>`;
   updateCountdowns();
 }
 
@@ -133,8 +172,8 @@ function listView(cad: Cadence) {
     </section>` : "";
   const all = sorted(cad).filter((t) => t.enabled);
   const win = !editing && all.length && all.every((t) => isDone(t, data.progress[charId]?.[t.id]))
-    ? `<section class="win">${meme(MEME.win, "")}<div><h2>GG EZ — all ${LABEL[cad].toLowerCase()} tasks done</h2><p>Go touch grass. The reset will find you.</p></div></section>` : "";
-  const empty = `<p class="empty">${meme(MEME.empty, "")}It's empty. Like my Kina wallet. Click <b>Edit tasks</b> to add one.</p>`;
+    ? `<section class="win">${meme(MEME.win, "", 120, 90)}<div><h2>GG EZ — all ${LABEL[cad].toLowerCase()} tasks done</h2><p>Go touch grass. The reset will find you.</p></div></section>` : "";
+  const empty = `<p class="empty">${meme(MEME.empty, "", 160, 120)}It's empty. Like my Kina wallet. Click <b>Edit tasks</b> to add one.</p>`;
   return `<div class="toolbar"><button class="${editing ? "primary" : ""}" data-act="edit">${editing ? "Done (trust me bro)" : "Edit tasks (big brain)"}</button></div>${win}${groups || empty}${add}`;
 }
 
@@ -146,7 +185,7 @@ function taskRow(t: Task) {
     return `<div class="goal ${v >= g.target ? "ok" : ""}">
       <div class="stepper">${g.label ? `<span class="of">${esc(g.label)}</span>` : ""}
         <button data-act="dec" data-id="${t.id}" data-i="${i}" aria-label="Decrease ${name}">−</button>
-        <input type="number" min="0" max="${g.target}" step="${g.step ?? 1}" value="${v}" data-act="set" data-id="${t.id}" data-i="${i}" aria-label="${name}">
+        <input type="number" inputmode="numeric" min="0" max="${g.target}" step="${g.step ?? 1}" value="${v}" data-act="set" data-id="${t.id}" data-i="${i}" aria-label="${name}">
         <span class="of">/ ${g.target}</span>
         <button data-act="inc" data-id="${t.id}" data-i="${i}" aria-label="Increase ${name}">+</button></div>
       <div class="bar"><i style="--p:${Math.min(1, v / g.target)}"></i></div></div>`;
@@ -170,14 +209,74 @@ function editRow(t: Task) {
 function newsView() {
   const items = data.news.map((n) => `
     <article class="news-item ${n.read ? "" : "unread"}">
-      <a href="${esc(n.url)}" target="_blank" rel="noopener" data-act="read" data-id="${esc(n.gid)}">${isImportant(n) ? "⚠ " : ""}${esc(n.title)}</a>
+      <a href="${esc(n.url)}" target="_blank" rel="noopener" data-act="read" data-id="${esc(n.gid)}">${esc(n.title)}</a>${isImportant(n) ? `<span class="pill">Important</span>` : ""}
       <small>${new Date(n.date * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</small>
       <p>${esc(n.contents)}</p>
       ${n.contents.length > 220 || n.contents.split("\n").length > 3 ? `<details data-id="${esc(n.gid)}" ${openNews.has(n.gid) ? "open" : ""}>
         <summary><span>Show more</span><span>Show less</span></summary></details>` : ""}</article>`).join("");
   return `<div class="toolbar">${newsError ? `<span class="note">${esc(newsError)}</span>` : ""}
       <button class="ghost" data-act="read-all">Pretend I read them</button><button data-act="refresh-news">F5</button></div>
-    <section><h2>Official announcements <span class="count">Steam</span></h2>${items || `<p class="empty">${meme(MEME.empty, "")}No news. Devs are cooking. 🍳</p>`}</section>`;
+    <section><h2>Official announcements <span class="count">Steam</span></h2>${items || `<p class="empty">${meme(MEME.empty, "", 160, 120)}No news. Devs are cooking.</p>`}</section>`;
+}
+
+function seasonView() {
+  const s = sp(), weeks = weeksLeft(Date.now(), C, SEASON.end), sum = seasonSummary(s, weeks);
+  const total = SEASONAL.reduce((a, m) => a + m.coins, 0);
+  const end = new Date(SEASON.end + "T00:00").toLocaleDateString("en-GB", { dateStyle: "medium" });
+  const kpi = (label: string, v: number, sub: string, cls = "") =>
+    `<div class="kpi ${cls}"><small>${label}</small><b>${num(v)}</b><span>${sub}</span></div>`;
+  const sw = (act: string, i: number, on: boolean, label: string) =>
+    `<label class="switch"><input type="checkbox" data-act="${act}" data-i="${i}" ${on ? "checked" : ""} aria-label="${esc(label)}"></label>`;
+  const named = (m: { name: string; note?: string }) => `<span class="name">${esc(m.name)}</span>${m.note ? `<small>${esc(m.note)}</small>` : ""}`;
+  const seasonal = sum.tabs.map((t) => {
+    const rows = SEASONAL.map((m, i) => [m, i] as const).filter(([m]) => m.tab === t.tab).map(([m, i]) => {
+      const c = s.claimed[m.name] ?? 0, rem = remainingOf(m, s);
+      return `<tr class="${rem <= 0 ? "done" : ""}">
+        <td>${named(m)}</td><td class="n">${m.steps}</td><td class="n">${m.ap ? num(m.ap) : "–"}</td>
+        <td><div class="goal ${rem <= 0 ? "ok" : ""}"><div class="stepper">
+          <input type="number" inputmode="numeric" min="0" max="${m.coins}" step="10" value="${c}" data-act="claim" data-i="${i}" aria-label="${esc(m.name)} coins claimed">
+          <span class="of">/ ${num(m.coins)}</span></div>
+          <div class="bar"><i style="--p:${Math.min(1, c / m.coins)}"></i></div></div></td>
+        <td class="n ${rem < 0 ? "neg" : ""}">${rem ? num(rem) : "–"}</td>
+        <td class="c">${sw("hardpvp", i, isHardPvp(m, s), `${m.name} is hard PvP`)}</td></tr>`;
+    }).join("");
+    return `<section><h2>${esc(t.tab)} <span class="count">${num(t.remaining)} left</span></h2><div class="scroll"><table class="sheet">
+      <thead><tr><th>Mission</th><th class="n">Steps</th><th class="n">AP</th><th>Claimed</th><th class="n">Left</th><th class="c">Hard PvP</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></section>`;
+  }).join("");
+  const weekly = WEEKLY.map((m, i) => `<tr class="${isIncluded(m, s) ? "" : "off"}">
+      <td class="dim">${esc(m.tab)}</td><td>${named(m)}</td><td class="n">${m.steps}</td>
+      <td class="n">${num(m.coins)}</td><td class="n">${m.ap ? num(m.ap) : "–"}</td>
+      <td class="c">${sw("included", i, isIncluded(m, s), `Count ${m.name}`)}</td></tr>`).join("");
+  const win = sum.seasonalRemaining <= 0
+    ? `<section class="win">${meme(MEME.win, "", 120, 90)}<div><h2>Seasonal coins: 100% looted</h2><p>Only weeklies left. Touch grass, come back Wednesday.</p></div></section>` : "";
+  return `${win}<div class="kpis">
+      ${kpi("Realistic at season end", sum.realisticEnd, "no sweaty PvP", "hero")}
+      ${kpi("Max at season end", sum.maxAtEnd, "if you PvP like a god")}
+      ${kpi("Seasonal left", sum.seasonalRemaining, `of ${num(total)}`)}
+      ${kpi("Weekly income", sum.weeklyCoins, `× ${weeks} weeks = ${num(sum.futureWeekly)}`)}
+    </div>
+    <div class="settings"><div>
+      <section class="wallet"><h2>Wallet</h2>
+        <label class="setting"><span>Current coins</span><input type="number" inputmode="numeric" min="0" step="10" value="${s.coins}" data-act="season-coins"></label>
+        <label class="setting"><span>Still to claim this week</span><input type="number" inputmode="numeric" min="0" step="10" value="${s.thisWeek}" data-act="season-week"></label>
+        <dl class="calc">
+          <dt>Total obtainable</dt><dd>${num(sum.totalObtainable)}</dd>
+          <dt>Hard PvP left</dt><dd>${num(sum.hardPvpRemaining)}</dd>
+          <dt>Realistic obtainable</dt><dd>${num(sum.realistic)}</dd>
+          <dt>Weekly AP</dt><dd>${num(sum.weeklyAp)}</dd>
+        </dl>
+        <p class="hint">${esc(SEASON.name)} ends ${end} · ${weeks} weekly resets left</p>
+      </section></div><div>
+      <section><h2>By tab</h2><div class="scroll"><table class="sheet">
+        <thead><tr><th>Tab</th><th class="n">Weekly</th><th class="n">Seasonal</th><th class="n">Left</th></tr></thead>
+        <tbody>${sum.tabs.map((t) => `<tr><td>${esc(t.tab)}</td><td class="n">${num(t.weekly)}</td><td class="n">${num(t.total)}</td><td class="n">${num(t.remaining)}</td></tr>`).join("")}</tbody>
+        <tfoot><tr><td>Total</td><td class="n">${num(sum.weeklyCoins)}</td><td class="n">${num(total)}</td><td class="n">${num(sum.seasonalRemaining)}</td></tr></tfoot>
+      </table></div></section></div></div>
+    ${seasonal}
+    <section><h2>Weekly missions <span class="count">${num(sum.weeklyCoins)} / week</span></h2><div class="scroll"><table class="sheet">
+      <thead><tr><th>Tab</th><th>Mission</th><th class="n">Steps</th><th class="n">Coins</th><th class="n">AP</th><th class="c">Counted</th></tr></thead>
+      <tbody>${weekly}</tbody></table></div></section>`;
 }
 
 function settingsView() {
@@ -192,7 +291,7 @@ function settingsView() {
     </section>
     <section><h2>Reset warnings</h2>
       ${CADENCES.map((c) => `<label class="setting"><span>${LABEL[c]} reset</span>
-        <span class="ctl"><input type="number" min="0" max="168" value="${s.warnHours[c]}" data-act="warn" data-cad="${c}"> h before</span></label>`).join("")}
+        <span class="ctl"><input type="number" inputmode="numeric" min="0" max="168" value="${s.warnHours[c]}" data-act="warn" data-cad="${c}"> h before</span></label>`).join("")}
     </section>
     <section><h2>System</h2>
       ${toggle(`data-act="autostart" ${autostart ? "checked" : ""} ${isTauri() ? "" : "disabled"}`, "Start with Windows")}
@@ -207,8 +306,8 @@ function settingsView() {
       ${CHANNELS.map((c) => { const ch = s.channels[c.id], name = esc(c.name); return `<div class="setting chan">
         ${c.id === "check" ? `<span>${name}</span>` : `<label class="switch"><input type="checkbox" data-act="ch-on" data-id="${c.id}" ${ch.on ? "checked" : ""}><span>${name}</span></label>`}
         <span class="ctl"><input type="range" min="0" max="100" value="${ch.volume}" data-act="ch-vol" data-id="${c.id}" aria-label="${name} volume" ${ch.muted ? "disabled" : ""}>
-          <button class="ghost" data-act="ch-mute" data-id="${c.id}" aria-pressed="${ch.muted}" aria-label="Mute ${name} sound" title="${ch.muted ? "Unmute" : "Mute"} sound">${ch.muted ? "🔇" : "🔊"}</button>
-          <button class="ghost" data-act="test-sound" data-kind="${c.sound}" data-id="${c.id}" aria-label="Play ${name} sound" title="sounds/${c.sound[0]}.wav">▶</button></span></div>`; }).join("")}
+          <button class="ghost" data-act="ch-mute" data-id="${c.id}" aria-pressed="${ch.muted}" aria-label="Mute ${name} sound" title="${ch.muted ? "Unmute" : "Mute"} sound">${ch.muted ? ICON.muted : ICON.sound}</button>
+          <button class="ghost" data-act="test-sound" data-kind="${c.sound}" data-id="${c.id}" aria-label="Play ${name} sound" title="sounds/${c.sound[0]}.wav">${ICON.play}</button></span></div>`; }).join("")}
       <div class="setting"><span>Quiet hours</span><span class="ctl">
         <input type="time" value="${s.quietStart}" data-act="quiet-start" aria-label="Quiet hours start"> to
         <input type="time" value="${s.quietEnd}" data-act="quiet-end" aria-label="Quiet hours end"></span></div>
@@ -278,13 +377,13 @@ function move(id: string, dir: -1 | 1) {
 app.addEventListener("click", async (e) => {
   const el = (e.target as HTMLElement).closest<HTMLElement>("[data-tab],[data-act]");
   if (!el || el instanceof HTMLInputElement) return;
-  if (el.dataset.act === "read") { // link or ✕: mark read, the link still opens
+  if (el.dataset.act === "read") { // link or dismiss: mark read, the link still opens
     const n = data.news.find((x) => x.gid === el.dataset.id);
     if (n) n.read = true;
     await save();
     return setTimeout(render); // after the default action, so the link isn't removed mid-click
   }
-  if (el.dataset.tab) { tab = el.dataset.tab as Tab; return render(); }
+  if (el.dataset.tab) { tab = el.dataset.tab as Tab; history.replaceState(null, "", "#" + tab); return render(); }
   const id = el.dataset.id!, i = +(el.dataset.i ?? 0);
   switch (el.dataset.act) {
     case "inc": case "dec": {
@@ -318,12 +417,13 @@ app.addEventListener("click", async (e) => {
       if (!c || data.characters.length < 2 || !confirm(`Delete ${c.name} and all its progress?`)) return;
       data.characters = data.characters.filter((c) => c.id !== id);
       delete data.progress[id];
+      delete data.season[id];
       if (charId === id) charId = data.characters[0].id;
       break;
     }
     case "mute": data.settings.mutedUntil = Date.now() + 3600_000; break;
     case "unmute": data.settings.mutedUntil = 0; break;
-    case "test": return toast(data.settings, "AION 2 Companion", "If you can read this, it works. Probably. 🎉");
+    case "test": return toast(data.settings, "AION 2 Companion", "If you can read this, it works. Probably.");
     case "test-sound": return playSound(el.dataset.kind!.split(","), data.settings.volume * data.settings.channels[id].volume / 100);
     case "ch-mute": data.settings.channels[id].muted = !data.settings.channels[id].muted; break;
     case "hide-mascot": data.settings.memeMascot = false; break;
@@ -356,6 +456,23 @@ app.addEventListener("change", async (e) => {
     case "goals":
       try { task(id).goals = parseGoals(v); } catch (err) { showStatus((err as Error).message, true); }
       break;
+    case "season-coins": sp().coins = Math.max(0, Math.round(+v) || 0); break;
+    case "season-week": sp().thisWeek = Math.max(0, Math.round(+v) || 0); break;
+    case "claim": {
+      const m = SEASONAL[+el.dataset.i!], c = Math.max(0, Math.round(+v) || 0);
+      if (c) sp().claimed[m.name] = c; else delete sp().claimed[m.name];
+      break;
+    }
+    case "hardpvp": {
+      const m = SEASONAL[+el.dataset.i!];
+      if (checked === !!m.hardPvp) delete sp().hardPvp[m.name]; else sp().hardPvp[m.name] = checked;
+      break;
+    }
+    case "included": {
+      const m = WEEKLY[+el.dataset.i!];
+      if (checked) delete sp().excluded[m.name]; else sp().excluded[m.name] = true;
+      break;
+    }
     case "rename-char": if (v.trim()) data.characters.find((c) => c.id === id)!.name = v.trim(); break;
     case "ch-on": data.settings.channels[id].on = checked; break;
     case "ch-vol": data.settings.channels[id].volume = Math.max(0, Math.min(100, +v || 0)); break;
@@ -376,7 +493,7 @@ app.addEventListener("change", async (e) => {
         data = await importJson(file);
         charId = data.characters[0].id;
         applyResets(data, Date.now(), C);
-        showStatus("Import complete. Stonks 📈");
+        showStatus("Import complete. Stonks.");
       } catch (err) { showStatus("Import failed (skill issue): " + (err as Error).message, true); }
       break;
     }
@@ -402,6 +519,7 @@ async function main() {
     render();
   });
 
+  addEventListener("hashchange", () => { tab = tabFromHash(); render(); });
   if (isTauri()) checkUpdate();
   refreshNews();
   let ticks = 0;

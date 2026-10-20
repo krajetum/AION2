@@ -37,6 +37,15 @@ export interface Settings {
 /** Item from the official AION 2 Steam news feed. date = epoch seconds. */
 export interface NewsItem { gid: string; title: string; url: string; date: number; contents: string; read?: boolean }
 
+/** Season Oath Coin progress per character, keyed by mission name (src/season.ts). */
+export interface SeasonProgress {
+  coins: number;    // current coins
+  thisWeek: number; // still to claim this week
+  claimed: Record<string, number>;   // seasonal mission → coins already claimed
+  hardPvp: Record<string, boolean>;  // override of the mission's Hard PvP default
+  excluded: Record<string, boolean>; // weekly missions left out of the projection
+}
+
 export interface AppData {
   version: 1;
   tasks: Task[];
@@ -48,5 +57,6 @@ export interface AppData {
   warnedEvent: Record<string, number>; // event id → start already warned about
   news: NewsItem[];                   // last fetched news, newest first
   lastNewsGid: string;                // newest gid already toasted
+  season: Record<string, SeasonProgress>; // charId → season progress
   settings: Settings;
 }

@@ -22,6 +22,7 @@ export function defaultData(): AppData {
     warnedEvent: {},
     news: [],
     lastNewsGid: "",
+    season: {},
     settings: {
       warnHours: { daily: 2, weekly: 12, monthly: 24 },
       quietStart: "01:00",
@@ -53,6 +54,7 @@ function normalize(raw: any): AppData {
     warned: { ...d.warned, ...raw.warned },
     warnedEvent: raw.warnedEvent ?? {},
     news: Array.isArray(raw.news) ? raw.news : [],
+    season: raw.season ?? {},
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels },
   };
 }
