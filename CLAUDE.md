@@ -7,6 +7,7 @@ Tauri 2 + vanilla TypeScript + Vite. Single user, multiple characters, everythin
 - `npm test` — reset/countdown tests (`node --test`, Node 24 runs `.ts` natively, no test deps)
 - `npx tsc --noEmit` — type-check
 - `npm run tauri dev` — real desktop app (needs Rust + MSVC; first build ~2 min)
+- Release: `npm version x.y.z` then `git push --follow-tags` → `.github/workflows/release.yml` builds, signs and publishes a GitHub Release + `latest.json` (the updater endpoint). Version lives only in `package.json`.
 - `npm run dev` — UI only in a browser on http://localhost:1420 (launch config `web-ui` in `.claude/launch.json`)
 
 ## Verifying changes
@@ -29,7 +30,7 @@ Tauri 2 + vanilla TypeScript + Vite. Single user, multiple characters, everythin
 - Never read game memory, inject code, simulate input or automate the game (ToS/anti-cheat). Manual tracker + notifications only.
 - Never invent server/event times: they go in `src/config.ts` marked `TO VERIFY`.
 - Resets are computed from timestamps (`lastReset` vs `lastBoundary`), never from timers, so they work after the app was closed.
-- Allowed deps: Tauri plugins notification, store, autostart (tray is core). Ask before adding any other dependency.
+- Allowed deps: Tauri plugins notification, store, autostart, http, updater (tray is core). Ask before adding any other dependency.
 - Ask before deleting files, running commands outside this folder, `git init`, or publishing anything.
 - UI, notifications and code comments are in English.
 - Ignore `spikes/` and `~/` — unrelated to the app.

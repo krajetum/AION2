@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
+import { check } from "@tauri-apps/plugin-updater";
 import { EVENTS, RESET_CONFIG as C } from "./config.ts";
 import { exportJson, importJson, loadData, saveData } from "./data.ts";
 import { fetchNews, isImportant, mergeNews } from "./news.ts";
@@ -401,6 +402,7 @@ async function main() {
     render();
   });
 
+  if (isTauri()) checkUpdate();
   refreshNews();
   let ticks = 0;
   setInterval(async () => {
@@ -413,6 +415,17 @@ async function main() {
     // Don't re-render while the user is typing in a field.
     if (reset && !(document.activeElement instanceof HTMLInputElement)) render();
   }, 1000);
+}
+
+// Update from GitHub Releases; the Windows installer closes and relaunches the app itself.
+async function checkUpdate() {
+  try {
+    const update = await check();
+    if (update && confirm(`AION 2 Companion ${update.version} is available. Install it now?`)) {
+      showStatus("Downloading update…");
+      await update.downloadAndInstall();
+    }
+  } catch (e) { console.warn("Update check failed", e); }
 }
 
 main().catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });

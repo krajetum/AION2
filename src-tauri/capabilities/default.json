@@ -8,6 +8,7 @@
     "notification:default",
     "store:default",
     "autostart:default",
+    "updater:default",
     {
       "identifier": "http:default",
       "allow": [{ "url": "https://api.steampowered.com/ISteamNews/*" }]
