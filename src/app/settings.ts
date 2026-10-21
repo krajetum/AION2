@@ -9,6 +9,8 @@ export function unmute(data: AppData) { data.settings.mutedUntil = 0; }
 
 export function setPlanMinutes(data: AppData, v: string) { data.settings.planMinutes = Math.max(5, Math.min(600, Math.round(+v) || 40)); }
 export function setPlanNextHours(data: AppData, v: string) { data.settings.planNextHours = Math.max(1, Math.min(168, Math.round(+v) || 20)); }
+/** 0 = never reset; at most an hour. */
+export function setDpsIdleSeconds(data: AppData, v: string) { data.settings.dpsIdleSeconds = Math.max(0, Math.min(3600, Math.round(+v) || 0)); }
 export function setVolume(data: AppData, v: string) { data.settings.volume = Math.max(0, Math.min(100, +v || 0)); }
 export function setWarnHours(data: AppData, cad: Cadence, v: string) { data.settings.warnHours[cad] = Math.max(0, +v || 0); }
 

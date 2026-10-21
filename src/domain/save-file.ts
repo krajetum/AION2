@@ -32,6 +32,8 @@ export function defaultData(): AppData {
       memeMascot: true,
       planMinutes: 40,
       planNextHours: 20,
+      dpsOverlay: false,
+      dpsIdleSeconds: 15,
     },
   };
 }

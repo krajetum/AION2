@@ -1,7 +1,7 @@
 <script lang="ts">
   import { EVENTS, RESET_CONFIG as C } from "../../config.ts";
   import { addCharacter, deleteCharacter, renameCharacter } from "../../app/characters.ts";
-  import { addLead, muteForAnHour, removeLead, setChannelOn, setLead, setChannelVolume, setVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
+  import { addLead, muteForAnHour, removeLead, setChannelOn, setDpsIdleSeconds, setLead, setChannelVolume, setVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
   import { applyResets } from "../../domain/resets.ts";
   import { nextEvent } from "../../domain/time.ts";
   import { CHANNELS } from "../../domain/alerts.ts";
@@ -9,6 +9,7 @@
   import { playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { isDesktop, setAutostart } from "../../infra/system.ts";
+  import { meterIdle, meterOverlay } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
   import { LABEL, pad, WEEKDAYS } from "../format.ts";
   import { ICON } from "../icons.ts";
@@ -62,6 +63,13 @@
     {#each CADENCES as c}<label class="setting"><span>{LABEL[c]} reset</span>
       <span class="ctl"><input type="number" inputmode="numeric" min="0" max="168" value={s.warnHours[c]}
         onchange={(e) => commit(e, (v) => setWarnHours(ui.data, c, v), () => s.warnHours[c])}> h before</span></label>{/each}
+  </section>
+  <section><h2>DPS meter</h2>
+    <label class="setting"><span>Reset after inactivity</span>
+      <span class="ctl"><input type="number" inputmode="numeric" min="0" max="3600" value={s.dpsIdleSeconds}
+        onchange={(e) => { commit(e, (v) => setDpsIdleSeconds(ui.data, v), () => s.dpsIdleSeconds); meterIdle(s.dpsIdleSeconds); }}> s</span></label>
+    {@render toggle("Overlay during fights", s.dpsOverlay, (e) => { s.dpsOverlay = check(e); meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
+    <p class="hint">Without damage, healing or damage taken for this long, the meter resets and the overlay hides until the next fight. 0 = never.</p>
   </section>
   <section><h2>System</h2>
     {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}

@@ -114,8 +114,8 @@ struct ArenaWatch {
 
 pub struct Engine {
     storage: Arc<DataStorage>,
-    calc: Mutex<DpsCalculator>,
     npcs: Arc<NpcLookup>,
+    calc: Mutex<DpsCalculator>,
     /// (boss_maps_since count, the timers it gave)
     bosses: Mutex<(u64, Vec<BossTimer>)>,
     arena: Mutex<ArenaWatch>,
@@ -169,8 +169,8 @@ impl Engine {
 
         Arc::new(Self {
             storage,
-            calc: Mutex::new(calc),
             npcs,
+            calc: Mutex::new(calc),
             bosses: Mutex::new((0, Vec::new())),
             arena: Mutex::new(ArenaWatch::default()),
             ports,

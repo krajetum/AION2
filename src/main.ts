@@ -11,7 +11,7 @@ import { act, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
-import { onMeter, onOverlay } from "./infra/meter.ts";
+import { meterIdle, meterOverlay, onMeter, onOverlay } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { ui } from "./ui/state.svelte.ts";
 
@@ -28,7 +28,12 @@ async function main() {
   app.textContent = "";
   mount(App, { target: app });
 
-  if (isDesktop()) await onOverlay((open) => { ui.overlay = open; });
+  if (isDesktop()) {
+    await onOverlay((on) => { ui.overlay = on; });
+    await meterIdle(data.settings.dpsIdleSeconds).catch(() => {});
+    // Overlay on: it shows at the first fight (hidden until then).
+    if (data.settings.dpsOverlay) await meterOverlay(true, false).catch(() => {});
+  }
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
   onMeter((u) => {
     ui.meter = u;
