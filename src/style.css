@@ -352,3 +352,7 @@ body.overlay .status, body.overlay .react { display: none; }
 .ov-rows li.you .name { color: var(--accent); font-weight: 600; }
 .ov-rows .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ov-rows .dim { color: var(--faint); text-align: right; }
+.seg { display: inline-flex; padding: 2px; border-radius: var(--r-pill); background: var(--raised); }
+.seg button { height: 30px; padding: 0 12px; background: transparent; color: var(--muted); }
+.seg button.on { background: var(--active); color: var(--text); }
+.dps-table .dim-name { color: var(--muted); font-weight: 400; }

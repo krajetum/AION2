@@ -52,6 +52,8 @@ pub struct Update {
     pub device: Option<String>,
     pub ping_ms: Option<i32>,
     pub paused: bool,
+    /// Only you and your party (else everyone who hit the target).
+    pub party_only: bool,
     pub fight: Fight,
 }
 
@@ -61,6 +63,9 @@ pub struct Engine {
     ports: Arc<CombatPortDetector>,
     ping: Arc<PingTracker>,
     paused: Arc<AtomicBool>,
+    party_only: AtomicBool,
+    /// Rows whose skill breakdown is open in the UI: only these get per-skill details.
+    watched: Mutex<Vec<i32>>,
     capturer: Option<PcapCapturer>,
     capture_error: Option<String>,
     /// (last check ms, game window open)
@@ -102,7 +107,15 @@ impl Engine {
             })
             .ok();
 
-        Arc::new(Self { storage, calc: Mutex::new(calc), ports, ping, paused, capturer, capture_error, game: Mutex::new((i64::MIN, false)) })
+        Arc::new(Self {
+            storage,
+            calc: Mutex::new(calc),
+            ports,
+            ping,
+            paused,
+            party_only: AtomicBool::new(false),
+            watched: Mutex::new(Vec::new()),
+            capturer, capture_error, game: Mutex::new((i64::MIN, false)) })
     }
 
     fn game_open(&self) -> bool {
@@ -115,7 +128,27 @@ impl Engine {
     }
 
     pub fn update(&self) -> Update {
-        let fight = Fight::from_dps(&self.calc.lock().get_dps());
+        let party_only = self.party_only.load(Ordering::Relaxed);
+        let fight = {
+            let mut calc = self.calc.lock();
+            let dps = calc.get_dps();
+            let mut fight = Fight::from_dps(&dps);
+            fight.mark_party(self.storage.get_party_members().keys());
+            if party_only {
+                fight.keep_party();
+            }
+            // Per-skill details, A2Tools' hover summary, for the rows opened in the UI.
+            let watched: Vec<i32> = self.watched.lock().iter().copied().filter(|id| fight.rows.iter().any(|r| r.id == *id)).collect();
+            if !watched.is_empty() {
+                let mut targets = dps.detail_target_ids.clone();
+                if targets.is_empty() && dps.target_id != 0 {
+                    targets.push(dps.target_id);
+                }
+                let entries: Vec<_> = targets.iter().take(64).flat_map(|&t| calc.get_hover_details(t, Some(&watched)).skills).collect();
+                fight.attach_skills(&entries);
+            }
+            fight
+        };
         let port = self.ports.current_port();
         let (status, message) = match (&self.capture_error, port) {
             (Some(e), _) => ("no-capture", e.clone()),
@@ -130,6 +163,7 @@ impl Engine {
             device: self.ports.current_device(),
             ping_ms: port.and(self.ping.current_ping_ms()),
             paused: self.paused.load(Ordering::Relaxed),
+            party_only,
             fight,
         }
     }
@@ -144,6 +178,16 @@ impl Engine {
     /// While paused, captured packets are dropped: nothing is counted and the timer stops.
     pub fn set_paused(&self, on: bool) {
         self.paused.store(on, Ordering::Relaxed);
+    }
+
+    /// Show only you and your party, or everyone who hit the target.
+    pub fn set_party_only(&self, on: bool) {
+        self.party_only.store(on, Ordering::Relaxed);
+    }
+
+    /// The rows whose per-skill breakdown the UI shows.
+    pub fn watch_skills(&self, ids: Vec<i32>) {
+        *self.watched.lock() = ids;
     }
 
     /// "bossTargets" | "mostDamage" | "mostRecent" | "lastHitByMe" | "allTargets" | "trainTargets"

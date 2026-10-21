@@ -1,7 +1,7 @@
 <script lang="ts">
   // The overlay window (index.html#overlay, opened by src-tauri/src/meter.rs): a compact, always-on-top
   // view of the current fight. Drag it by the header; it never takes the focus from the game.
-  import { clock, hpLeft, short, STATUS_TEXT, type MeterUpdate } from "../domain/meter.ts";
+  import { clock, displayName, hpLeft, short, STATUS_TEXT, type MeterUpdate } from "../domain/meter.ts";
   import { meterOverlay, meterReset, onMeter } from "../infra/meter.ts";
   import { ICON } from "./icons.ts";
 
@@ -23,5 +23,5 @@
 {#if left != null}<div class="bar hp"><i style:--p={String(left)}></i></div>{/if}
 <ol class="ov-rows">{#each f?.rows ?? [] as r (r.id)}
   <li class:you={r.isYou} style:--p={String(Math.min(1, r.damage / top))}>
-    <span class="name">{r.name || "#" + r.id}</span><span class="num">{short(r.dps)}/s</span><span class="num dim">{r.share.toFixed(0)}%</span></li>
+    <span class="name">{displayName(r)}</span><span class="num">{short(r.dps)}/s</span><span class="num dim">{r.share.toFixed(0)}%</span></li>
 {/each}</ol>

@@ -34,28 +34,34 @@ export const meterReset = () => call("meter_reset");
 export const meterPause = (paused: boolean) => call("meter_pause", { paused });
 export const meterTargetMode = (mode: string) => call("meter_target_mode", { mode });
 export const meterReconnect = () => call("meter_reconnect");
+/** Only you and your party, or everyone who hit the target. */
+export const meterPartyOnly = (on: boolean) => call("meter_party_only", { on });
+/** The rows whose skill breakdown is open: only they get per-skill details. */
+export const meterWatch = (ids: number[]) => call("meter_watch", { ids });
 /** Opens or closes the always-on-top overlay window (desktop only). */
 export const meterOverlay = (show: boolean) => (isTauri() ? invoke<void>("meter_overlay", { show }) : Promise.resolve());
 /** The overlay was opened or closed (also from the overlay itself). */
 export const onOverlay = (fn: (open: boolean) => void) => (isTauri() ? listen<boolean>("meter-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 
 // ---------- demo (browser preview only) ----------
-let demo = { start: Date.now(), paused: false, mode: "bossTargets", dmg: [0, 0, 0, 0] };
+let demo = { start: Date.now(), paused: false, partyOnly: false, mode: "bossTargets", dmg: [0, 0, 0, 0, 0] };
 const DEMO_PARTY = [
   { name: "You", job: "Gladiator", rate: 21_000 },
   { name: "Partymate A", job: "Sorcerer", rate: 26_000 },
   { name: "Partymate B", job: "Ranger", rate: 17_000 },
   { name: "Partymate C", job: "Cleric", rate: 6_000 },
+  { name: "", job: "Ranger", rate: 9_000 }, // a stranger whose name the game has not sent yet
 ];
 const DEMO_SPLIT = [0.42, 0.28, 0.2, 0.1];
 
 function demoUpdate(): MeterUpdate {
   const t = Date.now() - demo.start;
   if (!demo.paused) demo.dmg = DEMO_PARTY.map((p, i) => Math.round(p.rate * t / 1000 * (0.9 + 0.2 * Math.abs(Math.sin(t / 3000 + i)))));
-  const total = demo.dmg.reduce((a, b) => a + b, 0) || 1;
-  const rows: PlayerRow[] = DEMO_PARTY.map((p, i) => ({
-    id: i + 1, name: p.name, job: p.job, damage: demo.dmg[i], dps: demo.dmg[i] / Math.max(1, t / 1000),
-    share: demo.dmg[i] / total * 100, hps: 0, heal: 0, combatPower: 0, gearScore: 0, isYou: i === 0, isOthers: false,
+  const shown = DEMO_PARTY.map((p, i) => ({ p, i })).filter(({ i }) => !demo.partyOnly || i < 4);
+  const total = shown.reduce((a, { i }) => a + demo.dmg[i], 0) || 1;
+  const rows: PlayerRow[] = shown.map(({ p, i }) => ({
+    id: i === 4 ? 16546 : i + 1, name: p.name, job: p.job, damage: demo.dmg[i], dps: demo.dmg[i] / Math.max(1, t / 1000),
+    share: demo.dmg[i] / total * 100, hps: 0, heal: 0, combatPower: 0, gearScore: 0, isYou: i === 0, inParty: i < 4, isOthers: false,
     skills: DEMO_SPLIT.map((share, k) => ({
       name: `Demo skill ${k + 1}`, damage: Math.round(demo.dmg[i] * share), hits: Math.round(t / 900 / (k + 1)),
       critRate: 0.3 - k * 0.05, share, dot: k === 3,
@@ -63,7 +69,7 @@ function demoUpdate(): MeterUpdate {
   })).sort((a, b) => b.damage - a.damage);
   return {
     status: "connected", message: "Demo fight (browser preview, not real data)", port: null, device: null, pingMs: 42,
-    paused: demo.paused, demo: true,
+    paused: demo.paused, partyOnly: demo.partyOnly, demo: true,
     fight: { target: { name: "Demo Boss", isBoss: true, maxHp: 40_000_000, currentHp: -1, damageDealt: total }, targetMode: demo.mode, battleTimeMs: t, rows },
   };
 }
@@ -74,7 +80,8 @@ function startDemo() {
 }
 
 async function demoCall(cmd: string, args?: Record<string, unknown>) {
-  if (cmd === "meter_reset") demo = { ...demo, start: Date.now(), dmg: [0, 0, 0, 0] };
+  if (cmd === "meter_reset") demo = { ...demo, start: Date.now(), dmg: [0, 0, 0, 0, 0] };
+  if (cmd === "meter_party_only") demo.partyOnly = !!args?.on;
   if (cmd === "meter_pause") demo.paused = !!args?.paused;
   if (cmd === "meter_target_mode") demo.mode = String(args?.mode);
   emit(demoUpdate());

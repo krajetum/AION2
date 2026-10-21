@@ -3,10 +3,13 @@
 
 export interface SkillRow { name: string; damage: number; hits: number; critRate: number; share: number; dot: boolean }
 export interface PlayerRow {
-  id: number; name: string; job: string; dps: number; damage: number;
+  id: number;
+  name: string; // empty until the game sends it (on loading screens)
+  job: string; dps: number; damage: number;
   share: number; // 0..100 of the shown damage
   hps: number; heal: number; combatPower: number; gearScore: number;
   isYou: boolean;
+  inParty: boolean; // you or a member of your party
   isOthers: boolean; // everyone outside your party on an open-world boss
   skills: SkillRow[];
 }
@@ -15,7 +18,9 @@ export interface Fight { target: Target | null; targetMode: string; battleTimeMs
 export type MeterStatus = "no-capture" | "waiting-game" | "searching" | "connected";
 export interface MeterUpdate {
   status: MeterStatus; message: string; port: number | null; device: string | null;
-  pingMs: number | null; paused: boolean; fight: Fight;
+  pingMs: number | null; paused: boolean;
+  partyOnly: boolean; // only you and your party, else everyone who hit the target
+  fight: Fight;
   demo?: boolean; // browser preview only
 }
 
@@ -35,6 +40,9 @@ export const STATUS_TEXT: Record<MeterStatus, string> = {
   searching: "Searching",
   connected: "Connected",
 };
+
+/** A row's name: the character name, "You", or the entity id until the game sends the name. */
+export const displayName = (r: PlayerRow) => r.name || (r.isYou ? "You" : `#${r.id}`);
 
 /** 950 → "950", 12_345 → "12.3K", 4_560_000 → "4.56M". */
 export function short(n: number): string {
