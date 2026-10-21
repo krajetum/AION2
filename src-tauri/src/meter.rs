@@ -1,4 +1,4 @@
-// DPS meter: starts the capture engine (crate `aion2-meter`, vendored from A2Tools) on demand,
+// DPS meter: starts the capture engine (crate `aion2-meter`, vendored from A2Tools) at app start,
 // pushes "meter-update" events to every window and opens the always-on-top overlay window.
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -17,8 +17,8 @@ fn engine(app: &AppHandle) -> Option<Arc<Engine>> {
     app.state::<MeterState>().0.lock().ok()?.clone()
 }
 
-/// Starts capturing (once; later calls only return the current update). Nothing is
-/// captured until the user opens the DPS page, so the app costs nothing for those who don't.
+/// Starts capturing (once; later calls only return the current update). The main window calls
+/// it at startup: boss timers, Odyle energy, character detection and the arena log need it.
 #[tauri::command]
 pub fn meter_start(app: AppHandle) -> Update {
     let state = app.state::<MeterState>();

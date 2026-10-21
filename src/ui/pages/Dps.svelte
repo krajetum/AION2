@@ -38,6 +38,13 @@
       to Administrators only”, the companion must run as administrator.</p></section>
   {:else if u.status === "searching"}<p class="hint">Still searching after a fight? Hit Reconnect, or start the companion before the game.</p>{/if}
 
+  <!-- What the game has told the companion besides the fight: shows which of these never arrived. -->
+  {@const maps = new Set(u.bosses.map((b) => b.mapId))}
+  <p class="hint">Game data: playing <b>{u.profile?.name ?? "not said yet"}</b>{#if u.profile?.level} (lv {u.profile.level}){/if}
+    · Odyle {u.odyle ? `${u.odyle.basic}/${u.odyle.charged} (${u.odyle.owner ?? "owner not said yet"})` : "not sent yet"}
+    · boss maps read: {maps.size} ({u.bosses.length} bosses: {u.bosses.filter((b) => b.up).length} up, {u.bosses.filter((b) => !b.up && b.timeMs > Date.now()).length} respawning, {u.bosses.filter((b) => !b.timeMs).length} no time)
+    · saved boss timers: {ui.data.bosses.length}</p>
+
   <div class="toolbar dps-tools">
     <label>Target <select aria-label="Target mode" value={f.targetMode} onchange={(e) => run(() => meterTargetMode(e.currentTarget.value))}>
       {#each TARGET_MODES as [id, label]}<option value={id}>{label}</option>{/each}</select></label>

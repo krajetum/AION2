@@ -1,7 +1,15 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clock, hpLeft, short, viewRows, type Fight, type PlayerRow } from "./meter.ts";
+import { clock, hpLeft, odyleFor, short, viewRows, type Fight, type MeterUpdate, type PlayerRow } from "./meter.ts";
+
+test("Odyle energy only for the character it belongs to", () => {
+  const u = { odyle: { basic: 30, charged: 840, owner: "Naicha" } } as MeterUpdate;
+  assert.deepEqual(odyleFor(u, " naicha "), u.odyle);
+  assert.equal(odyleFor(u, "Alt"), undefined);
+  assert.equal(odyleFor({ odyle: { ...u.odyle!, owner: null } } as MeterUpdate, "Naicha"), undefined);
+  assert.equal(odyleFor(undefined, "Naicha"), undefined);
+});
 
 test("short numbers", () => {
   assert.equal(short(950), "950");

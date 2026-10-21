@@ -701,7 +701,26 @@ struct Inner {
     self_gear_score: Option<(String, i32)>,
     /// The combat power the last self record gave, with the name it was for.
     self_combat_power: Option<(String, i64)>,
+    /// Companion: player-on-player hits by (actor, target), summons resolved to
+    /// their owners. See `PvpHits`.
+    pvp_ledger: HashMap<(i32, i32), PvpHits>,
 }
+
+/// Companion: hits from one player on another. The meter counts these as party
+/// healing (`is_friendly_action`); between you and an arena opponent they are
+/// damage, which the companion's arena log reads (`engine.rs`).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PvpHits {
+    pub damage: i64,
+    pub hits: i32,
+    pub first_ms: i64,
+    pub last_ms: i64,
+    /// The first player skill among them: it names the actor's class.
+    pub skill: i32,
+}
+
+/// Companion: at most this many (actor, target) pairs between map loads.
+const MAX_PVP_PAIRS: usize = 4_096;
 
 #[derive(Default)]
 struct LootIdentity {
@@ -801,6 +820,7 @@ impl DataStorage {
                 self_profile: None,
                 self_gear_score: None,
                 self_combat_power: None,
+                pvp_ledger: HashMap::new(),
             }),
             damage_generation: AtomicI64::new(0),
             last_damage_ms: AtomicI64::new(NEVER_MS),
@@ -1427,6 +1447,7 @@ impl DataStorage {
 
         // Party healing: player-on-player damage is actually healing/buffs
         if is_friendly_action(&inner, actor_id, target_id) {
+            note_pvp(&mut inner, &pdp);
             let heal_amount = pdp.total_damage();
             if heal_amount > 0 {
                 if let Some(actor_data) = fight_of(&mut inner, actor_id, None) {
@@ -1940,6 +1961,21 @@ impl DataStorage {
 
     pub fn current_dungeon_id(&self) -> i32 {
         self.inner.read().current_dungeon_id
+    }
+
+    /// Companion: the map the last zone load named.
+    pub fn current_map_id(&self) -> Option<i32> {
+        self.inner.read().current_map_id
+    }
+
+    /// Companion: the players in the PvP hits since the last `take_pvp_ledger`.
+    pub fn pvp_players(&self) -> HashSet<i32> {
+        self.inner.read().pvp_ledger.keys().flat_map(|&(a, t)| [a, t]).collect()
+    }
+
+    /// Companion: the PvP hits since the last call (see `PvpHits`), cleared.
+    pub fn take_pvp_ledger(&self) -> HashMap<(i32, i32), PvpHits> {
+        std::mem::take(&mut self.inner.write().pvp_ledger)
     }
 
     pub fn get_party_members(&self) -> HashMap<String, PartyMember> {
@@ -2891,6 +2927,26 @@ fn fight_of(inner: &mut Inner, actor: i32, mob: Option<i32>) -> Option<&mut Acto
     inner.target_combat.get_mut(&tid)?.actors.get_mut(&actor)
 }
 
+/// Companion: records a player-on-player hit in `pvp_ledger`.
+fn note_pvp(inner: &mut Inner, pdp: &ParsedDamagePacket) {
+    let key = (
+        summon_resolver::resolve(pdp.actor_id(), &inner.summon_storage),
+        summon_resolver::resolve(pdp.target_id(), &inner.summon_storage),
+    );
+    if inner.pvp_ledger.len() >= MAX_PVP_PAIRS && !inner.pvp_ledger.contains_key(&key) {
+        return;
+    }
+    let ts = pdp.timestamp();
+    let e = inner.pvp_ledger.entry(key).or_insert_with(|| PvpHits { first_ms: ts, ..Default::default() });
+    e.damage += pdp.total_damage() as i64;
+    e.hits += 1;
+    e.first_ms = e.first_ms.min(ts);
+    e.last_ms = e.last_ms.max(ts);
+    if e.skill == 0 && is_player_skill(pdp.skill_code()) {
+        e.skill = pdp.skill_code();
+    }
+}
+
 fn is_friendly_action(inner: &Inner, actor_id: i32, target_id: i32) -> bool {
     let resolved_actor = summon_resolver::resolve(actor_id, &inner.summon_storage);
     let resolved_target = summon_resolver::resolve(target_id, &inner.summon_storage);
@@ -3457,6 +3513,23 @@ mod tests {
         let snapshot = s.get_combat_snapshot_light();
         assert_eq!(snapshot[&830].actors[&200].party_heal, 400);
         assert_eq!(snapshot.values().map(|t| t.actors[&200].party_heal).sum::<i64>(), 400);
+    }
+
+    #[test]
+    fn player_on_player_hits_also_go_to_the_pvp_ledger() {
+        let s = DataStorage::new();
+        s.append_mob(800, 1);
+        s.append_damage(hit(100, 800, 1_000, 10, false));
+        s.append_damage(hit(200, 800, 1_000, 10, false));
+        s.append_damage(hit(200, 100, 2_500, 100, false));
+        s.append_damage(hit(200, 100, 2_000, 400, false));
+        assert_eq!(s.get_combat_snapshot_light()[&800].actors[&200].party_heal, 500, "the meter's own reading is unchanged");
+        assert_eq!(s.pvp_players(), HashSet::from([100, 200]));
+        let ledger = s.take_pvp_ledger();
+        let h = &ledger[&(200, 100)];
+        assert_eq!((h.damage, h.hits, h.first_ms, h.last_ms), (500, 2, 2_000, 2_500));
+        assert_ne!(h.skill, 0);
+        assert!(s.take_pvp_ledger().is_empty());
     }
 
     #[test]

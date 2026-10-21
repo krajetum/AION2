@@ -2,6 +2,7 @@
 // The toast itself is passed in (infra/notifier.ts), so this stays free of Tauri.
 import { EVENTS, RESET_CONFIG as C } from "../config.ts";
 import { dueLeads, inQuietHours } from "../domain/alerts.ts";
+import { bossKey, dueBossAlerts } from "../domain/bosses.ts";
 import { CLOUD_MERCHANT_ID } from "../domain/seed.ts";
 import { remaining } from "../domain/tasks.ts";
 import { nextBoundary, nextEvent } from "../domain/time.ts";
@@ -38,6 +39,15 @@ export function checkNotifications(data: AppData, now: number, toast: Toast): bo
     for (const l of due) data.warnedEvent[`${ev.id}@${l}`] = next;
     changed = true;
     if (!silent) toast(s, ev.name, `Starts in ${Math.max(1, Math.round((next - now) / 60_000))} min.`, [ev.id, "event"]);
+  }
+
+  // Field-boss respawns the user armed (Field Bosses tab), from the maps last opened in game: like the events.
+  // A one-time alert is done after its shortest lead; a recurrent one waits for the next respawn the map reports.
+  for (const d of s.channels.boss?.on ? dueBossAlerts(data.bosses, data.bossAlerts, data.warnedEvent, now) : []) {
+    for (const l of d.leads) data.warnedEvent[`${bossKey(d.boss)}@${l}`] = d.boss.timeMs;
+    if (d.last && !d.alert.repeat) delete data.bossAlerts[d.boss.bossId];
+    changed = true;
+    if (!silent) toast(s, d.boss.name, `Respawns in ${d.minutes} min.`, ["boss", "event"]);
   }
 
   // Warning X hours before each reset, once per reset. While silent it is not marked as sent,

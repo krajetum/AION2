@@ -1,0 +1,19 @@
+// Arena log and field-boss use cases: what the meter sends, merged into the save file.
+import { logMatch } from "../domain/arena.ts";
+import { mergeBosses } from "../domain/bosses.ts";
+import type { MeterUpdate } from "../domain/meter.ts";
+import type { AppData } from "../domain/types.ts";
+
+/** Takes a meter update's boss timers and last arena match. Returns true if it changed data (needs saving). */
+export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
+  const bosses = mergeBosses(data.bosses, u.bosses ?? []);
+  if (bosses) data.bosses = bosses;
+  const match = !!u.arena && logMatch(data.arena, u.arena);
+  return !!bosses || match;
+}
+
+/** Names an arena map ("Arena of Solitude"); empty = unnamed. */
+export function labelMap(data: AppData, mapId: number, v: string) {
+  if (v.trim()) data.arena.maps[mapId] = v.trim();
+  else delete data.arena.maps[mapId];
+}

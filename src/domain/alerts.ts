@@ -20,10 +20,14 @@ export const dueLeads = (leads: number[], msLeft: number, warned: (lead: number)
 export const CHANNELS = [
   { id: "cloud", name: "Hourly Cloud Merchant reminder", sound: ["cloud"], on: true },
   ...EVENTS.map((ev) => ({ id: ev.id, name: `${ev.name}: alert before`, sound: [ev.id, "event"], on: false })),
+  { id: "boss", name: "Field boss alerts (set per boss in Field Bosses)", sound: ["boss", "event"], on: true },
   { id: "reset", name: "Reset warnings", sound: ["reset"], on: true },
   { id: "news", name: "News", sound: ["news"], on: true },
   { id: "check", name: "Task checked (vine boom)", sound: ["check"], on: true },
 ];
+
+/** Channels with alert lead times: the events (field bosses have theirs per boss, AppData.bossAlerts). */
+export const LEAD_CHANNELS = EVENTS.map((ev) => ev.id);
 
 /** Master volume × channel volume; 0 when the master switch is off or the channel is muted. */
 export const channelVolume = (s: Settings, id: string) => {

@@ -9,7 +9,9 @@ export const PAGE: Record<Tab, [string, string]> = {
   monthly: ["Monthly", "Long-term commitment issues."],
   plan: ["Planner", "Limited minutes, unlimited greed. Knapsack go brrr."],
   season: ["Season Coins", "Oath Coin stonks. Numbers only go up."],
+  bosses: ["Field Bosses", "Respawn timers, straight from the world map."],
   dps: ["DPS Meter", "Numbers don't lie. Partymates do."],
+  arena: ["Arena Log", "Know thy enemy. Or at least their name."],
   news: ["News", "Patch notes or it didn't happen."],
   settings: ["Settings", "Knobs. So many knobs."],
 };

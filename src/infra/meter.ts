@@ -3,7 +3,7 @@
 // labelled demo fight stands in, only to preview the UI.
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { MeterUpdate, MeterView, PlayerRow } from "../domain/meter.ts";
+import type { ArenaMatch, BossTimer, MeterUpdate, MeterView, PlayerRow } from "../domain/meter.ts";
 
 let started = false;
 let last: MeterUpdate | undefined;
@@ -11,7 +11,7 @@ const subs = new Set<(u: MeterUpdate) => void>();
 const emit = (u: MeterUpdate) => { last = u; subs.forEach((f) => f(u)); };
 
 /**
- * Starts the engine once (capture begins here, not at app launch) and calls `fn` with every update.
+ * Starts the engine once (main.ts calls it at app start) and calls `fn` with every update.
  * Returns the unsubscribe function.
  */
 export function onMeter(fn: (u: MeterUpdate) => void): () => void {
@@ -55,6 +55,22 @@ const DEMO_PARTY = [
   { name: "", job: "Ranger", rate: 9_000 }, // a stranger whose name the game has not sent yet
 ];
 const DEMO_SPLIT = [0.42, 0.28, 0.2, 0.1];
+const DEMO_SEEN = Date.now();
+const DEMO_BOSSES: BossTimer[] = [
+  { mapId: 1, bossId: 101006, name: "Demo boss: Bodyguard Teegant", up: false, timeMs: DEMO_SEEN + 7 * 60_000, seenMs: DEMO_SEEN },
+  { mapId: 1, bossId: 101001, name: "Demo boss: Neikel of the East", up: false, timeMs: DEMO_SEEN + 52 * 60_000, seenMs: DEMO_SEEN },
+  { mapId: 1, bossId: 101003, name: "Demo boss: Kernon of the West", up: true, timeMs: DEMO_SEEN - 20 * 60_000, seenMs: DEMO_SEEN },
+];
+const demoPlayer = (id: number, name: string, side: "you" | "ally" | "opponent", job: string, dealt: number, taken: number, deaths: number, gs: number | null) =>
+  ({ id, name, side, job, serverId: 1304, dealt, taken, hits: Math.round(dealt / 4000), deaths, level: gs && 45, gearScore: gs, combatPower: gs && gs * 25 });
+const DEMO_MATCH: ArenaMatch = {
+  mapId: 600501, startMs: DEMO_SEEN - 15 * 60_000, endMs: DEMO_SEEN - 11 * 60_000, players: [
+    demoPlayer(1, "Main", "you", "Gladiator", 410_000, 260_000, 1, 2040),
+    demoPlayer(2, "Partymate A", "ally", "Cleric", 120_000, 180_000, 0, 1980),
+    demoPlayer(3, "Demo Foe", "opponent", "Sorcerer", 300_000, 300_000, 1, null),
+    demoPlayer(4, "Demo Foe 2", "opponent", "Templar", 140_000, 230_000, 2, null),
+  ],
+};
 
 function demoUpdate(): MeterUpdate {
   const t = Date.now() - demo.start;
@@ -75,6 +91,8 @@ function demoUpdate(): MeterUpdate {
   return {
     status: "connected", message: "Demo fight (browser preview, not real data)", port: null, device: null, pingMs: 42,
     paused: demo.paused, partyOnly: demo.partyOnly, view: demo.view, demo: true,
+    bosses: DEMO_BOSSES, odyle: { basic: 30, charged: 840, owner: "Main" },
+    profile: { name: "Demo Alt", serverId: 1304, job: "Gladiator", level: 45, gearScore: 2040, combatPower: 51_000 }, arena: DEMO_MATCH,
     fight: { target: { name: "Demo Boss", isBoss: true, maxHp: 40_000_000, currentHp: -1, damageDealt: total }, targetMode: demo.mode, battleTimeMs: t, rows },
   };
 }

@@ -2,22 +2,24 @@
 //! the way A2Tools' `app.rs` does, without its windows, settings, uploads or plugins.
 //! Written for the AION 2 Companion; GPL-3.0 like the rest of this crate.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use parking_lot::Mutex;
 use serde::Serialize;
 
+use crate::arena::{ArenaMatch, build_match};
 use crate::capture::combat_port_detector::CombatPortDetector;
+use crate::capture::field_bosses::FIELD_BOSSES;
 use crate::capture::pcap_capturer::PcapCapturer;
 use crate::combat::capture_dispatcher::CaptureDispatcher;
-use crate::combat::data_storage::DataStorage;
+use crate::combat::data_storage::{DataStorage, is_open_world_map};
 use crate::combat::dps_calculator::DpsCalculator;
 use crate::combat::ping_tracker::PingTracker;
 use crate::i18n::lookup::{NpcLookup, SkillLookup};
 use crate::platform;
-use crate::snapshot::Fight;
+use crate::snapshot::{Fight, english_job};
 
 /// How often to ask whether the game window is open (it is a window list, not free).
 const GAME_CHECK_MS: i64 = 5_000;
@@ -57,11 +59,66 @@ pub struct Update {
     /// "damage" | "healing" | "taken": what the rows are ranked by (the overlay follows it too).
     pub view: String,
     pub fight: Fight,
+    /// The field bosses on every map the player opened since the meter started.
+    pub bosses: Vec<BossTimer>,
+    pub odyle: Option<Odyle>,
+    /// Who you are playing, once the game has said.
+    pub profile: Option<Profile>,
+    /// The last arena match, once one has ended (a map load after PvP hits in an instance).
+    pub arena: Option<ArenaMatch>,
+}
+
+/// A field boss as the map the player opened shows it (`capture::boss_map`).
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BossTimer {
+    pub map_id: u32,
+    /// The game's world-map boss id.
+    pub boss_id: u32,
+    pub name: String,
+    pub up: bool,
+    /// Unix ms: since when it is up, or when it returns; 0 when the game gave none.
+    pub time_ms: i64,
+    /// When the map was read.
+    pub seen_ms: i64,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Odyle {
+    pub basic: u32,
+    pub charged: u32,
+    /// The character it is, once the game has said.
+    pub owner: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Profile {
+    pub name: String,
+    pub server_id: u16,
+    pub job: String,
+    pub level: Option<u32>,
+    pub gear_score: Option<i32>,
+    pub combat_power: Option<i64>,
+}
+
+/// The map the PvP hits are on, and the players' names seen while there (a map load hands out new ids).
+#[derive(Default)]
+struct ArenaWatch {
+    zone: u64,
+    map: Option<i32>,
+    names: HashMap<i32, String>,
+    last: Option<ArenaMatch>,
 }
 
 pub struct Engine {
     storage: Arc<DataStorage>,
     calc: Mutex<DpsCalculator>,
+    npcs: Arc<NpcLookup>,
+    /// (boss_maps_since count, the timers it gave)
+    bosses: Mutex<(u64, Vec<BossTimer>)>,
+    arena: Mutex<ArenaWatch>,
     ports: Arc<CombatPortDetector>,
     ping: Arc<PingTracker>,
     paused: Arc<AtomicBool>,
@@ -99,7 +156,7 @@ impl Engine {
             (None, Some(platform::pcap::MISSING_HELP.to_string()))
         };
 
-        let mut dispatcher = CaptureDispatcher::new(storage.clone(), skills, npcs, ports.clone(), ping.clone());
+        let mut dispatcher = CaptureDispatcher::new(storage.clone(), skills, npcs.clone(), ports.clone(), ping.clone());
         dispatcher.set_dot_skill_ids(dot_skill_ids());
         dispatcher.use_suspend_flag(paused.clone());
         std::thread::Builder::new()
@@ -113,6 +170,9 @@ impl Engine {
         Arc::new(Self {
             storage,
             calc: Mutex::new(calc),
+            npcs,
+            bosses: Mutex::new((0, Vec::new())),
+            arena: Mutex::new(ArenaWatch::default()),
             ports,
             ping,
             paused,
@@ -188,7 +248,83 @@ impl Engine {
             party_only,
             view,
             fight,
+            bosses: self.boss_timers(),
+            odyle: self.storage.odyle_energy().map(|(basic, charged)| Odyle { basic, charged, owner: self.storage.odyle_owner() }),
+            profile: self.profile(),
+            arena: self.arena_match(),
         }
+    }
+
+    fn boss_timers(&self) -> Vec<BossTimer> {
+        let mut b = self.bosses.lock();
+        if let Some((seq, maps)) = self.storage.boss_maps_since(b.0) {
+            let name = |id: u32| {
+                FIELD_BOSSES.iter().find(|&&(_, w)| w == id).map(|&(code, _)| self.npcs.get_npc_name(code)).filter(|n| !n.is_empty())
+            };
+            let timers = maps.iter().flat_map(|m| {
+                m.bosses.iter().map(move |x| (m, x))
+            });
+            *b = (seq, timers
+                .map(|(m, x)| BossTimer {
+                    map_id: m.map_id,
+                    boss_id: x.id,
+                    name: name(x.id).unwrap_or_else(|| format!("Boss {}", x.id)),
+                    up: x.up,
+                    time_ms: x.time_ms,
+                    seen_ms: m.seen_ms,
+                })
+                .collect());
+        }
+        b.1.clone()
+    }
+
+    fn profile(&self) -> Option<Profile> {
+        let p = self.storage.local_profile();
+        Some(Profile {
+            name: p.name.filter(|n| !n.trim().is_empty())?,
+            server_id: p.server_id,
+            job: p.class.map(|c| english_job(c.class_name())).unwrap_or_default(),
+            level: p.level,
+            gear_score: p.gear_score,
+            combat_power: p.combat_power,
+        })
+    }
+
+    /// Ends a match on the map load after it: PvP hits on an instance map (not the open world).
+    fn arena_match(&self) -> Option<ArenaMatch> {
+        let mut a = self.arena.lock();
+        let zone = self.storage.zone_generations().0;
+        if zone == a.zone {
+            for id in self.storage.pvp_players() {
+                if let Some(n) = self.storage.get_nickname(id) {
+                    a.names.insert(id, n);
+                }
+            }
+            return a.last.clone();
+        }
+        let hits = self.storage.take_pvp_ledger();
+        let map = std::mem::replace(&mut a.map, self.storage.current_map_id());
+        a.zone = zone;
+        let names = std::mem::take(&mut a.names);
+        if let Some(map_id) = map.filter(|&m| !is_open_world_map(m)) {
+            let me = self.storage.local_player_id().map(|id| id as i32);
+            let deaths = self.storage.deaths_between(i64::MIN, i64::MAX);
+            if let Some(mut m) = build_match(map_id, &hits, me, &names, &self.storage.fight_roster(), &deaths) {
+                let profile = self.storage.local_profile();
+                for p in &mut m.players {
+                    if p.server_id == 0 && !p.name.is_empty() {
+                        p.server_id = self.storage.player_server(&p.name);
+                    }
+                    if p.side == "you" {
+                        p.level = p.level.or(profile.level.map(|l| l as i32));
+                        p.gear_score = p.gear_score.or(profile.gear_score);
+                        p.combat_power = p.combat_power.or(profile.combat_power);
+                    }
+                }
+                a.last = Some(m);
+            }
+        }
+        a.last.clone()
     }
 
     /// A2Tools' `reset_combat`: clear the fight, keep the connection and the names the game sent.
