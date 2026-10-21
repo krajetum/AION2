@@ -7,7 +7,7 @@ Tauri 2 + TypeScript + Svelte 5 + Vite. Single user, multiple characters, everyt
 - `npm test` — domain tests, `src/**/*.test.ts` (`node --test`, Node 24 runs `.ts` natively, no test deps)
 - `npx tsc --noEmit` — type-check `.ts`; `npm run check` — svelte-check (also covers `.svelte` files)
 - `npm run tauri dev` — real desktop app (needs Rust + MSVC; first build ~2 min)
-- Release: `npm version x.y.z` then `git push --follow-tags` → `.github/workflows/release.yml` builds, signs and publishes a GitHub Release + `latest.json` (the updater endpoint). Version lives only in `package.json`.
+- Release: in the PR run `npm version x.y.z --no-git-tag-version`; merging it into `main` → `.github/workflows/release.yml` builds, signs, tags `vx.y.z` and publishes a GitHub Release + `latest.json` (the updater endpoint). Already-tagged versions are skipped. Version lives only in `package.json`.
 - `npm run dev` — UI only in a browser on http://localhost:1420 (launch config `web-ui` in `.claude/launch.json`)
 
 ## Verifying changes
