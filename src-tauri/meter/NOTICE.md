@@ -29,11 +29,16 @@ and sends nothing to the game or anywhere else.
    (adapted from A2Tools' `platform/win32`, `platform/linux`, `platform/procfs.rs`). No Npcap installer.
 7. Data: English skill and NPC names only (`data/i18n/{skills,npcs}/en.json`); `servers.json` and
    `skill_icons.json` not included.
+8. `combat/data_storage.rs` (2026-10-21): player-on-player hits, which the meter counts as party healing,
+   are also recorded in a `pvp_ledger` (`PvpHits`, `note_pvp`, called first in `append_damage`'s
+   friendly-action branch), with accessors `pvp_players`, `take_pvp_ledger` and `current_map_id`, and a
+   test. What the meter counts is unchanged. The arena log reads them (`src/arena.rs`, `src/engine.rs`).
 
 ## Written for the companion
 
-`src/engine.rs` (starts the pipeline the way A2Tools' `app.rs` does), `src/snapshot.rs` (the DPS tab's
-view of an update), `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
+`src/engine.rs` (starts the pipeline the way A2Tools' `app.rs` does; boss timers, Odyle energy, profile),
+`src/snapshot.rs` (the DPS tab's view of an update), `src/arena.rs` (arena matches from the PvP ledger),
+`src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 
 ## Game data
 

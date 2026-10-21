@@ -1,8 +1,9 @@
 <script lang="ts">
   import { EVENTS, RESET_CONFIG as C } from "../../config.ts";
   import { addCharacter, deleteCharacter, renameCharacter } from "../../app/characters.ts";
-  import { muteForAnHour, setChannelOn, setChannelVolume, setVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
+  import { addLead, muteForAnHour, removeLead, setChannelOn, setLead, setChannelVolume, setVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
   import { applyResets } from "../../domain/resets.ts";
+  import { nextEvent } from "../../domain/time.ts";
   import { CHANNELS } from "../../domain/alerts.ts";
   import { CADENCES } from "../../domain/types.ts";
   import { playSound, toast } from "../../infra/notifier.ts";
@@ -82,7 +83,9 @@
           onclick={() => act(() => toggleChannelMute(ui.data, c.id))}>{@html ch.muted ? ICON.muted : ICON.sound}</button>
         <button class="ghost" aria-label="Play {c.name} sound" title="sounds/{c.sound[0]}.wav"
           onclick={() => playSound(c.sound, s.volume * ch.volume / 100)}>{@html ICON.play}</button></span>
-      {#if ch.leads}<LeadsRow id={c.id} leads={ch.leads} on={ch.on} />{/if}</div>{/each}
+      {#if ch.leads}{@const ev = EVENTS.find((e) => e.id === c.id)}<LeadsRow label={ev?.name ?? c.name} leads={ch.leads}
+        next={ch.on && ev ? nextEvent(ev, ui.now, C.timeZone) : undefined}
+        onadd={() => addLead(ui.data, c.id)} onremove={(i) => removeLead(ui.data, c.id, i)} onset={(i, v) => setLead(ui.data, c.id, i, v)} />{/if}</div>{/each}
     <div class="setting"><span>Quiet hours</span><span class="ctl">
       <input type="time" value={s.quietStart} aria-label="Quiet hours start" onchange={(e) => commit(e, (v) => { s.quietStart = v; }, () => s.quietStart)}> to
       <input type="time" value={s.quietEnd} aria-label="Quiet hours end" onchange={(e) => commit(e, (v) => { s.quietEnd = v; }, () => s.quietEnd)}></span></div>

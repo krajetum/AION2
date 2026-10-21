@@ -1,3 +1,6 @@
+import type { ArenaLog } from "./arena.ts";
+import type { BossTimer } from "./meter.ts";
+
 export type Cadence = "daily" | "weekly" | "monthly";
 export const CADENCES: Cadence[] = ["daily", "weekly", "monthly"];
 
@@ -18,6 +21,9 @@ export interface Task {
 }
 
 export interface Character { id: string; name: string }
+
+/** A field boss's respawn alert: minutes before (1–3 leads); repeat = every respawn the map reports, else once. */
+export interface BossAlert { leads: number[]; repeat: boolean }
 
 /** counts[i] matches the Task's goals[i]. */
 export interface Progress { done: boolean; counts?: number[] }
@@ -68,6 +74,9 @@ export interface AppData {
   news: NewsItem[];                   // last fetched news, newest first
   lastNewsGid: string;                // newest gid already toasted
   season: Record<string, SeasonProgress>; // charId → season progress
+  bosses: BossTimer[];                // field bosses from the maps last opened in game (src/domain/bosses.ts)
+  bossAlerts: Record<string, BossAlert>; // world-map boss id → its respawn alert
+  arena: ArenaLog;                    // arena matchup log (src/domain/arena.ts)
   plan?: ActivePlan;
   undo: UndoEntry[]; // newest last, max 30 (src/undo.ts)
   settings: Settings;

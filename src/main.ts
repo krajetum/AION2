@@ -10,7 +10,8 @@ import { findUpdate, getAutostart, isDesktop, onTrayMute } from "./infra/system.
 import { act, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
-import { onOverlay } from "./infra/meter.ts";
+import { takeMeterData } from "./app/arena.ts";
+import { onMeter, onOverlay } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { ui } from "./ui/state.svelte.ts";
 
@@ -28,6 +29,11 @@ async function main() {
   mount(App, { target: app });
 
   if (isDesktop()) await onOverlay((open) => { ui.overlay = open; });
+  // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
+  onMeter((u) => {
+    ui.meter = u;
+    if (takeMeterData(ui.data, u)) save();
+  });
   if (isDesktop()) await onTrayMute(() => act(() => muteForAnHour(ui.data, Date.now())));
 
   if (isDesktop()) checkUpdate();

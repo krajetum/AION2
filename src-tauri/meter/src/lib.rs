@@ -20,6 +20,7 @@ pub mod supporters;
 pub mod platform;
 
 pub mod snapshot;
+pub mod arena;
 
 #[cfg(feature = "live")]
 pub mod engine;

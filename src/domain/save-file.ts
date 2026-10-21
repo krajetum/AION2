@@ -1,6 +1,5 @@
 // Save-file rules: the default data and the migration of old or imported saves. Pure.
-import { EVENTS } from "../config.ts";
-import { CHANNELS, cleanLeads } from "./alerts.ts";
+import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
 import { seedTasks } from "./seed.ts";
 import type { AppData, Channel } from "./types.ts";
 
@@ -17,6 +16,9 @@ export function defaultData(): AppData {
     news: [],
     lastNewsGid: "",
     season: {},
+    bosses: [],
+    bossAlerts: {},
+    arena: { matches: [], maps: {} },
     undo: [],
     settings: {
       warnHours: { daily: 2, weekly: 12, monthly: 24 },
@@ -24,7 +26,7 @@ export function defaultData(): AppData {
       quietEnd: "09:00",
       mutedUntil: 0,
       channels: Object.fromEntries(CHANNELS.map((c): [string, Channel] =>
-        [c.id, { on: c.on, volume: 100, muted: false, ...(EVENTS.some((ev) => ev.id === c.id) && { leads: [5] }) }])),
+        [c.id, { on: c.on, volume: 100, muted: false, ...(LEAD_CHANNELS.includes(c.id) && { leads: [5] }) }])),
       sound: true,
       volume: 70,
       memeMascot: true,
@@ -45,7 +47,10 @@ export function normalize(raw: any): AppData {
   if (typeof cloudReminder === "boolean") channels.cloud.on = cloudReminder;
   for (const [id, on] of Object.entries(eventAlerts ?? {})) if (channels[id]) channels[id].on = !!on;
   for (const [id, c] of Object.entries(rs.channels ?? {})) channels[id] = { ...channels[id], ...(c as Channel) };
-  for (const ev of EVENTS) if (channels[ev.id]) channels[ev.id].leads = cleanLeads(channels[ev.id].leads);
+  for (const [id, c] of Object.entries(channels)) {
+    if (LEAD_CHANNELS.includes(id)) c.leads = cleanLeads(c.leads);
+    else delete c.leads; // the boss channel had leads before its alerts moved to each boss
+  }
   return {
     ...d, ...raw,
     progress: raw.progress ?? {},
@@ -54,6 +59,10 @@ export function normalize(raw: any): AppData {
     warnedEvent: raw.warnedEvent ?? {},
     news: Array.isArray(raw.news) ? raw.news : [],
     season: raw.season ?? {},
+    bosses: Array.isArray(raw.bosses) ? raw.bosses : [],
+    bossAlerts: Object.fromEntries(Object.entries(raw.bossAlerts ?? {}).map(([id, a]: [string, any]) =>
+      [id, { leads: cleanLeads(a?.leads), repeat: !!a?.repeat }])),
+    arena: { matches: Array.isArray(raw.arena?.matches) ? raw.arena.matches : [], maps: raw.arena?.maps ?? {} },
     undo: Array.isArray(raw.undo) ? raw.undo : [],
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels },
   };

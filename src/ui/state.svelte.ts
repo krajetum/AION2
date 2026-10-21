@@ -1,9 +1,10 @@
 // UI state. `ui.data` is a deep $state proxy of the save file: app/ use cases mutate it and the page updates.
 import { SvelteSet } from "svelte/reactivity";
+import type { MeterUpdate } from "../domain/meter.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
-export type Tab = Cadence | "plan" | "season" | "dps" | "news" | "settings";
-export const TABS: Tab[] = [...CADENCES, "plan", "season", "dps", "news", "settings"];
+export type Tab = Cadence | "plan" | "season" | "bosses" | "dps" | "arena" | "news" | "settings";
+export const TABS: Tab[] = [...CADENCES, "plan", "season", "bosses", "dps", "arena", "news", "settings"];
 export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "daily"; };
 
 export const ui = $state({
@@ -15,6 +16,7 @@ export const ui = $state({
   newsError: "",
   now: Date.now(), // 1 s clock (main.ts) for countdowns and live times
   overlay: false, // DPS overlay window open (main.ts follows the "meter-overlay" event)
+  meter: undefined as MeterUpdate | undefined, // last meter update (the capture runs from app start, main.ts)
 });
 
 /** Tasks finished from the Planner page: kept on screen (ticked) so the tick is visible and can be undone. */

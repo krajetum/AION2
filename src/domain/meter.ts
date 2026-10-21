@@ -18,14 +18,38 @@ export interface PlayerRow {
 export interface Target { name: string; isBoss: boolean; maxHp: number; currentHp: number; damageDealt: number }
 export interface Fight { target: Target | null; targetMode: string; battleTimeMs: number; rows: PlayerRow[] }
 export type MeterStatus = "no-capture" | "waiting-game" | "searching" | "connected";
+/** A field boss from a map the player opened in game. timeMs (unix ms): up since, or respawns at; 0 = not given. */
+export interface BossTimer { mapId: number; bossId: number; name: string; up: boolean; timeMs: number; seenMs: number }
+export interface Odyle { basic: number; charged: number; owner: string | null }
+/** Who you are playing, as the game said. */
+export interface Profile { name: string; serverId: number; job: string; level: number | null; gearScore: number | null; combatPower: number | null }
+export type ArenaSide = "you" | "ally" | "opponent";
+/** Gear (level, gearScore, combatPower) is known for you and your party only. */
+export interface ArenaPlayer {
+  id: number; name: string; side: ArenaSide; job: string; serverId: number;
+  dealt: number; taken: number; hits: number; deaths: number;
+  level: number | null; gearScore: number | null; combatPower: number | null;
+}
+/** PvP on an instance map, logged on the map load after it. */
+export interface ArenaMatch { mapId: number; startMs: number; endMs: number; players: ArenaPlayer[] }
 export interface MeterUpdate {
   status: MeterStatus; message: string; port: number | null; device: string | null;
   pingMs: number | null; paused: boolean;
   partyOnly: boolean; // only you and your party, else everyone who hit the target
   view: MeterView; // what the rows are ranked by (the overlay follows it)
   fight: Fight;
+  bosses: BossTimer[]; // every map opened since the meter started
+  odyle: Odyle | null;
+  profile: Profile | null;
+  arena: ArenaMatch | null; // the last match that ended
   demo?: boolean; // browser preview only
 }
+
+/** The Odyle energy the game sent, if it is this character's. */
+export const odyleFor = (u: MeterUpdate | undefined, charName: string | undefined) =>
+  u?.odyle?.owner && charName && sameName(u.odyle.owner, charName) ? u.odyle : undefined;
+
+export const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /** A2Tools' target modes (DpsCalculator::TargetSelectionMode ids) and their labels. */
 export const TARGET_MODES: [string, string][] = [
