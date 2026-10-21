@@ -9,7 +9,7 @@ Tauri 2 + TypeScript + Svelte 5 + Vite. Single user, multiple characters, everyt
 - `cargo test -p aion2-meter` (in `src-tauri/`) — DPS meter parser tests (A2Tools' own, with byte samples from live captures)
 - `cargo run -p aion2-meter --example smoke` — starts the live capture and prints updates (Linux needs libpcap)
 - `npm run tauri dev` — real desktop app (needs Rust + MSVC; first build ~2 min)
-- Release: in the PR run `npm version x.y.z --no-git-tag-version`; merging it into `main` → `.github/workflows/release.yml` builds, signs, tags `vx.y.z` and publishes a GitHub Release + `latest.json` (the updater endpoint). Already-tagged versions are skipped. Version lives only in `package.json`.
+- Release: automatic. Every merge into `main` (except `.md`-only changes) → `.github/workflows/release.yml` bumps the patch version, commits and tags it on `main`, builds, signs and publishes a GitHub Release + `latest.json` (the updater endpoint). Minor/major: "Run workflow" in Actions. Don't bump the version by hand; pull after a merge. Version lives only in `package.json`.
 - `npm run dev` — UI only in a browser on http://localhost:1420 (launch config `web-ui` in `.claude/launch.json`)
 
 ## Verifying changes

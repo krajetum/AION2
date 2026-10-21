@@ -1,12 +1,22 @@
-# Merge a version bump in package.json into main (or click "Run workflow" in Actions) -> builds the Windows installer,
-# signs it and publishes a GitHub Release with latest.json, which installed apps read to update themselves.
-# tauri-action creates the v<version> tag; a version that is already tagged is skipped.
+# Every merge into main (or "Run workflow" in Actions, which can pick minor/major) -> bumps the version in package.json,
+# commits and tags it, builds the Windows installer, signs it and publishes a GitHub Release with latest.json,
+# which installed apps read to update themselves. Pushes made with GITHUB_TOKEN don't re-trigger this workflow.
 name: release
 on:
   push:
     branches: [main]
-    paths: [package.json]
+    paths-ignore: ["**.md"]
   workflow_dispatch:
+    inputs:
+      bump:
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+# Back-to-back merges release one after the other, each on top of the previous bump.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -15,29 +25,27 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - id: check
-        shell: bash
-        run: |
-          v=$(node -p "require('./package.json').version")
-          if git ls-remote --exit-code --tags origin "v$v" >/dev/null; then
-            echo "v$v is already released, skipping"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          fi
-      - if: steps.check.outputs.skip != 'true'
-        uses: actions/setup-node@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - if: steps.check.outputs.skip != 'true'
-        uses: dtolnay/rust-toolchain@stable
-      - if: steps.check.outputs.skip != 'true'
-        uses: swatinem/rust-cache@v2
+      - name: Bump version, commit and tag
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          v=$(npm version "${{ inputs.bump || 'patch' }}" --no-git-tag-version)
+          git commit -am "${v#v}"
+          git tag "$v"
+          git push origin HEAD:main "$v"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      - if: steps.check.outputs.skip != 'true'
-        run: npm ci
-      - if: steps.check.outputs.skip != 'true'
-        uses: tauri-apps/tauri-action@v0
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
