@@ -3,10 +3,9 @@ import { listen } from "@tauri-apps/api/event";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { check } from "@tauri-apps/plugin-updater";
 import { EVENTS, RESET_CONFIG as C, SEASON } from "./config.ts";
-import { exportJson, importJson, loadData, saveData } from "./data.ts";
-import { fetchNews, isImportant, mergeNews } from "./news.ts";
-import { channelVolume, CHANNELS, checkNotifications, playSound, toast } from "./notify.ts";
-import { cleanLeads } from "./domain/alerts.ts";
+import { checkNotifications } from "./app/notifications.ts";
+import { channelVolume, CHANNELS, cleanLeads } from "./domain/alerts.ts";
+import { isImportant, mergeNews } from "./domain/news.ts";
 import { DEFAULT_MINUTES, DEFAULT_PRIORITY, learn, leftShare, plan, type Step } from "./domain/planner.ts";
 import { applyResets } from "./domain/resets.ts";
 import { emptySeason, isHardPvp, isIncluded, remainingOf, SEASONAL, seasonSummary, WEEKLY, weeksLeft } from "./domain/season.ts";
@@ -14,6 +13,9 @@ import { formatGoals, isDone, parseGoals } from "./domain/tasks.ts";
 import { formatCountdown, lastBoundary, nextBoundary, nextEvent } from "./domain/time.ts";
 import { CADENCES, type AppData, type Cadence, type Progress, type Task } from "./domain/types.ts";
 import { lastUndo, popUndo, pushUndo } from "./domain/undo.ts";
+import { playSound, toast } from "./infra/notifier.ts";
+import { fetchNews } from "./infra/steam.ts";
+import { exportJson, importJson, loadData, saveData } from "./infra/storage.ts";
 
 type Tab = Cadence | "plan" | "season" | "news" | "settings";
 const TABS: Tab[] = [...CADENCES, "plan", "season", "news", "settings"];
@@ -671,7 +673,7 @@ async function main() {
   charId = data.characters[0].id;
   if (isTauri()) autostart = await isEnabled().catch(() => false);
   applyResets(data, Date.now(), C);
-  checkNotifications(data, Date.now());
+  checkNotifications(data, Date.now(), toast);
   await save();
   render();
 
@@ -693,7 +695,7 @@ async function main() {
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(data, now, C).length > 0;
-    if (checkNotifications(data, now) || reset) await save();
+    if (checkNotifications(data, now, toast) || reset) await save();
     // Don't re-render while the user is typing in a field.
     if (reset && !(document.activeElement instanceof HTMLInputElement)) render();
   }, 1000);

@@ -1,4 +1,6 @@
-// Event alert lead times. Pure: tested with `npm test`.
+// Event alert lead times, notification channels, volume and quiet hours. Pure: tested with `npm test`.
+import { EVENTS } from "../config.ts";
+import type { Settings } from "./types.ts";
 
 /** Event alert lead times (minutes): unique ints 1..60, longest first, max 3; nothing valid → [5]. */
 export function cleanLeads(leads: unknown): number[] {
@@ -10,3 +12,31 @@ export function cleanLeads(leads: unknown): number[] {
 /** Lead times now due (msLeft ≤ lead) and not yet warned. The caller marks them all and toasts once. */
 export const dueLeads = (leads: number[], msLeft: number, warned: (lead: number) => boolean) =>
   leads.filter((l) => msLeft <= l * 60_000 && !warned(l));
+
+/** Notification sounds: files in public/sounds/<name>.wav (bundled into the app). Replace them with your own,
+ *  same names. Each event uses <event id>.wav (see EVENTS in config.ts), else event.wav.
+ *  A missing or broken file falls back to the next name, then default.wav.
+ *  Each channel = one row in Settings → Notifications (on/off, volume, mute); id = settings.channels key. */
+export const CHANNELS = [
+  { id: "cloud", name: "Hourly Cloud Merchant reminder", sound: ["cloud"], on: true },
+  ...EVENTS.map((ev) => ({ id: ev.id, name: `${ev.name}: alert before`, sound: [ev.id, "event"], on: false })),
+  { id: "reset", name: "Reset warnings", sound: ["reset"], on: true },
+  { id: "news", name: "News", sound: ["news"], on: true },
+  { id: "check", name: "Task checked (vine boom)", sound: ["check"], on: true },
+];
+
+/** Master volume × channel volume; 0 when the master switch is off or the channel is muted. */
+export const channelVolume = (s: Settings, id: string) => {
+  const c = s.channels[id];
+  return !s.sound || c?.muted ? 0 : s.volume * (c?.volume ?? 100) / 100;
+};
+
+const toMin = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + (m || 0); };
+
+/** Quiet hours in the PC's local time (start > end = spans midnight). */
+export function inQuietHours(s: Settings, now: number) {
+  const d = new Date(now);
+  const cur = d.getHours() * 60 + d.getMinutes(), a = toMin(s.quietStart), b = toMin(s.quietEnd);
+  if (a === b) return false;
+  return a < b ? cur >= a && cur < b : cur >= a || cur < b;
+}

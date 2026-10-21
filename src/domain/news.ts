@@ -1,18 +1,12 @@
-// Official AION 2 announcements (incl. maintenance) from the public Steam news feed.
-import { isTauri } from "@tauri-apps/api/core";
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import type { AppData, NewsItem } from "./domain/types.ts";
-
-const PATH = "/ISteamNews/GetNewsForApp/v2/?appid=3393110&count=10&maxlength=0"; // 0 = full text
+// Official AION 2 announcements (incl. maintenance): Steam feed parsing and the read/unread cache. Pure.
+import type { AppData, NewsItem } from "./types.ts";
 
 /** Maintenance / server notices: shown as a banner until read. */
 export const isImportant = (n: NewsItem) => /maint|outage|downtime|emergency/i.test(n.title);
 
-export async function fetchNews(): Promise<NewsItem[]> {
-  // Browser preview goes through the Vite proxy (Steam sends no CORS headers).
-  const res = isTauri() ? await tauriFetch("https://api.steampowered.com" + PATH) : await fetch("/steam" + PATH);
-  if (!res.ok) throw new Error(`Steam news: HTTP ${res.status}`);
-  const items: any[] = (await res.json())?.appnews?.newsitems ?? [];
+/** Steam GetNewsForApp JSON → news items with plain-text contents. */
+export function parseNewsItems(json: any): NewsItem[] {
+  const items: any[] = json?.appnews?.newsitems ?? [];
   return items.map((n) => ({
     gid: String(n.gid), title: String(n.title), url: String(n.url), date: +n.date,
     // BBCode/HTML → plain text; paragraph and list breaks become \n (shown with white-space: pre-line).

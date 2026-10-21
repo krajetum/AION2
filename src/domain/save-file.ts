@@ -1,16 +1,8 @@
-// Persistence (plugin-store → data.json in the app data folder) + JSON backup.
-// Outside Tauri (plain browser on `npm run dev`) it falls back to localStorage,
-// so the UI can be previewed and tested in a normal browser.
-import { isTauri } from "@tauri-apps/api/core";
-import { load, type Store } from "@tauri-apps/plugin-store";
-import { EVENTS } from "./config.ts";
-import { CHANNELS } from "./notify.ts";
-import { cleanLeads } from "./domain/alerts.ts";
-import { seedTasks } from "./domain/seed.ts";
-import type { AppData, Channel } from "./domain/types.ts";
-
-const LS_KEY = "aion2-companion-data";
-let store: Store | undefined;
+// Save-file rules: the default data and the migration of old or imported saves. Pure.
+import { EVENTS } from "../config.ts";
+import { CHANNELS, cleanLeads } from "./alerts.ts";
+import { seedTasks } from "./seed.ts";
+import type { AppData, Channel } from "./types.ts";
 
 export function defaultData(): AppData {
   return {
@@ -43,7 +35,7 @@ export function defaultData(): AppData {
 }
 
 /** Fills missing fields with defaults (old or imported data). */
-function normalize(raw: any): AppData {
+export function normalize(raw: any): AppData {
   if (!raw || !Array.isArray(raw.tasks) || !Array.isArray(raw.characters) || !raw.characters.length)
     throw new Error("Invalid file: tasks or characters are missing");
   const d = defaultData();
@@ -65,35 +57,4 @@ function normalize(raw: any): AppData {
     undo: Array.isArray(raw.undo) ? raw.undo : [],
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels },
   };
-}
-
-export async function loadData(): Promise<AppData> {
-  let raw: unknown;
-  if (isTauri()) {
-    store = await load("data.json", { autoSave: false, defaults: {} });
-    raw = await store.get<AppData>("data");
-  } else {
-    const s = localStorage.getItem(LS_KEY);
-    raw = s && JSON.parse(s);
-  }
-  return raw ? normalize(raw) : defaultData();
-}
-
-export async function saveData(data: AppData) {
-  if (!store) return localStorage.setItem(LS_KEY, JSON.stringify(data));
-  await store.set("data", data);
-  await store.save();
-}
-
-export function exportJson(data: AppData) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `aion2-companion-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-export async function importJson(file: File): Promise<AppData> {
-  return normalize(JSON.parse(await file.text()));
 }
