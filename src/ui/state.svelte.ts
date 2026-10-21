@@ -1,0 +1,25 @@
+// UI state. `ui.data` is a deep $state proxy of the save file: app/ use cases mutate it and the page updates.
+import { SvelteSet } from "svelte/reactivity";
+import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
+
+export type Tab = Cadence | "plan" | "season" | "news" | "settings";
+export const TABS: Tab[] = [...CADENCES, "plan", "season", "news", "settings"];
+export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "daily"; };
+
+export const ui = $state({
+  data: undefined as unknown as AppData, // set by main.ts before mounting
+  charId: "",
+  tab: tabFromHash(), // the page lives in the URL hash so a reload keeps it
+  editing: false,
+  autostart: false,
+  newsError: "",
+  now: Date.now(), // 1 s clock (main.ts) for countdowns and live times
+});
+
+/** Tasks finished from the Planner page: kept on screen (ticked) so the tick is visible and can be undone. */
+export const doneHere = new SvelteSet<string>();
+/** Expanded news gids, kept when leaving the News page. */
+export const openNews = new Set<string>();
+
+/** Plain copy of the save file for storage (the store plugin can't take a proxy). */
+export const snapshot = () => $state.snapshot(ui.data) as AppData;

@@ -31,11 +31,14 @@ export function setDone(data: AppData, charId: string, id: string, done: boolean
   if (!done && t.goals?.every((g, i) => (p.counts?.[i] ?? 0) >= g.target)) p.counts = [];
 }
 
+// A plain copy (not structuredClone: the UI's data is a reactive proxy, which can't be cloned).
+const copy = (p?: Progress): Progress | null => (p ? { ...p, ...(p.counts && { counts: [...p.counts] }) } : null);
+
 /** Runs a progress change as one undo step; during a session, times it to refine the task's estimate.
  *  Returns the share of the task still to do afterwards (0 = done). */
 export function trackProgress(data: AppData, charId: string, id: string, now: number, change: () => void) {
   const t = findTask(data, id), before = leftShare(t, data.progress[charId]?.[id]);
-  pushUndo(data, charId, t.name, { [id]: structuredClone(data.progress[charId]?.[id]) ?? null }, now);
+  pushUndo(data, charId, t.name, { [id]: copy(data.progress[charId]?.[id]) }, now);
   change();
   const after = leftShare(t, data.progress[charId]?.[id]);
   const pl = activePlan(data, charId, now), share = before - after;
