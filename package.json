@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "check": "svelte-check",
     "tauri": "tauri",
     "test": "node --test \"src/**/*.test.ts\""
   },
@@ -18,7 +19,10 @@
     "@tauri-apps/plugin-updater": "^2.14.0"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.1.1",
     "@tauri-apps/cli": "^2",
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.7",
     "typescript": "^5.8",
     "vite": "^6"
   }

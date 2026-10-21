@@ -9,7 +9,7 @@
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "skipLibCheck": true,
-    "types": ["vite/client"]
+    "types": ["svelte", "vite/client"]
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]
