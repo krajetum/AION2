@@ -23,13 +23,14 @@ export const RESET_CONFIG: ResetConfig = {
   cloudMerchantMinute: 0,                     // TO VERIFY
 };
 
-/** Recurring event: starts at `minute` of every `everyHours`-th hour, counted from `firstHour` (RESET_CONFIG.timeZone). */
-export interface GameEvent { id: string; name: string; everyHours: number; minute: number; firstHour: number }
+/** Recurring event: starts at `minute` of every `everyHours`-th hour, counted from `firstHour` (RESET_CONFIG.timeZone).
+ *  duration = minutes the Planner reserves for it. */
+export interface GameEvent { id: string; name: string; everyHours: number; minute: number; firstHour: number; duration: number }
 
 export const EVENTS: GameEvent[] = [
-  { id: "shugo", name: "Shugo Festival", everyHours: 1, minute: 0, firstHour: 0 },        // TO VERIFY
-  { id: "invasion", name: "Dimensional Invasion", everyHours: 1, minute: 30, firstHour: 0 }, // TO VERIFY
-  { id: "rift", name: "Spacetime Rift", everyHours: 3, minute: 0, firstHour: 0 },          // TO VERIFY (anchor hour)
+  { id: "shugo", name: "Shugo Festival", everyHours: 1, minute: 0, firstHour: 0, duration: 10 },        // TO VERIFY (time + duration)
+  { id: "invasion", name: "Dimensional Invasion", everyHours: 1, minute: 30, firstHour: 0, duration: 10 }, // TO VERIFY (time + duration)
+  { id: "rift", name: "Spacetime Rift", everyHours: 3, minute: 0, firstHour: 0, duration: 15 },          // TO VERIFY (anchor hour + duration)
 ];
 
 /** Current season: end date (00:00 in RESET_CONFIG.timeZone). Source: the user's Oath Coin sheet (2026-10-20). */

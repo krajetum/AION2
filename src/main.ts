@@ -6,12 +6,13 @@ import { EVENTS, RESET_CONFIG as C, SEASON } from "./config.ts";
 import { exportJson, importJson, loadData, saveData } from "./data.ts";
 import { fetchNews, isImportant, mergeNews } from "./news.ts";
 import { channelVolume, CHANNELS, checkNotifications, playSound, toast } from "./notify.ts";
-import { applyResets, formatCountdown, isDone, lastBoundary, nextBoundary, nextEvent } from "./reset.ts";
+import { applyResets, cleanLeads, formatCountdown, isDone, lastBoundary, nextBoundary, nextEvent } from "./reset.ts";
+import { DEFAULT_MINUTES, DEFAULT_PRIORITY, learn, leftShare, plan, type Step } from "./planner.ts";
 import { emptySeason, isHardPvp, isIncluded, remainingOf, SEASONAL, seasonSummary, WEEKLY, weeksLeft } from "./season.ts";
 import { CADENCES, type AppData, type Cadence, type Goal, type Task } from "./types.ts";
 
-type Tab = Cadence | "season" | "news" | "settings";
-const TABS: Tab[] = [...CADENCES, "season", "news", "settings"];
+type Tab = Cadence | "plan" | "season" | "news" | "settings";
+const TABS: Tab[] = [...CADENCES, "plan", "season", "news", "settings"];
 // 16px outline icons (1.5 stroke, currentColor). Paths are 24x24.
 const icon = (d: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -19,6 +20,7 @@ const ICON = {
   daily: icon(`<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>`),
   weekly: icon(`<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h10"/>`),
   monthly: icon(`<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h2M11 14h2M15 14h2M7 17h2M11 17h2"/>`),
+  plan: icon(`<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M10 2h4"/>`),
   season: icon(`<ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/>`),
   news: icon(`<path d="M5 4h12v16H6a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1zM17 8h3v10a2 2 0 0 1-2 2"/><path d="M8 8h6M8 12h6M8 16h4"/>`),
   settings: icon(`<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>`),
@@ -32,6 +34,7 @@ const PAGE: Record<Tab, [string, string]> = {
   daily: ["Daily", "The grind never sleeps. You should, though."],
   weekly: ["Weekly", "Wednesday is coming."],
   monthly: ["Monthly", "Long-term commitment issues."],
+  plan: ["Planner", "Limited minutes, unlimited greed. Knapsack go brrr."],
   season: ["Season Coins", "Oath Coin stonks. Numbers only go up."],
   news: ["News", "Patch notes or it didn't happen."],
   settings: ["Settings", "Knobs. So many knobs."],
@@ -112,6 +115,7 @@ function render() {
   const extra = (t: Tab) => {
     if (t === "settings") return "";
     if (t === "news") return unread ? `<span class="badge">${unread}</span>` : "";
+    if (t === "plan") { const pl = activePlan(Date.now()); return pl ? `<span class="count">${Math.ceil(planLeft(pl, Date.now()))}m</span>` : ""; }
     if (t === "season") {
       const left = seasonSummary(sp(), 0).seasonalRemaining;
       return `<span class="count">${left >= 10_000 ? Math.round(left / 1000) + "k" : num(left)}</span>`;
@@ -144,7 +148,7 @@ function render() {
     <div class="layout">
       <main>
         <div class="page-head"><h1>${PAGE[tab][0]}</h1><p>${PAGE[tab][1]}</p></div>
-        ${tab === "settings" ? settingsView() : tab === "news" ? newsView() : tab === "season" ? seasonView() : listView(tab)}</main>
+        ${tab === "settings" ? settingsView() : tab === "news" ? newsView() : tab === "season" ? seasonView() : tab === "plan" ? planView() : listView(tab)}</main>
       <nav class="side" aria-label="Pages">${tabs}</nav>
     </div>`;
   updateCountdowns();
@@ -177,7 +181,7 @@ function listView(cad: Cadence) {
   return `<div class="toolbar"><button class="${editing ? "primary" : ""}" data-act="edit">${editing ? "Done (trust me bro)" : "Edit tasks (big brain)"}</button></div>${win}${groups || empty}${add}`;
 }
 
-function taskRow(t: Task) {
+function taskRow(t: Task, hint = "") {
   const p = data.progress[charId]?.[t.id];
   const goals = (t.goals ?? []).map((g, i) => {
     const v = p?.counts?.[i] ?? 0;
@@ -192,7 +196,7 @@ function taskRow(t: Task) {
   }).join("");
   return `<div class="task ${isDone(t, p) ? "done" : ""}">
     <label><input type="checkbox" data-act="toggle" data-id="${t.id}" ${p?.done ? "checked" : ""}>
-      <span class="text"><span class="name">${esc(t.name)}</span>${t.note ? `<small>${esc(t.note)}</small>` : ""}</span></label>
+      <span class="text"><span class="name">${esc(t.name)}</span>${t.note ? `<small>${esc(t.note)}</small>` : ""}${hint ? `<small class="plan-hint">${hint}</small>` : ""}</span></label>
     ${goals ? `<div class="goals">${goals}</div>` : ""}</div>`;
 }
 
@@ -279,6 +283,108 @@ function seasonView() {
       <tbody>${weekly}</tbody></table></div></section>`;
 }
 
+// ---------- planner ----------
+const MIN = 60_000;
+const hm = (t: number) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const mins = (m: number) => (m < 1 ? "<1 min" : `${Math.round(m)} min`);
+const PRIO = ["Low", "Normal", "High"];
+/** The running session for the current character, if it hasn't run out. */
+function activePlan(now: number) {
+  const pl = data.plan;
+  return pl && pl.charId === charId && now < pl.start + pl.minutes * MIN ? pl : undefined;
+}
+const planLeft = (pl: NonNullable<AppData["plan"]>, now: number) => (pl.start + pl.minutes * MIN - now) / MIN;
+
+// Tasks finished from the Planner page: kept on screen (ticked) so the tick is visible and can be undone.
+const doneHere = new Set<string>();
+
+/** Runs a progress change; during a session, times it to refine the task's estimate. */
+function track(id: string, change: () => void) {
+  const t = task(id), before = leftShare(t, data.progress[charId]?.[id]);
+  change();
+  const after = leftShare(t, data.progress[charId]?.[id]);
+  if (tab === "plan" && !after) doneHere.add(id);
+  const now = Date.now(), pl = activePlan(now), share = before - after;
+  if (!pl || share <= 0) return;
+  t.minutes = learn(t.minutes ?? DEFAULT_MINUTES, (now - pl.lastMark) / MIN, share);
+  pl.lastMark = now;
+}
+
+/** "Wins +4 · Entries +2" for a step that does only part of a goal task. */
+function stepUnits(t: Task, st: Step) {
+  const p = data.progress[charId]?.[t.id];
+  const units = (t.goals ?? []).map((g, i) => {
+    const left = Math.max(0, g.target - (p?.counts?.[i] ?? 0));
+    return { g, left, n: Math.min(left, Math.ceil((st.part ?? 1) * g.target)) };
+  });
+  if (units.every((u) => u.n >= u.left)) return "";
+  return units.filter((u) => u.n).map((u) => `${esc(u.g.label ?? "")} +${u.n}`.trim()).join(" · ");
+}
+
+function planView() {
+  const s = data.settings, now = Date.now(), pl = activePlan(now);
+  const r = plan({
+    tasks: data.tasks, progress: data.progress[charId] ?? {},
+    events: EVENTS.filter((ev) => s.channels[ev.id]?.on), // events you get alerts for = events you play
+    now, minutes: pl ? planLeft(pl, now) : s.planMinutes, nextSessionHours: s.planNextHours, config: C,
+  });
+  const urgentOut = r.skipped.filter((x) => x.urgent).length;
+  const planned = new Set(r.steps.filter((x) => x.kind === "task").map((x) => x.id)).size;
+  const kpi = (label: string, v: string, sub: string, cls = "") => `<div class="kpi ${cls}"><small>${label}</small><b>${v}</b><span>${sub}</span></div>`;
+
+  const steps = r.steps.map((st) => {
+    const time = `<time>${hm(st.start)}</time>`;
+    if (st.kind === "event") return `<div class="step event">${time}<div class="task"><span class="text">
+      <span class="name">${esc(st.name)}</span><small class="plan-hint">Event · ${mins(st.minutes)} reserved</small></span></div></div>`;
+    const t = task(st.id), units = stepUnits(t, st);
+    const hint = [`~${mins(st.minutes)}`, units && `do ${units}, rest later`, st.urgent && "resets before your next session"].filter(Boolean).join(" · ");
+    return `<div class="step ${st.urgent ? "urgent" : ""}">${time}${taskRow(t, hint)}</div>`;
+  }).join("");
+  const done = [...doneHere].filter((id) => isDone(task(id), data.progress[charId]?.[id])).map((id) => taskRow(task(id))).join("");
+  const skipped = r.skipped.map((x) => `<div class="task"><span class="text"><span class="name">${esc(x.name)}</span>
+      <small>${mins(x.minutes)}${x.urgent ? ` · <span class="neg">resets before your next session</span>` : ""}</small></span></div>`).join("");
+  const est = data.tasks.filter((t) => t.enabled && leftShare(t, data.progress[charId]?.[t.id]) > 0)
+    .sort((a, b) => CADENCES.indexOf(a.cadence) - CADENCES.indexOf(b.cadence) || a.order - b.order)
+    .map((t) => `<tr><td class="dim">${LABEL[t.cadence]}</td><td><span class="name">${esc(t.name)}</span></td>
+      <td class="n"><input type="number" inputmode="decimal" min="0.5" max="600" step="0.5" value="${t.minutes ?? DEFAULT_MINUTES}" data-act="plan-est" data-id="${t.id}" aria-label="${esc(t.name)} minutes"></td>
+      <td class="c"><select data-act="plan-prio" data-id="${t.id}" aria-label="${esc(t.name)} priority">${PRIO.map((l, i) =>
+        `<option value="${i + 1}" ${(t.priority ?? DEFAULT_PRIORITY) === i + 1 ? "selected" : ""}>${l}</option>`).join("")}</select></td></tr>`).join("");
+
+  const empty = r.candidates
+    ? `<p class="empty">${meme(MEME.empty, "", 160, 120)}Nothing fits in ${mins(pl ? planLeft(pl, now) : s.planMinutes)}. Go get a coffee.</p>`
+    : `<section class="win">${meme(MEME.win, "", 120, 90)}<div><h2>Nothing left to plan</h2><p>Everything is done. Touch grass.</p></div></section>`;
+  return `<div class="toolbar plan-bar">
+      ${[20, 40, 60, 90].map((m) => `<button class="${!pl && s.planMinutes === m ? "primary" : ""}" data-act="plan-preset" data-m="${m}" ${pl ? "disabled" : ""}>${m} min</button>`).join("")}
+      <label>Custom <input type="number" inputmode="numeric" min="5" max="600" step="5" value="${s.planMinutes}" data-act="plan-minutes" ${pl ? "disabled" : ""} aria-label="Session minutes"> min</label>
+      <label>Next session in <input type="number" inputmode="numeric" min="1" max="168" value="${s.planNextHours}" data-act="plan-next" aria-label="Hours until the next session"> h</label>
+      ${pl ? `<button data-act="plan-stop">Stop session</button>` : `<button class="primary" data-act="plan-start">Start session</button>`}
+    </div>
+    <div class="kpis">
+      ${kpi(pl ? "Session left" : "Preview", pl ? mins(planLeft(pl, now)) : mins(s.planMinutes), pl ? `started ${hm(pl.start)} · learning your timings` : "start to learn your timings", "hero")}
+      ${kpi("Planned", `${planned}/${r.candidates}`, "unfinished tasks")}
+      ${kpi("Ends around", hm(r.end), r.steps.some((x) => x.kind === "event") ? "events included" : "no events in the window")}
+      ${kpi("Left out", String(r.skipped.length), urgentOut ? `<span class="neg">${urgentOut} reset before next session</span>` : "nothing urgent lost")}
+    </div>
+    ${steps ? `<section><h2>Plan <span class="count">${r.steps.length} steps</span></h2>${steps}</section>` : empty}
+    ${done ? `<section><h2>Done just now <span class="count">ticked in your Daily / Weekly / Monthly lists too</span></h2>${done}</section>` : ""}
+    ${skipped ? `<section><h2>Doesn't fit <span class="count">${r.skipped.length}</span></h2>${skipped}</section>` : ""}
+    ${est ? `<section><h2>Estimates <span class="count">minutes for the whole task</span></h2><div class="scroll"><table class="sheet">
+      <thead><tr><th>Cadence</th><th>Task</th><th class="n">Minutes</th><th class="c">Priority</th></tr></thead>
+      <tbody>${est}</tbody></table></div>
+      <p class="hint">During a session, the time between two ticks updates the estimate. Events count only if their alert is on in Settings.</p></section>` : ""}`;
+}
+
+/** Event alert lead times: 1–3 editable minute fields + a preview of when the next alerts arrive. */
+function leadsRow(id: string, leads: number[], on: boolean) {
+  const ev = EVENTS.find((e) => e.id === id)!, next = nextEvent(ev, Date.now(), C.timeZone);
+  const hm = (t: number) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `<div class="leads">
+    ${leads.map((m, i) => `<span class="lead"><input type="number" inputmode="numeric" min="1" max="60" value="${m}" data-act="lead" data-id="${id}" data-i="${i}" aria-label="${esc(ev.name)} alert ${i + 1}, minutes before">min
+      ${leads.length > 1 ? `<button class="ghost" data-act="lead-del" data-id="${id}" data-i="${i}" aria-label="Remove ${m} min alert" title="Remove">×</button>` : ""}</span>`).join("")}
+    ${leads.length < 3 ? `<button class="ghost" data-act="lead-add" data-id="${id}" title="Up to 3 alerts">+ Add</button>` : ""}
+    ${on ? `<span class="hint">Next: ${leads.map((m) => hm(next - m * 60_000)).join(" · ")}</span>` : ""}</div>`;
+}
+
 function settingsView() {
   const s = data.settings;
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -307,7 +413,8 @@ function settingsView() {
         ${c.id === "check" ? `<span>${name}</span>` : `<label class="switch"><input type="checkbox" data-act="ch-on" data-id="${c.id}" ${ch.on ? "checked" : ""}><span>${name}</span></label>`}
         <span class="ctl"><input type="range" min="0" max="100" value="${ch.volume}" data-act="ch-vol" data-id="${c.id}" aria-label="${name} volume" ${ch.muted ? "disabled" : ""}>
           <button class="ghost" data-act="ch-mute" data-id="${c.id}" aria-pressed="${ch.muted}" aria-label="Mute ${name} sound" title="${ch.muted ? "Unmute" : "Mute"} sound">${ch.muted ? ICON.muted : ICON.sound}</button>
-          <button class="ghost" data-act="test-sound" data-kind="${c.sound}" data-id="${c.id}" aria-label="Play ${name} sound" title="sounds/${c.sound[0]}.wav">${ICON.play}</button></span></div>`; }).join("")}
+          <button class="ghost" data-act="test-sound" data-kind="${c.sound}" data-id="${c.id}" aria-label="Play ${name} sound" title="sounds/${c.sound[0]}.wav">${ICON.play}</button></span>
+        ${ch.leads ? leadsRow(c.id, ch.leads, ch.on) : ""}</div>`; }).join("")}
       <div class="setting"><span>Quiet hours</span><span class="ctl">
         <input type="time" value="${s.quietStart}" data-act="quiet-start" aria-label="Quiet hours start"> to
         <input type="time" value="${s.quietEnd}" data-act="quiet-end" aria-label="Quiet hours end"></span></div>
@@ -389,9 +496,12 @@ app.addEventListener("click", async (e) => {
   switch (el.dataset.act) {
     case "inc": case "dec": {
       const g = task(id).goals![i];
-      setCount(id, i, (prog(id).counts?.[i] ?? 0) + (el.dataset.act === "inc" ? 1 : -1) * (g.step ?? 1));
+      track(id, () => setCount(id, i, (prog(id).counts?.[i] ?? 0) + (el.dataset.act === "inc" ? 1 : -1) * (g.step ?? 1)));
       break;
     }
+    case "plan-preset": data.settings.planMinutes = +el.dataset.m!; break;
+    case "plan-start": { const now = Date.now(); data.plan = { charId, start: now, minutes: data.settings.planMinutes, lastMark: now }; break; }
+    case "plan-stop": delete data.plan; break;
     case "edit": editing = !editing; break;
     case "up": move(id, -1); break;
     case "down": move(id, 1); break;
@@ -427,6 +537,12 @@ app.addEventListener("click", async (e) => {
     case "test": return toast(data.settings, "AION 2 Companion", "If you can read this, it works. Probably.");
     case "test-sound": return playSound(el.dataset.kind!.split(","), data.settings.volume * data.settings.channels[id].volume / 100);
     case "ch-mute": data.settings.channels[id].muted = !data.settings.channels[id].muted; break;
+    case "lead-add": {
+      const ch = data.settings.channels[id];
+      ch.leads = cleanLeads([...ch.leads!, [10, 5, 3, 2, 1].find((m) => !ch.leads!.includes(m))]);
+      break;
+    }
+    case "lead-del": data.settings.channels[id].leads!.splice(i, 1); break;
     case "hide-mascot": data.settings.memeMascot = false; break;
     case "export": return exportJson(data);
     case "refresh-news": return refreshNews();
@@ -445,11 +561,15 @@ app.addEventListener("toggle", (e) => {
 
 app.addEventListener("change", async (e) => {
   const el = e.target as HTMLInputElement | HTMLSelectElement;
-  if (el.id === "char") { charId = el.value; return render(); }
+  if (el.id === "char") { charId = el.value; doneHere.clear(); return render(); }
   const id = el.dataset.id!, v = el.value, checked = (el as HTMLInputElement).checked;
   switch (el.dataset.act) {
-    case "toggle": prog(id).done = checked; if (checked) react(); break;
-    case "set": setCount(id, +(el.dataset.i ?? 0), +v); break;
+    case "toggle": track(id, () => { prog(id).done = checked; }); if (checked) react(); break;
+    case "set": track(id, () => setCount(id, +(el.dataset.i ?? 0), +v)); break;
+    case "plan-minutes": data.settings.planMinutes = Math.max(5, Math.min(600, Math.round(+v) || 40)); break;
+    case "plan-next": data.settings.planNextHours = Math.max(1, Math.min(168, Math.round(+v) || 20)); break;
+    case "plan-est": task(id).minutes = Math.max(0.5, Math.min(600, Math.round(+v * 2) / 2 || DEFAULT_MINUTES)); break;
+    case "plan-prio": task(id).priority = Math.max(1, Math.min(3, +v || DEFAULT_PRIORITY)); break;
     case "name": if (v.trim()) task(id).name = v.trim(); break;
     case "cat": if (v.trim()) task(id).category = v.trim(); break;
     case "note": task(id).note = v.trim() || undefined; break;
@@ -477,6 +597,12 @@ app.addEventListener("change", async (e) => {
     case "rename-char": if (v.trim()) data.characters.find((c) => c.id === id)!.name = v.trim(); break;
     case "ch-on": data.settings.channels[id].on = checked; break;
     case "ch-vol": data.settings.channels[id].volume = Math.max(0, Math.min(100, +v || 0)); break;
+    case "lead": { // a duplicate collapses; render() puts the field back to the clean list
+      const ch = data.settings.channels[id], leads = [...ch.leads!];
+      leads[+el.dataset.i!] = Math.max(1, Math.min(60, Math.round(+v) || 1));
+      ch.leads = cleanLeads(leads);
+      break;
+    }
     case "sound": data.settings.sound = checked; break;
     case "meme-mascot": data.settings.memeMascot = checked; break;
     case "volume": data.settings.volume = Math.max(0, Math.min(100, +v || 0)); break;
@@ -527,6 +653,8 @@ async function main() {
   setInterval(async () => {
     updateCountdowns();
     if (++ticks % 1800 === 0) refreshNews(); // every 30 min
+    // Planner times move with the clock: refresh it every minute unless a field is in use.
+    if (tab === "plan" && ticks % 60 === 0 && !(document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLSelectElement)) render();
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(data, now, C).length > 0;

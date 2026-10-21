@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ResetConfig } from "./config.ts";
 import type { AppData } from "./types.ts";
-import { applyResets, formatCountdown, lastBoundary, nextBoundary, nextEvent, zonedToUtc } from "./reset.ts";
+import { applyResets, cleanLeads, dueLeads, formatCountdown, lastBoundary, nextBoundary, nextEvent, zonedToUtc } from "./reset.ts";
 
 // Fixed test config (independent from the TO VERIFY values in config.ts).
 const C: ResetConfig = {
@@ -108,11 +108,24 @@ test("formatted countdown", () => {
 });
 
 test("events: hourly at :30 and every 3h across midnight", () => {
-  const inv = { id: "i", name: "I", everyHours: 1, minute: 30, firstHour: 0 };
+  const inv = { id: "i", name: "I", everyHours: 1, minute: 30, firstHour: 0, duration: 10 };
   assert.equal(nextEvent(inv, Z("2026-10-15T10:29:00Z"), "UTC"), Z("2026-10-15T10:30:00Z"));
   assert.equal(nextEvent(inv, Z("2026-10-15T10:30:00Z"), "UTC"), Z("2026-10-15T11:30:00Z")); // exactly at start → next
-  const rift = { id: "r", name: "R", everyHours: 3, minute: 0, firstHour: 2 };
+  const rift = { id: "r", name: "R", everyHours: 3, minute: 0, firstHour: 2, duration: 15 };
   assert.equal(nextEvent(rift, Z("2026-10-15T03:00:00Z"), "UTC"), Z("2026-10-15T05:00:00Z"));
   assert.equal(nextEvent(rift, Z("2026-10-15T23:10:00Z"), "UTC"), Z("2026-10-16T02:00:00Z"));
   assert.equal(nextEvent(rift, Z("2026-10-15T00:30:00Z"), "UTC"), Z("2026-10-15T02:00:00Z"));
+});
+
+test("event alert lead times", () => {
+  assert.deepEqual(cleanLeads(undefined), [5]);
+  assert.deepEqual(cleanLeads([1, 5, 5, 0, 90, 10, 3]), [10, 5, 3]);
+  const warned = new Set<number>(), mark = (due: number[]) => (due.forEach((l) => warned.add(l)), due);
+  const due = (msLeft: number) => mark(dueLeads([5, 1], msLeft, (l) => warned.has(l)));
+  assert.deepEqual(due(6 * 60_000), []);
+  assert.deepEqual(due(5 * 60_000), [5]);
+  assert.deepEqual(due(4 * 60_000), []);       // 5 already sent
+  assert.deepEqual(due(50_000), [1]);
+  // App opened late: every passed lead is due at once (the caller toasts once).
+  assert.deepEqual(dueLeads([10, 5, 1], 30_000, () => false), [10, 5, 1]);
 });

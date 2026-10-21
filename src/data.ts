@@ -3,7 +3,9 @@
 // so the UI can be previewed and tested in a normal browser.
 import { isTauri } from "@tauri-apps/api/core";
 import { load, type Store } from "@tauri-apps/plugin-store";
+import { EVENTS } from "./config.ts";
 import { CHANNELS } from "./notify.ts";
+import { cleanLeads } from "./reset.ts";
 import { seedTasks } from "./seed.ts";
 import type { AppData, Channel } from "./types.ts";
 
@@ -28,10 +30,13 @@ export function defaultData(): AppData {
       quietStart: "01:00",
       quietEnd: "09:00",
       mutedUntil: 0,
-      channels: Object.fromEntries(CHANNELS.map((c): [string, Channel] => [c.id, { on: c.on, volume: 100, muted: false }])),
+      channels: Object.fromEntries(CHANNELS.map((c): [string, Channel] =>
+        [c.id, { on: c.on, volume: 100, muted: false, ...(EVENTS.some((ev) => ev.id === c.id) && { leads: [5] }) }])),
       sound: true,
       volume: 70,
       memeMascot: true,
+      planMinutes: 40,
+      planNextHours: 20,
     },
   };
 }
@@ -47,6 +52,7 @@ function normalize(raw: any): AppData {
   if (typeof cloudReminder === "boolean") channels.cloud.on = cloudReminder;
   for (const [id, on] of Object.entries(eventAlerts ?? {})) if (channels[id]) channels[id].on = !!on;
   for (const [id, c] of Object.entries(rs.channels ?? {})) channels[id] = { ...channels[id], ...(c as Channel) };
+  for (const ev of EVENTS) if (channels[ev.id]) channels[ev.id].leads = cleanLeads(channels[ev.id].leads);
   return {
     ...d, ...raw,
     progress: raw.progress ?? {},

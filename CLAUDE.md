@@ -21,6 +21,7 @@ Tauri 2 + vanilla TypeScript + Vite. Single user, multiple characters, everythin
 - `src/reset.ts` — pure functions: time-zone math (Intl only), last/next boundary, `applyResets`, `isDone`
 - `src/reset.test.ts` — tests: app closed across resets, DST in March/October, month ends
 - `src/season.ts` — Season Oath Coin missions (fixed data from the coin sheet) + Summary math; `SEASON` end date lives in `config.ts`
+- `src/planner.ts` — Planner page math: knapsack over unfinished tasks for an N-minute session, events pinned, estimates learned from tick timings (`src/planner.test.ts`)
 - `src/seed.ts` — initial tasks from the Sheet; `src/types.ts` — data model (`AppData` = save file = export format)
 - `src/data.ts` — load/save (plugin-store `data.json`) + JSON export/import
 - `src/notify.ts` — Cloud Merchant reminder, pre-reset warnings, quiet hours

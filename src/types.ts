@@ -13,6 +13,8 @@ export interface Task {
   enabled: boolean;
   order: number;
   goals?: Goal[];
+  minutes?: number;  // Planner estimate for the whole task, learned while a session runs
+  priority?: number; // Planner value: 1 low · 2 normal (default) · 3 high
 }
 
 export interface Character { id: string; name: string }
@@ -21,7 +23,7 @@ export interface Character { id: string; name: string }
 export interface Progress { done: boolean; counts?: number[] }
 
 /** Per-notification settings: on = send it, volume = 0..100 share of the master volume, muted = silent toast. */
-export interface Channel { on: boolean; volume: number; muted: boolean }
+export interface Channel { on: boolean; volume: number; muted: boolean; leads?: number[] } // leads: event alerts, minutes before start
 
 export interface Settings {
   warnHours: Record<Cadence, number>;
@@ -32,7 +34,12 @@ export interface Settings {
   sound: boolean;  // master switch: play public/sounds/*.wav with each toast
   volume: number;  // master volume 0..100
   memeMascot: boolean; // show the corner meme (src/memes/mascot)
+  planMinutes: number;   // Planner: session length
+  planNextHours: number; // Planner: hours until the next session (tasks resetting before it are urgent)
 }
+
+/** Running Planner session. lastMark = last progress tick, used to time the next one. */
+export interface ActivePlan { charId: string; start: number; minutes: number; lastMark: number }
 
 /** Item from the official AION 2 Steam news feed. date = epoch seconds. */
 export interface NewsItem { gid: string; title: string; url: string; date: number; contents: string; read?: boolean }
@@ -58,5 +65,6 @@ export interface AppData {
   news: NewsItem[];                   // last fetched news, newest first
   lastNewsGid: string;                // newest gid already toasted
   season: Record<string, SeasonProgress>; // charId → season progress
+  plan?: ActivePlan;
   settings: Settings;
 }

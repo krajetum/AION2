@@ -2,7 +2,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { EVENTS, RESET_CONFIG as C } from "./config.ts";
-import { nextBoundary, nextEvent, remaining } from "./reset.ts";
+import { dueLeads, nextBoundary, nextEvent, remaining } from "./reset.ts";
 import { CLOUD_MERCHANT_ID } from "./seed.ts";
 import { CADENCES, type AppData, type Settings } from "./types.ts";
 
@@ -14,7 +14,7 @@ const H = 3600_000;
  *  Each channel = one row in Settings → Notifications (on/off, volume, mute); id = settings.channels key. */
 export const CHANNELS = [
   { id: "cloud", name: "Hourly Cloud Merchant reminder", sound: ["cloud"], on: true },
-  ...EVENTS.map((ev) => ({ id: ev.id, name: `${ev.name}: alert 5 min before`, sound: [ev.id, "event"], on: false })),
+  ...EVENTS.map((ev) => ({ id: ev.id, name: `${ev.name}: alert before`, sound: [ev.id, "event"], on: false })),
   { id: "reset", name: "Reset warnings", sound: ["reset"], on: true },
   { id: "news", name: "News", sound: ["news"], on: true },
   { id: "check", name: "Task checked (vine boom)", sound: ["check"], on: true },
@@ -70,11 +70,13 @@ export function checkNotifications(data: AppData, now: number): boolean {
       toast(s, "Cloud Merchant", "Cloud Merchant restocked. Theostones won't buy themselves.", ["cloud"]);
   }
 
-  // Event alerts 5 min before start, once per start (missed while silent = skipped, it is short-lived).
+  // Event alerts at each lead time, once per start and lead (missed while silent = skipped, it is short-lived).
   for (const ev of EVENTS) {
-    const next = nextEvent(ev, now, C.timeZone);
-    if (!s.channels[ev.id]?.on || data.warnedEvent[ev.id] === next || next - now > 5 * 60_000) continue;
-    data.warnedEvent[ev.id] = next;
+    const ch = s.channels[ev.id], next = nextEvent(ev, now, C.timeZone);
+    if (!ch?.on) continue;
+    const due = dueLeads(ch.leads ?? [5], next - now, (l) => data.warnedEvent[`${ev.id}@${l}`] === next);
+    if (!due.length) continue;
+    for (const l of due) data.warnedEvent[`${ev.id}@${l}`] = next;
     changed = true;
     if (!silent) toast(s, ev.name, `Starts in ${Math.max(1, Math.round((next - now) / 60_000))} min.`, [ev.id, "event"]);
   }

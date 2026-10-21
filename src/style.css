@@ -179,6 +179,20 @@ section h2 .count { margin-left: auto; }
 .task small { color: var(--faint); font-size: 12px; }
 .task.done .name { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
 .goals { display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* Planner: time column + the normal task row */
+.plan-bar { flex-wrap: wrap; justify-content: flex-start; }
+.plan-bar label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.plan-bar input { width: 72px; }
+.plan-bar button:last-child { margin-left: auto; }
+.step { display: grid; grid-template-columns: 52px 1fr; align-items: start; column-gap: 12px; }
+.step + .step { border-top: 1px solid var(--rule); }
+.step > time { padding-top: 12px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.step.urgent > time { color: var(--accent); }
+.step.event .name { color: var(--muted); }
+.task .plan-hint { color: var(--muted); }
+.neg { color: var(--negative); }
+.sheet td input[type="number"] { width: 72px; }
 .goal { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12px; }
 .stepper { display: inline-flex; align-items: center; height: 32px; background: var(--raised); border-radius: var(--r-pill); }
 .stepper button { width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--r-pill); background: transparent; color: var(--muted); font-size: 15px; }
@@ -273,9 +287,13 @@ input[type="checkbox"]:disabled { opacity: .4; cursor: not-allowed; }
 .switch input[type="checkbox"]:checked::before { background: var(--ground); transform: translateX(14px); }
 .switch { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .setting > .switch { flex: 1; justify-content: space-between; }
-.chan > .switch { justify-content: flex-start; }
+.chan > .switch { justify-content: flex-start; flex: 1 1 auto; }
 .chan input[type="range"] { width: 100px; }
 .chan input[type="range"]:disabled { opacity: .35; }
+.leads { flex-basis: 100%; display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; color: var(--muted); }
+.lead { display: inline-flex; align-items: center; gap: 4px; flex: none; white-space: nowrap; }
+.setting .lead input[type="number"] { width: 56px; }
+.leads .hint { margin: 0 0 0 auto; }
 
 input[type="range"] { accent-color: var(--accent); height: auto; padding: 0; border: 0; background: transparent; width: 120px; }
 input[type="time"] { font-variant-numeric: tabular-nums; }
