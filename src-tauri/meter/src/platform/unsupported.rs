@@ -18,6 +18,9 @@ pub mod window_detector {
     pub fn find_aion2_window_title() -> Option<String> {
         None
     }
+    pub fn is_aion2_foreground() -> bool {
+        true
+    }
     pub fn describe_candidates() -> Vec<String> {
         Vec::new()
     }

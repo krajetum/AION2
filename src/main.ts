@@ -10,8 +10,9 @@ import { findUpdate, getAutostart, isDesktop, onTrayMute } from "./infra/system.
 import { act, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
+import EventsOverlay from "./ui/EventsOverlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
-import { meterIdle, meterOverlay, onMeter, onOverlay } from "./infra/meter.ts";
+import { eventsOverlay, meterIdle, meterOverlay, onEventsOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { ui } from "./ui/state.svelte.ts";
 
@@ -31,8 +32,12 @@ async function main() {
   if (isDesktop()) {
     await onOverlay((on) => { ui.overlay = on; });
     await meterIdle(data.settings.dpsIdleSeconds).catch(() => {});
+    await overlayStyle(data.settings.overlayFollowGame, data.settings.overlayOpacity).catch(() => {});
     // Overlay on: it shows at the first fight (hidden until then).
     if (data.settings.dpsOverlay) await meterOverlay(true, false).catch(() => {});
+    // The event overlay saves its switch here, also when closed from its own X.
+    await onEventsOverlay((on) => { if (ui.data.settings.eventsOverlay !== on) act(() => { ui.data.settings.eventsOverlay = on; }); });
+    if (data.settings.eventsOverlay) await eventsOverlay(true).catch(() => {});
   }
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
   onMeter((u) => {
@@ -65,12 +70,16 @@ async function checkUpdate() {
   } catch (e) { console.warn("Update check failed", e); }
 }
 
-// The DPS overlay window loads this page too (index.html#overlay): it shows the meter only, without the
-// save file, resets or notifications, which stay with the main window.
-function overlay() {
+// The overlay windows load this page too (index.html#overlay = DPS, #events = event countdowns): they show
+// only that, without the save file, resets or notifications, which stay with the main window.
+function overlay(page: typeof Overlay) {
+  document.documentElement.classList.add("overlay");
   document.body.classList.add("overlay");
   app.textContent = "";
-  mount(Overlay, { target: app });
+  mount(page, { target: app });
+  // Background opacity from Settings (the window itself is transparent).
+  onOpacity((o) => document.documentElement.style.setProperty("--ov-alpha", `${o}%`));
 }
 
-(location.hash === "#overlay" ? Promise.resolve(overlay()) : main()).catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });
+const page = { "#overlay": Overlay, "#events": EventsOverlay }[location.hash];
+(page ? Promise.resolve(overlay(page)) : main()).catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });

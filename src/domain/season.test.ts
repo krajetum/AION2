@@ -2,7 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ResetConfig } from "../config.ts";
-import { seasonSummary, weeksLeft } from "./season.ts";
+import { claimedOf, seasonSummary, SEASONAL, stepCoins, weekLeft, WEEKLY, weeksLeft } from "./season.ts";
+import { emptySeason } from "./season.ts";
 
 const C: ResetConfig = {
   timeZone: "UTC",
@@ -34,4 +35,32 @@ test("summary matches the sheet (2026-10-20)", () => {
   assert.equal(s.realistic, 415740);
   assert.equal(s.realisticEnd, 495450);
   assert.deepEqual(s.tabs.find((t) => t.tab === "Nightmare"), { tab: "Nightmare", weekly: 3060, total: 67450, remaining: 67450 });
+});
+
+test("step coins: all = total, none = 0, partial = estimate", () => {
+  assert.deepEqual(stepCoins(16700, 5, 5), { coins: 16700, exact: true });
+  assert.deepEqual(stepCoins(16700, 5, 0), { coins: 0, exact: true });
+  assert.deepEqual(stepCoins(16700, 5, 2), { coins: 6680, exact: false });
+});
+
+test("claimed: all steps exact, typed amount beats an estimate", () => {
+  const m = SEASONAL[0], s = emptySeason();
+  s.steps = { [m.name]: m.steps };
+  assert.deepEqual(claimedOf(m, s), { coins: m.coins, exact: true });
+  s.steps = { [m.name]: 1 }; s.claimed[m.name] = 1250;
+  assert.deepEqual(claimedOf(m, s), { coins: 1250, exact: true });
+  delete s.claimed[m.name];
+  assert.equal(claimedOf(m, s).exact, false);
+});
+
+test("week left: ticked steps this week, a new week starts over", () => {
+  const s = emptySeason(), wk = 1000, full = WEEKLY.reduce((a, m) => a + m.coins, 0);
+  assert.equal(weekLeft(s, wk).coins, full);
+  s.weekOf = wk; s.weekSteps = { [WEEKLY[0].name]: WEEKLY[0].steps, [WEEKLY[1].name]: 1 };
+  const w = weekLeft(s, wk);
+  assert.equal(w.list.some((x) => x.m.name === WEEKLY[0].name), false);
+  assert.equal(w.exact, false); // one partial mission
+  assert.equal(weekLeft(s, 2000).coins, full); // next week
+  const sum = seasonSummary(s, 0, wk);
+  assert.equal(sum.thisWeek, w.coins);
 });

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { EVENTS, RESET_CONFIG as C } from "../../config.ts";
   import { addCharacter, deleteCharacter, renameCharacter } from "../../app/characters.ts";
-  import { addLead, muteForAnHour, removeLead, setChannelOn, setDpsIdleSeconds, setLead, setChannelVolume, setVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
+  import { addLead, muteForAnHour, removeLead, setChannelOn, setDpsIdleSeconds, setOverlayOpacity, setLead, setChannelVolume, setVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
   import { applyResets } from "../../domain/resets.ts";
   import { nextEvent } from "../../domain/time.ts";
   import { CHANNELS } from "../../domain/alerts.ts";
@@ -9,7 +9,7 @@
   import { playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { isDesktop, setAutostart } from "../../infra/system.ts";
-  import { meterIdle, meterOverlay } from "../../infra/meter.ts";
+  import { eventsOverlay, meterIdle, meterOverlay, overlayStyle } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
   import { LABEL, pad, WEEKDAYS } from "../format.ts";
   import { ICON } from "../icons.ts";
@@ -70,6 +70,13 @@
         onchange={(e) => { commit(e, (v) => setDpsIdleSeconds(ui.data, v), () => s.dpsIdleSeconds); meterIdle(s.dpsIdleSeconds); }}> s</span></label>
     {@render toggle("Overlay during fights", s.dpsOverlay, (e) => { s.dpsOverlay = check(e); meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
     <p class="hint">Without damage, healing or damage taken for this long, the meter resets and the overlay hides until the next fight. 0 = never.</p>
+  </section>
+  <section><h2>Overlays</h2>
+    {@render toggle("Event countdown overlay", s.eventsOverlay, (e) => { s.eventsOverlay = check(e); eventsOverlay(s.eventsOverlay); }, !isDesktop())}
+    {@render toggle("Hide when the game is not in front", s.overlayFollowGame, (e) => { s.overlayFollowGame = check(e); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, !isDesktop())}
+    <label class="setting"><span>Opacity</span><span class="ctl"><input type="range" min="20" max="100" step="5" value={s.overlayOpacity} aria-label="Overlay opacity"
+      onchange={(e) => { commit(e, (v) => setOverlayOpacity(ui.data, v), () => s.overlayOpacity); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }}> {s.overlayOpacity}%</span></label>
+    <p class="hint">The overlays never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
   </section>
   <section><h2>System</h2>
     {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { SvelteSet } from "svelte/reactivity";
-  import { clock, displayName, hpLeft, short, STATUS_TEXT, TARGET_MODES, viewRows, VIEWS, type MeterUpdate } from "../../domain/meter.ts";
+  import { clock, displayName, hpLeft, short, STATUS_TEXT, TARGET_MODES, viewRows, VIEWS, type MeterUpdate, classColor, skillIconUrl } from "../../domain/meter.ts";
   import { meterOverlay, meterPartyOnly, meterPause, meterReconnect, meterReset, meterTargetMode, meterView, meterWatch, onMeter } from "../../infra/meter.ts";
   import { isDesktop } from "../../infra/system.ts";
   import { act } from "../actions.ts";
@@ -76,14 +76,16 @@
         <th class="n">{view === "taken" ? "Hits" : "Share"}</th></tr></thead>
       <tbody>{#each rows as { row: r, value, perSec, share }, i (r.id)}
         <tr class="prow" class:you={r.isYou} class:heal={view === "healing"} class:taken={view === "taken"} style:--p={String(Math.min(1, share / 100))}
+          style:--cls={classColor(r.job) || null}
           aria-expanded={view !== "taken" && open.has(r.id)} onclick={() => view !== "taken" && toggle(r.id)}>
           <td class="n rank">{i + 1}</td>
-          <td><span class="name" class:dim-name={!r.name}>{displayName(r)}</span>{#if r.job || (r.inParty && !r.isYou)}<small>{[r.job, r.inParty && !r.isYou && !u.partyOnly ? "party" : ""].filter(Boolean).join(" · ")}</small>{/if}{#if r.combatPower} <small class="dim">CP {short(r.combatPower)}</small>{/if}</td>
+          <td><span class="cls-dot" aria-hidden="true"></span><span class="name" class:dim-name={!r.name}>{displayName(r)}</span>{#if r.job || (r.inParty && !r.isYou)}<small>{[r.job, r.inParty && !r.isYou && !u.partyOnly ? "party" : ""].filter(Boolean).join(" · ")}</small>{/if}{#if r.combatPower} <small class="dim">CP {short(r.combatPower)}</small>{/if}</td>
           <td class="n">{short(perSec)}/s</td><td class="n">{short(value)}</td>
           <td class="n">{view === "taken" ? r.hitsTaken : share.toFixed(1) + "%"}</td></tr>
         {#if view !== "taken" && open.has(r.id)}{@const list = view === "healing" ? r.healSkills : r.skills}<tr class="skills"><td colspan="5"><table class="sheet">
           <thead><tr><th>Skill</th><th class="n">{view === "healing" ? "Healing" : "Damage"}</th><th class="n">Share</th><th class="n">{view === "healing" ? "Ticks" : "Hits"}</th><th class="n">Crit</th></tr></thead>
-          <tbody>{#each list as s}<tr><td>{s.name}{#if s.dot}<span class="dim">{view === "healing" ? "HoT" : "DoT"}</span>{/if}</td><td class="n">{short(s.damage)}</td>
+          <tbody>{#each list as s}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20"
+                onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")}>{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">{view === "healing" ? "HoT" : "DoT"}</span>{/if}</td><td class="n">{short(s.damage)}</td>
               <td class="n">{(s.share * 100).toFixed(1)}%</td><td class="n">{s.hits}</td><td class="n">{s.dot || view === "healing" ? "–" : Math.round(s.critRate * 100) + "%"}</td></tr>
             {:else}<tr><td colspan="5" class="dim">No skill data yet.</td></tr>{/each}</tbody></table></td></tr>{/if}
       {/each}</tbody></table></div><p class="hint">{view === "taken" ? "Damage taken from the fight's monsters." : "Click a player for the skill breakdown."}{#if unnamed}&nbsp;Players shown as #number: the game sends

@@ -46,6 +46,19 @@ export const meterOverlay = (show: boolean, showNow = true) => (isTauri() ? invo
 export const meterOverlayHide = () => (isTauri() ? invoke<void>("meter_overlay_hide") : Promise.resolve());
 /** Seconds without damage, healing or damage taken before the fight resets and the overlay hides (0 = never). */
 export const meterIdle = (secs: number) => (isTauri() ? invoke<void>("meter_idle", { secs }) : Promise.resolve());
+/** The event countdown overlay on or off (desktop only). */
+export const eventsOverlay = (show: boolean) => (isTauri() ? invoke<void>("events_overlay", { show }) : Promise.resolve());
+/** Overlays: hide while another window than the game is in front, and background opacity (20..100 %). */
+export const overlayStyle = (followGame: boolean, opacity: number) =>
+  (isTauri() ? invoke<void>("overlay_style", { followGame, opacity }) : Promise.resolve());
+/** The overlays' opacity now and on every change (for an overlay window). */
+export async function onOpacity(fn: (opacity: number) => void) {
+  if (!isTauri()) return fn(90);
+  fn(await invoke<number>("overlay_opacity"));
+  await listen<number>("overlay-opacity", (e) => fn(e.payload));
+}
+/** The event overlay was turned on or off (also from the overlay itself). */
+export const onEventsOverlay = (fn: (on: boolean) => void) => (isTauri() ? listen<boolean>("events-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 /** The overlay was opened or closed (also from the overlay itself). */
 export const onOverlay = (fn: (open: boolean) => void) => (isTauri() ? listen<boolean>("meter-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 
@@ -85,11 +98,11 @@ function demoUpdate(): MeterUpdate {
     id: i === 4 ? 16546 : i + 1, name: p.name, job: p.job, damage: demo.dmg[i], dps: demo.dmg[i] / Math.max(1, t / 1000),
     share: demo.dmg[i] / total * 100, hps: i === 3 ? 5_200 : 0, heal: i === 3 ? 5.2 * t : 0, combatPower: 0, gearScore: 0,
     isYou: i === 0, inParty: i < 4, isOthers: false, damageTaken: Math.round([3, 0.5, 0.8, 0.6, 1][i] * t), hitsTaken: Math.round(t / 2000),
-    healSkills: i === 3 ? [{ name: "Demo heal", damage: Math.round(3.6 * t), hits: Math.round(t / 1500), critRate: 0, share: 0.7, dot: false },
-      { name: "Demo regen", damage: Math.round(1.6 * t), hits: Math.round(t / 1000), critRate: 0, share: 0.3, dot: true }] : [],
+    healSkills: i === 3 ? [{ name: "Demo heal", damage: Math.round(3.6 * t), hits: Math.round(t / 1500), critRate: 0, share: 0.7, dot: false, icon: null },
+      { name: "Demo regen", damage: Math.round(1.6 * t), hits: Math.round(t / 1000), critRate: 0, share: 0.3, dot: true, icon: null }] : [],
     skills: DEMO_SPLIT.map((share, k) => ({
       name: `Demo skill ${k + 1}`, damage: Math.round(demo.dmg[i] * share), hits: Math.round(t / 900 / (k + 1)),
-      critRate: 0.3 - k * 0.05, share, dot: k === 3,
+      critRate: 0.3 - k * 0.05, share, dot: k === 3, icon: null,
     })),
   })).sort((a, b) => b.damage - a.damage);
   return {

@@ -21,6 +21,25 @@ export function setHardPvp(data: AppData, charId: string, i: number, on: boolean
   if (on === !!m.hardPvp) delete s.hardPvp[m.name]; else s.hardPvp[m.name] = on;
 }
 
+/** Steps done on SEASONAL[i] (clamped; all steps = fully claimed). Replaces a typed claimed amount. */
+export function setSteps(data: AppData, charId: string, i: number, done: number) {
+  const s = seasonOf(data, charId), m = SEASONAL[i], d = Math.max(0, Math.min(m.steps, Math.round(done) || 0));
+  s.steps ??= {};
+  if (d) s.steps[m.name] = d; else delete s.steps[m.name];
+  delete s.claimed[m.name];
+}
+
+/** Steps done this week on WEEKLY[i]; a new week (`boundary` = last weekly reset) starts from nothing. */
+export function setWeekSteps(data: AppData, charId: string, i: number, done: number, boundary: number) {
+  const s = seasonOf(data, charId), m = WEEKLY[i], d = Math.max(0, Math.min(m.steps, Math.round(done) || 0));
+  if (s.weekOf !== boundary) { s.weekSteps = {}; s.weekOf = boundary; }
+  s.weekSteps ??= {};
+  if (d) s.weekSteps[m.name] = d; else delete s.weekSteps[m.name];
+}
+
+/** Counted in the realistic projection = not hard PvP. */
+export const setCounted = (data: AppData, charId: string, i: number, on: boolean) => setHardPvp(data, charId, i, !on);
+
 /** Whether WEEKLY[i] counts in the projection. */
 export function setIncluded(data: AppData, charId: string, i: number, on: boolean) {
   const s = seasonOf(data, charId), m = WEEKLY[i];

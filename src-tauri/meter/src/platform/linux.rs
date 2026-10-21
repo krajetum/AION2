@@ -49,6 +49,11 @@ pub mod window_detector {
         processes().any(|(comm, cmd)| is_aion2_process(&comm, &cmd)).then(|| "AION2".to_string())
     }
 
+    /// Not knowable in general on Linux (Wayland): reported as in front, so nothing hides.
+    pub fn is_aion2_foreground() -> bool {
+        true
+    }
+
     pub fn describe_candidates() -> Vec<String> {
         processes()
             .filter(|(comm, _)| comm.to_lowercase().contains("aion"))

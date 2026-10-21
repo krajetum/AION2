@@ -34,6 +34,9 @@ export function defaultData(): AppData {
       planNextHours: 20,
       dpsOverlay: false,
       dpsIdleSeconds: 15,
+      overlayFollowGame: true,
+      overlayOpacity: 90,
+      eventsOverlay: false,
     },
   };
 }

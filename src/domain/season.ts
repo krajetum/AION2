@@ -81,7 +81,42 @@ export const WEEKLY: WeeklyMission[] = [
 export const emptySeason = (): SeasonProgress => ({ coins: 0, thisWeek: 0, claimed: {}, hardPvp: {}, excluded: {} });
 export const isHardPvp = (m: SeasonalMission, s: SeasonProgress) => s.hardPvp[m.name] ?? !!m.hardPvp;
 export const isIncluded = (m: WeeklyMission, s: SeasonProgress) => !s.excluded[m.name];
-export const remainingOf = (m: SeasonalMission, s: SeasonProgress) => m.coins - (s.claimed[m.name] ?? 0);
+/** Mission counted in the realistic projection: everything except the hard PvP ones (the "Counted" switch). */
+export const isCounted = (m: SeasonalMission, s: SeasonProgress) => !isHardPvp(m, s);
+
+/** Coins of `done` of `steps` steps. The coins of each step are not in the sheet, only the mission total:
+ *  all steps = the total (exact), none = 0, in between = the steps' share of the total (an estimate). */
+export function stepCoins(total: number, steps: number, done: number): { coins: number; exact: boolean } {
+  const d = Math.max(0, Math.min(steps, done));
+  if (d === 0) return { coins: 0, exact: true };
+  if (d === steps) return { coins: total, exact: true };
+  return { coins: Math.round(total * d / steps / 10) * 10, exact: false };
+}
+
+/** Steps done on a seasonal mission (0 when never ticked). */
+export const stepsOf = (m: SeasonalMission, s: SeasonProgress) => s.steps?.[m.name] ?? 0;
+
+/** Coins claimed on a seasonal mission: from the ticked steps; a typed amount (older saves) wins over an estimate. */
+export function claimedOf(m: SeasonalMission, s: SeasonProgress): { coins: number; exact: boolean } {
+  const done = stepsOf(m, s), typed = s.claimed[m.name];
+  if (done >= m.steps) return { coins: m.coins, exact: true };
+  if (typed !== undefined && typed > 0) return { coins: typed, exact: true };
+  return stepCoins(m.coins, m.steps, done);
+}
+export const remainingOf = (m: SeasonalMission, s: SeasonProgress) => m.coins - claimedOf(m, s).coins;
+
+/** Steps done this week on a weekly mission: 0 once the week (`boundary` = last weekly reset) has changed. */
+export const weekStepsOf = (m: WeeklyMission, s: SeasonProgress, boundary: number) =>
+  s.weekOf === boundary ? s.weekSteps?.[m.name] ?? 0 : 0;
+
+/** What is still to claim this week, mission by mission (counted weekly missions not finished). */
+export function weekLeft(s: SeasonProgress, boundary: number) {
+  const list = WEEKLY.filter((m) => isIncluded(m, s)).map((m) => {
+    const done = weekStepsOf(m, s, boundary), got = stepCoins(m.coins, m.steps, done);
+    return { m, done, left: m.coins - got.coins, exact: got.exact };
+  }).filter((x) => x.left > 0);
+  return { list, coins: list.reduce((a, x) => a + x.left, 0), exact: list.every((x) => x.exact) };
+}
 
 /** Weekly resets still ahead before the season ends (season end at 00:00 in the reset time zone). */
 export function weeksLeft(now: number, c: ResetConfig, end: string) {
@@ -92,15 +127,17 @@ export function weeksLeft(now: number, c: ResetConfig, end: string) {
   return n;
 }
 
-/** Same math as the sheet's Summary tab. */
-export function seasonSummary(s: SeasonProgress, weeks: number) {
+/** Same math as the sheet's Summary tab. With `weekBoundary` (the last weekly reset) "still to claim this week"
+ *  comes from the weekly steps ticked; without it, from the typed `thisWeek` (older saves, the sheet). */
+export function seasonSummary(s: SeasonProgress, weeks: number, weekBoundary?: number) {
   const weekly = WEEKLY.filter((m) => isIncluded(m, s));
   const weeklyCoins = weekly.reduce((a, m) => a + m.coins, 0);
   const weeklyAp = weekly.reduce((a, m) => a + m.ap, 0);
   const seasonalRemaining = SEASONAL.reduce((a, m) => a + remainingOf(m, s), 0);
   const hardPvpRemaining = SEASONAL.filter((m) => isHardPvp(m, s)).reduce((a, m) => a + remainingOf(m, s), 0);
   const futureWeekly = weeks * weeklyCoins;
-  const totalObtainable = futureWeekly + seasonalRemaining + s.thisWeek;
+  const thisWeek = weekBoundary === undefined ? s.thisWeek : weekLeft(s, weekBoundary).coins;
+  const totalObtainable = futureWeekly + seasonalRemaining + thisWeek;
   const realistic = totalObtainable - hardPvpRemaining;
   const tabs = [...new Set(SEASONAL.map((m) => m.tab))].map((tab) => {
     const list = SEASONAL.filter((m) => m.tab === tab);
@@ -112,7 +149,7 @@ export function seasonSummary(s: SeasonProgress, weeks: number) {
     };
   });
   return {
-    weeks, weeklyCoins, weeklyAp, futureWeekly, seasonalRemaining, totalObtainable, hardPvpRemaining, realistic,
+    weeks, thisWeek, weeklyCoins, weeklyAp, futureWeekly, seasonalRemaining, totalObtainable, hardPvpRemaining, realistic,
     maxAtEnd: s.coins + totalObtainable, realisticEnd: s.coins + realistic, tabs,
   };
 }

@@ -27,18 +27,20 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   - `time.ts` — time-zone math (Intl only), last/next boundary, event times; `resets.ts` — `applyResets` (`reset.test.ts`: app closed across resets, DST, month ends)
   - `tasks.ts` — `isDone`, goal text format; `alerts.ts` — notification channels, volume, quiet hours, event lead times
   - `planner.ts` — knapsack over unfinished tasks for an N-minute session, events pinned, estimates learned from tick timings
-  - `season.ts` — Season Oath Coin missions (fixed data from the coin sheet) + Summary math; `SEASON` end date lives in `config.ts`
+  - `season.ts` — Season Oath Coin missions (fixed data from the coin sheet) + Summary math; steps ticked per mission
+    (seasonal, and weekly per weekly reset) → claimed / still to claim this week (≈ for partial steps: only mission totals are known); `SEASON` end date lives in `config.ts`
   - `undo.ts` — saved undo history for progress (ticks, counters, Reset button); `applyResets` prunes it
   - `news.ts` — Steam feed parsing + read/unread cache; `save-file.ts` — default data + migration of old/imported saves
   - `meter.ts` — DPS meter update types (as the Rust engine sends them: fight, boss timers, Odyle energy, profile, last arena match), views (damage/healing/taken), number/HP formatting
   - `bosses.ts` — field-boss respawn timers from the maps opened in game; `arena.ts` — arena matchup log
 - `src/app/` — use cases that change `AppData` (progress, tasks, characters, season, settings, planner session, `checkNotifications`, `arena.ts`: meter data into the save file)
 - `src/infra/` — Tauri adapters: `storage.ts` (plugin-store `data.json`, export/import), `notifier.ts` (toasts, sounds), `steam.ts` (news fetch), `system.ts` (autostart, updater, `tray-mute` event), `meter.ts` (DPS engine commands + `meter-update` / `meter-overlay` events, browser demo)
-- `src/ui/` — Svelte UI: `App.svelte` (header, timers, sidebar), `pages/*` (`Dps.svelte` = DPS meter, `Arena.svelte` = arena log), `parts/*`, `Overlay.svelte` (DPS overlay window); `state.svelte.ts` (`ui.data` = reactive save file), `actions.ts` (save after each change, undo, news refresh)
-- `src/main.ts` — startup: load, resets, mount, meter capture (from app start), 1 s clock; `index.html#overlay` mounts only `Overlay.svelte`
+- `src/ui/` — Svelte UI: `App.svelte` (header, timers, sidebar), `pages/*` (`Dps.svelte` = DPS meter, `Arena.svelte` = arena log), `parts/*`, `Overlay.svelte` (DPS overlay window), `EventsOverlay.svelte` (event countdown window); `state.svelte.ts` (`ui.data` = reactive save file), `actions.ts` (save after each change, undo, news refresh)
+- `src/main.ts` — startup: load, resets, mount, meter capture (from app start), 1 s clock; `index.html#overlay` / `#events` mount only `Overlay.svelte` / `EventsOverlay.svelte`
 - `src-tauri/src/lib.rs` — plugins, tray menu (emits `tray-mute`), close → hide to tray
 - `src-tauri/src/meter.rs` — DPS meter commands (`meter_*`), `meter-update` events every 200 ms, idle reset
-  (`settings.dpsIdleSeconds`), overlay window shown on activity / hidden when idle (`settings.dpsOverlay`)
+  (`settings.dpsIdleSeconds`), overlay windows (DPS: shown on activity / hidden when idle; events), both hidden while
+  another window than the game is in front and transparent (`settings.overlayFollowGame`, `overlayOpacity`)
 - `src-tauri/meter/` — crate `aion2-meter`: capture + parser + aggregation vendored from A2Tools DPS Meter (GPL-3.0).
   Keep A2Tools' files as close to upstream as possible and list every change in `src-tauri/meter/NOTICE.md`;
   companion code goes in `engine.rs` / `snapshot.rs` / `arena.rs`. Game patches renumber opcodes: update from A2Tools first.
