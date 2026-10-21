@@ -4,7 +4,8 @@
   "description": "Permissions for the main window and the DPS overlay",
   "windows": [
     "main",
-    "overlay"
+    "overlay",
+    "events"
   ],
   "permissions": [
     "core:default",

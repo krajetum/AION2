@@ -25,10 +25,11 @@ and sends nothing to the game or anywhere else.
 4. `include_str!` paths to `data/` adjusted to this crate's layout. Tests: data paths adjusted, and the
    tests that looped over every language table loop over English only (the only names shipped here).
 5. `supporters.rs` replaced by an empty stub (A2Tools downloads a supporter roster; the companion downloads nothing).
-6. `platform/` cut down to what capture needs: which libpcap to load and the game-window check
+6. `platform/` cut down to what capture needs: which libpcap to load, the game-window check and whether it is in front
    (adapted from A2Tools' `platform/win32`, `platform/linux`, `platform/procfs.rs`). No Npcap installer.
-7. Data: English skill and NPC names only (`data/i18n/{skills,npcs}/en.json`); `servers.json` and
-   `skill_icons.json` not included.
+7. Data: English skill and NPC names only (`data/i18n/{skills,npcs}/en.json`); `servers.json` not included.
+   `skill_icons.json` added later (2026-10-21) for the skill icons; `snapshot.rs::skill_icon` follows A2Tools'
+   `public/src/js/skillIcons.js` to name the icon on NCSOFT's CDN.
 8. `combat/data_storage.rs` (2026-10-21): player-on-player hits, which the meter counts as party healing,
    are also recorded in a `pvp_ledger` (`PvpHits`, `note_pvp`, called first in `append_damage`'s
    friendly-action branch), with accessors `pvp_players`, `take_pvp_ledger` and `current_map_id`, and a

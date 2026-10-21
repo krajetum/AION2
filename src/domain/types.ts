@@ -44,6 +44,9 @@ export interface Settings {
   planNextHours: number; // Planner: hours until the next session (tasks resetting before it are urgent)
   dpsOverlay: boolean;     // DPS overlay on: shows during fights, hides when idle
   dpsIdleSeconds: number;  // DPS meter: seconds without activity before the fight resets (0 = never)
+  overlayFollowGame: boolean; // overlays hide while another window than the game is in front (alt-tab)
+  overlayOpacity: number;     // overlays' background opacity, 20..100 %
+  eventsOverlay: boolean;     // small always-on-top window with the event countdowns
 }
 
 /** One undo step: the progress of each touched task before the change (null = it had none). */
@@ -62,6 +65,9 @@ export interface SeasonProgress {
   claimed: Record<string, number>;   // seasonal mission → coins already claimed
   hardPvp: Record<string, boolean>;  // override of the mission's Hard PvP default
   excluded: Record<string, boolean>; // weekly missions left out of the projection
+  steps?: Record<string, number>;     // seasonal mission → steps done (all steps = fully claimed)
+  weekSteps?: Record<string, number>; // weekly mission → steps done this week
+  weekOf?: number;                    // weekly reset (epoch ms) weekSteps belongs to; older = a new week, nothing done
 }
 
 export interface AppData {

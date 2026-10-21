@@ -44,7 +44,7 @@ pub mod pcap {
 /// Reads window titles and the owning program's path only, never the game's memory.
 pub mod window_detector {
     use windows::Win32::Foundation::{BOOL, CloseHandle, HWND, LPARAM};
-    use windows::Win32::UI::WindowsAndMessaging::{EnumWindows, GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible};
+    use windows::Win32::UI::WindowsAndMessaging::{EnumWindows, GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible};
 
     fn is_game_title(title: &str) -> bool {
         title.starts_with("AION2")
@@ -107,6 +107,15 @@ pub mod window_detector {
             }
             exe_path(h).filter(|p| is_game_exe(p)).map(|_| title)
         })
+    }
+
+    /// Whether the window in front is the game's, by title or program (A2Tools' `is_aion2_foreground`).
+    pub fn is_aion2_foreground() -> bool {
+        let hwnd = unsafe { GetForegroundWindow() };
+        if hwnd.0.is_null() {
+            return false;
+        }
+        is_game_title(&window_title(hwnd)) || exe_path(hwnd).is_some_and(|p| is_game_exe(&p))
     }
 
     /// Windows that look like the game, for the log when none is recognised.

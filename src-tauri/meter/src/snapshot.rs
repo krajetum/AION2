@@ -45,6 +45,39 @@ pub struct SkillRow {
     /// Share of this player's damage, 0..1.
     pub share: f64,
     pub dot: bool,
+    /// The skill's icon file on NCSOFT's game-data CDN (`skill_icon`), none for basic attacks and unknown skills.
+    pub icon: Option<String>,
+}
+
+/// The skill → icon table A2Tools ships (first 4 digits of the 8-digit skill code → icon file name).
+fn icon_table() -> &'static HashMap<String, String> {
+    static TABLE: std::sync::OnceLock<HashMap<String, String>> = std::sync::OnceLock::new();
+    TABLE.get_or_init(|| serde_json::from_str(include_str!("../data/skill_icons.json")).unwrap_or_default())
+}
+
+/// The icon file of a skill, the way A2Tools' `skillIcons.js` resolves it: theostones by quality and
+/// number, basic attacks none, then the game-data table, then the class's `ICON_<class>_SKILL_<nn>` pattern.
+/// The page loads `https://assets.playnccdn.com/static-aion2-gamedata/resources/<icon>.png`.
+pub fn skill_icon(code: i32) -> Option<String> {
+    let digits = code.max(0).to_string();
+    let code8: String = if digits.len() >= 8 { digits[..8].to_string() } else { format!("{digits:0<8}") };
+    if let Some(rest) = code8.strip_prefix("30") {
+        let icon: u32 = rest.get(3..5)?.parse().ok()?;
+        return (icon > 0).then(|| format!("Icon_Item_Usable_Godstone_WP_r_{icon:03x}"));
+    }
+    let (p2, mid4) = (&code8[..2], &code8[2..6]);
+    if ("11"..="18").contains(&p2) && mid4 == "0000" && &code8[6..] != "00" || code8.starts_with("1000") || code8.starts_with("1699") {
+        return None; // basic attacks
+    }
+    if let Some(name) = icon_table().get(&code8[..4]) {
+        return Some(name.clone());
+    }
+    let class = match p2 {
+        "11" => "GL", "12" => "TE", "13" => "AS", "14" => "RA", "15" => "SO",
+        "16" => "EL", "17" => "CL", "18" => "CH", "19" => "GT", _ => return None,
+    };
+    let sub: u32 = code8[2..4].parse().ok()?;
+    Some(format!("ICON_{class}_SKILL_{sub:03}"))
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -201,6 +234,7 @@ fn sum_skills(entries: &[DetailSkillEntry], actor: i32, total: f64) -> Vec<Skill
             crit_rate: if hits > 0 && !dot { crit as f64 / hits as f64 } else { 0.0 },
             share: if total > 0.0 { amount as f64 / total } else { 0.0 },
             dot,
+            icon: skill_icon(code),
         })
         .collect();
     skills.sort_by(|a, b| b.damage.cmp(&a.damage).then_with(|| a.name.cmp(&b.name)));
@@ -290,6 +324,16 @@ mod tests {
         f.add_taken(42, 5, 1); // not a row
         let me = f.rows.iter().find(|r| r.id == 7).unwrap();
         assert_eq!((me.damage_taken, me.hits_taken), (1000, 4));
+    }
+
+    #[test]
+    fn skill_icons_resolve_like_a2tools() {
+        assert_eq!(skill_icon(10000000), None); // a basic attack
+        assert_eq!(skill_icon(11000012), None); // a class auto attack
+        let table_key = icon_table().keys().next().unwrap().clone();
+        let code: i32 = format!("{table_key}0101").parse().unwrap();
+        assert_eq!(skill_icon(code), icon_table().get(&table_key).cloned());
+        assert_eq!(skill_icon(30001050), Some("Icon_Item_Usable_Godstone_WP_r_005".into())); // theostone 05
     }
 
     #[test]

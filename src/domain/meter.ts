@@ -1,7 +1,20 @@
 // DPS meter data as the Rust engine sends it ("meter-update", src-tauri/meter/src/{engine,snapshot}.rs),
 // plus pure formatting helpers. No DOM, no Tauri.
 
-export interface SkillRow { name: string; damage: number; hits: number; critRate: number; share: number; dot: boolean }
+export interface SkillRow {
+  name: string; damage: number; hits: number; critRate: number; share: number; dot: boolean;
+  icon: string | null; // icon file on NCSOFT's game-data CDN (skillIconUrl), none for basic attacks
+}
+
+/** Where the official skill icons are: NCSOFT's game-data CDN, as A2Tools loads them (plain <img>, no CORS needed). */
+export const skillIconUrl = (icon: string) => `https://assets.playnccdn.com/static-aion2-gamedata/resources/${icon}.png`;
+
+/** A color per class (English names, as the engine sends them); the meter's default for the rest. */
+export const CLASS_COLORS: Record<string, string> = {
+  Gladiator: "#e0794a", Templar: "#d9b45a", Assassin: "#b05ad6", Ranger: "#6cbf5a", Sorcerer: "#5a8ee0",
+  Spiritmaster: "#4fc2c2", Cleric: "#f0e6a8", Chanter: "#e05a8e", Brawler: "#c0763a",
+};
+export const classColor = (job: string) => CLASS_COLORS[job] ?? "";
 export interface PlayerRow {
   id: number;
   name: string; // empty until the game sends it (on loading screens)

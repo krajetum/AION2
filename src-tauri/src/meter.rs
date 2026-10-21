@@ -10,6 +10,10 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 /// How often an update is computed (A2Tools' default rate), and resent when nothing changed.
 const RATE: Duration = Duration::from_millis(200);
 const RESEND: Duration = Duration::from_secs(3);
+/// How often to ask which window is in front (for hiding the overlays on alt-tab).
+const FRONT_CHECK: Duration = Duration::from_millis(500);
+const OVERLAY: &str = "overlay";
+const EVENTS: &str = "events";
 
 /// Seconds without damage, healing or damage taken before the fight resets (and the overlay hides).
 const DEFAULT_IDLE_SECS: u32 = 15;
@@ -22,11 +26,29 @@ pub struct MeterState {
 struct Auto {
     /// The overlay is on: it shows when the fight moves and hides when it is idle.
     overlay: bool,
+    /// The fight is on (or the overlay was just turned on): the overlay should be up.
+    wanted: bool,
+    /// The event countdown overlay is on.
+    events: bool,
+    /// Hide the overlays while another window than the game is in front (alt-tab).
+    follow_game: bool,
+    /// The game window was in front at the last check.
+    front: bool,
+    /// Background opacity of the overlays, 20..=100 %.
+    opacity: u8,
     /// 0 = never reset or hide.
     idle: Duration,
     last_active: Instant,
     /// Sum of damage, healing and damage taken at the last update: it grows while the fight goes on.
     last_total: f64,
+}
+
+impl Auto {
+    /// Which overlays should be on screen: (DPS overlay, event overlay).
+    fn visible(&self) -> (bool, bool) {
+        let front = self.front || !self.follow_game;
+        (self.overlay && self.wanted && front, self.events && front)
+    }
 }
 
 impl Default for MeterState {
@@ -35,6 +57,11 @@ impl Default for MeterState {
             engine: Mutex::new(None),
             auto: Mutex::new(Auto {
                 overlay: false,
+                wanted: false,
+                events: false,
+                follow_game: true,
+                front: true,
+                opacity: 90,
                 idle: Duration::from_secs(DEFAULT_IDLE_SECS as u64),
                 last_active: Instant::now(),
                 last_total: 0.0,
@@ -100,27 +127,35 @@ pub fn meter_start(app: AppHandle) -> Update {
         .spawn(move || {
             let mut last: Option<serde_json::Value> = None;
             let mut sent = Instant::now();
+            let mut front_checked = Instant::now() - FRONT_CHECK;
+            let mut shown: Option<(bool, bool)> = None;
             loop {
                 std::thread::sleep(RATE);
                 let mut u = e.update();
-                let step = {
+                let (step, want) = {
                     let state = app.state::<MeterState>();
                     let mut a = state.auto.lock().expect("meter state poisoned");
                     let step = idle_step(&mut a, fight_total(&u), u.paused, Instant::now());
-                    (step, a.overlay)
-                };
-                match step {
-                    (Step::Active, true) => show_overlay(&app),
-                    (Step::Idle(had_fight), overlay) => {
-                        if had_fight {
-                            e.reset();
-                            u = e.update();
-                        }
-                        if overlay {
-                            hide_overlay(&app);
-                        }
+                    match step {
+                        Step::Active => a.wanted = true,
+                        Step::Idle(_) => a.wanted = false,
+                        Step::Nothing => {}
                     }
-                    _ => {}
+                    // The game in front? Asked twice a second, and only when it matters.
+                    if a.follow_game && (a.overlay || a.events) && front_checked.elapsed() >= FRONT_CHECK {
+                        a.front = aion2_meter::platform::window_detector::is_aion2_foreground();
+                        front_checked = Instant::now();
+                    }
+                    (step, a.visible())
+                };
+                if let Step::Idle(true) = step {
+                    e.reset();
+                    u = e.update();
+                }
+                if Some(want) != shown {
+                    set_visible(&app, OVERLAY, want.0);
+                    set_visible(&app, EVENTS, want.1);
+                    shown = Some(want);
                 }
                 let v = serde_json::to_value(&u).unwrap_or_default();
                 if last.as_ref() != Some(&v) || sent.elapsed() >= RESEND {
@@ -194,26 +229,21 @@ pub fn meter_idle(app: AppHandle, secs: u32) {
     }
 }
 
-/// Turns the overlay on or off. On, it shows whenever the fight moves (now too, with `show_now`)
-/// and hides after the idle time; off, it closes. Async on purpose: on Windows, building a window
-/// inside a synchronous command deadlocks WebView2 and leaves a blank white window (Tauri's
-/// `WebviewWindowBuilder` docs).
+/// Turns the overlay on or off. On, it shows whenever the fight moves (now too, with `show_now`),
+/// hides after the idle time and while another window is in front; off, it closes.
+/// The update thread shows and hides the windows (and builds them: never inside a synchronous
+/// command, which on Windows deadlocks WebView2 and leaves a blank white window).
 #[tauri::command]
 pub async fn meter_overlay(app: AppHandle, show: bool, show_now: Option<bool>) -> Result<(), String> {
     if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
         a.overlay = show;
+        a.wanted = show && show_now.unwrap_or(true);
         a.last_active = Instant::now();
     }
     // The main window's button follows it, also when it is turned off from the overlay.
     let _ = app.emit("meter-overlay", show);
     if !show {
-        if let Some(w) = app.get_webview_window("overlay") {
-            w.close().map_err(|e| e.to_string())?;
-        }
-        return Ok(());
-    }
-    if show_now.unwrap_or(true) {
-        build_or_show(&app)?;
+        close(&app, OVERLAY);
     }
     Ok(())
 }
@@ -221,35 +251,84 @@ pub async fn meter_overlay(app: AppHandle, show: bool, show_now: Option<bool>) -
 /// Hides the overlay until the fight moves again (it stays on).
 #[tauri::command]
 pub fn meter_overlay_hide(app: AppHandle) {
-    hide_overlay(&app);
-}
-
-fn show_overlay(app: &AppHandle) {
-    if let Err(e) = build_or_show(app) {
-        eprintln!("overlay: {e}");
+    if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
+        a.wanted = false;
     }
 }
 
-fn hide_overlay(app: &AppHandle) {
-    if let Some(w) = app.get_webview_window("overlay") {
-        let _ = w.hide();
+/// The event countdown overlay on or off (it hides with the DPS overlay while another window is in front).
+#[tauri::command]
+pub async fn events_overlay(app: AppHandle, show: bool) -> Result<(), String> {
+    if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
+        a.events = show;
     }
+    // The main window saves the switch, also when it is turned off from the overlay itself.
+    let _ = app.emit("events-overlay", show);
+    if !show {
+        close(&app, EVENTS);
+    }
+    Ok(())
 }
 
-/// A borderless, always-on-top window that never takes the focus from the game.
-/// Over the game it needs borderless/windowed fullscreen.
-fn build_or_show(app: &AppHandle) -> Result<(), String> {
-    if let Some(w) = app.get_webview_window("overlay") {
-        if !w.is_visible().unwrap_or(false) {
-            w.show().map_err(|e| e.to_string())?;
+/// Overlay behaviour: hide while another window than the game is in front, and background opacity (20..=100 %).
+#[tauri::command]
+pub fn overlay_style(app: AppHandle, follow_game: bool, opacity: u8) {
+    let opacity = opacity.clamp(20, 100);
+    if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
+        a.follow_game = follow_game;
+        if !follow_game {
+            a.front = true;
         }
-        return Ok(());
+        a.opacity = opacity;
     }
-    WebviewWindowBuilder::new(app, "overlay", WebviewUrl::App("index.html#overlay".into()))
-        .title("AION 2 Companion – DPS")
-        .inner_size(340.0, 260.0)
-        .min_inner_size(240.0, 120.0)
+    let _ = app.emit("overlay-opacity", opacity);
+}
+
+/// The overlays' background opacity, for an overlay window as it opens.
+#[tauri::command]
+pub fn overlay_opacity(app: AppHandle) -> u8 {
+    app.state::<MeterState>().auto.lock().map(|a| a.opacity).unwrap_or(90)
+}
+
+fn close(app: &AppHandle, label: &str) {
+    if let Some(w) = app.get_webview_window(label) {
+        let _ = w.close();
+    }
+}
+
+fn set_visible(app: &AppHandle, label: &str, on: bool) {
+    match (app.get_webview_window(label), on) {
+        (Some(w), true) => {
+            if !w.is_visible().unwrap_or(false) {
+                let _ = w.show();
+            }
+        }
+        (Some(w), false) => {
+            let _ = w.hide();
+        }
+        (None, true) => {
+            if let Err(e) = build(app, label) {
+                eprintln!("{label} overlay: {e}");
+            }
+        }
+        (None, false) => {}
+    }
+}
+
+/// A borderless, transparent, always-on-top window that never takes the focus from the game.
+/// Over the game it needs borderless/windowed fullscreen.
+fn build(app: &AppHandle, label: &str) -> Result<(), String> {
+    let (title, w, h, min_w, min_h) = if label == EVENTS {
+        ("AION 2 Companion – Events", 300.0, 150.0, 200.0, 80.0)
+    } else {
+        ("AION 2 Companion – DPS", 340.0, 260.0, 240.0, 120.0)
+    };
+    WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html#{label}").into()))
+        .title(title)
+        .inner_size(w, h)
+        .min_inner_size(min_w, min_h)
         .decorations(false)
+        .transparent(true)
         .always_on_top(true)
         .skip_taskbar(true)
         .focused(false)
@@ -265,7 +344,34 @@ mod tests {
     use super::*;
 
     fn auto(idle: u64) -> Auto {
-        Auto { overlay: true, idle: Duration::from_secs(idle), last_active: Instant::now(), last_total: 0.0 }
+        Auto {
+            overlay: true,
+            wanted: false,
+            events: false,
+            follow_game: true,
+            front: true,
+            opacity: 90,
+            idle: Duration::from_secs(idle),
+            last_active: Instant::now(),
+            last_total: 0.0,
+        }
+    }
+
+    #[test]
+    fn overlays_hide_when_the_game_is_not_in_front() {
+        let mut a = auto(15);
+        a.wanted = true;
+        a.events = true;
+        assert_eq!(a.visible(), (true, true));
+        a.front = false;
+        assert_eq!(a.visible(), (false, false));
+        a.follow_game = false;
+        assert_eq!(a.visible(), (true, true));
+        a.wanted = false; // idle or hidden by hand
+        assert_eq!(a.visible(), (false, true));
+        a.overlay = false;
+        a.wanted = true;
+        assert_eq!(a.visible(), (false, true));
     }
 
     #[test]
