@@ -1,21 +1,30 @@
-import { isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { check } from "@tauri-apps/plugin-updater";
 import { EVENTS, RESET_CONFIG as C, SEASON } from "./config.ts";
+import { addCharacter, deleteCharacter, renameCharacter } from "./app/characters.ts";
 import { checkNotifications } from "./app/notifications.ts";
-import { channelVolume, CHANNELS, cleanLeads } from "./domain/alerts.ts";
+import { activePlan as activePlanOf, planLeft, startPlan, stopPlan } from "./app/planner.ts";
+import { resetCadence, setCount, setDone, stepCount, trackProgress } from "./app/progress.ts";
+import { seasonOf, setClaimed, setCoins, setHardPvp, setIncluded, setThisWeek } from "./app/season.ts";
+import {
+  addLead, markAllNewsRead, markNewsRead, muteForAnHour, removeLead, setChannelOn, setChannelVolume, setLead,
+  setPlanMinutes, setPlanNextHours, setVolume, setWarnHours, toggleChannelMute, unmute,
+} from "./app/settings.ts";
+import {
+  addTask, findTask, moveTask, renameTask, setTaskCategory, setTaskEnabled, setTaskGoals, setTaskMinutes, setTaskNote,
+  setTaskPriority, sortedTasks,
+} from "./app/tasks.ts";
+import { channelVolume, CHANNELS } from "./domain/alerts.ts";
 import { isImportant, mergeNews } from "./domain/news.ts";
-import { DEFAULT_MINUTES, DEFAULT_PRIORITY, learn, leftShare, plan, type Step } from "./domain/planner.ts";
+import { DEFAULT_MINUTES, DEFAULT_PRIORITY, leftShare, plan, type Step } from "./domain/planner.ts";
 import { applyResets } from "./domain/resets.ts";
-import { emptySeason, isHardPvp, isIncluded, remainingOf, SEASONAL, seasonSummary, WEEKLY, weeksLeft } from "./domain/season.ts";
-import { formatGoals, isDone, parseGoals } from "./domain/tasks.ts";
+import { isHardPvp, isIncluded, remainingOf, SEASONAL, seasonSummary, WEEKLY, weeksLeft } from "./domain/season.ts";
+import { formatGoals, isDone } from "./domain/tasks.ts";
 import { formatCountdown, lastBoundary, nextBoundary, nextEvent } from "./domain/time.ts";
-import { CADENCES, type AppData, type Cadence, type Progress, type Task } from "./domain/types.ts";
-import { lastUndo, popUndo, pushUndo } from "./domain/undo.ts";
+import { CADENCES, type AppData, type Cadence, type Task } from "./domain/types.ts";
+import { lastUndo, popUndo } from "./domain/undo.ts";
 import { playSound, toast } from "./infra/notifier.ts";
 import { fetchNews } from "./infra/steam.ts";
 import { exportJson, importJson, loadData, saveData } from "./infra/storage.ts";
+import { findUpdate, getAutostart, isDesktop, onTrayMute, setAutostart } from "./infra/system.ts";
 
 type Tab = Cadence | "plan" | "season" | "news" | "settings";
 const TABS: Tab[] = [...CADENCES, "plan", "season", "news", "settings"];
@@ -97,10 +106,9 @@ const meme = (src: string | undefined, cls: string, w: number, h: number) =>
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const save = () => saveData(data).catch((e) => console.error("Save failed", e));
 
-const sorted = (cad: Cadence) => data.tasks.filter((t) => t.cadence === cad).sort((a, b) => a.order - b.order);
-const sp = () => (data.season[charId] ??= emptySeason());
+const sorted = (cad: Cadence) => sortedTasks(data, cad);
+const sp = () => seasonOf(data, charId);
 const num = (n: number) => n.toLocaleString("en-US");
-const prog = (taskId: string) => ((data.progress[charId] ??= {})[taskId] ??= { done: false });
 
 // ---------- render ----------
 function render() {
@@ -286,31 +294,18 @@ function seasonView() {
 }
 
 // ---------- planner ----------
-const MIN = 60_000;
 const hm = (t: number) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const mins = (m: number) => (m < 1 ? "<1 min" : `${Math.round(m)} min`);
 const PRIO = ["Low", "Normal", "High"];
-/** The running session for the current character, if it hasn't run out. */
-function activePlan(now: number) {
-  const pl = data.plan;
-  return pl && pl.charId === charId && now < pl.start + pl.minutes * MIN ? pl : undefined;
-}
-const planLeft = (pl: NonNullable<AppData["plan"]>, now: number) => (pl.start + pl.minutes * MIN - now) / MIN;
+const activePlan = (now: number) => activePlanOf(data, charId, now);
 
 // Tasks finished from the Planner page: kept on screen (ticked) so the tick is visible and can be undone.
 const doneHere = new Set<string>();
 
 /** Runs a progress change; during a session, times it to refine the task's estimate. */
 function track(id: string, change: () => void) {
-  const t = task(id), before = leftShare(t, data.progress[charId]?.[id]);
-  pushUndo(data, charId, t.name, { [id]: structuredClone(data.progress[charId]?.[id]) ?? null }, Date.now());
-  change();
-  const after = leftShare(t, data.progress[charId]?.[id]);
+  const after = trackProgress(data, charId, id, Date.now(), change);
   if (tab === "plan" && !after) doneHere.add(id);
-  const now = Date.now(), pl = activePlan(now), share = before - after;
-  if (!pl || share <= 0) return;
-  t.minutes = learn(t.minutes ?? DEFAULT_MINUTES, (now - pl.lastMark) / MIN, share);
-  pl.lastMark = now;
 }
 
 /** "Wins +4 · Entries +2" for a step that does only part of a goal task. */
@@ -404,7 +399,7 @@ function settingsView() {
         <span class="ctl"><input type="number" inputmode="numeric" min="0" max="168" value="${s.warnHours[c]}" data-act="warn" data-cad="${c}"> h before</span></label>`).join("")}
     </section>
     <section><h2>System</h2>
-      ${toggle(`data-act="autostart" ${autostart ? "checked" : ""} ${isTauri() ? "" : "disabled"}`, "Start with Windows")}
+      ${toggle(`data-act="autostart" ${autostart ? "checked" : ""} ${isDesktop() ? "" : "disabled"}`, "Start with Windows")}
       ${toggle(`data-act="meme-mascot" ${data.settings.memeMascot ? "checked" : ""}`, "Meme mascot")}
       <div class="btns"><button data-act="export">Export JSON</button>
         <label class="btn">Import JSON <input type="file" accept=".json,application/json" data-act="import" hidden></label></div>
@@ -467,107 +462,66 @@ async function refreshNews() {
 }
 
 // ---------- actions ----------
-const task = (id: string) => data.tasks.find((t) => t.id === id)!;
-
-function setCount(id: string, i: number, v: number) {
-  const g = task(id).goals![i];
-  const p = prog(id);
-  p.counts ??= [];
-  p.counts[i] = Math.max(0, Math.min(g.target, Math.round(v) || 0));
-  p.done = task(id).goals!.every((x, j) => (p.counts![j] ?? 0) >= x.target);
-}
-
-/** Checkbox. Unticking a goal task whose goals are all reached clears its counts too,
- *  otherwise isDone() would keep it done; partial counts are kept. */
-function setDone(id: string, done: boolean) {
-  const t = task(id), p = prog(id);
-  p.done = done;
-  if (!done && t.goals?.every((g, i) => (p.counts?.[i] ?? 0) >= g.target)) p.counts = [];
-}
-
-function move(id: string, dir: -1 | 1) {
-  const t = task(id);
-  const list = sorted(t.cadence);
-  list.forEach((x, i) => (x.order = i)); // normalize
-  const j = list.indexOf(t) + dir;
-  if (j < 0 || j >= list.length) return;
-  [t.order, list[j].order] = [list[j].order, t.order];
-}
+const task = (id: string) => findTask(data, id);
 
 app.addEventListener("click", async (e) => {
   const el = (e.target as HTMLElement).closest<HTMLElement>("[data-tab],[data-act]");
   if (!el || el instanceof HTMLInputElement) return;
   if (el.dataset.act === "read") { // link or dismiss: mark read, the link still opens
-    const n = data.news.find((x) => x.gid === el.dataset.id);
-    if (n) n.read = true;
+    markNewsRead(data, el.dataset.id);
     await save();
     return setTimeout(render); // after the default action, so the link isn't removed mid-click
   }
   if (el.dataset.tab) { tab = el.dataset.tab as Tab; history.replaceState(null, "", "#" + tab); return render(); }
   const id = el.dataset.id!, i = +(el.dataset.i ?? 0);
   switch (el.dataset.act) {
-    case "inc": case "dec": {
-      const g = task(id).goals![i];
-      track(id, () => setCount(id, i, (prog(id).counts?.[i] ?? 0) + (el.dataset.act === "inc" ? 1 : -1) * (g.step ?? 1)));
-      break;
-    }
+    case "inc": case "dec": track(id, () => stepCount(data, charId, id, i, el.dataset.act === "inc" ? 1 : -1)); break;
     case "undo": return undo();
     case "reset-cad": {
-      const cad = el.dataset.cad as Cadence, prog = data.progress[charId] ?? {}, before: Record<string, Progress> = {};
-      for (const t of data.tasks) if (t.cadence === cad && prog[t.id]) { before[t.id] = prog[t.id]; delete prog[t.id]; }
-      if (!Object.keys(before).length) return;
-      pushUndo(data, charId, `Reset ${LABEL[cad]}`, before, Date.now());
+      const cad = el.dataset.cad as Cadence;
+      if (!resetCadence(data, charId, cad, `Reset ${LABEL[cad]}`, Date.now())) return;
       showStatus(`${LABEL[cad]} reset. Ctrl+Z to undo.`);
       break;
     }
     case "plan-preset": data.settings.planMinutes = +el.dataset.m!; break;
-    case "plan-start": { const now = Date.now(); data.plan = { charId, start: now, minutes: data.settings.planMinutes, lastMark: now }; break; }
-    case "plan-stop": delete data.plan; break;
+    case "plan-start": startPlan(data, charId, Date.now()); break;
+    case "plan-stop": stopPlan(data); break;
     case "edit": editing = !editing; break;
-    case "up": move(id, -1); break;
-    case "down": move(id, 1); break;
+    case "up": moveTask(data, id, -1); break;
+    case "down": moveTask(data, id, 1); break;
     case "add": {
       const name = (app.querySelector<HTMLInputElement>("#new-name")!.value).trim();
       if (!name) return;
       try {
-        data.tasks.push({
-          id: crypto.randomUUID(), cadence: tab as Cadence, enabled: true, order: data.tasks.length, name,
-          category: app.querySelector<HTMLInputElement>("#new-cat")!.value.trim() || "Other",
-          goals: parseGoals(app.querySelector<HTMLInputElement>("#new-goals")!.value),
-        });
+        addTask(data, tab as Cadence, name, app.querySelector<HTMLInputElement>("#new-cat")!.value,
+          app.querySelector<HTMLInputElement>("#new-goals")!.value);
       } catch (err) { return showStatus((err as Error).message, true); }
       break;
     }
     case "add-char": {
       const name = app.querySelector<HTMLInputElement>("#new-char")!.value.trim();
       if (!name) return;
-      data.characters.push({ id: crypto.randomUUID(), name });
+      addCharacter(data, name);
       break;
     }
     case "del-char": {
       const c = data.characters.find((c) => c.id === id);
       if (!c || data.characters.length < 2 || !confirm(`Delete ${c.name} and all its progress?`)) return;
-      data.characters = data.characters.filter((c) => c.id !== id);
-      delete data.progress[id];
-      delete data.season[id];
+      deleteCharacter(data, id);
       if (charId === id) charId = data.characters[0].id;
       break;
     }
-    case "mute": data.settings.mutedUntil = Date.now() + 3600_000; break;
-    case "unmute": data.settings.mutedUntil = 0; break;
+    case "mute": muteForAnHour(data, Date.now()); break;
+    case "unmute": unmute(data); break;
     case "test": return toast(data.settings, "AION 2 Companion", "If you can read this, it works. Probably.");
     case "test-sound": return playSound(el.dataset.kind!.split(","), data.settings.volume * data.settings.channels[id].volume / 100);
-    case "ch-mute": data.settings.channels[id].muted = !data.settings.channels[id].muted; break;
-    case "lead-add": {
-      const ch = data.settings.channels[id];
-      ch.leads = cleanLeads([...ch.leads!, [10, 5, 3, 2, 1].find((m) => !ch.leads!.includes(m))]);
-      break;
-    }
-    case "lead-del": data.settings.channels[id].leads!.splice(i, 1); break;
+    case "ch-mute": toggleChannelMute(data, id); break;
+    case "lead-add": addLead(data, id); break;
+    case "lead-del": removeLead(data, id, i); break;
     case "hide-mascot": data.settings.memeMascot = false; break;
     case "export": return exportJson(data);
     case "refresh-news": return refreshNews();
-    case "read-all": data.news.forEach((n) => (n.read = true)); break;
+    case "read-all": markAllNewsRead(data); break;
     default: return;
   }
   await save();
@@ -601,54 +555,36 @@ app.addEventListener("change", async (e) => {
   if (el.id === "char") { charId = el.value; doneHere.clear(); return render(); }
   const id = el.dataset.id!, v = el.value, checked = (el as HTMLInputElement).checked;
   switch (el.dataset.act) {
-    case "toggle": track(id, () => setDone(id, checked)); if (checked) react(); break;
-    case "set": track(id, () => setCount(id, +(el.dataset.i ?? 0), +v)); break;
-    case "plan-minutes": data.settings.planMinutes = Math.max(5, Math.min(600, Math.round(+v) || 40)); break;
-    case "plan-next": data.settings.planNextHours = Math.max(1, Math.min(168, Math.round(+v) || 20)); break;
-    case "plan-est": task(id).minutes = Math.max(0.5, Math.min(600, Math.round(+v * 2) / 2 || DEFAULT_MINUTES)); break;
-    case "plan-prio": task(id).priority = Math.max(1, Math.min(3, +v || DEFAULT_PRIORITY)); break;
-    case "name": if (v.trim()) task(id).name = v.trim(); break;
-    case "cat": if (v.trim()) task(id).category = v.trim(); break;
-    case "note": task(id).note = v.trim() || undefined; break;
-    case "enabled": task(id).enabled = checked; break;
+    case "toggle": track(id, () => setDone(data, charId, id, checked)); if (checked) react(); break;
+    case "set": track(id, () => setCount(data, charId, id, +(el.dataset.i ?? 0), +v)); break;
+    case "plan-minutes": setPlanMinutes(data, v); break;
+    case "plan-next": setPlanNextHours(data, v); break;
+    case "plan-est": setTaskMinutes(data, id, v); break;
+    case "plan-prio": setTaskPriority(data, id, v); break;
+    case "name": renameTask(data, id, v); break;
+    case "cat": setTaskCategory(data, id, v); break;
+    case "note": setTaskNote(data, id, v); break;
+    case "enabled": setTaskEnabled(data, id, checked); break;
     case "goals":
-      try { task(id).goals = parseGoals(v); } catch (err) { showStatus((err as Error).message, true); }
+      try { setTaskGoals(data, id, v); } catch (err) { showStatus((err as Error).message, true); }
       break;
-    case "season-coins": sp().coins = Math.max(0, Math.round(+v) || 0); break;
-    case "season-week": sp().thisWeek = Math.max(0, Math.round(+v) || 0); break;
-    case "claim": {
-      const m = SEASONAL[+el.dataset.i!], c = Math.max(0, Math.round(+v) || 0);
-      if (c) sp().claimed[m.name] = c; else delete sp().claimed[m.name];
-      break;
-    }
-    case "hardpvp": {
-      const m = SEASONAL[+el.dataset.i!];
-      if (checked === !!m.hardPvp) delete sp().hardPvp[m.name]; else sp().hardPvp[m.name] = checked;
-      break;
-    }
-    case "included": {
-      const m = WEEKLY[+el.dataset.i!];
-      if (checked) delete sp().excluded[m.name]; else sp().excluded[m.name] = true;
-      break;
-    }
-    case "rename-char": if (v.trim()) data.characters.find((c) => c.id === id)!.name = v.trim(); break;
-    case "ch-on": data.settings.channels[id].on = checked; break;
-    case "ch-vol": data.settings.channels[id].volume = Math.max(0, Math.min(100, +v || 0)); break;
-    case "lead": { // a duplicate collapses; render() puts the field back to the clean list
-      const ch = data.settings.channels[id], leads = [...ch.leads!];
-      leads[+el.dataset.i!] = Math.max(1, Math.min(60, Math.round(+v) || 1));
-      ch.leads = cleanLeads(leads);
-      break;
-    }
+    case "season-coins": setCoins(data, charId, v); break;
+    case "season-week": setThisWeek(data, charId, v); break;
+    case "claim": setClaimed(data, charId, +el.dataset.i!, v); break;
+    case "hardpvp": setHardPvp(data, charId, +el.dataset.i!, checked); break;
+    case "included": setIncluded(data, charId, +el.dataset.i!, checked); break;
+    case "rename-char": renameCharacter(data, id, v); break;
+    case "ch-on": setChannelOn(data, id, checked); break;
+    case "ch-vol": setChannelVolume(data, id, v); break;
+    case "lead": setLead(data, id, +el.dataset.i!, v); break; // render() puts the field back to the clean list
     case "sound": data.settings.sound = checked; break;
     case "meme-mascot": data.settings.memeMascot = checked; break;
-    case "volume": data.settings.volume = Math.max(0, Math.min(100, +v || 0)); break;
-    case "warn": data.settings.warnHours[el.dataset.cad as Cadence] = Math.max(0, +v || 0); break;
+    case "volume": setVolume(data, v); break;
+    case "warn": setWarnHours(data, el.dataset.cad as Cadence, v); break;
     case "quiet-start": data.settings.quietStart = v; break;
     case "quiet-end": data.settings.quietEnd = v; break;
     case "autostart":
-      await (checked ? enable() : disable());
-      autostart = await isEnabled();
+      autostart = await setAutostart(checked);
       break;
     case "import": {
       const file = (el as HTMLInputElement).files?.[0];
@@ -671,20 +607,20 @@ app.addEventListener("change", async (e) => {
 async function main() {
   data = await loadData();
   charId = data.characters[0].id;
-  if (isTauri()) autostart = await isEnabled().catch(() => false);
+  if (isDesktop()) autostart = await getAutostart().catch(() => false);
   applyResets(data, Date.now(), C);
   checkNotifications(data, Date.now(), toast);
   await save();
   render();
 
-  if (isTauri()) await listen("tray-mute", async () => {
-    data.settings.mutedUntil = Date.now() + 3600_000;
+  if (isDesktop()) await onTrayMute(async () => {
+    muteForAnHour(data, Date.now());
     await save();
     render();
   });
 
   addEventListener("hashchange", () => { tab = tabFromHash(); render(); });
-  if (isTauri()) checkUpdate();
+  if (isDesktop()) checkUpdate();
   refreshNews();
   let ticks = 0;
   setInterval(async () => {
@@ -704,7 +640,7 @@ async function main() {
 // Update from GitHub Releases; the Windows installer closes and relaunches the app itself.
 async function checkUpdate() {
   try {
-    const update = await check();
+    const update = await findUpdate();
     if (update && confirm(`AION 2 Companion ${update.version} is available. Install it now?`)) {
       showStatus("Downloading update…");
       await update.downloadAndInstall();
