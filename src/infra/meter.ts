@@ -40,8 +40,12 @@ export const meterPartyOnly = (on: boolean) => call("meter_party_only", { on });
 export const meterView = (view: string) => call("meter_view", { view });
 /** The rows whose skill breakdown is open: only they get per-skill details. */
 export const meterWatch = (ids: number[]) => call("meter_watch", { ids });
-/** Opens or closes the always-on-top overlay window (desktop only). */
-export const meterOverlay = (show: boolean) => (isTauri() ? invoke<void>("meter_overlay", { show }) : Promise.resolve());
+/** Turns the overlay on (it shows during fights, now too with showNow, and hides when idle) or off (desktop only). */
+export const meterOverlay = (show: boolean, showNow = true) => (isTauri() ? invoke<void>("meter_overlay", { show, showNow }) : Promise.resolve());
+/** Hides the overlay until the fight moves again. */
+export const meterOverlayHide = () => (isTauri() ? invoke<void>("meter_overlay_hide") : Promise.resolve());
+/** Seconds without damage, healing or damage taken before the fight resets and the overlay hides (0 = never). */
+export const meterIdle = (secs: number) => (isTauri() ? invoke<void>("meter_idle", { secs }) : Promise.resolve());
 /** The overlay was opened or closed (also from the overlay itself). */
 export const onOverlay = (fn: (open: boolean) => void) => (isTauri() ? listen<boolean>("meter-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 

@@ -42,6 +42,8 @@ export interface Settings {
   memeMascot: boolean; // show the corner meme (src/memes/mascot)
   planMinutes: number;   // Planner: session length
   planNextHours: number; // Planner: hours until the next session (tasks resetting before it are urgent)
+  dpsOverlay: boolean;     // DPS overlay on: shows during fights, hides when idle
+  dpsIdleSeconds: number;  // DPS meter: seconds without activity before the fight resets (0 = never)
 }
 
 /** One undo step: the progress of each touched task before the change (null = it had none). */

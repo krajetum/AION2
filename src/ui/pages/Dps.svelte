@@ -3,6 +3,7 @@
   import { clock, displayName, hpLeft, short, STATUS_TEXT, TARGET_MODES, viewRows, VIEWS, type MeterUpdate } from "../../domain/meter.ts";
   import { meterOverlay, meterPartyOnly, meterPause, meterReconnect, meterReset, meterTargetMode, meterView, meterWatch, onMeter } from "../../infra/meter.ts";
   import { isDesktop } from "../../infra/system.ts";
+  import { act } from "../actions.ts";
   import { showStatus } from "../overlays.ts";
   import { ui } from "../state.svelte.ts";
 
@@ -14,6 +15,8 @@
 
   const f = $derived(u?.fight);
   const left = $derived(f?.target ? hpLeft(f.target) : undefined);
+  const idle = $derived(ui.data.settings.dpsIdleSeconds);
+  const idleText = $derived(idle ? `${idle} s without activity` : "never (Settings)");
   const view = $derived(u?.view ?? "damage");
   const rows = $derived(f ? viewRows(f, view) : []);
   const unnamed = $derived(rows.some(({ row: r }) => !r.name && !r.isYou));
@@ -27,7 +30,8 @@
 </script>
 
 <p class="hint dps-note">Reads a copy of the game's network traffic through Npcap. Never touches the game's memory or files.
-  Third-party tools may be against the game's terms of service: use at your own risk.</p>
+  Third-party tools may be against the game's terms of service: use at your own risk.
+  {#if idle}The fight resets after {idle} s without damage, healing or damage taken (Settings).{/if}</p>
 
 {#if !u || !f}<section><p class="hint">Starting the meter…</p></section>{:else}
   <div class="dps-status {u.status}"><span class="dot"></span><b>{STATUS_TEXT[u.status]}</b><span>{u.message}</span>
@@ -58,8 +62,8 @@
     <button aria-pressed={u.paused} onclick={() => run(() => meterPause(!u!.paused))}>{u.paused ? "Resume" : "Pause"}</button>
     <button onclick={() => run(async () => { await meterReset(); open.clear(); })}>Reset</button>
     <button class="ghost" onclick={() => run(async () => { await meterReconnect(); showStatus("Looking for the game connection again…"); })}>Reconnect</button>
-    <button class:primary={ui.overlay} disabled={!isDesktop()} title={isDesktop() ? undefined : "Desktop app only"}
-      onclick={() => run(() => meterOverlay(!ui.overlay))}>{ui.overlay ? "Hide overlay" : "Overlay"}</button>
+    <button class:primary={ui.overlay} disabled={!isDesktop()} title={isDesktop() ? "Shows during fights, hides after " + idleText : "Desktop app only"}
+      onclick={() => run(async () => { const on = !ui.overlay; await act(() => { ui.data.settings.dpsOverlay = on; }); await meterOverlay(on); })}>{ui.overlay ? "Overlay on" : "Overlay"}</button>
   </div>
 
   {#if f.target}{@const t = f.target}<section class="dps-target">
