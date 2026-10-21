@@ -12,6 +12,7 @@
   import { hm, LABEL, num, PAGE } from "./format.ts";
   import { ICON } from "./icons.ts";
   import { MEME } from "./memes.ts";
+  import Dps from "./pages/Dps.svelte";
   import News from "./pages/News.svelte";
   import Planner from "./pages/Planner.svelte";
   import Season from "./pages/Season.svelte";
@@ -28,7 +29,7 @@
   const plan = $derived(activePlan(ui.data, ui.charId, ui.now));
 
   function badge(t: Tab) {
-    if (t === "settings" || t === "news") return "";
+    if (t === "settings" || t === "news" || t === "dps") return "";
     if (t === "plan") return plan ? `${Math.ceil(planLeft(plan, ui.now))}m` : "";
     if (t === "season") {
       const left = seasonSummary(ui.data.season[ui.charId] ?? emptySeason(), 0).seasonalRemaining;
@@ -74,7 +75,7 @@
 <div class="layout">
   <main>
     <div class="page-head"><h1>{PAGE[ui.tab][0]}</h1><p>{PAGE[ui.tab][1]}</p></div>
-    {#if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "plan"}<Planner />{:else}<TaskList cad={ui.tab} />{/if}</main>
+    {#if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "plan"}<Planner />{:else}<TaskList cad={ui.tab} />{/if}</main>
   <nav class="side" aria-label="Pages">{#each TABS as t}{@const b = badge(t)}<button class="tab" title={PAGE[t][0]} aria-current={t === ui.tab ? "page" : undefined} onclick={() => go(t)}>
       {@html ICON[t]}<span class="lbl">{PAGE[t][0]}</span>{#if t === "news"}{#if unread}<span class="badge">{unread}</span>{/if}{:else if b}<span class="count">{b}</span>{/if}</button>{/each}</nav>
 </div>

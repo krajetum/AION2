@@ -1,3 +1,5 @@
+mod meter;
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -23,6 +25,15 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .manage(meter::MeterState::default())
+        .invoke_handler(tauri::generate_handler![
+            meter::meter_start,
+            meter::meter_reset,
+            meter::meter_pause,
+            meter::meter_target_mode,
+            meter::meter_reconnect,
+            meter::meter_overlay,
+        ])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Mute for 1 hour", true, None::<&str>)?;
@@ -56,8 +67,11 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // Closing the window = hiding it to the tray.
+            // Closing the main window = hiding it to the tray (the overlay just closes).
             if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() != "main" {
+                    return;
+                }
                 api.prevent_close();
                 let _ = window.hide();
             }

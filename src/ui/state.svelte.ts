@@ -2,8 +2,8 @@
 import { SvelteSet } from "svelte/reactivity";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
-export type Tab = Cadence | "plan" | "season" | "news" | "settings";
-export const TABS: Tab[] = [...CADENCES, "plan", "season", "news", "settings"];
+export type Tab = Cadence | "plan" | "season" | "dps" | "news" | "settings";
+export const TABS: Tab[] = [...CADENCES, "plan", "season", "dps", "news", "settings"];
 export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "daily"; };
 
 export const ui = $state({
@@ -14,6 +14,7 @@ export const ui = $state({
   autostart: false,
   newsError: "",
   now: Date.now(), // 1 s clock (main.ts) for countdowns and live times
+  overlay: false, // DPS overlay window open (main.ts follows the "meter-overlay" event)
 });
 
 /** Tasks finished from the Planner page: kept on screen (ticked) so the tick is visible and can be undone. */
