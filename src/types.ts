@@ -38,6 +38,9 @@ export interface Settings {
   planNextHours: number; // Planner: hours until the next session (tasks resetting before it are urgent)
 }
 
+/** One undo step: the progress of each touched task before the change (null = it had none). */
+export interface UndoEntry { charId: string; label: string; at: number; before: Record<string, Progress | null> }
+
 /** Running Planner session. lastMark = last progress tick, used to time the next one. */
 export interface ActivePlan { charId: string; start: number; minutes: number; lastMark: number }
 
@@ -66,5 +69,6 @@ export interface AppData {
   lastNewsGid: string;                // newest gid already toasted
   season: Record<string, SeasonProgress>; // charId → season progress
   plan?: ActivePlan;
+  undo: UndoEntry[]; // newest last, max 30 (src/undo.ts)
   settings: Settings;
 }

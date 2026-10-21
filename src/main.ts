@@ -9,7 +9,8 @@ import { channelVolume, CHANNELS, checkNotifications, playSound, toast } from ".
 import { applyResets, cleanLeads, formatCountdown, isDone, lastBoundary, nextBoundary, nextEvent } from "./reset.ts";
 import { DEFAULT_MINUTES, DEFAULT_PRIORITY, learn, leftShare, plan, type Step } from "./planner.ts";
 import { emptySeason, isHardPvp, isIncluded, remainingOf, SEASONAL, seasonSummary, WEEKLY, weeksLeft } from "./season.ts";
-import { CADENCES, type AppData, type Cadence, type Goal, type Task } from "./types.ts";
+import { CADENCES, type AppData, type Cadence, type Goal, type Progress, type Task } from "./types.ts";
+import { lastUndo, popUndo, pushUndo } from "./undo.ts";
 
 type Tab = Cadence | "plan" | "season" | "news" | "settings";
 const TABS: Tab[] = [...CADENCES, "plan", "season", "news", "settings"];
@@ -178,7 +179,15 @@ function listView(cad: Cadence) {
   const win = !editing && all.length && all.every((t) => isDone(t, data.progress[charId]?.[t.id]))
     ? `<section class="win">${meme(MEME.win, "", 120, 90)}<div><h2>GG EZ — all ${LABEL[cad].toLowerCase()} tasks done</h2><p>Go touch grass. The reset will find you.</p></div></section>` : "";
   const empty = `<p class="empty">${meme(MEME.empty, "", 160, 120)}It's empty. Like my Kina wallet. Click <b>Edit tasks</b> to add one.</p>`;
-  return `<div class="toolbar"><button class="${editing ? "primary" : ""}" data-act="edit">${editing ? "Done (trust me bro)" : "Edit tasks (big brain)"}</button></div>${win}${groups || empty}${add}`;
+  const touched = all.some((t) => data.progress[charId]?.[t.id]);
+  return `<div class="toolbar">${editing ? "" : `${undoButton()}
+      <button class="ghost" data-act="reset-cad" data-cad="${cad}" ${touched ? "" : "disabled"} title="Clears ${LABEL[cad].toLowerCase()} progress for this character. Undoable.">Reset ${LABEL[cad]}</button>`}
+    <button class="${editing ? "primary" : ""}" data-act="edit">${editing ? "Done (trust me bro)" : "Edit tasks (big brain)"}</button></div>${win}${groups || empty}${add}`;
+}
+
+function undoButton() {
+  const e = lastUndo(data, charId);
+  return `<button class="ghost" data-act="undo" ${e ? `title="Ctrl+Z"` : "disabled"}>${e ? `Undo: ${esc(e.label)}` : "Nothing to undo"}</button>`;
 }
 
 function taskRow(t: Task, hint = "") {
@@ -195,7 +204,7 @@ function taskRow(t: Task, hint = "") {
       <div class="bar"><i style="--p:${Math.min(1, v / g.target)}"></i></div></div>`;
   }).join("");
   return `<div class="task ${isDone(t, p) ? "done" : ""}">
-    <label><input type="checkbox" data-act="toggle" data-id="${t.id}" ${p?.done ? "checked" : ""}>
+    <label><input type="checkbox" data-act="toggle" data-id="${t.id}" ${isDone(t, p) ? "checked" : ""}>
       <span class="text"><span class="name">${esc(t.name)}</span>${t.note ? `<small>${esc(t.note)}</small>` : ""}${hint ? `<small class="plan-hint">${hint}</small>` : ""}</span></label>
     ${goals ? `<div class="goals">${goals}</div>` : ""}</div>`;
 }
@@ -301,6 +310,7 @@ const doneHere = new Set<string>();
 /** Runs a progress change; during a session, times it to refine the task's estimate. */
 function track(id: string, change: () => void) {
   const t = task(id), before = leftShare(t, data.progress[charId]?.[id]);
+  pushUndo(data, charId, t.name, { [id]: structuredClone(data.progress[charId]?.[id]) ?? null }, Date.now());
   change();
   const after = leftShare(t, data.progress[charId]?.[id]);
   if (tab === "plan" && !after) doneHere.add(id);
@@ -357,6 +367,7 @@ function planView() {
       ${[20, 40, 60, 90].map((m) => `<button class="${!pl && s.planMinutes === m ? "primary" : ""}" data-act="plan-preset" data-m="${m}" ${pl ? "disabled" : ""}>${m} min</button>`).join("")}
       <label>Custom <input type="number" inputmode="numeric" min="5" max="600" step="5" value="${s.planMinutes}" data-act="plan-minutes" ${pl ? "disabled" : ""} aria-label="Session minutes"> min</label>
       <label>Next session in <input type="number" inputmode="numeric" min="1" max="168" value="${s.planNextHours}" data-act="plan-next" aria-label="Hours until the next session"> h</label>
+      ${undoButton()}
       ${pl ? `<button data-act="plan-stop">Stop session</button>` : `<button class="primary" data-act="plan-start">Start session</button>`}
     </div>
     <div class="kpis">
@@ -473,6 +484,14 @@ function setCount(id: string, i: number, v: number) {
   p.done = task(id).goals!.every((x, j) => (p.counts![j] ?? 0) >= x.target);
 }
 
+/** Checkbox. Unticking a goal task whose goals are all reached clears its counts too,
+ *  otherwise isDone() would keep it done; partial counts are kept. */
+function setDone(id: string, done: boolean) {
+  const t = task(id), p = prog(id);
+  p.done = done;
+  if (!done && t.goals?.every((g, i) => (p.counts?.[i] ?? 0) >= g.target)) p.counts = [];
+}
+
 function move(id: string, dir: -1 | 1) {
   const t = task(id);
   const list = sorted(t.cadence);
@@ -497,6 +516,15 @@ app.addEventListener("click", async (e) => {
     case "inc": case "dec": {
       const g = task(id).goals![i];
       track(id, () => setCount(id, i, (prog(id).counts?.[i] ?? 0) + (el.dataset.act === "inc" ? 1 : -1) * (g.step ?? 1)));
+      break;
+    }
+    case "undo": return undo();
+    case "reset-cad": {
+      const cad = el.dataset.cad as Cadence, prog = data.progress[charId] ?? {}, before: Record<string, Progress> = {};
+      for (const t of data.tasks) if (t.cadence === cad && prog[t.id]) { before[t.id] = prog[t.id]; delete prog[t.id]; }
+      if (!Object.keys(before).length) return;
+      pushUndo(data, charId, `Reset ${LABEL[cad]}`, before, Date.now());
+      showStatus(`${LABEL[cad]} reset. Ctrl+Z to undo.`);
       break;
     }
     case "plan-preset": data.settings.planMinutes = +el.dataset.m!; break;
@@ -553,6 +581,22 @@ app.addEventListener("click", async (e) => {
   render();
 });
 
+async function undo() {
+  const label = popUndo(data, charId);
+  if (!label) return;
+  showStatus(`Undone: ${label}`);
+  await save();
+  render();
+}
+// Ctrl+Z anywhere except inside a field (the field's own undo wins there).
+addEventListener("keydown", (e) => {
+  const f = document.activeElement;
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z" && !(f instanceof HTMLInputElement || f instanceof HTMLSelectElement)) {
+    e.preventDefault();
+    undo();
+  }
+});
+
 // <details> "toggle" doesn't bubble: listen in the capture phase.
 app.addEventListener("toggle", (e) => {
   const d = e.target as HTMLDetailsElement;
@@ -564,7 +608,7 @@ app.addEventListener("change", async (e) => {
   if (el.id === "char") { charId = el.value; doneHere.clear(); return render(); }
   const id = el.dataset.id!, v = el.value, checked = (el as HTMLInputElement).checked;
   switch (el.dataset.act) {
-    case "toggle": track(id, () => { prog(id).done = checked; }); if (checked) react(); break;
+    case "toggle": track(id, () => setDone(id, checked)); if (checked) react(); break;
     case "set": track(id, () => setCount(id, +(el.dataset.i ?? 0), +v)); break;
     case "plan-minutes": data.settings.planMinutes = Math.max(5, Math.min(600, Math.round(+v) || 40)); break;
     case "plan-next": data.settings.planNextHours = Math.max(1, Math.min(168, Math.round(+v) || 20)); break;
