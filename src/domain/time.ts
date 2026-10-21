@@ -1,20 +1,6 @@
-// Pure reset logic: no Tauri dependency, tested with `npm test`.
-import type { GameEvent, ResetConfig } from "./config.ts";
-import { CADENCES, type AppData, type Cadence, type Progress, type Task } from "./types.ts";
-
-/** Done = ticked manually or every goal reached. */
-export function isDone(t: Task, p?: Progress) {
-  if (p?.done) return true;
-  return !!t.goals?.length && t.goals.every((g, i) => (p?.counts?.[i] ?? 0) >= g.target);
-}
-
-/** Enabled, unfinished tasks per character for one cadence. */
-export function remaining(data: AppData, cad: Cadence) {
-  return data.characters.map((ch) => ({
-    name: ch.name,
-    left: data.tasks.filter((t) => t.enabled && t.cadence === cad && !isDone(t, data.progress[ch.id]?.[t.id])).length,
-  }));
-}
+// Time-zone math (Intl only), reset boundaries, event times. Pure: tested with `npm test`.
+import type { GameEvent, ResetConfig } from "../config.ts";
+import type { Cadence } from "./types.ts";
 
 const fmtCache = new Map<string, Intl.DateTimeFormat>();
 function fmt(tz: string) {
@@ -91,23 +77,6 @@ export function nextBoundary(cad: Cadence, now: number, c: ResetConfig): number 
   return t > now ? t : monthly(p.y, p.m0 + 1, c);
 }
 
-/** Clears tasks of every cadence whose reset passed since the last save
- *  (even if the app was closed). Returns the cadences that were reset. */
-export function applyResets(data: AppData, now: number, c: ResetConfig): Cadence[] {
-  const done: Cadence[] = [];
-  for (const cad of CADENCES) {
-    const b = lastBoundary(cad, now, c);
-    if ((data.lastReset[cad] ?? 0) >= b) continue;
-    const ids = new Set(data.tasks.filter((t) => t.cadence === cad).map((t) => t.id));
-    for (const prog of Object.values(data.progress)) for (const id of ids) delete prog[id];
-    // An undo across a reset would bring back last cycle's progress: drop entries touching these tasks.
-    data.undo = (data.undo ?? []).filter((e) => !Object.keys(e.before).some((id) => ids.has(id)));
-    data.lastReset[cad] = b;
-    done.push(cad);
-  }
-  return done;
-}
-
 /** "2d 03:04:05" */
 export function formatCountdown(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -125,14 +94,3 @@ export function nextEvent(ev: GameEvent, now: number, tz: string): number {
     if (t > now) return t;
   }
 }
-
-/** Event alert lead times (minutes): unique ints 1..60, longest first, max 3; nothing valid → [5]. */
-export function cleanLeads(leads: unknown): number[] {
-  const ok = (Array.isArray(leads) ? leads : []).map(Math.round).filter((n) => n >= 1 && n <= 60);
-  const out = [...new Set(ok)].sort((a, b) => b - a).slice(0, 3);
-  return out.length ? out : [5];
-}
-
-/** Lead times now due (msLeft ≤ lead) and not yet warned. The caller marks them all and toasts once. */
-export const dueLeads = (leads: number[], msLeft: number, warned: (lead: number) => boolean) =>
-  leads.filter((l) => msLeft <= l * 60_000 && !warned(l));

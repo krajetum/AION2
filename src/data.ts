@@ -5,9 +5,9 @@ import { isTauri } from "@tauri-apps/api/core";
 import { load, type Store } from "@tauri-apps/plugin-store";
 import { EVENTS } from "./config.ts";
 import { CHANNELS } from "./notify.ts";
-import { cleanLeads } from "./reset.ts";
-import { seedTasks } from "./seed.ts";
-import type { AppData, Channel } from "./types.ts";
+import { cleanLeads } from "./domain/alerts.ts";
+import { seedTasks } from "./domain/seed.ts";
+import type { AppData, Channel } from "./domain/types.ts";
 
 const LS_KEY = "aion2-companion-data";
 let store: Store | undefined;

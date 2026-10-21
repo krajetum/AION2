@@ -1,7 +1,7 @@
 // Official AION 2 announcements (incl. maintenance) from the public Steam news feed.
 import { isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import type { AppData, NewsItem } from "./types.ts";
+import type { AppData, NewsItem } from "./domain/types.ts";
 
 const PATH = "/ISteamNews/GetNewsForApp/v2/?appid=3393110&count=10&maxlength=0"; // 0 = full text
 

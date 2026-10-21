@@ -1,6 +1,6 @@
 // Season Oath Coin planner (replaces the aion2_season_coin sheet). Pure: tested with `npm test`.
-import type { ResetConfig } from "./config.ts";
-import { nextBoundary, zonedToUtc } from "./reset.ts";
+import type { ResetConfig } from "../config.ts";
+import { nextBoundary, zonedToUtc } from "./time.ts";
 import type { SeasonProgress } from "./types.ts";
 
 /** One-time mission with several steps. hardPvp = default of the "Hard PvP" column. */

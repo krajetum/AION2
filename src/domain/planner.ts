@@ -5,8 +5,9 @@
 // tasks without goals are all-or-nothing (0/1 knapsack: DP over whole minutes). The mix is solved exactly
 // by trying every split of the capacity between the two. Then fixed-time events are pinned on the
 // timeline and the chosen tasks fill the gaps around them.
-import type { GameEvent, ResetConfig } from "./config.ts";
-import { isDone, nextBoundary, nextEvent } from "./reset.ts";
+import type { GameEvent, ResetConfig } from "../config.ts";
+import { isDone } from "./tasks.ts";
+import { nextBoundary, nextEvent } from "./time.ts";
 import type { Progress, Task } from "./types.ts";
 
 export const DEFAULT_MINUTES = 10; // estimate for a task never timed

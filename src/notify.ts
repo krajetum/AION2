@@ -2,9 +2,11 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { EVENTS, RESET_CONFIG as C } from "./config.ts";
-import { dueLeads, nextBoundary, nextEvent, remaining } from "./reset.ts";
-import { CLOUD_MERCHANT_ID } from "./seed.ts";
-import { CADENCES, type AppData, type Settings } from "./types.ts";
+import { dueLeads } from "./domain/alerts.ts";
+import { CLOUD_MERCHANT_ID } from "./domain/seed.ts";
+import { remaining } from "./domain/tasks.ts";
+import { nextBoundary, nextEvent } from "./domain/time.ts";
+import { CADENCES, type AppData, type Settings } from "./domain/types.ts";
 
 const H = 3600_000;
 

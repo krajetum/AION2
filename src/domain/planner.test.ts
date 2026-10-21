@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { ResetConfig } from "./config.ts";
+import type { ResetConfig } from "../config.ts";
 import { learn, leftShare, plan } from "./planner.ts";
 import type { Task } from "./types.ts";
 

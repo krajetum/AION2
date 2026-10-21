@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "tauri": "tauri",
-    "test": "node --test src/reset.test.ts src/season.test.ts src/planner.test.ts src/undo.test.ts"
+    "test": "node --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

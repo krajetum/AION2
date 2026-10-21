@@ -1,8 +1,9 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { ResetConfig } from "./config.ts";
-import { applyResets, lastBoundary } from "./reset.ts";
+import type { ResetConfig } from "../config.ts";
+import { applyResets } from "./resets.ts";
+import { lastBoundary } from "./time.ts";
 import type { AppData } from "./types.ts";
 import { lastUndo, popUndo, pushUndo } from "./undo.ts";
 

@@ -1,9 +1,11 @@
 // Run with: npm test   (node --test, no dependencies)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { ResetConfig } from "./config.ts";
+import type { ResetConfig } from "../config.ts";
 import type { AppData } from "./types.ts";
-import { applyResets, cleanLeads, dueLeads, formatCountdown, lastBoundary, nextBoundary, nextEvent, zonedToUtc } from "./reset.ts";
+import { cleanLeads, dueLeads } from "./alerts.ts";
+import { applyResets } from "./resets.ts";
+import { formatCountdown, lastBoundary, nextBoundary, nextEvent, zonedToUtc } from "./time.ts";
 
 // Fixed test config (independent from the TO VERIFY values in config.ts).
 const C: ResetConfig = {

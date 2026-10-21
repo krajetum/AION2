@@ -6,11 +6,14 @@ import { EVENTS, RESET_CONFIG as C, SEASON } from "./config.ts";
 import { exportJson, importJson, loadData, saveData } from "./data.ts";
 import { fetchNews, isImportant, mergeNews } from "./news.ts";
 import { channelVolume, CHANNELS, checkNotifications, playSound, toast } from "./notify.ts";
-import { applyResets, cleanLeads, formatCountdown, isDone, lastBoundary, nextBoundary, nextEvent } from "./reset.ts";
-import { DEFAULT_MINUTES, DEFAULT_PRIORITY, learn, leftShare, plan, type Step } from "./planner.ts";
-import { emptySeason, isHardPvp, isIncluded, remainingOf, SEASONAL, seasonSummary, WEEKLY, weeksLeft } from "./season.ts";
-import { CADENCES, type AppData, type Cadence, type Goal, type Progress, type Task } from "./types.ts";
-import { lastUndo, popUndo, pushUndo } from "./undo.ts";
+import { cleanLeads } from "./domain/alerts.ts";
+import { DEFAULT_MINUTES, DEFAULT_PRIORITY, learn, leftShare, plan, type Step } from "./domain/planner.ts";
+import { applyResets } from "./domain/resets.ts";
+import { emptySeason, isHardPvp, isIncluded, remainingOf, SEASONAL, seasonSummary, WEEKLY, weeksLeft } from "./domain/season.ts";
+import { formatGoals, isDone, parseGoals } from "./domain/tasks.ts";
+import { formatCountdown, lastBoundary, nextBoundary, nextEvent } from "./domain/time.ts";
+import { CADENCES, type AppData, type Cadence, type Progress, type Task } from "./domain/types.ts";
+import { lastUndo, popUndo, pushUndo } from "./domain/undo.ts";
 
 type Tab = Cadence | "plan" | "season" | "news" | "settings";
 const TABS: Tab[] = [...CADENCES, "plan", "season", "news", "settings"];
@@ -91,18 +94,6 @@ const meme = (src: string | undefined, cls: string, w: number, h: number) =>
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const save = () => saveData(data).catch((e) => console.error("Save failed", e));
-
-// "Wins:30, Entries:10" | "2000" | "Level:50/5"
-function parseGoals(s: string): Goal[] | undefined {
-  const goals = s.split(",").map((x) => x.trim()).filter(Boolean).map((part) => {
-    const m = part.match(/^(?:(.+?)\s*:\s*)?(\d+)(?:\s*\/\s*(\d+))?$/);
-    if (!m) throw new Error(`Invalid goal: "${part}"`);
-    return { label: m[1] || undefined, target: +m[2], step: m[3] ? +m[3] : undefined };
-  });
-  return goals.length ? goals : undefined;
-}
-const formatGoals = (g?: Goal[]) =>
-  (g ?? []).map((x) => `${x.label ? x.label + ":" : ""}${x.target}${x.step ? "/" + x.step : ""}`).join(", ");
 
 const sorted = (cad: Cadence) => data.tasks.filter((t) => t.cadence === cad).sort((a, b) => a.order - b.order);
 const sp = () => (data.season[charId] ??= emptySeason());
