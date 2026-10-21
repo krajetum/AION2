@@ -31,6 +31,9 @@ pub fn run() {
             meter::meter_reset,
             meter::meter_pause,
             meter::meter_target_mode,
+            meter::meter_party_only,
+            meter::meter_watch,
+            meter::meter_view,
             meter::meter_reconnect,
             meter::meter_overlay,
         ])
