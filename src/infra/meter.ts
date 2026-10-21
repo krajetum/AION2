@@ -3,7 +3,7 @@
 // labelled demo fight stands in, only to preview the UI.
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { MeterUpdate, PlayerRow } from "../domain/meter.ts";
+import type { MeterUpdate, MeterView, PlayerRow } from "../domain/meter.ts";
 
 let started = false;
 let last: MeterUpdate | undefined;
@@ -36,6 +36,8 @@ export const meterTargetMode = (mode: string) => call("meter_target_mode", { mod
 export const meterReconnect = () => call("meter_reconnect");
 /** Only you and your party, or everyone who hit the target. */
 export const meterPartyOnly = (on: boolean) => call("meter_party_only", { on });
+/** What the rows are ranked by: damage, healing or damage taken. */
+export const meterView = (view: string) => call("meter_view", { view });
 /** The rows whose skill breakdown is open: only they get per-skill details. */
 export const meterWatch = (ids: number[]) => call("meter_watch", { ids });
 /** Opens or closes the always-on-top overlay window (desktop only). */
@@ -44,7 +46,7 @@ export const meterOverlay = (show: boolean) => (isTauri() ? invoke<void>("meter_
 export const onOverlay = (fn: (open: boolean) => void) => (isTauri() ? listen<boolean>("meter-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 
 // ---------- demo (browser preview only) ----------
-let demo = { start: Date.now(), paused: false, partyOnly: false, mode: "bossTargets", dmg: [0, 0, 0, 0, 0] };
+let demo = { start: Date.now(), paused: false, partyOnly: false, view: "damage" as MeterView, mode: "bossTargets", dmg: [0, 0, 0, 0, 0] };
 const DEMO_PARTY = [
   { name: "You", job: "Gladiator", rate: 21_000 },
   { name: "Partymate A", job: "Sorcerer", rate: 26_000 },
@@ -61,7 +63,10 @@ function demoUpdate(): MeterUpdate {
   const total = shown.reduce((a, { i }) => a + demo.dmg[i], 0) || 1;
   const rows: PlayerRow[] = shown.map(({ p, i }) => ({
     id: i === 4 ? 16546 : i + 1, name: p.name, job: p.job, damage: demo.dmg[i], dps: demo.dmg[i] / Math.max(1, t / 1000),
-    share: demo.dmg[i] / total * 100, hps: 0, heal: 0, combatPower: 0, gearScore: 0, isYou: i === 0, inParty: i < 4, isOthers: false,
+    share: demo.dmg[i] / total * 100, hps: i === 3 ? 5_200 : 0, heal: i === 3 ? 5.2 * t : 0, combatPower: 0, gearScore: 0,
+    isYou: i === 0, inParty: i < 4, isOthers: false, damageTaken: Math.round([3, 0.5, 0.8, 0.6, 1][i] * t), hitsTaken: Math.round(t / 2000),
+    healSkills: i === 3 ? [{ name: "Demo heal", damage: Math.round(3.6 * t), hits: Math.round(t / 1500), critRate: 0, share: 0.7, dot: false },
+      { name: "Demo regen", damage: Math.round(1.6 * t), hits: Math.round(t / 1000), critRate: 0, share: 0.3, dot: true }] : [],
     skills: DEMO_SPLIT.map((share, k) => ({
       name: `Demo skill ${k + 1}`, damage: Math.round(demo.dmg[i] * share), hits: Math.round(t / 900 / (k + 1)),
       critRate: 0.3 - k * 0.05, share, dot: k === 3,
@@ -69,7 +74,7 @@ function demoUpdate(): MeterUpdate {
   })).sort((a, b) => b.damage - a.damage);
   return {
     status: "connected", message: "Demo fight (browser preview, not real data)", port: null, device: null, pingMs: 42,
-    paused: demo.paused, partyOnly: demo.partyOnly, demo: true,
+    paused: demo.paused, partyOnly: demo.partyOnly, view: demo.view, demo: true,
     fight: { target: { name: "Demo Boss", isBoss: true, maxHp: 40_000_000, currentHp: -1, damageDealt: total }, targetMode: demo.mode, battleTimeMs: t, rows },
   };
 }
@@ -82,6 +87,7 @@ function startDemo() {
 async function demoCall(cmd: string, args?: Record<string, unknown>) {
   if (cmd === "meter_reset") demo = { ...demo, start: Date.now(), dmg: [0, 0, 0, 0, 0] };
   if (cmd === "meter_party_only") demo.partyOnly = !!args?.on;
+  if (cmd === "meter_view") demo.view = args?.view as MeterView;
   if (cmd === "meter_pause") demo.paused = !!args?.paused;
   if (cmd === "meter_target_mode") demo.mode = String(args?.mode);
   emit(demoUpdate());

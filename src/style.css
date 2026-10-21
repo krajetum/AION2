@@ -356,3 +356,9 @@ body.overlay .status, body.overlay .react { display: none; }
 .seg button { height: 30px; padding: 0 12px; background: transparent; color: var(--muted); }
 .seg button.on { background: var(--active); color: var(--text); }
 .dps-table .dim-name { color: var(--muted); font-weight: 400; }
+.dps-table .prow.heal { background-image: linear-gradient(90deg, color-mix(in srgb, var(--positive) 16%, transparent) calc(var(--p) * 100%), transparent 0); }
+.dps-table .prow.taken { background-image: linear-gradient(90deg, color-mix(in srgb, var(--negative) 16%, transparent) calc(var(--p) * 100%), transparent 0); }
+.dps-table .prow.taken { cursor: default; }
+.ov-rows li.heal { background: linear-gradient(90deg, color-mix(in srgb, var(--positive) 24%, transparent) calc(var(--p) * 100%), var(--surface) 0); }
+.ov-rows li.taken { background: linear-gradient(90deg, color-mix(in srgb, var(--negative) 24%, transparent) calc(var(--p) * 100%), var(--surface) 0); }
+.ov-view { display: block; margin: 4px 0 0; color: var(--faint); font-size: 11px; }

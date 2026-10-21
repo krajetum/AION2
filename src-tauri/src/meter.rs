@@ -77,6 +77,14 @@ pub fn meter_party_only(app: AppHandle, on: bool) {
     }
 }
 
+/// What the rows are ranked by: "damage" | "healing" | "taken". The overlay follows it.
+#[tauri::command]
+pub fn meter_view(app: AppHandle, view: String) {
+    if let Some(e) = engine(&app) {
+        e.set_view(&view);
+    }
+}
+
 /// The players whose skill breakdown is open: only they get per-skill details in the updates.
 #[tauri::command]
 pub fn meter_watch(app: AppHandle, ids: Vec<i32>) {

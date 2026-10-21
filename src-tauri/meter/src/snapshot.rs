@@ -67,7 +67,12 @@ pub struct PlayerRow {
     pub in_party: bool,
     /// Everyone outside your party on an open-world boss, from the HP it lost.
     pub is_others: bool,
+    /// Damage this player took from the fight's monsters, and in how many hits.
+    pub damage_taken: i64,
+    pub hits_taken: i32,
     pub skills: Vec<SkillRow>,
+    /// Healing per skill (`damage` = amount healed, `hits` = ticks), for rows opened in the healing view.
+    pub heal_skills: Vec<SkillRow>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -113,7 +118,10 @@ impl Fight {
                     is_you: d.local_player_id == Some(id as i64),
                     in_party: d.local_player_id == Some(id as i64),
                     is_others: p.is_others,
+                    damage_taken: 0,
+                    hits_taken: 0,
                     skills: Vec::new(),
+                    heal_skills: Vec::new(),
                 }
             })
             .collect();
@@ -148,33 +156,56 @@ impl Fight {
     /// Fills the skill breakdown of the rows named in `entries` (the calculator's per-skill details,
     /// one list per target): summed per skill over the targets, biggest first, top `TOP_SKILLS`.
     pub fn attach_skills(&mut self, entries: &[DetailSkillEntry]) {
-        let mut by: HashMap<(i32, i32, bool), (String, i64, i32, i32)> = HashMap::new();
-        for e in entries {
-            let v = by.entry((e.actor_id, e.code, e.is_dot)).or_insert_with(|| (e.name.clone(), 0, 0, 0));
-            v.1 += e.dmg as i64;
-            v.2 += e.time;
-            v.3 += e.crit;
-        }
         for row in &mut self.rows {
-            let mut skills: Vec<SkillRow> = by
-                .iter()
-                .filter(|((actor, _, _), v)| *actor == row.id && v.1 > 0)
-                .map(|(&(_, code, dot), (name, dmg, hits, crit))| SkillRow {
-                    name: if name.is_empty() { format!("#{code}") } else { name.clone() },
-                    damage: *dmg,
-                    hits: *hits,
-                    crit_rate: if *hits > 0 && !dot { *crit as f64 / *hits as f64 } else { 0.0 },
-                    share: if row.damage > 0.0 { *dmg as f64 / row.damage } else { 0.0 },
-                    dot,
-                })
-                .collect();
-            skills.sort_by(|a, b| b.damage.cmp(&a.damage).then_with(|| a.name.cmp(&b.name)));
-            skills.truncate(TOP_SKILLS);
+            let skills = sum_skills(entries, row.id, row.damage);
             if !skills.is_empty() {
                 row.skills = skills;
             }
         }
     }
+
+    /// The same for healing (`heal_skills` of the details: `dmg` = amount healed, `time` = ticks).
+    pub fn attach_heal_skills(&mut self, entries: &[DetailSkillEntry]) {
+        for row in &mut self.rows {
+            let skills = sum_skills(entries, row.id, row.heal);
+            if !skills.is_empty() {
+                row.heal_skills = skills;
+            }
+        }
+    }
+
+    /// Adds damage a player took in one fight (`actor` = row id), from the fight's combat data.
+    pub fn add_taken(&mut self, actor: i32, damage: i64, hits: i32) {
+        if let Some(r) = self.rows.iter_mut().find(|r| r.id == actor) {
+            r.damage_taken += damage;
+            r.hits_taken += hits;
+        }
+    }
+}
+
+fn sum_skills(entries: &[DetailSkillEntry], actor: i32, total: f64) -> Vec<SkillRow> {
+    let mut by: HashMap<(i32, bool), (String, i64, i32, i32)> = HashMap::new();
+    for e in entries.iter().filter(|e| e.actor_id == actor) {
+        let v = by.entry((e.code, e.is_dot)).or_insert_with(|| (e.name.clone(), 0, 0, 0));
+        v.1 += e.dmg as i64;
+        v.2 += e.time;
+        v.3 += e.crit;
+    }
+    let mut skills: Vec<SkillRow> = by
+        .into_iter()
+        .filter(|(_, v)| v.1 > 0)
+        .map(|((code, dot), (name, amount, hits, crit))| SkillRow {
+            name: if name.is_empty() { format!("#{code}") } else { name },
+            damage: amount,
+            hits,
+            crit_rate: if hits > 0 && !dot { crit as f64 / hits as f64 } else { 0.0 },
+            share: if total > 0.0 { amount as f64 / total } else { 0.0 },
+            dot,
+        })
+        .collect();
+    skills.sort_by(|a, b| b.damage.cmp(&a.damage).then_with(|| a.name.cmp(&b.name)));
+    skills.truncate(TOP_SKILLS);
+    skills
 }
 
 #[cfg(test)]
@@ -243,6 +274,22 @@ mod tests {
         f.keep_party();
         let rows: Vec<_> = f.rows.iter().map(|r| (r.id, r.share)).collect();
         assert_eq!(rows, [(8, 62.5), (7, 37.5)]);
+    }
+
+    #[test]
+    fn healing_skills_and_damage_taken() {
+        let mut d = dps();
+        d.map.get_mut(&7).unwrap().heal_amount = 400.0;
+        let mut f = Fight::from_dps(&d);
+        f.attach_heal_skills(&[entry(7, 5, "Recovery", 300, 3, 0, false), entry(7, 6, "Regen", 100, 10, 0, true)]);
+        let me = f.rows.iter().find(|r| r.id == 7).unwrap();
+        assert_eq!(me.heal_skills.iter().map(|s| (s.name.as_str(), s.damage)).collect::<Vec<_>>(), [("Recovery", 300), ("Regen", 100)]);
+        assert!(me.skills.is_empty());
+        f.add_taken(7, 900, 3);
+        f.add_taken(7, 100, 1);
+        f.add_taken(42, 5, 1); // not a row
+        let me = f.rows.iter().find(|r| r.id == 7).unwrap();
+        assert_eq!((me.damage_taken, me.hits_taken), (1000, 4));
     }
 
     #[test]

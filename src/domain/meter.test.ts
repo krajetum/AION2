@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clock, hpLeft, short } from "./meter.ts";
+import { clock, hpLeft, short, viewRows, type Fight, type PlayerRow } from "./meter.ts";
 
 test("short numbers", () => {
   assert.equal(short(950), "950");
@@ -23,4 +23,24 @@ test("HP left: live HP wins, else max minus damage, clamped", () => {
   assert.equal(hpLeft({ ...t, currentHp: 100 }), 0.1);
   assert.equal(hpLeft({ ...t, damageDealt: 5000 }), 0);
   assert.equal(hpLeft({ ...t, maxHp: 0 }), undefined);
+});
+
+const row = (id: number, damage: number, heal: number, damageTaken: number): PlayerRow => ({
+  id, name: "", job: "", dps: damage / 10, damage, share: 0, hps: heal / 10, heal, combatPower: 0, gearScore: 0,
+  isYou: false, inParty: false, isOthers: false, damageTaken, hitsTaken: 0, skills: [], healSkills: [],
+});
+const fight: Fight = { target: null, targetMode: "bossTargets", battleTimeMs: 10_000, rows: [row(1, 300, 0, 50), row(2, 100, 900, 0), row(3, 0, 100, 150)] };
+
+test("healing view: only healers, ranked by healing, shares of the healing", () => {
+  const v = viewRows(fight, "healing");
+  assert.deepEqual(v.map((x) => [x.row.id, x.value, x.perSec, x.share]), [[2, 900, 90, 90], [3, 100, 10, 10]]);
+});
+
+test("damage taken view: per second over the fight", () => {
+  const v = viewRows(fight, "taken");
+  assert.deepEqual(v.map((x) => [x.row.id, x.value, x.perSec, x.share]), [[3, 150, 15, 75], [1, 50, 5, 25]]);
+});
+
+test("damage view keeps the engine's share", () => {
+  assert.deepEqual(viewRows(fight, "damage").map((x) => x.row.id), [1, 2]);
 });

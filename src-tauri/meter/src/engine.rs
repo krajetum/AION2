@@ -54,6 +54,8 @@ pub struct Update {
     pub paused: bool,
     /// Only you and your party (else everyone who hit the target).
     pub party_only: bool,
+    /// "damage" | "healing" | "taken": what the rows are ranked by (the overlay follows it too).
+    pub view: String,
     pub fight: Fight,
 }
 
@@ -64,6 +66,7 @@ pub struct Engine {
     ping: Arc<PingTracker>,
     paused: Arc<AtomicBool>,
     party_only: AtomicBool,
+    view: Mutex<String>,
     /// Rows whose skill breakdown is open in the UI: only these get per-skill details.
     watched: Mutex<Vec<i32>>,
     capturer: Option<PcapCapturer>,
@@ -114,6 +117,7 @@ impl Engine {
             ping,
             paused,
             party_only: AtomicBool::new(false),
+            view: Mutex::new("damage".into()),
             watched: Mutex::new(Vec::new()),
             capturer, capture_error, game: Mutex::new((i64::MIN, false)) })
     }
@@ -129,6 +133,7 @@ impl Engine {
 
     pub fn update(&self) -> Update {
         let party_only = self.party_only.load(Ordering::Relaxed);
+        let view = self.view.lock().clone();
         let fight = {
             let mut calc = self.calc.lock();
             let dps = calc.get_dps();
@@ -137,15 +142,32 @@ impl Engine {
             if party_only {
                 fight.keep_party();
             }
-            // Per-skill details, A2Tools' hover summary, for the rows opened in the UI.
+            let mut targets = dps.detail_target_ids.clone();
+            if targets.is_empty() && dps.target_id != 0 {
+                targets.push(dps.target_id);
+            }
+            targets.truncate(64);
+            // Damage taken: what the fight's monsters did to each player, kept per fight.
+            for &t in &targets {
+                if let Some(td) = self.storage.get_target_snapshot_light(t) {
+                    for (&actor, ad) in &td.actors {
+                        if ad.damage_received > 0 {
+                            fight.add_taken(actor, ad.damage_received, ad.hits_received);
+                        }
+                    }
+                }
+            }
+            // Per-skill details for the rows opened in the UI: A2Tools' hover summary for damage;
+            // healing per skill is only in the full details.
             let watched: Vec<i32> = self.watched.lock().iter().copied().filter(|id| fight.rows.iter().any(|r| r.id == *id)).collect();
             if !watched.is_empty() {
-                let mut targets = dps.detail_target_ids.clone();
-                if targets.is_empty() && dps.target_id != 0 {
-                    targets.push(dps.target_id);
+                if view == "healing" {
+                    let entries: Vec<_> = targets.iter().flat_map(|&t| calc.get_target_details(t, Some(&watched)).heal_skills).collect();
+                    fight.attach_heal_skills(&entries);
+                } else {
+                    let entries: Vec<_> = targets.iter().flat_map(|&t| calc.get_hover_details(t, Some(&watched)).skills).collect();
+                    fight.attach_skills(&entries);
                 }
-                let entries: Vec<_> = targets.iter().take(64).flat_map(|&t| calc.get_hover_details(t, Some(&watched)).skills).collect();
-                fight.attach_skills(&entries);
             }
             fight
         };
@@ -164,6 +186,7 @@ impl Engine {
             ping_ms: port.and(self.ping.current_ping_ms()),
             paused: self.paused.load(Ordering::Relaxed),
             party_only,
+            view,
             fight,
         }
     }
@@ -183,6 +206,13 @@ impl Engine {
     /// Show only you and your party, or everyone who hit the target.
     pub fn set_party_only(&self, on: bool) {
         self.party_only.store(on, Ordering::Relaxed);
+    }
+
+    /// "damage" | "healing" | "taken"
+    pub fn set_view(&self, view: &str) {
+        if matches!(view, "damage" | "healing" | "taken") {
+            *self.view.lock() = view.to_string();
+        }
     }
 
     /// The rows whose per-skill breakdown the UI shows.
