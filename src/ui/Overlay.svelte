@@ -3,6 +3,7 @@
   // view of the current fight. Drag it by the header; it never takes the focus from the game.
   import { classColor, clock, displayName, hpLeft, short, STATUS_TEXT, viewRows, type MeterUpdate } from "../domain/meter.ts";
   import { meterOverlayHide, meterReset, onMeter } from "../infra/meter.ts";
+  import { classIcon } from "./classes.ts";
   import { ICON } from "./icons.ts";
 
   let u = $state<MeterUpdate | undefined>();
@@ -24,5 +25,5 @@
 {#if u && u.view !== "damage"}<small class="ov-view">{u.view === "healing" ? "Healing" : "Damage taken"}</small>{/if}
 <ol class="ov-rows">{#each rows as { row: r, perSec, share } (r.id)}
   <li class:you={r.isYou} class:heal={u?.view === "healing"} class:taken={u?.view === "taken"} style:--p={String(Math.min(1, perSec / (rows[0].perSec || 1)))} style:--cls={classColor(r.job) || null}>
-    <span class="name">{displayName(r)}</span><span class="num">{short(perSec)}/s</span><span class="num dim">{share.toFixed(0)}%</span></li>
+    <span class="name">{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt="" width="16" height="17">{/if}{displayName(r)}</span><span class="num">{short(perSec)}/s</span><span class="num dim">{share.toFixed(0)}%</span></li>
 {/each}</ol>

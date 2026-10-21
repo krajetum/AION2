@@ -396,7 +396,10 @@ body.overlay .status, body.overlay .react { display: none; }
 /* ---------- class colors and skill icons ---------- */
 /* --cls is the row's class color (domain/meter.ts CLASS_COLORS); damage bars take it, healing/taken keep theirs. */
 .dps-table .prow:not(.heal):not(.taken) { background-image: linear-gradient(90deg, color-mix(in srgb, var(--cls, var(--accent)) 22%, transparent) calc(var(--p) * 100%), transparent 0); }
-.cls-dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--cls, var(--faint)); vertical-align: 1px; }
+.cls-icon { display: inline-block; width: 22px; height: 23px; margin-right: 8px; vertical-align: middle; object-fit: contain; }
+.cls-icon.none { width: 22px; }
+.dps-table td:has(> .cls-icon) { white-space: nowrap; }
+.ov-rows .cls-icon { width: 16px; height: 17px; margin-right: 6px; vertical-align: -3px; }
 .ov-rows li:not(.heal):not(.taken) { background: linear-gradient(90deg, color-mix(in srgb, var(--cls, var(--accent)) 30%, transparent) calc(var(--p) * 100%), color-mix(in srgb, var(--surface) var(--ov-alpha, 90%), transparent) 0); }
 .ov-rows li { border-left: 3px solid var(--cls, transparent); }
 .skill-name { display: flex; align-items: center; gap: 8px; }
