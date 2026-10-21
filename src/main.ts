@@ -9,6 +9,8 @@ import { loadData } from "./infra/storage.ts";
 import { findUpdate, getAutostart, isDesktop, onTrayMute } from "./infra/system.ts";
 import { act, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
+import Overlay from "./ui/Overlay.svelte";
+import { onOverlay } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { ui } from "./ui/state.svelte.ts";
 
@@ -25,6 +27,7 @@ async function main() {
   app.textContent = "";
   mount(App, { target: app });
 
+  if (isDesktop()) await onOverlay((open) => { ui.overlay = open; });
   if (isDesktop()) await onTrayMute(() => act(() => muteForAnHour(ui.data, Date.now())));
 
   if (isDesktop()) checkUpdate();
@@ -51,4 +54,12 @@ async function checkUpdate() {
   } catch (e) { console.warn("Update check failed", e); }
 }
 
-main().catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });
+// The DPS overlay window loads this page too (index.html#overlay): it shows the meter only, without the
+// save file, resets or notifications, which stay with the main window.
+function overlay() {
+  document.body.classList.add("overlay");
+  app.textContent = "";
+  mount(Overlay, { target: app });
+}
+
+(location.hash === "#overlay" ? Promise.resolve(overlay()) : main()).catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });

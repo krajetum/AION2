@@ -1,0 +1,30 @@
+[package]
+name = "aion2-meter"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+description = "AION 2 Companion DPS meter core (vendored from A2Tools DPS Meter, GPL-3.0)"
+publish = false
+
+[features]
+default = ["live"]
+# Live capture: loads Npcap/libpcap at runtime, finds the game window, runs the capture threads.
+# The parser and aggregation build without it (tests, replays).
+live = ["dep:libloading", "dep:tokio", "dep:windows"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+lz4_flex = "0.11"
+parking_lot = "0.12"
+tracing = "0.1"
+libloading = { version = "0.8", optional = true }
+tokio = { version = "1", features = ["sync", "rt", "macros", "time"], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.59", optional = true, features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_Threading",
+    "Win32_System_LibraryLoader",
+] }

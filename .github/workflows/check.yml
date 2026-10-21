@@ -1,0 +1,30 @@
+# On every push and pull request: JS tests + type-check, and on Windows (where the app ships)
+# the DPS meter parser tests and a type-check of the whole Rust app.
+name: check
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit
+      - run: npm run check
+      - run: npm run build
+      - run: cargo test -p aion2-meter
+        working-directory: src-tauri
+      - run: cargo check
+        working-directory: src-tauri
