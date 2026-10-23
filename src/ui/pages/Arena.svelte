@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { classIcon } from "../classes.ts";
   import { labelMap } from "../../app/arena.ts";
   import { matchTotals } from "../../domain/arena.ts";
   import { clock, short, type ArenaMatch } from "../../domain/meter.ts";
@@ -33,7 +34,7 @@
           <th class="n">Dealt</th><th class="n">Taken</th><th class="n">Deaths</th></tr></thead>
         <tbody>{#each m.players as p (p.id)}<tr class="prow {p.side}" class:you={p.side === "you"} style:--p="0">
           <td><span class="name">{p.name || (p.side === "you" ? "You" : `#${p.id}`)}</span><small>{p.side}</small></td>
-          <td>{p.job || "—"}</td><td class="n">{p.serverId || "—"}</td><td class="n">{gear(p.level)}</td><td class="n">{gear(p.gearScore)}</td>
+          <td class="cls">{#if classIcon(p.job)}<img class="cls-icon" src={classIcon(p.job)} alt="" width="22" height="23">{/if}{p.job || "—"}</td><td class="n">{p.serverId || "—"}</td><td class="n">{gear(p.level)}</td><td class="n">{gear(p.gearScore)}</td>
           <td class="n">{gear(p.combatPower, short)}</td><td class="n">{short(p.dealt)}</td><td class="n">{short(p.taken)}</td><td class="n">{p.deaths}</td></tr>{/each}</tbody>
       </table></td></tr>{/if}
   {/each}</tbody></table></div><p class="hint">Deaths: your side : theirs. Click a match for its players.</p></section>{/if}

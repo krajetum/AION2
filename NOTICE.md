@@ -11,6 +11,9 @@ It is distributed WITHOUT ANY WARRANTY; see `LICENSE` for the full text.
 - **DPS meter core** (`src-tauri/meter/`): from A2Tools DPS Meter by taengu,
   https://github.com/taengu/a2tools-dps-meter, GPL-3.0. Origin and changes: `src-tauri/meter/NOTICE.md`.
 
+- **Class emblems** (`src/ui/classes/*.png`): from A2Tools DPS Meter (`public/assets/`, GPL-3.0 repository),
+  renamed to the English class names. The art itself is the game's (NCSOFT).
+
 ## Not affiliated with NCSOFT
 
 AION is a trademark of NCSOFT Corporation. This is an unofficial fan project. The DPS meter reads a

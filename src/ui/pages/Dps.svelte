@@ -4,6 +4,7 @@
   import { meterOverlay, meterPartyOnly, meterPause, meterReconnect, meterReset, meterTargetMode, meterView, meterWatch, onMeter } from "../../infra/meter.ts";
   import { isDesktop } from "../../infra/system.ts";
   import { act } from "../actions.ts";
+  import { classIcon } from "../classes.ts";
   import { showStatus } from "../overlays.ts";
   import { ui } from "../state.svelte.ts";
 
@@ -79,7 +80,7 @@
           style:--cls={classColor(r.job) || null}
           aria-expanded={view !== "taken" && open.has(r.id)} onclick={() => view !== "taken" && toggle(r.id)}>
           <td class="n rank">{i + 1}</td>
-          <td><span class="cls-dot" aria-hidden="true"></span><span class="name" class:dim-name={!r.name}>{displayName(r)}</span>{#if r.job || (r.inParty && !r.isYou)}<small>{[r.job, r.inParty && !r.isYou && !u.partyOnly ? "party" : ""].filter(Boolean).join(" · ")}</small>{/if}{#if r.combatPower} <small class="dim">CP {short(r.combatPower)}</small>{/if}</td>
+          <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{:else}<span class="cls-icon none" aria-hidden="true"></span>{/if}<span class="name" class:dim-name={!r.name}>{displayName(r)}</span>{#if r.job || (r.inParty && !r.isYou)}<small>{[r.job, r.inParty && !r.isYou && !u.partyOnly ? "party" : ""].filter(Boolean).join(" · ")}</small>{/if}{#if r.combatPower} <small class="dim">CP {short(r.combatPower)}</small>{/if}</td>
           <td class="n">{short(perSec)}/s</td><td class="n">{short(value)}</td>
           <td class="n">{view === "taken" ? r.hitsTaken : share.toFixed(1) + "%"}</td></tr>
         {#if view !== "taken" && open.has(r.id)}{@const list = view === "healing" ? r.healSkills : r.skills}<tr class="skills"><td colspan="5"><table class="sheet">

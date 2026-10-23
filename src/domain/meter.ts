@@ -9,10 +9,11 @@ export interface SkillRow {
 /** Where the official skill icons are: NCSOFT's game-data CDN, as A2Tools loads them (plain <img>, no CORS needed). */
 export const skillIconUrl = (icon: string) => `https://assets.playnccdn.com/static-aion2-gamedata/resources/${icon}.png`;
 
-/** A color per class (English names, as the engine sends them); the meter's default for the rest. */
+/** A color per class (English names, as the engine sends them): each class emblem's own color
+ *  (src/ui/classes/*.png), a little lighter so bars stay readable on the dark theme. */
 export const CLASS_COLORS: Record<string, string> = {
-  Gladiator: "#e0794a", Templar: "#d9b45a", Assassin: "#b05ad6", Ranger: "#6cbf5a", Sorcerer: "#5a8ee0",
-  Spiritmaster: "#4fc2c2", Cleric: "#f0e6a8", Chanter: "#e05a8e", Brawler: "#c0763a",
+  Gladiator: "#5fb3c8", Templar: "#6a8ee6", Assassin: "#5aae46", Ranger: "#3fa57a", Sorcerer: "#9a6ae0",
+  Spiritmaster: "#c055c2", Cleric: "#d8b45a", Chanter: "#e09a48", Brawler: "#d24360",
 };
 export const classColor = (job: string) => CLASS_COLORS[job] ?? "";
 export interface PlayerRow {
