@@ -3,8 +3,8 @@ import { SvelteSet } from "svelte/reactivity";
 import type { MeterUpdate } from "../domain/meter.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
-export type Tab = Cadence | "plan" | "season" | "bosses" | "dps" | "arena" | "news" | "settings";
-export const TABS: Tab[] = [...CADENCES, "plan", "season", "bosses", "dps", "arena", "news", "settings"];
+export type Tab = Cadence | "plan" | "season" | "bosses" | "map" | "dps" | "arena" | "news" | "settings";
+export const TABS: Tab[] = [...CADENCES, "plan", "season", "bosses", "map", "dps", "arena", "news", "settings"];
 export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "daily"; };
 
 export const ui = $state({

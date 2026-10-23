@@ -413,3 +413,29 @@ body.overlay .status, body.overlay .react { display: none; }
 .ev-rows li.soon .num:first-of-type { color: var(--accent); font-weight: 600; }
 .ev-rows .dim { color: var(--faint); }
 .ev-rows .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Map page */
+.map-page { padding: 14px; }
+.map-tools, .map-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.map-foot { padding-top: 10px; }
+.map-foot .hint { margin: 0; }
+.grow { flex: 1; }
+.swatches { display: inline-flex; gap: 6px; padding: 8px 0; }
+.swatch { width: 22px; height: 22px; min-width: 0; padding: 0; border-radius: 50%; background: var(--c); border: 2px solid transparent; }
+.swatch.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--surface) inset; }
+.map-view { position: relative; overflow: hidden; height: max(420px, calc(100vh - 330px)); margin-top: 10px; border-radius: var(--r-md);
+  background: #1d2a30; cursor: grab; touch-action: none; user-select: none; }
+.map-view:active { cursor: grabbing; }
+.map-view.adding { cursor: crosshair; }
+.map-view img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; }
+.mark { position: absolute; width: 14px; height: 14px; min-width: 0; padding: 0; margin: -7px 0 0 -7px; border-radius: 50%;
+  background: var(--c); border: 2px solid #111; box-shadow: 0 0 0 1px rgba(255, 255, 255, .5); cursor: pointer; }
+.mark.ref { border-radius: 2px; transform: rotate(45deg); background: #fff; border-color: var(--c); }
+.mark.cluster { width: 26px; height: 26px; margin: -13px 0 0 -13px; font-size: 11px; font-weight: 700; color: #111; line-height: 22px; }
+.mark.sel { box-shadow: 0 0 0 3px var(--accent); }
+.map-panel { position: absolute; top: 12px; right: 12px; width: min(340px, calc(100% - 24px)); padding: 14px 16px; cursor: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.map-panel h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.map-panel h2 .count { margin-left: auto; }
+.map-panel .setting { flex-wrap: wrap; gap: 8px; }
+.map-panel .ctl input { width: 90px; }

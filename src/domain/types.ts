@@ -1,4 +1,5 @@
 import type { ArenaLog } from "./arena.ts";
+import type { MapData } from "./map.ts";
 import type { BossTimer } from "./meter.ts";
 
 export type Cadence = "daily" | "weekly" | "monthly";
@@ -85,6 +86,7 @@ export interface AppData {
   bosses: BossTimer[];                // field bosses from the maps last opened in game (src/domain/bosses.ts)
   bossAlerts: Record<string, BossAlert>; // world-map boss id → its respawn alert
   arena: ArenaLog;                    // arena matchup log (src/domain/arena.ts)
+  map: MapData;                       // points on the player's own map image (src/domain/map.ts); the image stays out
   plan?: ActivePlan;
   undo: UndoEntry[]; // newest last, max 30 (src/undo.ts)
   settings: Settings;
