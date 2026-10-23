@@ -68,8 +68,14 @@ export async function fitOverlayHeight(px: number) {
   const { getCurrentWindow, LogicalSize } = await import("@tauri-apps/api/window");
   await getCurrentWindow().setSize(new LogicalSize(window.innerWidth, h)).catch((e) => console.warn("Overlay resize failed", e));
 }
+/** Sets this overlay window's size (desktop only): the cube popup grows for its "cube opened" picture. */
+export async function sizeOverlay(w: number, h: number) {
+  if (!isTauri()) return;
+  const { getCurrentWindow, LogicalSize } = await import("@tauri-apps/api/window");
+  await getCurrentWindow().setSize(new LogicalSize(Math.round(w), Math.round(h))).catch((e) => console.warn("Overlay resize failed", e));
+}
 /** The "hidden cube nearby" popup on or off (desktop only): it shows while a known cube is in view. */
-export const cubePopup = (show: boolean) => (isTauri() ? invoke<void>("cube_popup", { show }) : Promise.resolve());
+export const cubePopup = (show: boolean, scale = 1) => (isTauri() ? invoke<void>("cube_popup", { show, scale }) : Promise.resolve());
 /** Hands the engine the cube codes learned in earlier sessions. */
 export const meterCubeCodes = (codes: number[]) => (isTauri() ? invoke<void>("meter_cube_codes", { codes }) : Promise.resolve());
 /** The event overlay was turned on or off (also from the overlay itself). */
@@ -99,6 +105,7 @@ const DEMO_BOSSES: BossTimer[] = [
   { mapId: 1, bossId: 101006, name: "Demo boss: Bodyguard Teegant", up: false, timeMs: DEMO_SEEN + 7 * 60_000, seenMs: DEMO_SEEN },
   { mapId: 1, bossId: 101001, name: "Demo boss: Neikel of the East", up: false, timeMs: DEMO_SEEN + 52 * 60_000, seenMs: DEMO_SEEN },
   { mapId: 1, bossId: 101003, name: "Demo boss: Kernon of the West", up: true, timeMs: DEMO_SEEN - 20 * 60_000, seenMs: DEMO_SEEN },
+  { mapId: 2, bossId: 2003, name: "Boss 2003", up: false, timeMs: DEMO_SEEN + 7 * 60_000, seenMs: DEMO_SEEN }, // a boss the game data doesn't name
 ];
 const demoPlayer = (id: number, name: string, side: "you" | "ally" | "opponent", job: string, dealt: number, taken: number, deaths: number, gs: number | null) =>
   ({ id, name, side, job, serverId: 1304, dealt, taken, hits: Math.round(dealt / 4000), deaths, level: gs && 45, gearScore: gs, combatPower: gs && gs * 25 });
@@ -134,10 +141,19 @@ function demoUpdate(): MeterUpdate {
     profile: { name: "Demo Alt", serverId: 1304, job: "Gladiator", level: 45, gearScore: 2040, combatPower: 51_000 }, arena: DEMO_MATCH,
     // Near Safe Haven, walking slowly; as if read 2 s ago.
     position: { x: -82550 + 40 * Math.sin(t / 20_000) * 100, y: -130802 - (t / 1000) * 30, z: 34431, mapId: 1110, atMs: Date.now() - 2000 },
-    // A demo cube 40 m north-east of the demo position.
-    cubes: { live: [{ entity: 1, code: 1301199, x: -79700, y: -133600 - (t / 1000) * 30, z: 34431, seenMs: demo.start }], opened: [], codes: [1301199] },
+    // A demo cube 40 m north-east of the demo position: in view for 15 s, then opened (by you, then by
+    // someone else, in turns), every 20 s.
+    cubes: demoCubes(t),
     fight: { target: { name: "Demo Boss", isBoss: true, maxHp: 40_000_000, currentHp: -1, damageDealt: total }, targetMode: demo.mode, battleTimeMs: t, rows },
   };
+}
+
+function demoCubes(t: number) {
+  const round = Math.floor(t / 20_000), entity = round + 1;
+  const at = { x: -79700, y: -133600 - (t / 1000) * 30, z: 34431 };
+  return t % 20_000 < 15_000
+    ? { live: [{ entity, code: 1301199, ...at, seenMs: demo.start + round * 20_000 }], opened: [], codes: [1301199] }
+    : { live: [], opened: [{ code: 1301199, ...at, byYou: round % 2 === 0, atMs: demo.start + round * 20_000 + 15_000 }], codes: [1301199] };
 }
 
 function startDemo() {

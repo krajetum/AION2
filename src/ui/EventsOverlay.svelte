@@ -14,17 +14,20 @@
   let now = $state(Date.now());
   $effect(() => { const t = setInterval(() => (now = Date.now()), 1000); return () => clearInterval(t); });
   // Bosses: the saved ones (maps read in earlier sessions), then every map the meter reads now.
-  let saved = $state<BossTimer[]>([]), live = $state<BossTimer[]>([]);
-  $effect(() => { loadData().then((d) => { saved = d.bosses; }).catch(() => {}); });
+  let saved = $state<BossTimer[]>([]), live = $state<BossTimer[]>([]), names = $state<Record<string, string>>({});
+  // The save file again every 30 s: names given in the main window show here too.
+  const reload = () => loadData().then((d) => { saved = d.bosses; names = d.bossNames; }).catch(() => {});
+  $effect(() => { reload(); const t = setInterval(reload, 30_000); return () => clearInterval(t); });
   $effect(() => onMeter((u) => { live = u.bosses ?? []; }));
-  const wave = $derived(nextBossWave(mergeBosses(saved, live) ?? saved, now));
+  const wave = $derived(nextBossWave(mergeBosses(saved, live) ?? saved, now, names));
 
   // The window grows and shrinks with its rows, so every boss of a big wave shows (10, 20, ...).
   let box = $state<HTMLDivElement>();
   $effect(() => {
     const el = box;
     if (!el) return;
-    const ro = new ResizeObserver(() => fitOverlayHeight(el.offsetHeight + 8)); // + #app's bottom padding
+    // Its bottom on the page, plus the last row's margin and #app's bottom padding.
+    const ro = new ResizeObserver(() => fitOverlayHeight(el.getBoundingClientRect().bottom + 12));
     ro.observe(el);
     return () => ro.disconnect();
   });

@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bossBoard, bossesByMap, bossKey, bossState, dueBossAlerts, mergeBosses, nextBossWave } from "./bosses.ts";
+import { bossBoard, bossesByMap, bossKey, bossLabel, bossState, dueBossAlerts, isUnnamed, mergeBosses, nextBossWave } from "./bosses.ts";
 import type { BossAlert } from "./types.ts";
 
 const MIN = 60_000;
@@ -76,4 +76,13 @@ test("next boss wave: every boss due in the same minute, only those", () => {
   assert.deepEqual(wave, { timeMs: Date.parse("2026-10-23T14:30:10Z"), names: ["Alpha", "Zeta"] });
   assert.deepEqual(nextBossWave([b(3, "Later", "2026-10-23T14:31:00Z")], now).names, ["Later"]);
   assert.deepEqual(nextBossWave([b(4, "Up now", "2026-10-23T13:00:00Z", true)], now), { timeMs: 0, names: [] });
+});
+
+test("boss names: the player's, the game's, or Unknown boss", () => {
+  const b = (bossId: number, name: string) => ({ mapId: 1, bossId, name, up: false, timeMs: 0, seenMs: 0 });
+  assert.equal(bossLabel(b(101006, "Bodyguard Teegant")), "Bodyguard Teegant");
+  assert.equal(bossLabel(b(2003, "Boss 2003")), "Unknown boss #2003");
+  assert.equal(bossLabel(b(2003, "")), "Unknown boss #2003");
+  assert.equal(bossLabel(b(2003, "Boss 2003"), { 2003: "Abyss Lord" }), "Abyss Lord");
+  assert.ok(isUnnamed("Boss 2004") && !isUnnamed("Argo, the Spirit King"));
 });

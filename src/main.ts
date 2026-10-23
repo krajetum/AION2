@@ -40,7 +40,7 @@ async function main() {
     await onEventsOverlay((on) => { if (ui.data.settings.eventsOverlay !== on) act(() => { ui.data.settings.eventsOverlay = on; }); });
     if (data.settings.eventsOverlay) await eventsOverlay(true).catch(() => {});
     await meterCubeCodes(data.map.cubeCodes).catch(() => {});
-    if (data.settings.cubePopup) await cubePopup(true).catch(() => {});
+    if (data.settings.cubePopup) await cubePopup(true, data.settings.cubePopupSize).catch(() => {});
   }
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
   onMeter((u) => {

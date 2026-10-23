@@ -49,6 +49,7 @@ export interface Settings {
   overlayOpacity: number;     // overlays' background opacity, 20..100 %
   eventsOverlay: boolean;     // small always-on-top window with the event countdowns
   cubePopup: boolean;         // small always-on-top popup while a hidden cube is in view
+  cubePopupSize: number;      // its scale, 1 = 260 × 96 px
 }
 
 /** One undo step: the progress of each touched task before the change (null = it had none). */
@@ -86,6 +87,7 @@ export interface AppData {
   season: Record<string, SeasonProgress>; // charId → season progress
   bosses: BossTimer[];                // field bosses from the maps last opened in game (src/domain/bosses.ts)
   bossAlerts: Record<string, BossAlert>; // world-map boss id → its respawn alert
+  bossNames: Record<string, string>;     // world-map boss id → the player's name for a boss the game data doesn't name
   arena: ArenaLog;                    // arena matchup log (src/domain/arena.ts)
   map: MapData;                       // points on the player's own map image (src/domain/map.ts); the image stays out
   plan?: ActivePlan;

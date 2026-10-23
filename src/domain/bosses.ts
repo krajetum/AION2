@@ -64,13 +64,21 @@ export function dueBossAlerts(bosses: BossTimer[], alerts: Record<string, BossAl
   }
   return out;
 }
+/** The meter has no name for some bosses (the Abyss's 2002-2005: not in A2Tools' tables) and sends
+ *  "Boss <id>" or nothing; older saves keep that text. */
+export const isUnnamed = (name: string) => !name.trim() || /^Boss \d+$/.test(name.trim());
+
+/** A boss's name: the player's own for it, the game's, or "Unknown boss #id". */
+export const bossLabel = (b: BossTimer, names: Record<string, string> = {}) =>
+  names[b.bossId] || (isUnnamed(b.name) ? `Unknown boss #${b.bossId}` : b.name);
+
 /** The next field-boss respawn (events overlay): every boss due in that same minute, by name.
  *  Empty when no respawn time is ahead. */
-export function nextBossWave(bosses: BossTimer[], now: number): { timeMs: number; names: string[] } {
+export function nextBossWave(bosses: BossTimer[], now: number, names: Record<string, string> = {}): { timeMs: number; names: string[] } {
   const due = bosses.filter((b) => bossState(b, now) === "due");
   if (!due.length) return { timeMs: 0, names: [] };
   const minute = (t: number) => Math.floor(t / 60_000);
   const first = Math.min(...due.map((b) => b.timeMs));
   const wave = due.filter((b) => minute(b.timeMs) === minute(first));
-  return { timeMs: first, names: [...new Set(wave.map((b) => b.name))].sort((a, b) => a.localeCompare(b, "en", { numeric: true })) };
+  return { timeMs: first, names: [...new Set(wave.map((b) => bossLabel(b, names)))].sort((a, b) => a.localeCompare(b, "en", { numeric: true })) };
 }

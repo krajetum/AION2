@@ -4,7 +4,7 @@
   import { seasonOf } from "../app/season.ts";
   import { addCharacter } from "../app/characters.ts";
   import { unmute } from "../app/settings.ts";
-  import { bossBoard } from "../domain/bosses.ts";
+  import { bossBoard, bossLabel } from "../domain/bosses.ts";
   import { sameName } from "../domain/meter.ts";
   import { isImportant } from "../domain/news.ts";
   import { emptySeason, seasonSummary } from "../domain/season.ts";
@@ -91,7 +91,7 @@
   {#each EVENTS as ev}<div class="timer event"><small>{ev.name}</small><span>{formatCountdown(nextEvent(ev, ui.now, C.timeZone) - ui.now)}</span></div>{/each}
 </div>
 {#if bosses.length}<div class="timers bosses" title="From the maps you opened in game: open the map again to refresh">
-  {#each bosses as b (b.mapId + ":" + b.bossId)}<div class="timer event" class:soon={!b.up && b.timeMs - ui.now < 600_000}><small>{b.name}</small>
+  {#each bosses as b (b.mapId + ":" + b.bossId)}<div class="timer event" class:soon={!b.up && b.timeMs - ui.now < 600_000}><small>{bossLabel(b, ui.data.bossNames)}</small>
     <span>{b.up ? `Up · seen ${hm(b.seenMs)}` : formatCountdown(b.timeMs - ui.now)}</span></div>{/each}
 </div>{/if}
 {#if offer}<div class="banner"><span class="grow">Playing <b>{offer}</b> in game.</span>

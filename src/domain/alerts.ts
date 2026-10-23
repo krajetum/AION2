@@ -24,6 +24,7 @@ export const CHANNELS = [
   { id: "reset", name: "Reset warnings", sound: ["reset"], on: true },
   { id: "news", name: "News", sound: ["news"], on: true },
   { id: "check", name: "Task checked (vine boom)", sound: ["check"], on: true },
+  { id: "cube", name: "Hidden cube popup", sound: ["cube"], on: true },
 ];
 
 /** Channels with alert lead times: the events (field bosses have theirs per boss, AppData.bossAlerts). */

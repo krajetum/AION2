@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { addBossLead, removeBossLead, setBossLead, setBossRepeat, toggleBossAlert } from "../../app/bosses.ts";
+  import { addBossLead, removeBossLead, setBossLead, setBossName, setBossRepeat, toggleBossAlert } from "../../app/bosses.ts";
   import { channelVolume } from "../../domain/alerts.ts";
-  import { bossesByMap, bossState } from "../../domain/bosses.ts";
+  import { bossesByMap, bossLabel, bossState, isUnnamed } from "../../domain/bosses.ts";
   import { formatCountdown } from "../../domain/time.ts";
   import { playSound } from "../../infra/notifier.ts";
-  import { act } from "../actions.ts";
+  import { act, commit } from "../actions.ts";
   import { hm } from "../format.ts";
   import { ICON } from "../icons.ts";
   import LeadsRow from "../parts/LeadsRow.svelte";
@@ -25,18 +25,20 @@
   <div class="scroll"><table class="sheet">
     <thead><tr><th>Boss</th><th>Status</th><th class="n">Time</th><th class="n">Alert</th></tr></thead>
     <tbody>{#each m.bosses as b (b.bossId)}{@const st = bossState(b, ui.now)}{@const a = alerts[b.bossId]}<tr class="boss {st}">
-      <td><span class="name">{b.name}</span></td>
+      <td>{#if isUnnamed(b.name)}<input class="boss-name" value={ui.data.bossNames[b.bossId] ?? ""} placeholder="Unknown boss #{b.bossId}: name it"
+          aria-label="Name for boss {b.bossId}" autocomplete="off" onchange={(e) => commit(e, (v) => setBossName(ui.data, b.bossId, v), () => ui.data.bossNames[b.bossId] ?? "")}>
+        {:else}<span class="name">{bossLabel(b, ui.data.bossNames)}</span>{/if}</td>
       <td>{st === "up" ? "Up" : st === "due" ? "Respawning" : st === "passed" ? "Should be up" : "No time given"}</td>
       <td class="n num">{st === "up" ? (b.timeMs ? `since ${hm(b.timeMs)}` : "—") : st === "due" ? `${formatCountdown(b.timeMs - ui.now)} · ${hm(b.timeMs)}`
         : st === "passed" ? `since ${hm(b.timeMs)}` : "—"}</td>
-      <td class="n"><button class="ghost bell" class:on={!!a} aria-pressed={!!a} aria-label="{a ? 'Remove' : 'Add'} alert for {b.name}"
+      <td class="n"><button class="ghost bell" class:on={!!a} aria-pressed={!!a} aria-label="{a ? 'Remove' : 'Add'} alert for {bossLabel(b, ui.data.bossNames)}"
         title={a ? `Alert ${a.leads.join(", ")} min before · ${a.repeat ? "every respawn" : "once"}` : "Alert me before it respawns"}
         onclick={() => act(() => toggleBossAlert(ui.data, b.bossId))}>{@html ICON.bell}</button></td></tr>
       {#if a}<tr class="skills boss-alert"><td colspan="4">
-        <LeadsRow label={b.name} leads={a.leads} next={st === "due" ? b.timeMs : undefined}
+        <LeadsRow label={bossLabel(b, ui.data.bossNames)} leads={a.leads} next={st === "due" ? b.timeMs : undefined}
           onadd={() => addBossLead(ui.data, b.bossId)} onremove={(i) => removeBossLead(ui.data, b.bossId, i)} onset={(i, v) => setBossLead(ui.data, b.bossId, i, v)} />
         <div class="alert-opts">
-          <div class="seg" role="group" aria-label="How often for {b.name}">
+          <div class="seg" role="group" aria-label="How often for {bossLabel(b, ui.data.bossNames)}">
             <button class:on={!a.repeat} aria-pressed={!a.repeat} onclick={() => act(() => setBossRepeat(ui.data, b.bossId, false))}>Once</button>
             <button class:on={a.repeat} aria-pressed={a.repeat} onclick={() => act(() => setBossRepeat(ui.data, b.bossId, true))}>Every respawn</button></div>
           <button class="ghost" title="sounds/boss.wav" onclick={() => playSound(["boss", "event"], channelVolume(ui.data.settings, "boss") || 70)}>Play sound</button>

@@ -34,6 +34,8 @@ struct Auto {
     /// The "hidden cube nearby" popup is on, and a cube is in view now.
     cube: bool,
     cube_near: bool,
+    /// The cube popup's size: 1 = 260 × 96.
+    cube_scale: f64,
     /// Hide the overlays while another window than the game is in front (alt-tab).
     follow_game: bool,
     /// The game window was in front at the last check.
@@ -65,6 +67,7 @@ impl Default for MeterState {
                 events: false,
                 cube: false,
                 cube_near: false,
+                cube_scale: 1.0,
                 follow_game: true,
                 front: true,
                 opacity: 90,
@@ -82,6 +85,15 @@ fn engine(app: &AppHandle) -> Option<Arc<Engine>> {
 
 fn fight_total(u: &Update) -> f64 {
     u.fight.rows.iter().map(|r| r.damage + r.heal + r.damage_taken as f64).sum()
+}
+
+/// How long the cube popup stays up after a cube is opened ("Cube opened").
+const OPENED_SHOWN_MS: i64 = 5_000;
+const CUBE_SIZE: (f64, f64) = (260.0, 96.0);
+
+/// The cube popup has something to say: a cube in view, or one opened in the last few seconds.
+fn cube_news(c: &aion2_meter::cubes::Cubes, now_ms: i64) -> bool {
+    !c.live.is_empty() || c.opened.last().is_some_and(|o| now_ms - o.at_ms < OPENED_SHOWN_MS)
 }
 
 /// What the idle watch should do this update.
@@ -147,7 +159,7 @@ pub fn meter_start(app: AppHandle) -> Update {
                         Step::Idle(_) => a.wanted = false,
                         Step::Nothing => {}
                     }
-                    a.cube_near = !u.cubes.live.is_empty();
+                    a.cube_near = cube_news(&u.cubes, aion2_meter::clock::now_ms());
                     // The game in front? Asked twice a second, and only when it matters.
                     if a.follow_game && (a.overlay || a.events || a.cube) && front_checked.elapsed() >= FRONT_CHECK {
                         a.front = aion2_meter::platform::window_detector::is_aion2_foreground();
@@ -324,14 +336,21 @@ pub fn recorder_status() -> aion2_meter::recorder::RecorderStatus {
     aion2_meter::recorder::status()
 }
 
-/// The "hidden cube nearby" popup on or off: it shows while a cube is in view.
+/// The "hidden cube nearby" popup on or off, and its size (`scale`, 0.6..2, 1 = 260 × 96): it shows
+/// while a cube is in view and for a few seconds after one is opened.
 #[tauri::command]
-pub async fn cube_popup(app: AppHandle, show: bool) -> Result<(), String> {
+pub async fn cube_popup(app: AppHandle, show: bool, scale: Option<f64>) -> Result<(), String> {
+    let scale = scale.unwrap_or(1.0).clamp(0.6, 2.0);
     if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
         a.cube = show;
+        a.cube_scale = scale;
     }
-    if !show {
-        close(&app, CUBE);
+    match app.get_webview_window(CUBE) {
+        Some(w) if show => {
+            let _ = w.set_size(tauri::LogicalSize::new(CUBE_SIZE.0 * scale, CUBE_SIZE.1 * scale));
+        }
+        Some(_) => close(&app, CUBE),
+        None => {}
     }
     Ok(())
 }
@@ -373,12 +392,19 @@ fn build(app: &AppHandle, label: &str) -> Result<(), String> {
     let (title, w, h, min_w, min_h) = if label == EVENTS {
         ("AION 2 Companion – Events", 300.0, 230.0, 200.0, 80.0)
     } else if label == CUBE {
-        ("AION 2 Companion – Hidden cube", 260.0, 96.0, 180.0, 60.0)
+        let k = app.state::<MeterState>().auto.lock().map(|a| a.cube_scale).unwrap_or(1.0);
+        ("AION 2 Companion – Hidden cube", CUBE_SIZE.0 * k, CUBE_SIZE.1 * k, 150.0, 55.0)
     } else {
         ("AION 2 Companion – DPS", 340.0, 260.0, 240.0, 120.0)
     };
-    WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html#{label}").into()))
-        .title(title)
+    let mut b = WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html#{label}").into()));
+    // The cube popup starts at the top centre of the main screen (the player can drag it away).
+    if let (true, Ok(Some(m))) = (label == CUBE, app.primary_monitor()) {
+        let size = m.size().to_logical::<f64>(m.scale_factor());
+        let at = m.position().to_logical::<f64>(m.scale_factor());
+        b = b.position(at.x + (size.width - w) / 2.0, at.y + 48.0);
+    }
+    b.title(title)
         .inner_size(w, h)
         .min_inner_size(min_w, min_h)
         .decorations(false)
@@ -404,6 +430,7 @@ mod tests {
             events: false,
             cube: false,
             cube_near: false,
+            cube_scale: 1.0,
             follow_game: true,
             front: true,
             opacity: 90,
@@ -432,6 +459,19 @@ mod tests {
         a.wanted = true;
         a.cube = false;
         assert_eq!(a.visible(), (false, true, false));
+    }
+
+    #[test]
+    fn the_cube_popup_stays_up_a_few_seconds_after_an_opening() {
+        use aion2_meter::cubes::{Cube, Cubes, Opened};
+        let mut c = Cubes::default();
+        assert!(!cube_news(&c, 10_000));
+        c.live.push(Cube { entity: 1, code: 1, x: 0.0, y: 0.0, z: 0.0, seen_ms: 0 });
+        assert!(cube_news(&c, 10_000));
+        c.live.clear();
+        c.opened.push(Opened { code: None, x: 0.0, y: 0.0, z: 0.0, by_you: false, at_ms: 10_000 });
+        assert!(cube_news(&c, 14_999));
+        assert!(!cube_news(&c, 15_000));
     }
 
     #[test]
