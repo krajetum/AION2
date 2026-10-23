@@ -440,6 +440,13 @@ body.overlay .status, body.overlay .react { display: none; }
 .mark.sel { box-shadow: 0 0 0 3px var(--accent); }
 .me { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; pointer-events: none;
   background: #fff; border: 4px solid var(--accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent); }
+.found { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; transform: rotate(45deg);
+  background: #b46bff; border: 1.5px solid #111; opacity: .85; }
+.live-cube { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 4px; pointer-events: none;
+  background: #d9a6ff; border: 2px solid #fff; animation: cube-pulse 1.2s ease-in-out infinite; }
+@keyframes cube-pulse { 50% { box-shadow: 0 0 0 10px color-mix(in srgb, #b46bff 0%, transparent), 0 0 0 4px #b46bff; } }
+@media (prefers-reduced-motion: reduce) { .live-cube { animation: none; } }
+.live-count { color: #d9a6ff; }
 .me.stale { border-color: var(--faint); box-shadow: none; opacity: .8; }
 .map-panel { position: absolute; top: 12px; right: 12px; width: min(340px, calc(100% - 24px)); padding: 14px 16px; cursor: auto;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
@@ -447,3 +454,12 @@ body.overlay .status, body.overlay .react { display: none; }
 .map-panel h2 .count { margin-left: auto; }
 .map-panel .setting { flex-wrap: wrap; gap: 8px; }
 .map-panel .ctl input { width: 90px; }
+
+/* Hidden cube popup (index.html#cube) */
+.cube-pop { display: flex; align-items: center; gap: 12px; padding: 12px 6px 4px; cursor: move; user-select: none; }
+.cube-pop div { display: flex; flex-direction: column; gap: 2px; }
+.cube-pop b { font-size: 15px; color: #d9a6ff; }
+.cube-pop span { font-size: 13px; color: var(--muted); }
+.cube-arrow { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; flex: none;
+  background: color-mix(in srgb, #b46bff 35%, transparent); color: #fff; font-size: 22px; font-weight: 700;
+  transform: rotate(var(--deg)); }

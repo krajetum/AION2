@@ -11,8 +11,9 @@ import { act, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import EventsOverlay from "./ui/EventsOverlay.svelte";
+import CubeOverlay from "./ui/CubeOverlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
-import { eventsOverlay, meterIdle, meterOverlay, onEventsOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
+import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, meterOverlay, onEventsOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { ui } from "./ui/state.svelte.ts";
 
@@ -38,6 +39,8 @@ async function main() {
     // The event overlay saves its switch here, also when closed from its own X.
     await onEventsOverlay((on) => { if (ui.data.settings.eventsOverlay !== on) act(() => { ui.data.settings.eventsOverlay = on; }); });
     if (data.settings.eventsOverlay) await eventsOverlay(true).catch(() => {});
+    await meterCubeCodes(data.map.cubeCodes).catch(() => {});
+    if (data.settings.cubePopup) await cubePopup(true).catch(() => {});
   }
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
   onMeter((u) => {
@@ -81,5 +84,5 @@ function overlay(page: typeof Overlay) {
   onOpacity((o) => document.documentElement.style.setProperty("--ov-alpha", `${o}%`));
 }
 
-const page = { "#overlay": Overlay, "#events": EventsOverlay }[location.hash];
+const page = { "#overlay": Overlay, "#events": EventsOverlay, "#cube": CubeOverlay }[location.hash];
 (page ? Promise.resolve(overlay(page)) : main()).catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });

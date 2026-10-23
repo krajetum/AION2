@@ -45,6 +45,8 @@ pub fn run() {
             meter::recorder_mark,
             meter::recorder_stop,
             meter::recorder_status,
+            meter::cube_popup,
+            meter::meter_cube_codes,
         ])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;

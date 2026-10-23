@@ -36,6 +36,15 @@
   const you = $derived(youPx && size.w ? toScreen(view, youPx.x, youPx.y) : null);
   const age = $derived(pos ? Math.max(0, Math.round((ui.now - pos.atMs) / 1000)) : 0);
   const ago = (s: number) => (s < 60 ? `${s} s ago` : `${Math.floor(s / 60)} min ago`);
+  // Hidden cubes from the meter: opened ones (saved, game units) and the ones in view now.
+  function shown(x: number, y: number) {
+    if (!fit || elsewhere) return null;
+    const p = applyAffine(fit, x, y);
+    return toScreen(view, p.x, p.y);
+  }
+  const found = $derived(size.w ? ui.data.map.found.map((f) => ({ f, s: shown(f.x, f.y) })).filter((v) => v.s) : []);
+  const live = $derived(size.w ? (ui.meter?.cubes?.live ?? []).map((c) => ({ c, s: shown(c.x, c.y) })).filter((v) => v.s) : []);
+  const when = (t: number) => new Date(t).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   function centerOnMe() {
     if (!youPx) return;
     const scale = Math.max(view.scale, 1);
@@ -157,6 +166,9 @@
         style:left="{c.x}px" style:top="{c.y}px" style:--c={mixed(c) ? "#e8e4dc" : GROUP_COLORS[p.group]}
         title={c.points.length > 1 ? `${c.points.length} points: click to zoom in` : p.label || (p.kind === "ref" ? "Reference" : `Cube, group ${p.group + 1}`)}
         onpointerdown={(e) => e.stopPropagation()} onclick={() => open(c)}>{c.points.length > 1 ? c.points.length : ""}</button>{/each}
+    {#each found as { f, s: at } (f.x + ":" + f.y)}<div class="found" style:left="{at!.x}px" style:top="{at!.y}px"
+      title="Hidden cube opened here · {when(f.atMs)}{f.byYou ? ' · by you' : ''}"></div>{/each}
+    {#each live as { c, s: at } (c.entity)}<div class="live-cube" style:left="{at!.x}px" style:top="{at!.y}px" title="Hidden cube in view"></div>{/each}
     {#if you}<div class="me" class:stale={age > 30} style:left="{you.x}px" style:top="{you.y}px" title="You · {ago(age)}"></div>{/if}
     {#if sel}<div class="map-panel" role="dialog" aria-label="Point" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}><h2>{sel.kind === "ref" ? "Reference" : "Cube spot"} <span class="count num">x {sel.x} · y {sel.y}</span>
         <button class="ghost" aria-label="Close" title="Close" onclick={() => { selected = ""; }}>{@html ICON.close}</button></h2>
@@ -181,6 +193,7 @@
   <div class="map-foot">
     <span class="hint">{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(points.filter((p) => p.kind === "ref").length)} references
       {#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 references with game coordinates{/if}
+      · {num(ui.data.map.found.length)} cubes found{#if live.length}{" "}· <b class="live-count">{live.length} in view</b>{/if}
       · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if elsewhere}you are on another map ({pos.mapId}){:else if !fit}your position: needs 3 references{:else}you: {ago(age)}{/if}</span>
     <span class="grow"></span>
     <label class="btn ghost">Import your own map <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>

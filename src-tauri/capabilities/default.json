@@ -5,7 +5,8 @@
   "windows": [
     "main",
     "overlay",
-    "events"
+    "events",
+    "cube"
   ],
   "permissions": [
     "core:default",

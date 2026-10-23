@@ -41,6 +41,11 @@ pub fn set_me(id: Option<i32>) {
     ME.store(id.unwrap_or(0), Ordering::Relaxed);
 }
 
+/// Your entity id, 0 until the meter knows it.
+pub fn me() -> i32 {
+    ME.load(Ordering::Relaxed)
+}
+
 /// The last position read, if any.
 pub fn latest() -> Option<SelfPosition> {
     *LAST.lock()

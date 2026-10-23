@@ -68,6 +68,8 @@ pub struct Update {
     pub arena: Option<ArenaMatch>,
     /// Where you are, from the last record that said (map loads, teleports, your buffs).
     pub position: Option<crate::position::SelfPosition>,
+    /// Hidden cubes in view (learned codes) and opened since the meter started.
+    pub cubes: crate::cubes::Cubes,
 }
 
 /// A field boss as the map the player opened shows it (`capture::boss_map`).
@@ -259,6 +261,7 @@ impl Engine {
                 crate::position::set_me(self.storage.local_player_id().map(|id| id as i32));
                 crate::position::latest()
             },
+            cubes: crate::cubes::snapshot(),
         }
     }
 

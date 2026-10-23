@@ -25,6 +25,8 @@ pub mod arena;
 pub mod recorder;
 /// Your own position from the traffic.
 pub mod position;
+/// Hidden cubes from the traffic.
+pub mod cubes;
 /// The companion's readers on the parser's frame tap.
 pub mod tap;
 
