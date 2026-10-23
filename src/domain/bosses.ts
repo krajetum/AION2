@@ -72,5 +72,5 @@ export function nextBossWave(bosses: BossTimer[], now: number): { timeMs: number
   const minute = (t: number) => Math.floor(t / 60_000);
   const first = Math.min(...due.map((b) => b.timeMs));
   const wave = due.filter((b) => minute(b.timeMs) === minute(first));
-  return { timeMs: first, names: [...new Set(wave.map((b) => b.name))].sort((a, b) => a.localeCompare(b)) };
+  return { timeMs: first, names: [...new Set(wave.map((b) => b.name))].sort((a, b) => a.localeCompare(b, "en", { numeric: true })) };
 }

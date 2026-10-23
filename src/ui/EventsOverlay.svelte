@@ -6,7 +6,7 @@
   import { mergeBosses, nextBossWave } from "../domain/bosses.ts";
   import type { BossTimer } from "../domain/meter.ts";
   import { formatCountdown, nextEvent } from "../domain/time.ts";
-  import { eventsOverlay, onMeter } from "../infra/meter.ts";
+  import { eventsOverlay, fitOverlayHeight, onMeter } from "../infra/meter.ts";
   import { loadData } from "../infra/storage.ts";
   import { hm } from "./format.ts";
   import { ICON } from "./icons.ts";
@@ -18,9 +18,20 @@
   $effect(() => { loadData().then((d) => { saved = d.bosses; }).catch(() => {}); });
   $effect(() => onMeter((u) => { live = u.bosses ?? []; }));
   const wave = $derived(nextBossWave(mergeBosses(saved, live) ?? saved, now));
+
+  // The window grows and shrinks with its rows, so every boss of a big wave shows (10, 20, ...).
+  let box = $state<HTMLDivElement>();
+  $effect(() => {
+    const el = box;
+    if (!el) return;
+    const ro = new ResizeObserver(() => fitOverlayHeight(el.offsetHeight + 8)); // + #app's bottom padding
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   const list = $derived(EVENTS.map((ev) => ({ ev, at: nextEvent(ev, now, C.timeZone) })).sort((a, b) => a.at - b.at));
 </script>
 
+<div bind:this={box}>
 <div class="ov-head" data-tauri-drag-region>
   <b data-tauri-drag-region>Next events</b>
   <button class="ghost" aria-label="Close the event overlay" title="Close (turn on again in Settings)" onclick={() => eventsOverlay(false)}>{@html ICON.close}</button>
@@ -33,3 +44,4 @@
     <span class="name" data-tauri-drag-region>Next field boss</span>
     <span class="num">{formatCountdown(wave.timeMs - now)}</span><span class="num dim">{hm(wave.timeMs)}</span>
     <span class="who" data-tauri-drag-region>{#each wave.names as n}<span>{n} spawns</span>{/each}</span></li>{/if}</ol>
+</div>

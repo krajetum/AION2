@@ -57,6 +57,17 @@ export async function onOpacity(fn: (opacity: number) => void) {
   fn(await invoke<number>("overlay_opacity"));
   await listen<number>("overlay-opacity", (e) => fn(e.payload));
 }
+/** Sets this overlay window's height to its content (desktop only), up to 85 % of the screen; the width
+ *  stays as the player left it. Above that the window scrolls. */
+let lastHeight = 0;
+export async function fitOverlayHeight(px: number) {
+  if (!isTauri()) return;
+  const h = Math.ceil(Math.min(px, screen.availHeight * 0.85));
+  if (Math.abs(h - lastHeight) < 2) return;
+  lastHeight = h;
+  const { getCurrentWindow, LogicalSize } = await import("@tauri-apps/api/window");
+  await getCurrentWindow().setSize(new LogicalSize(window.innerWidth, h)).catch((e) => console.warn("Overlay resize failed", e));
+}
 /** The event overlay was turned on or off (also from the overlay itself). */
 export const onEventsOverlay = (fn: (on: boolean) => void) => (isTauri() ? listen<boolean>("events-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 /** The overlay was opened or closed (also from the overlay itself). */
