@@ -10,6 +10,7 @@ export const PAGE: Record<Tab, [string, string]> = {
   plan: ["Planner", "Limited minutes, unlimited greed. Knapsack go brrr."],
   season: ["Season Coins", "Oath Coin stonks. Numbers only go up."],
   bosses: ["Field Bosses", "Respawn timers, straight from the world map."],
+  map: ["Map", "Cubes were here. Allegedly."],
   dps: ["DPS Meter", "Numbers don't lie. Partymates do."],
   arena: ["Arena Log", "Know thy enemy. Or at least their name."],
   news: ["News", "Patch notes or it didn't happen."],
