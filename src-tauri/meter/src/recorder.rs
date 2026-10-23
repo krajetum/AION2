@@ -1,7 +1,7 @@
 //! Packet recorder (diagnostics, companion code): writes every game frame the parser reads to a
 //! text file, with marks the player sets ("I hear a cube", "I opened it"), so new records can be
 //! found by comparing the frames around the marks. It hangs on A2Tools' frame tap
-//! (`capture::frame_tap`): the frames are the ones the meter already reads from its passive copy
+//! (`capture::frame_tap`, through `crate::tap`): the frames are the ones the meter already reads from its passive copy
 //! of the traffic. Nothing is sent anywhere; the file stays on the player's disk.
 //!
 //! File format, one entry per line:
@@ -13,7 +13,6 @@ use serde::Serialize;
 use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// A recording stops by itself after this long...
@@ -140,12 +139,15 @@ pub fn start(dir: &Path) -> io::Result<PathBuf> {
     let file = BufWriter::with_capacity(1 << 20, File::create(&path)?);
     let rec = Recording::new(file, Some(path.display().to_string()), MAX_TIME, MAX_BYTES)?;
     *CURRENT.lock() = Some(rec);
-    crate::capture::frame_tap::set(Some(Arc::new(|frame: &[u8]| {
-        if let Some(r) = CURRENT.lock().as_mut() {
-            r.frame(frame);
-        }
-    })));
+    crate::tap::install();
     Ok(path)
+}
+
+/// A frame from the parser's tap (`crate::tap`): written while a recording runs.
+pub fn frame(frame: &[u8]) {
+    if let Some(r) = CURRENT.lock().as_mut() {
+        r.frame(frame);
+    }
 }
 
 pub fn mark(label: &str) {
@@ -154,9 +156,8 @@ pub fn mark(label: &str) {
     }
 }
 
-/// Stops the recording (the file is kept) and the tap.
+/// Stops the recording (the file is kept).
 pub fn stop() -> RecorderStatus {
-    crate::capture::frame_tap::set(None);
     match CURRENT.lock().as_mut() {
         Some(r) => {
             r.stop();
@@ -173,6 +174,7 @@ pub fn status() -> RecorderStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     fn text(r: &Recording<Vec<u8>>) -> String {
         String::from_utf8(r.out.clone()).unwrap()

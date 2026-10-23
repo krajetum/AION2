@@ -9,7 +9,7 @@
   import { playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { isDesktop, setAutostart } from "../../infra/system.ts";
-  import { eventsOverlay, meterIdle, meterOverlay, overlayStyle } from "../../infra/meter.ts";
+  import { cubePopup, eventsOverlay, meterIdle, meterOverlay, overlayStyle } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
   import { LABEL, pad, WEEKDAYS } from "../format.ts";
   import { ICON } from "../icons.ts";
@@ -74,10 +74,13 @@
   </section>
   <section><h2>Overlays</h2>
     {@render toggle("Event countdown overlay", s.eventsOverlay, (e) => { s.eventsOverlay = check(e); eventsOverlay(s.eventsOverlay); }, !isDesktop())}
+    {@render toggle("Hidden cube popup", s.cubePopup, (e) => { s.cubePopup = check(e); cubePopup(s.cubePopup); }, !isDesktop())}
     {@render toggle("Hide when the game is not in front", s.overlayFollowGame, (e) => { s.overlayFollowGame = check(e); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, !isDesktop())}
     <label class="setting"><span>Opacity</span><span class="ctl"><input type="range" min="20" max="100" step="5" value={s.overlayOpacity} aria-label="Overlay opacity"
       onchange={(e) => { commit(e, (v) => setOverlayOpacity(ui.data, v), () => s.overlayOpacity); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }}> {s.overlayOpacity}%</span></label>
-    <p class="hint">The overlays never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
+    <p class="hint">The cube popup shows while a hidden cube the app knows is in view, with its distance and direction.
+      It learns cubes as they are opened near you; the first one is built in.
+      The overlays never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
   </section>
   <section><h2>System</h2>
     {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}

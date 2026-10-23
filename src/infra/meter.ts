@@ -68,6 +68,10 @@ export async function fitOverlayHeight(px: number) {
   const { getCurrentWindow, LogicalSize } = await import("@tauri-apps/api/window");
   await getCurrentWindow().setSize(new LogicalSize(window.innerWidth, h)).catch((e) => console.warn("Overlay resize failed", e));
 }
+/** The "hidden cube nearby" popup on or off (desktop only): it shows while a known cube is in view. */
+export const cubePopup = (show: boolean) => (isTauri() ? invoke<void>("cube_popup", { show }) : Promise.resolve());
+/** Hands the engine the cube codes learned in earlier sessions. */
+export const meterCubeCodes = (codes: number[]) => (isTauri() ? invoke<void>("meter_cube_codes", { codes }) : Promise.resolve());
 /** The event overlay was turned on or off (also from the overlay itself). */
 export const onEventsOverlay = (fn: (on: boolean) => void) => (isTauri() ? listen<boolean>("events-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 /** The overlay was opened or closed (also from the overlay itself). */
@@ -128,6 +132,10 @@ function demoUpdate(): MeterUpdate {
     paused: demo.paused, partyOnly: demo.partyOnly, view: demo.view, demo: true,
     bosses: DEMO_BOSSES, odyle: { basic: 30, charged: 840, owner: "Main" },
     profile: { name: "Demo Alt", serverId: 1304, job: "Gladiator", level: 45, gearScore: 2040, combatPower: 51_000 }, arena: DEMO_MATCH,
+    // Near Safe Haven, walking slowly; as if read 2 s ago.
+    position: { x: -82550 + 40 * Math.sin(t / 20_000) * 100, y: -130802 - (t / 1000) * 30, z: 34431, mapId: 1110, atMs: Date.now() - 2000 },
+    // A demo cube 40 m north-east of the demo position.
+    cubes: { live: [{ entity: 1, code: 1301199, x: -79700, y: -133600 - (t / 1000) * 30, z: 34431, seenMs: demo.start }], opened: [], codes: [1301199] },
     fight: { target: { name: "Demo Boss", isBoss: true, maxHp: 40_000_000, currentHp: -1, damageDealt: total }, targetMode: demo.mode, battleTimeMs: t, rows },
   };
 }

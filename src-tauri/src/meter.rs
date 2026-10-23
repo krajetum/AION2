@@ -14,6 +14,7 @@ const RESEND: Duration = Duration::from_secs(3);
 const FRONT_CHECK: Duration = Duration::from_millis(500);
 const OVERLAY: &str = "overlay";
 const EVENTS: &str = "events";
+const CUBE: &str = "cube";
 
 /// Seconds without damage, healing or damage taken before the fight resets (and the overlay hides).
 const DEFAULT_IDLE_SECS: u32 = 15;
@@ -30,6 +31,9 @@ struct Auto {
     wanted: bool,
     /// The event countdown overlay is on.
     events: bool,
+    /// The "hidden cube nearby" popup is on, and a cube is in view now.
+    cube: bool,
+    cube_near: bool,
     /// Hide the overlays while another window than the game is in front (alt-tab).
     follow_game: bool,
     /// The game window was in front at the last check.
@@ -44,10 +48,10 @@ struct Auto {
 }
 
 impl Auto {
-    /// Which overlays should be on screen: (DPS overlay, event overlay).
-    fn visible(&self) -> (bool, bool) {
+    /// Which overlays should be on screen: (DPS overlay, event overlay, cube popup).
+    fn visible(&self) -> (bool, bool, bool) {
         let front = self.front || !self.follow_game;
-        (self.overlay && self.wanted && front, self.events && front)
+        (self.overlay && self.wanted && front, self.events && front, self.cube && self.cube_near && front)
     }
 }
 
@@ -59,6 +63,8 @@ impl Default for MeterState {
                 overlay: false,
                 wanted: false,
                 events: false,
+                cube: false,
+                cube_near: false,
                 follow_game: true,
                 front: true,
                 opacity: 90,
@@ -128,7 +134,7 @@ pub fn meter_start(app: AppHandle) -> Update {
             let mut last: Option<serde_json::Value> = None;
             let mut sent = Instant::now();
             let mut front_checked = Instant::now() - FRONT_CHECK;
-            let mut shown: Option<(bool, bool)> = None;
+            let mut shown: Option<(bool, bool, bool)> = None;
             loop {
                 std::thread::sleep(RATE);
                 let mut u = e.update();
@@ -141,8 +147,9 @@ pub fn meter_start(app: AppHandle) -> Update {
                         Step::Idle(_) => a.wanted = false,
                         Step::Nothing => {}
                     }
+                    a.cube_near = !u.cubes.live.is_empty();
                     // The game in front? Asked twice a second, and only when it matters.
-                    if a.follow_game && (a.overlay || a.events) && front_checked.elapsed() >= FRONT_CHECK {
+                    if a.follow_game && (a.overlay || a.events || a.cube) && front_checked.elapsed() >= FRONT_CHECK {
                         a.front = aion2_meter::platform::window_detector::is_aion2_foreground();
                         front_checked = Instant::now();
                     }
@@ -155,6 +162,7 @@ pub fn meter_start(app: AppHandle) -> Update {
                 if Some(want) != shown {
                     set_visible(&app, OVERLAY, want.0);
                     set_visible(&app, EVENTS, want.1);
+                    set_visible(&app, CUBE, want.2);
                     shown = Some(want);
                 }
                 let v = serde_json::to_value(&u).unwrap_or_default();
@@ -316,6 +324,24 @@ pub fn recorder_status() -> aion2_meter::recorder::RecorderStatus {
     aion2_meter::recorder::status()
 }
 
+/// The "hidden cube nearby" popup on or off: it shows while a cube is in view.
+#[tauri::command]
+pub async fn cube_popup(app: AppHandle, show: bool) -> Result<(), String> {
+    if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
+        a.cube = show;
+    }
+    if !show {
+        close(&app, CUBE);
+    }
+    Ok(())
+}
+
+/// The cube codes learned in earlier sessions (saved by the app), so cubes are known at once.
+#[tauri::command]
+pub fn meter_cube_codes(codes: Vec<u32>) {
+    aion2_meter::cubes::set_codes(&codes);
+}
+
 fn close(app: &AppHandle, label: &str) {
     if let Some(w) = app.get_webview_window(label) {
         let _ = w.close();
@@ -346,6 +372,8 @@ fn set_visible(app: &AppHandle, label: &str, on: bool) {
 fn build(app: &AppHandle, label: &str) -> Result<(), String> {
     let (title, w, h, min_w, min_h) = if label == EVENTS {
         ("AION 2 Companion – Events", 300.0, 230.0, 200.0, 80.0)
+    } else if label == CUBE {
+        ("AION 2 Companion – Hidden cube", 260.0, 96.0, 180.0, 60.0)
     } else {
         ("AION 2 Companion – DPS", 340.0, 260.0, 240.0, 120.0)
     };
@@ -374,6 +402,8 @@ mod tests {
             overlay: true,
             wanted: false,
             events: false,
+            cube: false,
+            cube_near: false,
             follow_game: true,
             front: true,
             opacity: 90,
@@ -388,16 +418,20 @@ mod tests {
         let mut a = auto(15);
         a.wanted = true;
         a.events = true;
-        assert_eq!(a.visible(), (true, true));
+        a.cube = true;
+        assert_eq!(a.visible(), (true, true, false), "the cube popup waits for a cube");
+        a.cube_near = true;
+        assert_eq!(a.visible(), (true, true, true));
         a.front = false;
-        assert_eq!(a.visible(), (false, false));
+        assert_eq!(a.visible(), (false, false, false));
         a.follow_game = false;
-        assert_eq!(a.visible(), (true, true));
+        assert_eq!(a.visible(), (true, true, true));
         a.wanted = false; // idle or hidden by hand
-        assert_eq!(a.visible(), (false, true));
+        assert_eq!(a.visible(), (false, true, true));
         a.overlay = false;
         a.wanted = true;
-        assert_eq!(a.visible(), (false, true));
+        a.cube = false;
+        assert_eq!(a.visible(), (false, true, false));
     }
 
     #[test]

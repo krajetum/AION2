@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyAffine, cleanMap, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { applyAffine, bearing, BUNDLED_FIT, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, x, y, kind: "cube", group: 0, label: "" });
 
@@ -59,5 +59,41 @@ test("saved points are cleaned, bad ones dropped", () => {
     { id: "a", x: 1, y: 2, kind: "ref", group: 3, label: "Obelisk", game: { x: 5, y: 6 } },
     { id: "b", x: 1, y: 2, kind: "cube", group: 0, label: "" },
   ]);
-  assert.deepEqual(cleanMap(undefined), { points: [] });
+  assert.deepEqual(cleanMap(undefined).points, []);
+});
+
+test("bundled fit puts the recorded teleports where the screenshots show them", () => {
+  const near = (gx: number, gy: number, px: number, py: number, tol: number) => {
+    const p = applyAffine(BUNDLED_FIT, gx, gy);
+    assert.ok(Math.hypot(p.x - px, p.y - py) < tol, `${gx},${gy} → ${p.x.toFixed(0)},${p.y.toFixed(0)}, expected ${px},${py}`);
+  };
+  near(109370, 189246, 2096, 2719, 5); // obelisk near Black Claw Village
+  near(189516, -91914, 2517, 1151, 5); // Basfelt Ruins, arrow after the teleport
+  near(-86370, -158622, 1023, 776, 12); // walked spots
+  near(-43409, -150745, 1255, 829, 20);
+});
+
+test("cube openings join the save once per spot; codes are learned", () => {
+  const m = emptyMap();
+  const o = (x: number, y: number, atMs: number, code: number | null = null) => ({ x, y, z: 0, code, atMs, byYou: true });
+  assert.equal(takeCubes(m, [1301199], [o(1000, 1000, 1)]), true);
+  assert.equal(takeCubes(m, [1301199], [o(1000, 1000, 1)]), false, "same news again");
+  assert.equal(takeCubes(m, [], [o(1100, 1050, 5, 42)]), true, "same spot, later: refreshed");
+  assert.deepEqual(m.found, [{ x: 1000, y: 1000, z: 0, code: 42, atMs: 5, byYou: true }]);
+  takeCubes(m, [77], [o(5000, 1000, 6)]);
+  assert.equal(m.found.length, 2);
+  assert.deepEqual(m.cubeCodes, [77, 1301199]);
+});
+
+test("bearing: map up is north, y grows south", () => {
+  assert.deepEqual(bearing({ x: 0, y: 0 }, { x: 0, y: -500 }), { dist: 500, dir: "N", deg: 0 });
+  assert.equal(bearing({ x: 0, y: 0 }, { x: 300, y: 300 }).dir, "SE");
+  assert.equal(bearing({ x: 0, y: 0 }, { x: -400, y: 0 }).dir, "W");
+});
+
+test("old saves get the cube fields; bad entries are dropped", () => {
+  const m = cleanMap({ points: [], found: [{ x: 1, y: 2, z: 3, atMs: 4, code: 9 }, { x: "?" }], cubeCodes: [5, -1, "x"] });
+  assert.deepEqual(m.found, [{ x: 1, y: 2, z: 3, code: 9, atMs: 4, byYou: false }]);
+  assert.deepEqual(m.cubeCodes, [5, 1301199]);
+  assert.deepEqual(cleanMap(undefined).cubeCodes, [1301199]);
 });

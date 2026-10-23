@@ -12,12 +12,24 @@ export interface MapPoint {
   label: string;
   game?: { x: number; y: number }; // references: the game's coordinates of this place
 }
-export interface MapData { points: MapPoint[] }
+/** A hidden cube seen opened (by the meter): where it stood, game units. Placed on the map through the fit. */
+export interface FoundCube { x: number; y: number; z: number; code: number | null; atMs: number; byYou: boolean }
+export interface MapData {
+  points: MapPoint[];
+  found: FoundCube[];   // cubes opened in view, newest last
+  cubeCodes: number[];  // object codes known to be hidden cubes (learned from openings)
+}
+
+/** Cube codes seen so far: 1301199, the cube of the 2026-10-23 20:18 recording (seen coming into view, then opened). */
+export const KNOWN_CUBE_CODES = [1301199];
+/** Two openings closer than this (game units) are the same spot. */
+export const SAME_SPOT = 300;
+const MAX_FOUND = 2000;
 
 /** Spawn-group colors, picked to stay apart on the map's greens, browns and blues. */
 export const GROUP_COLORS = ["#ff5a5f", "#ffb020", "#f5f05a", "#4fe08a", "#3fd6ff", "#5a8bff", "#c46bff", "#ff6bd0"];
 
-export const emptyMap = (): MapData => ({ points: [] });
+export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES] });
 
 /** A saved or imported map section, cleaned: bad points are dropped, not guessed. */
 export function cleanMap(raw: any): MapData {
@@ -31,7 +43,39 @@ export function cleanMap(raw: any): MapData {
       label: typeof p.label === "string" ? p.label : "",
       ...(p.game && ok(p.game.x) && ok(p.game.y) && { game: { x: p.game.x, y: p.game.y } }),
     }));
-  return { points };
+  const found = (Array.isArray(raw?.found) ? raw.found : [])
+    .filter((f: any) => f && ok(f.x) && ok(f.y) && ok(f.z) && ok(f.atMs))
+    .map((f: any): FoundCube => ({ x: f.x, y: f.y, z: f.z, code: ok(f.code) ? f.code : null, atMs: f.atMs, byYou: !!f.byYou }));
+  const codes = (Array.isArray(raw?.cubeCodes) ? raw.cubeCodes : []).filter((c: unknown) => Number.isInteger(c) && (c as number) > 0);
+  return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b) };
+}
+
+/**
+ * The meter's cube news into the save: new codes, and openings not already found at the same spot
+ * (an opening of the same spot later only refreshes its time). Returns true if anything changed.
+ */
+export function takeCubes(map: MapData, codes: number[], opened: FoundCube[]): boolean {
+  let changed = false;
+  for (const c of codes) if (!map.cubeCodes.includes(c)) { map.cubeCodes.push(c); changed = true; }
+  if (changed) map.cubeCodes.sort((a, b) => a - b);
+  for (const o of opened) {
+    const same = map.found.find((f) => Math.hypot(f.x - o.x, f.y - o.y) < SAME_SPOT);
+    if (!same) { map.found.push({ ...o }); changed = true; }
+    else if (o.atMs > same.atMs) { same.atMs = o.atMs; same.code ??= o.code; changed = true; }
+  }
+  if (map.found.length > MAX_FOUND) map.found.splice(0, map.found.length - MAX_FOUND);
+  return changed;
+}
+
+/** Game units are taken as centimetres: the recorded walk ran ~790 units/s, about a running speed. */
+export const toMetres = (units: number) => units / 100;
+
+/** From you to a point, on the map's axes (x east, y south): distance in game units and a compass label. */
+export function bearing(from: { x: number; y: number }, to: { x: number; y: number }): { dist: number; dir: string; deg: number } {
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const deg = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360; // 0 = north (map up), clockwise
+  const dir = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(deg / 45) % 8];
+  return { dist: Math.hypot(dx, dy), dir, deg };
 }
 
 // ---------- view: image pixel → screen = pixel * scale + offset ----------
@@ -99,6 +143,16 @@ export function fitAffine(refs: { game: { x: number; y: number }; x: number; y: 
   const sx = solve3(m, bx), sy = solve3(m, by);
   return sx && sy ? [sx[0], sx[1], sx[2], sy[0], sy[1], sy[2]] : null;
 }
+
+/**
+ * Game → pixel fit of the bundled world map (src/assets/ncsoft/world-map.webp), from the packet recording of
+ * 2026-10-23: two teleports (exact) and three spots walked to, located on the map by matching the player's
+ * screenshots. Residuals: 2-3 px for the teleports, up to 20 px for the walked spots (the player stood near,
+ * not on, the icon). About 182 game units per pixel, no rotation, no mirroring.
+ */
+export const BUNDLED_FIT: Affine = [5.42103e-3, 4.33492e-5, 1494.327, 4.82447e-5, 5.57267e-3, 1657.268];
+/** The map id of the bundled world (map loads of the same recording). Elsewhere the fit does not apply. */
+export const WORLD_MAP_ID = 1110;
 
 export const applyAffine = (t: Affine, gx: number, gy: number) => ({ x: t[0] * gx + t[1] * gy + t[2], y: t[3] * gx + t[4] * gy + t[5] });
 

@@ -39,6 +39,7 @@ export function defaultData(): AppData {
       overlayFollowGame: true,
       overlayOpacity: 90,
       eventsOverlay: false,
+      cubePopup: false,
     },
   };
 }

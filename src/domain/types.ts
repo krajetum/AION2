@@ -48,6 +48,7 @@ export interface Settings {
   overlayFollowGame: boolean; // overlays hide while another window than the game is in front (alt-tab)
   overlayOpacity: number;     // overlays' background opacity, 20..100 %
   eventsOverlay: boolean;     // small always-on-top window with the event countdowns
+  cubePopup: boolean;         // small always-on-top popup while a hidden cube is in view
 }
 
 /** One undo step: the progress of each touched task before the change (null = it had none). */
