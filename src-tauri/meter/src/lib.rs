@@ -21,6 +21,8 @@ pub mod platform;
 
 pub mod snapshot;
 pub mod arena;
+/// Packet recorder for finding new records (diagnostics).
+pub mod recorder;
 
 #[cfg(feature = "live")]
 pub mod engine;

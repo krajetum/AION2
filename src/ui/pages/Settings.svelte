@@ -15,6 +15,7 @@
   import { ICON } from "../icons.ts";
   import { showStatus } from "../overlays.ts";
   import LeadsRow from "../parts/LeadsRow.svelte";
+  import Recorder from "../parts/Recorder.svelte";
   import { ui } from "../state.svelte.ts";
 
   const s = $derived(ui.data.settings);
@@ -84,6 +85,7 @@
     <div class="btns"><button onclick={() => exportJson(ui.data)}>Export JSON</button>
       <label class="btn">Import JSON <input type="file" accept=".json,application/json" hidden onchange={importFile}></label></div>
   </section>
+  <Recorder />
 </div><div>
   <section><h2>Notifications</h2>
     {@render toggle("Sound", s.sound, (e) => { s.sound = check(e); })}

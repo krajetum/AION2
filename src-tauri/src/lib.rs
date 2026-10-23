@@ -41,6 +41,10 @@ pub fn run() {
             meter::events_overlay,
             meter::overlay_style,
             meter::overlay_opacity,
+            meter::recorder_start,
+            meter::recorder_mark,
+            meter::recorder_stop,
+            meter::recorder_status,
         ])
         .setup(|app| {
             let open = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
