@@ -461,5 +461,22 @@ body.overlay .status, body.overlay .react { display: none; }
 .cube-pop b { font-size: 15px; color: #d9a6ff; }
 .cube-pop span { font-size: 13px; color: var(--muted); }
 .cube-arrow { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; flex: none;
-  background: color-mix(in srgb, #b46bff 35%, transparent); color: #fff; font-size: 22px; font-weight: 700;
-  transform: rotate(var(--deg)); }
+  background: color-mix(in srgb, #b46bff 35%, transparent); color: #fff; font-size: 22px; font-weight: 700; }
+.cube-arrow i { font-style: normal; transform: rotate(var(--deg)); }
+.cube-pop.opened b { color: #6fe3a0; }
+.cube-pop .climb { font-style: normal; color: var(--text); font-weight: 600; }
+.cube-pop.lost b, .cube-picture b.lost { color: #ff8a8e; }
+.cube-pop.lost .cube-arrow { background: color-mix(in srgb, var(--negative) 40%, transparent); }
+.cube-pop.opened .cube-arrow { background: color-mix(in srgb, #3fc07a 40%, transparent); }
+body.overlay:has(.cube-pop.lost) #app { background: color-mix(in srgb, #301216 var(--ov-alpha, 90%), transparent); }
+body.overlay:has(.cube-pop.opened:not(.lost)) #app { background: color-mix(in srgb, #12301f var(--ov-alpha, 90%), transparent); }
+.boss-name { width: 100%; max-width: 280px; }
+/* The auto-sized overlays: no scrollbar for a pixel of overflow (the wheel still scrolls when capped). */
+html.overlay, body.overlay { scrollbar-width: none; }
+html.overlay::-webkit-scrollbar, body.overlay::-webkit-scrollbar { display: none; }
+
+.cube-picture { position: relative; height: 100dvh; margin: 0 -8px -8px; overflow: hidden; border-radius: var(--r-sm); }
+.cube-picture img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.cube-picture b { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; font-size: 14px; color: #6fe3a0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .75)); }
+.cube-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: var(--r-sm); }

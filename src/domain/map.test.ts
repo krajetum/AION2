@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyAffine, bearing, BUNDLED_FIT, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { applyAffine, bearing, BUNDLED_FIT, climb, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, x, y, kind: "cube", group: 0, label: "" });
 
@@ -96,4 +96,10 @@ test("old saves get the cube fields; bad entries are dropped", () => {
   assert.deepEqual(m.found, [{ x: 1, y: 2, z: 3, code: 9, atMs: 4, byYou: false }]);
   assert.deepEqual(m.cubeCodes, [5, 1301199]);
   assert.deepEqual(cleanMap(undefined).cubeCodes, [1301199]);
+});
+
+test("climb: up, down or about level", () => {
+  assert.deepEqual(climb({ z: 3750 }, { z: -70 }), { dz: -3820, way: "down" }); // the 20:18 cube, from the bank above it
+  assert.equal(climb({ z: -68 }, { z: -70 }).way, "level");
+  assert.equal(climb({ z: 100 }, { z: 900 }).way, "up");
 });

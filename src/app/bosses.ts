@@ -2,6 +2,12 @@
 import { cleanLeads } from "../domain/alerts.ts";
 import type { AppData } from "../domain/types.ts";
 
+/** Names a boss the game data doesn't name; empty = back to "Unknown boss". */
+export function setBossName(data: AppData, bossId: number, v: string) {
+  if (v.trim()) data.bossNames[bossId] = v.trim();
+  else delete data.bossNames[bossId];
+}
+
 /** Arms a boss (5 min before, once) or disarms it. */
 export function toggleBossAlert(data: AppData, bossId: number) {
   if (data.bossAlerts[bossId]) delete data.bossAlerts[bossId];

@@ -8,6 +8,7 @@
   import { CADENCES } from "../../domain/types.ts";
   import { playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
+  import { clearCubePicture, loadCubePicture, saveCubePicture, type Opener } from "../../infra/map-image.ts";
   import { isDesktop, setAutostart } from "../../infra/system.ts";
   import { cubePopup, eventsOverlay, meterIdle, meterOverlay, overlayStyle } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
@@ -48,6 +49,21 @@
     input.value = ""; // the old page was re-rendered here, so the same file can be picked again
     act(() => {});
   }
+  const CUBE_SIZES: [number, string][] = [[0.8, "Small"], [1, "Medium"], [1.3, "Large"], [1.7, "Extra large"]];
+  // The "cube opened" pictures (by you, by another player): kept only on this PC (IndexedDB), shown by the cube popup.
+  const OPENERS: [Opener, string][] = [["you", "Picture: opened by you"], ["other", "Picture: opened by others"]];
+  let cubePictures = $state<Record<Opener, string>>({ you: "", other: "" });
+  const showCubePicture = (who: Opener) => loadCubePicture(who).then((b) => {
+    if (cubePictures[who]) URL.revokeObjectURL(cubePictures[who]);
+    cubePictures[who] = b ? URL.createObjectURL(b) : "";
+  }).catch(() => {});
+  $effect(() => { showCubePicture("you"); showCubePicture("other"); });
+  async function pickCubePicture(who: Opener, e: Event) {
+    const input = e.currentTarget as HTMLInputElement, file = input.files?.[0];
+    input.value = "";
+    if (file) { await saveCubePicture(who, file); await showCubePicture(who); }
+  }
+  async function dropCubePicture(who: Opener) { await clearCubePicture(who); await showCubePicture(who); }
   const check = (e: Event) => (e.currentTarget as HTMLInputElement).checked;
 </script>
 
@@ -74,11 +90,20 @@
   </section>
   <section><h2>Overlays</h2>
     {@render toggle("Event countdown overlay", s.eventsOverlay, (e) => { s.eventsOverlay = check(e); eventsOverlay(s.eventsOverlay); }, !isDesktop())}
-    {@render toggle("Hidden cube popup", s.cubePopup, (e) => { s.cubePopup = check(e); cubePopup(s.cubePopup); }, !isDesktop())}
+    {@render toggle("Hidden cube popup", s.cubePopup, (e) => { s.cubePopup = check(e); cubePopup(s.cubePopup, s.cubePopupSize); }, !isDesktop())}
+    <label class="setting"><span>Cube popup size</span><select value={String(s.cubePopupSize)} disabled={!isDesktop() || !s.cubePopup}
+      onchange={(e) => act(() => { s.cubePopupSize = +e.currentTarget.value; cubePopup(s.cubePopup, s.cubePopupSize); })}>
+      {#each CUBE_SIZES as [k, label]}<option value={String(k)}>{label}</option>{/each}</select></label>
+    {#each OPENERS as [who, label]}<div class="setting"><span>{label}</span><span class="ctl">
+      {#if cubePictures[who]}<img class="cube-thumb" src={cubePictures[who]} alt="Chosen: {label}">{/if}
+      <label class="btn">{cubePictures[who] ? "Change" : "Choose"} <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onchange={(e) => pickCubePicture(who, e)}></label>
+      {#if cubePictures[who]}<button class="ghost" onclick={() => dropCubePicture(who)}>Remove</button>{/if}</span></div>{/each}
     {@render toggle("Hide when the game is not in front", s.overlayFollowGame, (e) => { s.overlayFollowGame = check(e); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, !isDesktop())}
     <label class="setting"><span>Opacity</span><span class="ctl"><input type="range" min="20" max="100" step="5" value={s.overlayOpacity} aria-label="Overlay opacity"
       onchange={(e) => { commit(e, (v) => setOverlayOpacity(ui.data, v), () => s.overlayOpacity); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }}> {s.overlayOpacity}%</span></label>
-    <p class="hint">The cube popup shows while a hidden cube the app knows is in view, with its distance and direction.
+    <p class="hint">The cube popup (top centre at first; drag it anywhere) shows while a hidden cube the app knows is in view, with
+      its distance and direction, chimes when one appears (sound: Notifications), turns green when you open one (red, with a sad sound, when someone else does) or shows your picture for it instead
+      (pictures stay only on this PC).
       It learns cubes as they are opened near you; the first one is built in.
       The overlays never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
   </section>

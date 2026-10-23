@@ -19,6 +19,7 @@ export function defaultData(): AppData {
     season: {},
     bosses: [],
     bossAlerts: {},
+    bossNames: {},
     arena: { matches: [], maps: {} },
     map: emptyMap(),
     undo: [],
@@ -40,6 +41,7 @@ export function defaultData(): AppData {
       overlayOpacity: 90,
       eventsOverlay: false,
       cubePopup: false,
+      cubePopupSize: 1,
     },
   };
 }
@@ -68,6 +70,7 @@ export function normalize(raw: any): AppData {
     news: Array.isArray(raw.news) ? raw.news : [],
     season: raw.season ?? {},
     bosses: Array.isArray(raw.bosses) ? raw.bosses : [],
+    bossNames: Object.fromEntries(Object.entries(raw.bossNames ?? {}).filter(([, v]) => typeof v === "string" && v.trim()) as [string, string][]),
     bossAlerts: Object.fromEntries(Object.entries(raw.bossAlerts ?? {}).map(([id, a]: [string, any]) =>
       [id, { leads: cleanLeads(a?.leads), repeat: !!a?.repeat }])),
     arena: { matches: Array.isArray(raw.arena?.matches) ? raw.arena.matches : [], maps: raw.arena?.maps ?? {} },
