@@ -1,5 +1,6 @@
-// The player's map image, kept only on this PC: IndexedDB of the app's webview (the browser's in
-// `npm run dev`). Never in the save file, the export or the repository: the game's map art is NCSOFT's.
+// A map image the player imported, kept only on this PC: IndexedDB of the app's webview (the
+// browser's in `npm run dev`), never in the save file or the export. Without one, the Map page shows
+// the bundled world map (src/assets/ncsoft/, © NCSOFT, outside the GPL: see its README).
 const DB = "aion2-companion-map", STORE = "files", KEY = "map";
 
 function db(): Promise<IDBDatabase> {

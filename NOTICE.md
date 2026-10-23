@@ -14,6 +14,12 @@ It is distributed WITHOUT ANY WARRANTY; see `LICENSE` for the full text.
 - **Class emblems** (`src/ui/classes/*.png`): from A2Tools DPS Meter (`public/assets/`, GPL-3.0 repository),
   renamed to the English class names. The art itself is the game's (NCSOFT).
 
+## NCSOFT material, not under GPL-3.0
+
+- **World map** (`src/assets/ncsoft/world-map.webp`): stitched from AION 2 screenshots, © NCSOFT.
+  Excluded from this project's GPL-3.0 license; included as the Map page's default map and removed at
+  NCSOFT's request. See `src/assets/ncsoft/README.md`.
+
 ## Not affiliated with NCSOFT
 
 AION is a trademark of NCSOFT Corporation. This is an unofficial fan project. The DPS meter reads a

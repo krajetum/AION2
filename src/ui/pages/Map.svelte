@@ -1,10 +1,11 @@
 <script lang="ts">
-  // Map page: the player's own map image (kept only on this PC, infra/map-image.ts) with their
-  // hidden-cube spots and reference points. Close markers merge into a numbered one when zoomed out.
+  // Map page: the bundled world map (src/assets/ncsoft/, © NCSOFT) or one the player imported (kept only
+  // on this PC, infra/map-image.ts), with their hidden-cube spots and reference points. Close markers merge into a numbered one when zoomed out.
   // Your live position and live cubes come later, from the packet recording, if the traffic has them.
   import { addPoint, deletePoint, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import { clusters, fitAffine, fitError, fitView, GROUP_COLORS, toImage, zoomAt, type Cluster, type PointKind, type View } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
+  import worldMap from "../../assets/ncsoft/world-map.webp";
   import { act, commit } from "../actions.ts";
   import { num } from "../format.ts";
   import { ICON } from "../icons.ts";
@@ -13,7 +14,7 @@
   type Mode = "move" | PointKind;
   const MODES: [Mode, string][] = [["move", "Move"], ["cube", "Add cube"], ["ref", "Add reference"]];
 
-  let url = $state(""), error = $state("");
+  let url = $state(worldMap), custom = $state(false), error = $state("");
   let size = $state({ w: 0, h: 0 }); // natural image size
   let vw = $state(0), vh = $state(0);
   let view = $state<View>({ scale: 1, x: 0, y: 0 });
@@ -30,22 +31,25 @@
   async function load() {
     try {
       const blob = await loadMapImage();
-      if (url) URL.revokeObjectURL(url);
-      url = blob ? URL.createObjectURL(blob) : "";
-      if (!blob) size = { w: 0, h: 0 };
+      if (custom) URL.revokeObjectURL(url);
+      custom = !!blob;
+      url = blob ? URL.createObjectURL(blob) : worldMap;
     } catch (e) { error = `Could not read the saved map: ${e}`; }
   }
-  $effect(() => { load(); return () => { if (url) URL.revokeObjectURL(url); }; });
+  $effect(() => { load(); return () => { if (custom) URL.revokeObjectURL(url); }; });
+
+  // Points are image pixels: on another image they land in other places.
+  const moveOn = () => !points.length || confirm("Your points are placed on the current map image. On a different image they will be in the wrong places. Continue?");
 
   async function pick(e: Event) {
     const input = e.currentTarget as HTMLInputElement, file = input.files?.[0];
     input.value = "";
-    if (!file) return;
+    if (!file || !moveOn()) return;
     error = "";
     try { await saveMapImage(file); await load(); } catch (err) { error = `Could not save the map: ${err}`; }
   }
   async function remove() {
-    if (!confirm("Remove the map image from this PC? Your points stay.")) return;
+    if (!moveOn()) return;
     await clearMapImage();
     await load();
   }
@@ -110,16 +114,12 @@
   const mixed = (c: Cluster) => new Set(c.points.map((p) => p.group)).size > 1;
 </script>
 
-<p class="hint dps-note">Your own map image, with the hidden-cube spots you find (one color per spawn group) and reference
-  points. The image stays only on this PC: it is never saved in the export or published. Your live position needs the
-  packet recording first (Settings &gt; Diagnostics).</p>
+<p class="hint dps-note">The world map with the hidden-cube spots you find (one color per spawn group) and reference points.
+  You can import your own map image instead: it stays only on this PC. Your live position needs the packet recording first
+  (Settings &gt; Diagnostics).</p>
 {#if error}<p class="hint error">{error}</p>{/if}
 
-{#if !url}<section class="empty-fight">
-  <p class="hint">No map yet. Import a screenshot (or a stitched image) of the in-game map: PNG, JPG or WebP.</p>
-  <div class="btns"><label class="btn">Import map image <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label></div>
-</section>
-{:else}<section class="map-page">
+<section class="map-page">
   <div class="map-tools">
     <div class="seg" role="group" aria-label="Click on the map to">{#each MODES as [m, label]}
       <button class:on={mode === m} aria-pressed={mode === m} onclick={() => { mode = m; }}>{label}</button>{/each}</div>
@@ -164,8 +164,9 @@
     <span class="hint">{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(points.filter((p) => p.kind === "ref").length)} references
       {#if fit} · game → map fit off by up to {fitError(fit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 references with game coordinates for the fit{/if}</span>
     <span class="grow"></span>
-    <label class="btn ghost">Replace image <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>
-    <button class="ghost" onclick={remove}>Remove image</button>
+    <label class="btn ghost">Import your own map <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>
+    {#if custom}<button class="ghost" onclick={remove}>Back to the bundled map</button>{/if}
   </div>
-</section>{/if}
+  {#if !custom}<p class="hint">Map: AION 2 © NCSOFT, from in-game screenshots (not covered by this app's license).</p>{/if}
+</section>
 
