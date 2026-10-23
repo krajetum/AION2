@@ -39,7 +39,8 @@ and sends nothing to the game or anywhere else.
 
 `src/engine.rs` (starts the pipeline the way A2Tools' `app.rs` does; boss timers, Odyle energy, profile),
 `src/snapshot.rs` (the DPS tab's view of an update), `src/arena.rs` (arena matches from the PvP ledger),
-`src/recorder.rs` (packet recorder for diagnostics, on A2Tools' frame tap),
+`src/recorder.rs` (packet recorder for diagnostics), `src/position.rs` (your position from map loads,
+teleports and your own buffs), `src/tap.rs` (both on A2Tools' frame tap),
 `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 
 ## Game data

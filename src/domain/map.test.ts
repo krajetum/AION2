@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyAffine, cleanMap, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { applyAffine, BUNDLED_FIT, cleanMap, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, x, y, kind: "cube", group: 0, label: "" });
 
@@ -60,4 +60,15 @@ test("saved points are cleaned, bad ones dropped", () => {
     { id: "b", x: 1, y: 2, kind: "cube", group: 0, label: "" },
   ]);
   assert.deepEqual(cleanMap(undefined), { points: [] });
+});
+
+test("bundled fit puts the recorded teleports where the screenshots show them", () => {
+  const near = (gx: number, gy: number, px: number, py: number, tol: number) => {
+    const p = applyAffine(BUNDLED_FIT, gx, gy);
+    assert.ok(Math.hypot(p.x - px, p.y - py) < tol, `${gx},${gy} → ${p.x.toFixed(0)},${p.y.toFixed(0)}, expected ${px},${py}`);
+  };
+  near(109370, 189246, 2096, 2719, 5); // obelisk near Black Claw Village
+  near(189516, -91914, 2517, 1151, 5); // Basfelt Ruins, arrow after the teleport
+  near(-86370, -158622, 1023, 776, 12); // walked spots
+  near(-43409, -150745, 1255, 829, 20);
 });

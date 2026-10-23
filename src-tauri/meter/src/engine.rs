@@ -66,6 +66,8 @@ pub struct Update {
     pub profile: Option<Profile>,
     /// The last arena match, once one has ended (a map load after PvP hits in an instance).
     pub arena: Option<ArenaMatch>,
+    /// Where you are, from the last record that said (map loads, teleports, your buffs).
+    pub position: Option<crate::position::SelfPosition>,
 }
 
 /// A field boss as the map the player opened shows it (`capture::boss_map`).
@@ -136,6 +138,7 @@ impl Engine {
     /// Loads Npcap/libpcap, opens every adapter and starts parsing. Never fails: without a
     /// capture library the engine still answers, with status "no-capture".
     pub fn start() -> Arc<Self> {
+        crate::tap::install();
         let (skills, npcs) = load_names();
         let storage = new_storage();
         let ping = Arc::new(PingTracker::new());
@@ -252,6 +255,10 @@ impl Engine {
             odyle: self.storage.odyle_energy().map(|(basic, charged)| Odyle { basic, charged, owner: self.storage.odyle_owner() }),
             profile: self.profile(),
             arena: self.arena_match(),
+            position: {
+                crate::position::set_me(self.storage.local_player_id().map(|id| id as i32));
+                crate::position::latest()
+            },
         }
     }
 

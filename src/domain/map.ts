@@ -100,6 +100,16 @@ export function fitAffine(refs: { game: { x: number; y: number }; x: number; y: 
   return sx && sy ? [sx[0], sx[1], sx[2], sy[0], sy[1], sy[2]] : null;
 }
 
+/**
+ * Game → pixel fit of the bundled world map (src/assets/ncsoft/world-map.webp), from the packet recording of
+ * 2026-10-23: two teleports (exact) and three spots walked to, located on the map by matching the player's
+ * screenshots. Residuals: 2-3 px for the teleports, up to 20 px for the walked spots (the player stood near,
+ * not on, the icon). About 182 game units per pixel, no rotation, no mirroring.
+ */
+export const BUNDLED_FIT: Affine = [5.42103e-3, 4.33492e-5, 1494.327, 4.82447e-5, 5.57267e-3, 1657.268];
+/** The map id of the bundled world (map loads of the same recording). Elsewhere the fit does not apply. */
+export const WORLD_MAP_ID = 1110;
+
 export const applyAffine = (t: Affine, gx: number, gy: number) => ({ x: t[0] * gx + t[1] * gy + t[2], y: t[3] * gx + t[4] * gy + t[5] });
 
 /** The largest distance, in image pixels, between a reference and where the fit puts it. */

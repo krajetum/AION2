@@ -46,6 +46,9 @@ export interface ArenaPlayer {
 }
 /** PvP on an instance map, logged on the map load after it. */
 export interface ArenaMatch { mapId: number; startMs: number; endMs: number; players: ArenaPlayer[] }
+/** Where you are, from the last record that said (map loads, teleports, your own buffs): a few seconds old
+ *  while you play, older when nothing is applied. Game units; mapId of the last map load, if seen. */
+export interface SelfPosition { x: number; y: number; z: number; mapId: number | null; atMs: number }
 export interface MeterUpdate {
   status: MeterStatus; message: string; port: number | null; device: string | null;
   pingMs: number | null; paused: boolean;
@@ -56,6 +59,7 @@ export interface MeterUpdate {
   odyle: Odyle | null;
   profile: Profile | null;
   arena: ArenaMatch | null; // the last match that ended
+  position?: SelfPosition | null;
   demo?: boolean; // browser preview only
 }
 

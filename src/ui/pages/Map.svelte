@@ -1,9 +1,10 @@
 <script lang="ts">
   // Map page: the bundled world map (src/assets/ncsoft/, © NCSOFT) or one the player imported (kept only
   // on this PC, infra/map-image.ts), with their hidden-cube spots and reference points. Close markers merge into a numbered one when zoomed out.
-  // Your live position and live cubes come later, from the packet recording, if the traffic has them.
+  // You are drawn from the meter's position (src-tauri/meter/src/position.rs) through the game → pixel fit:
+  // the bundled map's own (BUNDLED_FIT), or the player's references (3+ with game coordinates).
   import { addPoint, deletePoint, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
-  import { clusters, fitAffine, fitError, fitView, GROUP_COLORS, toImage, zoomAt, type Cluster, type PointKind, type View } from "../../domain/map.ts";
+  import { applyAffine, BUNDLED_FIT, clusters, fitAffine, fitError, fitView, GROUP_COLORS, toImage, toScreen, WORLD_MAP_ID, zoomAt, type Cluster, type PointKind, type View } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import worldMap from "../../assets/ncsoft/world-map.webp";
   import { act, commit } from "../actions.ts";
@@ -25,7 +26,21 @@
   const sel = $derived(points.find((p) => p.id === selected));
   const marks = $derived(size.w ? clusters(points, view, 22) : []);
   const refs = $derived(points.filter((p) => p.kind === "ref" && p.game).map((p) => ({ ...p, game: p.game! })));
-  const fit = $derived(fitAffine(refs));
+  const ownFit = $derived(fitAffine(refs));
+  const fit = $derived(ownFit ?? (custom ? null : BUNDLED_FIT));
+
+  // You: on the bundled map only while on its world (or before any map load said where you are).
+  const pos = $derived(ui.meter?.position ?? null);
+  const elsewhere = $derived(!!pos && !custom && !ownFit && pos.mapId != null && pos.mapId !== WORLD_MAP_ID);
+  const youPx = $derived(fit && pos && !elsewhere ? applyAffine(fit, pos.x, pos.y) : null);
+  const you = $derived(youPx && size.w ? toScreen(view, youPx.x, youPx.y) : null);
+  const age = $derived(pos ? Math.max(0, Math.round((ui.now - pos.atMs) / 1000)) : 0);
+  const ago = (s: number) => (s < 60 ? `${s} s ago` : `${Math.floor(s / 60)} min ago`);
+  function centerOnMe() {
+    if (!youPx) return;
+    const scale = Math.max(view.scale, 1);
+    view = { scale, x: vw / 2 - youPx.x * scale, y: vh / 2 - youPx.y * scale };
+  }
   const minScale = $derived(size.w && vw ? fitView(size.w, size.h, vw, vh).scale / 2 : 0.05);
 
   async function load() {
@@ -115,8 +130,8 @@
 </script>
 
 <p class="hint dps-note">The world map with the hidden-cube spots you find (one color per spawn group) and reference points.
-  You can import your own map image instead: it stays only on this PC. Your live position needs the packet recording first
-  (Settings &gt; Diagnostics).</p>
+  You can import your own map image instead: it stays only on this PC. The gold dot is you: the game says where you are on
+  teleports and whenever a buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running).</p>
 {#if error}<p class="hint error">{error}</p>{/if}
 
 <section class="map-page">
@@ -130,6 +145,7 @@
     <button class="ghost" aria-label="Zoom out" title="Zoom out" onclick={() => zoom(1 / 1.5)}>−</button>
     <button class="ghost" aria-label="Zoom in" title="Zoom in" onclick={() => zoom(1.5)}>+</button>
     <button class="ghost" onclick={refit}>Fit</button>
+    {#if youPx}<button class="ghost" onclick={centerOnMe}>Center on me</button>{/if}
   </div>
 
   <div class="map-view" class:adding={mode !== "move"} bind:this={box} bind:clientWidth={vw} bind:clientHeight={vh}
@@ -141,6 +157,7 @@
         style:left="{c.x}px" style:top="{c.y}px" style:--c={mixed(c) ? "#e8e4dc" : GROUP_COLORS[p.group]}
         title={c.points.length > 1 ? `${c.points.length} points: click to zoom in` : p.label || (p.kind === "ref" ? "Reference" : `Cube, group ${p.group + 1}`)}
         onpointerdown={(e) => e.stopPropagation()} onclick={() => open(c)}>{c.points.length > 1 ? c.points.length : ""}</button>{/each}
+    {#if you}<div class="me" class:stale={age > 30} style:left="{you.x}px" style:top="{you.y}px" title="You · {ago(age)}"></div>{/if}
     {#if sel}<div class="map-panel" role="dialog" aria-label="Point" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}><h2>{sel.kind === "ref" ? "Reference" : "Cube spot"} <span class="count num">x {sel.x} · y {sel.y}</span>
         <button class="ghost" aria-label="Close" title="Close" onclick={() => { selected = ""; }}>{@html ICON.close}</button></h2>
       <div class="setting"><input value={sel.label} placeholder={sel.kind === "ref" ? "Place (e.g. an obelisk)" : "Note"} aria-label="Label" autocomplete="off"
@@ -154,15 +171,17 @@
       {:else}<div class="setting"><span>Game coordinates</span><span class="ctl">
         <input class="num" inputmode="decimal" placeholder="x" aria-label="Game x" bind:value={gx} onchange={setGame}>
         <input class="num" inputmode="decimal" placeholder="y" aria-label="Game y" bind:value={gy} onchange={setGame}></span></div>
-        <p class="hint">Three or more references with game coordinates let the map place you (and anything else the game reports) on this image.
-          They come from the packet recording; leave them empty until then.</p>{/if}
+        {#if pos}<div class="btns"><button onclick={() => { gx = pos.x.toFixed(0); gy = pos.y.toFixed(0); setGame(); }}>Use my position ({pos.x.toFixed(0)}, {pos.y.toFixed(0)})</button></div>{/if}
+        <p class="hint">Three or more references with game coordinates place you on this image{custom ? "" : " instead of the bundled map's own fit"}.
+          Stand on the spot in game, put the reference there and use your position.</p>{/if}
       <div class="btns"><button onclick={() => { const id = sel.id; selected = ""; act(() => deletePoint(ui.data, id)); }}>Delete point</button></div>
     </div>{/if}
   </div>
 
   <div class="map-foot">
     <span class="hint">{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(points.filter((p) => p.kind === "ref").length)} references
-      {#if fit} · game → map fit off by up to {fitError(fit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 references with game coordinates for the fit{/if}</span>
+      {#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 references with game coordinates{/if}
+      · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if elsewhere}you are on another map ({pos.mapId}){:else if !fit}your position: needs 3 references{:else}you: {ago(age)}{/if}</span>
     <span class="grow"></span>
     <label class="btn ghost">Import your own map <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>
     {#if custom}<button class="ghost" onclick={remove}>Back to the bundled map</button>{/if}

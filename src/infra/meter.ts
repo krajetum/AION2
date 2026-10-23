@@ -128,6 +128,8 @@ function demoUpdate(): MeterUpdate {
     paused: demo.paused, partyOnly: demo.partyOnly, view: demo.view, demo: true,
     bosses: DEMO_BOSSES, odyle: { basic: 30, charged: 840, owner: "Main" },
     profile: { name: "Demo Alt", serverId: 1304, job: "Gladiator", level: 45, gearScore: 2040, combatPower: 51_000 }, arena: DEMO_MATCH,
+    // Near Safe Haven, walking slowly; as if read 2 s ago.
+    position: { x: -82550 + 40 * Math.sin(t / 20_000) * 100, y: -130802 - (t / 1000) * 30, z: 34431, mapId: 1110, atMs: Date.now() - 2000 },
     fight: { target: { name: "Demo Boss", isBoss: true, maxHp: 40_000_000, currentHp: -1, damageDealt: total }, targetMode: demo.mode, battleTimeMs: t, rows },
   };
 }

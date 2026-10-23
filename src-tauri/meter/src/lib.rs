@@ -23,6 +23,10 @@ pub mod snapshot;
 pub mod arena;
 /// Packet recorder for finding new records (diagnostics).
 pub mod recorder;
+/// Your own position from the traffic.
+pub mod position;
+/// The companion's readers on the parser's frame tap.
+pub mod tap;
 
 #[cfg(feature = "live")]
 pub mod engine;
