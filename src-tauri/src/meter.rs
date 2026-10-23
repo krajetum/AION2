@@ -290,6 +290,32 @@ pub fn overlay_opacity(app: AppHandle) -> u8 {
     app.state::<MeterState>().auto.lock().map(|a| a.opacity).unwrap_or(90)
 }
 
+/// Packet recorder (Settings > Diagnostics): every game frame the meter reads goes to a text file
+/// in Downloads, with the player's marks, to find new records (hidden cubes). Stops by itself
+/// after 15 minutes or 200 MB.
+#[tauri::command]
+pub fn recorder_start(app: AppHandle) -> Result<aion2_meter::recorder::RecorderStatus, String> {
+    let dir = app.path().download_dir().or_else(|_| app.path().app_data_dir()).map_err(|e| e.to_string())?;
+    aion2_meter::recorder::start(&dir).map_err(|e| format!("Could not create the recording file: {e}"))?;
+    Ok(aion2_meter::recorder::status())
+}
+
+#[tauri::command]
+pub fn recorder_mark(label: String) -> aion2_meter::recorder::RecorderStatus {
+    aion2_meter::recorder::mark(&label);
+    aion2_meter::recorder::status()
+}
+
+#[tauri::command]
+pub fn recorder_stop() -> aion2_meter::recorder::RecorderStatus {
+    aion2_meter::recorder::stop()
+}
+
+#[tauri::command]
+pub fn recorder_status() -> aion2_meter::recorder::RecorderStatus {
+    aion2_meter::recorder::status()
+}
+
 fn close(app: &AppHandle, label: &str) {
     if let Some(w) = app.get_webview_window(label) {
         let _ = w.close();

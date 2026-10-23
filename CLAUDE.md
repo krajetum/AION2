@@ -43,7 +43,8 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   another window than the game is in front and transparent (`settings.overlayFollowGame`, `overlayOpacity`)
 - `src-tauri/meter/` — crate `aion2-meter`: capture + parser + aggregation vendored from A2Tools DPS Meter (GPL-3.0).
   Keep A2Tools' files as close to upstream as possible and list every change in `src-tauri/meter/NOTICE.md`;
-  companion code goes in `engine.rs` / `snapshot.rs` / `arena.rs`. Game patches renumber opcodes: update from A2Tools first.
+  companion code goes in `engine.rs` / `snapshot.rs` / `arena.rs` / `recorder.rs` (Settings > Diagnostics: every frame the meter reads,
+  plus the player's marks, to a text file in Downloads, for finding new records such as hidden cubes). Game patches renumber opcodes: update from A2Tools first.
 
 ## Rules
 - Never read game memory, inject code, simulate input or automate the game (ToS/anti-cheat). Tracker + notifications,

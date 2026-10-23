@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clock, hpLeft, odyleFor, short, viewRows, type Fight, type MeterUpdate, type PlayerRow } from "./meter.ts";
+import { clock, fileSize, hpLeft, odyleFor, short, viewRows, type Fight, type MeterUpdate, type PlayerRow } from "./meter.ts";
 
 test("Odyle energy only for the character it belongs to", () => {
   const u = { odyle: { basic: 30, charged: 840, owner: "Naicha" } } as MeterUpdate;
@@ -51,4 +51,10 @@ test("damage taken view: per second over the fight", () => {
 
 test("damage view keeps the engine's share", () => {
   assert.deepEqual(viewRows(fight, "damage").map((x) => x.row.id), [1, 2]);
+});
+
+test("file sizes", () => {
+  assert.equal(fileSize(512), "512 B");
+  assert.equal(fileSize(20_000), "20 KB");
+  assert.equal(fileSize(1_500_000), "1.4 MB");
 });

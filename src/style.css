@@ -248,6 +248,8 @@ dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; f
 dt { color: var(--muted); }
 dd { margin: 0; }
 .hint { color: var(--faint); font-size: 12px; margin: 12px 0 0; }
+.hint.error { color: var(--neg-ink); }
+.hint code { word-break: break-all; }
 
 /* ---------- controls ---------- */
 button, .btn, input, select {

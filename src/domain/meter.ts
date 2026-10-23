@@ -128,3 +128,18 @@ export function hpLeft(t: Target): number | undefined {
   const cur = t.currentHp >= 0 ? t.currentHp : t.maxHp - t.damageDealt;
   return Math.max(0, Math.min(1, cur / t.maxHp));
 }
+
+/** The packet recorder (Settings > Diagnostics), as src-tauri/meter/src/recorder.rs reports it. */
+export interface RecorderStatus {
+  recording: boolean;
+  path: string | null; // the file of the current or last recording
+  ms: number; frames: number; bytes: number; marks: number;
+  ended: string | null; // why it stopped by itself (time or size limit, write error)
+}
+
+/** 512 → "512 B", 1_500_000 → "1.4 MB". */
+export function fileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}

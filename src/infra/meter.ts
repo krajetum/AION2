@@ -3,7 +3,7 @@
 // labelled demo fight stands in, only to preview the UI.
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { ArenaMatch, BossTimer, MeterUpdate, MeterView, PlayerRow } from "../domain/meter.ts";
+import type { ArenaMatch, BossTimer, MeterUpdate, MeterView, PlayerRow, RecorderStatus } from "../domain/meter.ts";
 
 let started = false;
 let last: MeterUpdate | undefined;
@@ -61,6 +61,13 @@ export async function onOpacity(fn: (opacity: number) => void) {
 export const onEventsOverlay = (fn: (on: boolean) => void) => (isTauri() ? listen<boolean>("events-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 /** The overlay was opened or closed (also from the overlay itself). */
 export const onOverlay = (fn: (open: boolean) => void) => (isTauri() ? listen<boolean>("meter-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
+
+/** Packet recorder (desktop only; null in the browser): every frame the meter reads, to a file in Downloads. */
+const rec = (cmd: string, args?: Record<string, unknown>) => (isTauri() ? invoke<RecorderStatus>(cmd, args) : Promise.resolve(null));
+export const recorderStart = () => rec("recorder_start");
+export const recorderMark = (label: string) => rec("recorder_mark", { label });
+export const recorderStop = () => rec("recorder_stop");
+export const recorderStatus = () => rec("recorder_status");
 
 // ---------- demo (browser preview only) ----------
 let demo = { start: Date.now(), paused: false, partyOnly: false, view: "damage" as MeterView, mode: "bossTargets", dmg: [0, 0, 0, 0, 0] };
