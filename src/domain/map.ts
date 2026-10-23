@@ -70,6 +70,18 @@ export function takeCubes(map: MapData, codes: number[], opened: FoundCube[]): b
 /** Game units are taken as centimetres: the recorded walk ran ~790 units/s, about a running speed. */
 export const toMetres = (units: number) => units / 100;
 
+/** Height differences smaller than this (game units, ~3 m) count as the same level. */
+export const SAME_LEVEL = 300;
+
+/**
+ * Up or down from you to a point: z is height (the 20:18 cube stood at z -70, under the bank the player
+ * walked along at z 3,700-6,600, and the player was at z -68 when opening it). "level" within SAME_LEVEL.
+ */
+export function climb(from: { z: number }, to: { z: number }): { dz: number; way: "up" | "down" | "level" } {
+  const dz = to.z - from.z;
+  return { dz, way: Math.abs(dz) < SAME_LEVEL ? "level" : dz > 0 ? "up" : "down" };
+}
+
 /** From you to a point, on the map's axes (x east, y south): distance in game units and a compass label. */
 export function bearing(from: { x: number; y: number }, to: { x: number; y: number }): { dist: number; dir: string; deg: number } {
   const dx = to.x - from.x, dy = to.y - from.y;

@@ -3,7 +3,7 @@
   // and for a few seconds after one is opened): the nearest cube's distance and direction from you, a chime
   // when a new one appears, green "Cube opened" after an opening. Settings > Overlays turns it on and sizes it.
   import { channelVolume } from "../domain/alerts.ts";
-  import { bearing, toMetres } from "../domain/map.ts";
+  import { bearing, climb, toMetres } from "../domain/map.ts";
   import type { MeterUpdate } from "../domain/meter.ts";
   import type { Settings } from "../domain/types.ts";
   import { loadCubePicture, type Opener } from "../infra/map-image.ts";
@@ -65,7 +65,7 @@
     else sizeOverlay(BASE_WIDTH * k, BASE_HEIGHT * k);
   });
   const near = $derived(pos && live.length
-    ? live.map((c) => ({ c, b: bearing(pos, c) })).sort((a, b) => a.b.dist - b.b.dist)[0] : null);
+    ? live.map((c) => ({ c, b: bearing(pos, c), h: climb(pos, c) })).sort((a, b) => a.b.dist - b.b.dist)[0] : null);
 </script>
 
 <svelte:window bind:innerWidth={width} />
@@ -80,7 +80,7 @@
     {#if opened}<b data-tauri-drag-region>Cube opened</b>
       <span data-tauri-drag-region>{lastOpened?.byYou ? "By you" : "By another player"}</span>
     {:else}<b data-tauri-drag-region>{live.length > 1 ? `${live.length} hidden cubes nearby` : "Hidden cube nearby"}</b>
-      <span data-tauri-drag-region>{#if near}≈ {Math.round(toMetres(near.b.dist))} m {near.b.dir}{:else}Position not known yet{/if}</span>{/if}
+      <span data-tauri-drag-region>{#if near}≈ {Math.round(toMetres(near.b.dist))} m {near.b.dir}{#if near.h.way !== "level"}{" "}· <em class="climb">{near.h.way === "up" ? "↑" : "↓"} {Math.round(toMetres(Math.abs(near.h.dz)))} m {near.h.way}</em>{/if}{:else}Position not known yet{/if}</span>{/if}
   </div>
 </div>
 {/if}

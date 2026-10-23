@@ -464,6 +464,7 @@ body.overlay .status, body.overlay .react { display: none; }
   background: color-mix(in srgb, #b46bff 35%, transparent); color: #fff; font-size: 22px; font-weight: 700; }
 .cube-arrow i { font-style: normal; transform: rotate(var(--deg)); }
 .cube-pop.opened b { color: #6fe3a0; }
+.cube-pop .climb { font-style: normal; color: var(--text); font-weight: 600; }
 .cube-pop.lost b, .cube-picture b.lost { color: #ff8a8e; }
 .cube-pop.lost .cube-arrow { background: color-mix(in srgb, var(--negative) 40%, transparent); }
 .cube-pop.opened .cube-arrow { background: color-mix(in srgb, #3fc07a 40%, transparent); }

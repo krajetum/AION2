@@ -150,7 +150,7 @@ function demoUpdate(): MeterUpdate {
 
 function demoCubes(t: number) {
   const round = Math.floor(t / 20_000), entity = round + 1;
-  const at = { x: -79700, y: -133600 - (t / 1000) * 30, z: 34431 };
+  const at = { x: -79700, y: -133600 - (t / 1000) * 30, z: 33600 }; // ~8 m below the demo position
   return t % 20_000 < 15_000
     ? { live: [{ entity, code: 1301199, ...at, seenMs: demo.start + round * 20_000 }], opened: [], codes: [1301199] }
     : { live: [], opened: [{ code: 1301199, ...at, byYou: round % 2 === 0, atMs: demo.start + round * 20_000 + 15_000 }], codes: [1301199] };
