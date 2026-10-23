@@ -345,7 +345,7 @@ fn set_visible(app: &AppHandle, label: &str, on: bool) {
 /// Over the game it needs borderless/windowed fullscreen.
 fn build(app: &AppHandle, label: &str) -> Result<(), String> {
     let (title, w, h, min_w, min_h) = if label == EVENTS {
-        ("AION 2 Companion – Events", 300.0, 150.0, 200.0, 80.0)
+        ("AION 2 Companion – Events", 300.0, 230.0, 200.0, 80.0)
     } else {
         ("AION 2 Companion – DPS", 340.0, 260.0, 240.0, 120.0)
     };

@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { bossBoard, bossesByMap, bossKey, bossState, dueBossAlerts, mergeBosses } from "./bosses.ts";
+import { bossBoard, bossesByMap, bossKey, bossState, dueBossAlerts, mergeBosses, nextBossWave } from "./bosses.ts";
 import type { BossAlert } from "./types.ts";
 
 const MIN = 60_000;
@@ -62,4 +62,18 @@ test("boss state and board order: next respawns, then up", () => {
   const board = bossBoard([b(1, 1, true, 0, 5), b(1, 2, false, 300, 0), b(1, 3, false, 200, 0), b(1, 4, false, 5, 0)], 10);
   assert.deepEqual(board.map((x) => x.bossId), [3, 2, 1]);
   assert.equal(bossBoard([b(1, 2, false, 300, 0), b(1, 3, false, 200, 0)], 10, 1).length, 1);
+});
+
+test("next boss wave: every boss due in the same minute, only those", () => {
+  const now = Date.parse("2026-10-23T14:00:00Z");
+  const b = (bossId: number, name: string, at: string, up = false) =>
+    ({ mapId: 1, bossId, name, up, timeMs: Date.parse(at), seenMs: now - 60_000 });
+  const wave = nextBossWave([
+    b(1, "Zeta", "2026-10-23T14:30:10Z"), b(2, "Alpha", "2026-10-23T14:30:50Z"), // same minute
+    b(3, "Later", "2026-10-23T14:31:00Z"), b(4, "Up now", "2026-10-23T13:00:00Z", true),
+    b(5, "Passed", "2026-10-23T13:59:00Z"),
+  ], now);
+  assert.deepEqual(wave, { timeMs: Date.parse("2026-10-23T14:30:10Z"), names: ["Alpha", "Zeta"] });
+  assert.deepEqual(nextBossWave([b(3, "Later", "2026-10-23T14:31:00Z")], now).names, ["Later"]);
+  assert.deepEqual(nextBossWave([b(4, "Up now", "2026-10-23T13:00:00Z", true)], now), { timeMs: 0, names: [] });
 });

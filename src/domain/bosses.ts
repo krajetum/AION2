@@ -64,3 +64,13 @@ export function dueBossAlerts(bosses: BossTimer[], alerts: Record<string, BossAl
   }
   return out;
 }
+/** The next field-boss respawn (events overlay): every boss due in that same minute, by name.
+ *  Empty when no respawn time is ahead. */
+export function nextBossWave(bosses: BossTimer[], now: number): { timeMs: number; names: string[] } {
+  const due = bosses.filter((b) => bossState(b, now) === "due");
+  if (!due.length) return { timeMs: 0, names: [] };
+  const minute = (t: number) => Math.floor(t / 60_000);
+  const first = Math.min(...due.map((b) => b.timeMs));
+  const wave = due.filter((b) => minute(b.timeMs) === minute(first));
+  return { timeMs: first, names: [...new Set(wave.map((b) => b.name))].sort((a, b) => a.localeCompare(b)) };
+}
