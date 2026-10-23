@@ -36,10 +36,20 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          v=$(npm version "${{ inputs.bump || 'patch' }}" --no-git-tag-version)
-          git commit -am "${v#v}"
-          git tag "$v"
-          git push origin HEAD:main "$v"
+          # Two merges seconds apart: this run's checkout can be behind main by the time it pushes.
+          # Bump on top of the latest main, push branch and tag together (--atomic: never a tag
+          # without its commit), and retry on a rejected push.
+          for try in 1 2 3; do
+            git fetch origin main --tags --force
+            git reset --hard origin/main
+            v=$(npm version "${{ inputs.bump || 'patch' }}" --no-git-tag-version)
+            git commit -am "${v#v}"
+            git tag -f "$v"
+            if git push --atomic origin HEAD:main "$v"; then exit 0; fi
+            git tag -d "$v"
+            sleep $((try * 5))
+          done
+          exit 1
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
         with:
