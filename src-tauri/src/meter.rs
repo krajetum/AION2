@@ -150,6 +150,17 @@ pub fn meter_start(app: AppHandle) -> Update {
             loop {
                 std::thread::sleep(RATE);
                 let mut u = e.update();
+                // The game in front? Asked twice a second, and only when it matters, never while holding
+                // `auto`: the commands that change the overlays lock it on the UI thread.
+                let front = {
+                    let state = app.state::<MeterState>();
+                    let a = state.auto.lock().expect("meter state poisoned");
+                    a.follow_game && (a.overlay || a.events || a.cube) && front_checked.elapsed() >= FRONT_CHECK
+                }
+                .then(|| {
+                    front_checked = Instant::now();
+                    aion2_meter::platform::window_detector::is_aion2_foreground()
+                });
                 let (step, want) = {
                     let state = app.state::<MeterState>();
                     let mut a = state.auto.lock().expect("meter state poisoned");
@@ -160,10 +171,8 @@ pub fn meter_start(app: AppHandle) -> Update {
                         Step::Nothing => {}
                     }
                     a.cube_near = cube_news(&u.cubes, aion2_meter::clock::now_ms());
-                    // The game in front? Asked twice a second, and only when it matters.
-                    if a.follow_game && (a.overlay || a.events || a.cube) && front_checked.elapsed() >= FRONT_CHECK {
-                        a.front = aion2_meter::platform::window_detector::is_aion2_foreground();
-                        front_checked = Instant::now();
+                    if let Some(f) = front {
+                        a.front = f;
                     }
                     (step, a.visible())
                 };

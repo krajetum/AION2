@@ -27,6 +27,8 @@ and sends nothing to the game or anywhere else.
 5. `supporters.rs` replaced by an empty stub (A2Tools downloads a supporter roster; the companion downloads nothing).
 6. `platform/` cut down to what capture needs: which libpcap to load, the game-window check and whether it is in front
    (adapted from A2Tools' `platform/win32`, `platform/linux`, `platform/procfs.rs`). No Npcap installer.
+   The window checks skip the app's own windows (their title is never read: that sends them a message and
+   waits for the UI thread, which hung the app, 2026-10-24).
 7. Data: English skill and NPC names only (`data/i18n/{skills,npcs}/en.json`); `servers.json` not included.
    `skill_icons.json` added later (2026-10-21) for the skill icons; `snapshot.rs::skill_icon` follows A2Tools'
    `public/src/js/skillIcons.js` to name the icon on NCSOFT's CDN.

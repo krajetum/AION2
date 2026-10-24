@@ -54,7 +54,20 @@ pub mod window_detector {
         path.rsplit(['\\', '/']).next().is_some_and(|name| name.eq_ignore_ascii_case("AION2.exe"))
     }
 
+    /// A window of this app: never the game, and never asked for its title. GetWindowTextW on a window
+    /// of the calling process *sends* it WM_GETTEXT and waits for the UI thread to answer; asked from
+    /// the meter's thread while the UI thread waited on that thread, the app hung (Windows event 1002,
+    /// "Application Hang", 2026-10-24).
+    fn ours(hwnd: HWND) -> bool {
+        let mut pid: u32 = 0;
+        unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+        pid == std::process::id()
+    }
+
     fn window_title(hwnd: HWND) -> String {
+        if ours(hwnd) {
+            return String::new();
+        }
         let mut buf = [0u16; 256];
         let len = unsafe { GetWindowTextW(hwnd, &mut buf) } as usize;
         String::from_utf16_lossy(&buf[..len])
@@ -112,7 +125,7 @@ pub mod window_detector {
     /// Whether the window in front is the game's, by title or program (A2Tools' `is_aion2_foreground`).
     pub fn is_aion2_foreground() -> bool {
         let hwnd = unsafe { GetForegroundWindow() };
-        if hwnd.0.is_null() {
+        if hwnd.0.is_null() || ours(hwnd) {
             return false;
         }
         is_game_title(&window_title(hwnd)) || exe_path(hwnd).is_some_and(|p| is_game_exe(&p))
