@@ -505,3 +505,5 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
 .radar-note { position: absolute; bottom: 8%; left: 0; right: 0; text-align: center; font-size: 11px; color: #fff; text-shadow: 0 0 3px #000; }
 .arena-gear { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; padding: 6px 4px; }
 .crash pre { max-height: 240px; overflow: auto; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
+.kill-history .seg { margin-bottom: 10px; }
+.arena-gear .cls-icon { margin-right: 6px; vertical-align: -6px; }

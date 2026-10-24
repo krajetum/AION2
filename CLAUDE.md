@@ -33,17 +33,18 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   - `news.ts` — Steam feed parsing + read/unread cache; `save-file.ts` — default data + migration of old/imported saves
   - `meter.ts` — DPS meter update types (as the Rust engine sends them: fight, boss timers, Odyle energy, profile, last arena match), views (damage/healing/taken), number/HP formatting
   - `servers.ts` — server names by id (A2Tools' table), faction/region from the id, `gearUrl` (a player's profile on shugo.gg)
-  - `bosses.ts` — field-boss respawn timers from the maps opened in game, `bossLabel` (bosses the game data doesn't name: the player names them, `AppData.bossNames`); `arena.ts` — arena matchup log
+  - `bosses.ts` — field-boss respawn timers from the maps opened in game, `bossLabel` (bosses the game data doesn't name: the player names them, `AppData.bossNames`); `arena.ts` — arena matchup log and kill history (`logKills`)
   - `map.ts` — Map page: cube spots / references on the player's own map image, clusters, pan/zoom math, game→pixel affine fit
     (`BUNDLED_FIT` for the bundled world map, map id `WORLD_MAP_ID`; the player's references override it); cubes found and
     cube codes learned (`takeCubes`, `KNOWN_CUBE_CODES`), `bearing` / `climb` for the cube popup, `onRadar` for the radar
 - `src/app/` — use cases that change `AppData` (progress, tasks, characters, season, settings, planner session, `checkNotifications`, `arena.ts`: meter data into the save file)
 - `src/infra/` — Tauri adapters: `storage.ts` (plugin-store `data.json`, export/import), `notifier.ts` (toasts, sounds), `steam.ts` (news fetch), `map-image.ts` (images the player picks, in IndexedDB, never in the save file, export or repo: an imported map, else the bundled `src/assets/ncsoft/world-map.webp`, © NCSOFT, outside the GPL; the cube popup's "opened by you / by others" pictures), `system.ts` (autostart, updater, `tray-mute` event), `meter.ts` (DPS engine commands + `meter-update` / `meter-overlay` events, browser demo)
-- `src/ui/` — Svelte UI: `App.svelte` (header, timers, sidebar), `pages/*` (`Dps.svelte` = DPS meter, `Arena.svelte` = arena log, `Map.svelte` = map with cube spots), `parts/*`, `Overlay.svelte` (DPS overlay window), `EventsOverlay.svelte` (event countdown window + next field-boss respawn, all bosses due that minute), `CubeOverlay.svelte` (popup while a hidden cube is in view: distance, compass direction, up/down (`climb`), chime; 5 s "opened" state or picture, sad sound when another player opens it; size from Settings, top centre at first), `RadarOverlay.svelte` (cubes around you, north up, to lay over the game's minimap); `state.svelte.ts` (`ui.data` = reactive save file), `actions.ts` (save after each change, undo, news refresh)
+- `src/ui/` — Svelte UI: `App.svelte` (header, timers, sidebar), `pages/*` (`Dps.svelte` = DPS meter, `Arena.svelte` = arena log + kill history, `parts/PlayerCard.svelte` = a player's server, gear, shugo.gg link, `Map.svelte` = map with cube spots), `parts/*`, `Overlay.svelte` (DPS overlay window), `EventsOverlay.svelte` (event countdown window + next field-boss respawn, all bosses due that minute), `CubeOverlay.svelte` (popup while a hidden cube is in view: distance, compass direction, up/down (`climb`), chime; 5 s "opened" state or picture, sad sound when another player opens it; size from Settings, top centre at first), `RadarOverlay.svelte` (cubes around you, north up, to lay over the game's minimap); `state.svelte.ts` (`ui.data` = reactive save file), `actions.ts` (save after each change, undo, news refresh)
 - `src/main.ts` — startup: load, resets, mount, meter capture (from app start), 1 s clock; `index.html#overlay` / `#events` / `#cube` / `#radar` mount only that overlay's component
 - `src-tauri/src/lib.rs` — plugins, tray menu (emits `tray-mute`), close → hide to tray; `crash.rs` (panic hook → `crash.log` in the
   app's log folder, `crash_log` command); `places.rs` (overlay windows reopen where the player left them, `overlay-positions.json`)
-- `src-tauri/src/meter.rs` — DPS meter commands (`meter_*`), `meter-update` events every 200 ms, idle reset
+- `src-tauri/src/meter.rs` — DPS meter commands (`meter_*`; `meter_start` is async and starts the engine on a blocking thread:
+  a synchronous command runs on the UI thread, and Npcap's device list can hang there), `meter-update` events every 200 ms, idle reset
   (`settings.dpsIdleSeconds`), overlay windows (DPS: shown on activity / hidden when idle; events), both hidden while
   another window than the game is in front and transparent (`settings.overlayFollowGame`, `overlayOpacity`); also the cube popup
   and the radar. Never call Win32 window functions while holding `auto`: commands lock it on the UI thread (app hang, 2026-10-24)
@@ -52,7 +53,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   companion code goes in `engine.rs` / `snapshot.rs` / `arena.rs` / `recorder.rs` (Settings > Diagnostics: every frame the meter reads,
   plus the player's marks, to a text file in Downloads, for finding new records such as hidden cubes) / `position.rs` (your position:
   map loads, teleports, your own buffs) / `cubes.rs` (hidden cubes: object codes learned from openings, cubes in view,
-  openings placed by their loot) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
+  openings placed by their loot) / `kills.rs` (your PvP kills and deaths: the last hit before a death, from the PvP ledger) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
 
 ## Rules
 - Never read game memory, inject code, simulate input or automate the game (ToS/anti-cheat). Tracker + notifications,

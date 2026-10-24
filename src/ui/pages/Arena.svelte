@@ -2,7 +2,8 @@
   import { classIcon } from "../classes.ts";
   import { labelMap } from "../../app/arena.ts";
   import { matchTotals } from "../../domain/arena.ts";
-  import { faction, gearUrl, serverName } from "../../domain/servers.ts";
+  import { serverName } from "../../domain/servers.ts";
+  import PlayerCard from "../parts/PlayerCard.svelte";
   import { clock, short, type ArenaMatch } from "../../domain/meter.ts";
   import { commit } from "../actions.ts";
   import { hm } from "../format.ts";
@@ -11,6 +12,11 @@
   const log = $derived(ui.data.arena);
   const key = (m: ArenaMatch) => `${m.mapId}:${m.startMs}`;
   let open = $state(""), player = $state("");
+  // Kill history: your kills or your deaths (who killed you).
+  let killView = $state<"kill" | "death">("kill"), killOpen = $state("");
+  const kills = $derived(log.kills.filter((k) => k.kind === killView));
+  const nk = $derived(log.kills.filter((k) => k.kind === "kill").length), nd = $derived(log.kills.length - nk);
+  const killKey = (k: { atMs: number; other: { id: number } }) => `${k.atMs}:${k.other.id}`;
   const when = (t: number) => `${new Date(t).toLocaleDateString([], { day: "2-digit", month: "short" })} ${hm(t)}`;
   const gear = (v: number | null, f: (n: number) => string = String) => (v == null ? "—" : f(v));
 </script>
@@ -34,17 +40,34 @@
       <table class="sheet">
         <thead><tr><th>Player</th><th>Class</th><th class="n">Server</th><th class="n">Lv</th><th class="n">GS</th><th class="n">CP</th>
           <th class="n">Dealt</th><th class="n">Taken</th><th class="n">Deaths</th></tr></thead>
-        <tbody>{#each m.players as p (p.id)}{@const pk = `${k}:${p.id}`}{@const url = gearUrl(p.name, p.serverId)}
+        <tbody>{#each m.players as p (p.id)}{@const pk = `${k}:${p.id}`}
           <tr class="prow {p.side}" class:you={p.side === "you"} style:--p="0" aria-expanded={player === pk} title="Gear and stats"
             onclick={() => { player = player === pk ? "" : pk; }}>
           <td><span class="name">{p.name || (p.side === "you" ? "You" : `#${p.id}`)}</span><small>{p.side}</small></td>
           <td class="cls">{#if classIcon(p.job)}<img class="cls-icon" src={classIcon(p.job)} alt="" width="22" height="23">{/if}{p.job || "—"}</td><td class="n" title={p.serverId ? `Server ${p.serverId}` : ""}>{serverName(p.serverId) || p.serverId || "—"}</td><td class="n">{gear(p.level)}</td><td class="n">{gear(p.gearScore)}</td>
           <td class="n">{gear(p.combatPower, short)}</td><td class="n">{short(p.dealt)}</td><td class="n">{short(p.taken)}</td><td class="n">{p.deaths}</td></tr>
-          {#if player === pk}<tr class="skills"><td colspan="9"><div class="arena-gear">
-            <span><b>{p.name || "Unknown name"}</b> · {p.job || "class not known"} · {serverName(p.serverId) || "server not known"}{faction(p.serverId) ? ` (${faction(p.serverId)})` : ""}</span>
-            <span>Level {gear(p.level)} · Gear score {gear(p.gearScore)} · Combat power {gear(p.combatPower, short)}</span>
-            {#if url}<a href={url} target="_blank" rel="noopener">Gear and stats on shugo.gg ↗</a>
-            {:else}<span class="hint">No profile link: {p.name ? "the server is not known" : "the game has not sent this player's name"}.</span>{/if}
-          </div></td></tr>{/if}{/each}</tbody>
+          {#if player === pk}<tr class="skills"><td colspan="9"><PlayerCard {p} /></td></tr>{/if}{/each}</tbody>
       </table></td></tr>{/if}
   {/each}</tbody></table></div><p class="hint">Deaths: your side : theirs. Click a match for its players.</p></section>{/if}
+
+<section class="dps-table kill-history"><h2>Kill history
+    <span class="count">{nk} {nk === 1 ? "kill" : "kills"} · {nd} {nd === 1 ? "death" : "deaths"}</span></h2>
+  <div class="seg" role="group" aria-label="Show">
+    <button class:on={killView === "kill"} aria-pressed={killView === "kill"} onclick={() => { killView = "kill"; killOpen = ""; }}>Your kills</button>
+    <button class:on={killView === "death"} aria-pressed={killView === "death"} onclick={() => { killView = "death"; killOpen = ""; }}>Killed by</button></div>
+  {#if !kills.length}<p class="hint">{killView === "kill" ? "No kill yet." : "Nobody has killed you yet."} PvP kills and deaths are logged while the companion runs.</p>
+  {:else}<div class="scroll"><table class="sheet">
+    <thead><tr><th>When</th><th>Player</th><th>Class</th><th class="n">Server</th><th>Where</th>
+      <th class="n">{killView === "kill" ? "You dealt" : "They dealt"}</th><th class="n">{killView === "kill" ? "They dealt" : "You dealt"}</th></tr></thead>
+    <tbody>{#each kills as k (killKey(k))}{@const o = k.other}{@const kk = killKey(k)}
+      <tr class="prow" aria-expanded={killOpen === kk} title="Gear and stats" style:--p="0" onclick={() => { killOpen = killOpen === kk ? "" : kk; }}>
+        <td>{when(k.atMs)}</td>
+        <td><span class="name">{o.name || `#${o.id}`}</span></td>
+        <td class="cls">{#if classIcon(o.job)}<img class="cls-icon" src={classIcon(o.job)} alt="" width="22" height="23">{/if}{o.job || "—"}</td>
+        <td class="n">{serverName(o.serverId) || o.serverId || "—"}</td>
+        <td>{k.mapId == null ? "—" : log.maps[k.mapId] || `Map ${k.mapId}`}</td>
+        <td class="n">{short(killView === "kill" ? o.taken : o.dealt)}</td><td class="n">{short(killView === "kill" ? o.dealt : o.taken)}</td></tr>
+      {#if killOpen === kk}<tr class="skills"><td colspan="7"><PlayerCard p={o} /></td></tr>{/if}
+    {/each}</tbody></table></div>
+    <p class="hint">The killer is the last player who hit before the death: the game sends no "killed by". Damage is since the map was loaded.</p>{/if}
+</section>

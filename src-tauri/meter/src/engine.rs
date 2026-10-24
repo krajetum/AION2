@@ -70,6 +70,8 @@ pub struct Update {
     pub position: Option<crate::position::SelfPosition>,
     /// Hidden cubes in view (learned codes) and opened since the meter started.
     pub cubes: crate::cubes::Cubes,
+    /// Your PvP kills and deaths since the meter started (the last 50).
+    pub kills: Vec<crate::kills::Kill>,
 }
 
 /// A field boss as the map the player opened shows it (`capture::boss_map`).
@@ -134,6 +136,8 @@ pub struct Engine {
     capture_error: Option<String>,
     /// (last check ms, game window open)
     game: Mutex<(i64, bool)>,
+    /// (deaths read up to this time, the kills and deaths found)
+    kills: Mutex<(i64, Vec<crate::kills::Kill>)>,
 }
 
 impl Engine {
@@ -178,6 +182,7 @@ impl Engine {
             calc: Mutex::new(calc),
             bosses: Mutex::new((0, Vec::new())),
             arena: Mutex::new(ArenaWatch::default()),
+            kills: Mutex::new((crate::clock::now_ms(), Vec::new())),
             ports,
             ping,
             paused,
@@ -196,7 +201,31 @@ impl Engine {
         g.1
     }
 
+    /// Kills and deaths from the deaths logged since the last look, read before a map load takes the
+    /// PvP hits away (`arena_match`); a death is read 2.5 s late, for its killing blow to arrive.
+    fn kills(&self) -> Vec<crate::kills::Kill> {
+        let mut k = self.kills.lock();
+        let Some(me) = self.storage.local_player_id().map(|id| id as i32) else { return k.1.clone() };
+        let until = crate::clock::now_ms() - 2_500;
+        if until <= k.0 {
+            return k.1.clone();
+        }
+        let deaths = self.storage.deaths_between(k.0 + 1, until);
+        if !deaths.is_empty() {
+            let hits = self.storage.pvp_ledger();
+            let s = &self.storage;
+            let found = crate::kills::find(me, &deaths, k.0, &hits, &|id| s.get_nickname(id).unwrap_or_default(),
+                &|n| s.player_server(n), &s.fight_roster(), s.current_map_id());
+            k.1.extend(found);
+            let extra = k.1.len().saturating_sub(50);
+            k.1.drain(..extra);
+        }
+        k.0 = until;
+        k.1.clone()
+    }
+
     pub fn update(&self) -> Update {
+        let kills = self.kills();
         let party_only = self.party_only.load(Ordering::Relaxed);
         let view = self.view.lock().clone();
         let fight = {
@@ -262,6 +291,7 @@ impl Engine {
                 crate::position::latest()
             },
             cubes: crate::cubes::snapshot(),
+            kills,
         }
     }
 
