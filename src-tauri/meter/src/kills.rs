@@ -1,6 +1,7 @@
 //! Your PvP kills and deaths, for the kill history (companion code). A death in the death log
 //! (`42 36` flag 3, or a party member's HP dropping to 0) is a kill of yours when your hit on
-//! that player is the last one before it, and a death of yours when anyone's is the last on you.
+//! that player is the last one before it, an assist when you hit them shortly before someone else
+//! landed the last hit, and a death of yours when anyone's is the last on you.
 //! The hits are the PvP ledger the arena log uses (`DataStorage::pvp_ledger`: per pair of players,
 //! damage, hits, first and last hit), kept since the last map load.
 //! The meter never sees a "killed by" record: the last hit is the killing blow as far as it knows.
@@ -18,6 +19,8 @@ use crate::snapshot::english_job;
 const BEFORE_MS: i64 = 10_000;
 /// ...or this long after it (its own record can come second).
 const AFTER_MS: i64 = 2_000;
+/// Your hit on a player this long before their death (or just after) makes their death your assist.
+const ASSIST_MS: i64 = 15_000;
 /// One death logged twice (the death record and the HP at 0) within this is one death.
 const SAME_DEATH_MS: i64 = 3_000;
 
@@ -25,7 +28,7 @@ const SAME_DEATH_MS: i64 = 3_000;
 #[serde(rename_all = "camelCase")]
 pub struct Kill {
     pub at_ms: i64,
-    /// "kill" (you killed them) | "death" (they killed you)
+    /// "kill" (you killed them) | "assist" (you hit them, someone else killed them) | "death" (they killed you)
     pub kind: &'static str,
     /// The map of the last map load, if one was seen.
     pub map_id: Option<i32>,
@@ -63,9 +66,11 @@ pub fn find(
         }
         last_death.insert(victim, at);
         let Some(by) = killer(hits, victim, at) else { continue };
+        let helped = hits.get(&(me, victim)).is_some_and(|h| h.last_ms >= at - ASSIST_MS && h.last_ms <= at + AFTER_MS);
         let (kind, other) = match (by == me, victim == me) {
             (true, false) => ("kill", victim),
             (false, true) => ("death", by),
+            (false, false) if helped => ("assist", victim),
             _ => continue,
         };
         out.push(Kill { at_ms: at, kind, map_id, other: player(other, me, hits, names, server, party) });
@@ -140,12 +145,15 @@ mod tests {
     }
 
     #[test]
-    fn someone_elses_last_hit_is_not_your_kill_but_theirs_on_you_is_your_death() {
+    fn someone_elses_last_hit_is_your_assist_and_theirs_on_you_is_your_death() {
         let hits: HashMap<(i32, i32), PvpHits> =
             [((1, 3), hit(900, 1_000, 5_000)), ((4, 3), hit(300, 1_000, 9_000)), ((3, 1), hit(800, 2_000, 20_000))].into();
         let deaths = [(3, 9_100, None), (1, 20_500, None)];
         let k = find(1, &deaths, 0, &hits, &names, &server, &HashMap::new(), None);
-        assert_eq!(k.iter().map(|k| (k.kind, k.other.id)).collect::<Vec<_>>(), [("death", 3)]);
+        assert_eq!(k.iter().map(|k| (k.kind, k.other.id)).collect::<Vec<_>>(), [("assist", 3), ("death", 3)]);
+        // Your last hit 20 s before their death: not an assist.
+        let hits: HashMap<(i32, i32), PvpHits> = [((1, 3), hit(900, 1_000, 2_000)), ((4, 3), hit(300, 1_000, 22_000))].into();
+        assert!(find(1, &[(3, 22_100, None)], 0, &hits, &names, &server, &HashMap::new(), None).is_empty());
     }
 
     #[test]

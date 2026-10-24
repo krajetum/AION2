@@ -68,9 +68,31 @@ export function dueBossAlerts(bosses: BossTimer[], alerts: Record<string, BossAl
  *  "Boss <id>" or nothing; older saves keep that text. */
 export const isUnnamed = (name: string) => !name.trim() || /^Boss \d+$/.test(name.trim());
 
-/** A boss's name: the player's own for it, the game's, or "Unknown boss #id". */
+/** Abyss boss names in A2Tools' NPC table (codes 2600xxx flagged as bosses), as suggestions when the
+ *  player names an unnamed boss. Which world-map id is which boss is not in any data we have. */
+export const ABYSS_BOSS_NAMES = [
+  "Watcher Kaira", "Guardian Lord Nahma", "Enraged Guardian Lord Nahma", "Executor Tamasa", "Executor Argo", "Executor Kaira",
+  "Daeva Reaper Akasha", "Heretic Remus", "Takshaka Air Raiders Captain", "Takshaka Strike Force Captain",
+  "Division Commander Durdhara", "High Commander Nirmala", "Guardian Lord Prasada", "Executioner Dramos", "Turncoat Ducal",
+  "Ravager Marakha",
+];
+
+/**
+ * Abyss bosses the game data doesn't name, as the player saw them in game (2026-10-24: the boss up in
+ * the Abyss and its id on the Field Bosses page). 2002 has no name or time in the game's map: maybe
+ * Watcher Kaira, which roams, but not confirmed.
+ */
+export const KNOWN_BOSS_NAMES: Record<number, string> = {
+  2003: "Guardian Lord Nahma", 2004: "Guardian Lord Nahma", 2005: "Guardian Lord Nahma",
+  2006: "Executor Tamasa", 2007: "Executor Argo", 2008: "Executor Kaira",
+};
+
+/** Whether the player has to name this boss: the game data and KNOWN_BOSS_NAMES don't. */
+export const needsName = (b: BossTimer) => isUnnamed(b.name) && !KNOWN_BOSS_NAMES[b.bossId];
+
+/** A boss's name: the player's own for it, the game's, a known one, or "Unknown boss #id". */
 export const bossLabel = (b: BossTimer, names: Record<string, string> = {}) =>
-  names[b.bossId] || (isUnnamed(b.name) ? `Unknown boss #${b.bossId}` : b.name);
+  names[b.bossId] || (isUnnamed(b.name) ? KNOWN_BOSS_NAMES[b.bossId] ?? `Unknown boss #${b.bossId}` : b.name);
 
 /** The next field-boss respawn (events overlay): every boss due in that same minute, by name.
  *  Empty when no respawn time is ahead. */

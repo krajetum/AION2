@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { logKills, logMatch, matchTotals, MAX_MATCHES, type ArenaLog } from "./arena.ts";
+import { logKills, logMatch, mapLabel, matchTotals, MAX_MATCHES, type ArenaLog } from "./arena.ts";
 import type { ArenaMatch, ArenaPlayer, ArenaSide } from "./meter.ts";
 
 const p = (id: number, side: ArenaSide, dealt: number, deaths = 0): ArenaPlayer =>
@@ -30,4 +30,10 @@ test("kills: the meter's resent ones once, one death logged twice once, newest f
   assert.equal(logKills(log, [k(1_000, "kill", 3), k(5_000, "death", 4), k(6_500, "death", 4)]), 0);
   assert.equal(logKills(log, [k(9_000, "kill", 3)]), 1);
   assert.deepEqual(log.kills.map((x) => [x.atMs, x.kind]), [[9_000, "kill"], [5_000, "death"], [1_000, "kill"]]);
+});
+
+test("map labels: the player's name, a known one, or Map <id>", () => {
+  assert.equal(mapLabel({ 20: "Upper Abyss" }, 20), "Upper Abyss");
+  assert.equal(mapLabel({}, 20), "Abyss");
+  assert.equal(mapLabel({}, 1110), "Map 1110");
 });

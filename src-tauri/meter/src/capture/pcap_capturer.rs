@@ -553,6 +553,12 @@ impl PcapCapturer {
     pub fn is_running(&self) -> bool {
         self.running.load(Ordering::SeqCst)
     }
+
+    /// Companion: packets captured but thrown away since the start because the parser fell behind
+    /// (its queue full): the meter's numbers miss what they carried.
+    pub fn dropped(&self) -> u64 {
+        self.shared.dropped.load(Ordering::Relaxed)
+    }
 }
 
 /// List available capture device labels (for the settings UI dropdown).

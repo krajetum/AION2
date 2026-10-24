@@ -46,3 +46,13 @@ export function matchTotals(m: ArenaMatch) {
   }
   return t;
 }
+
+/**
+ * Maps the app can name itself. 20: the Abyss — the field-boss map that lists Argo, the Spirit King
+ * (world-map boss 2001, an Abyss boss in A2Tools' table), and the game sends boss maps only for your home
+ * world and the Abyss. Which layer (lower / upper) is not known. Everything else the player names.
+ */
+export const KNOWN_MAPS: Record<number, string> = { 20: "Abyss" };
+
+/** A map's name: the player's, a known one, or "Map <id>". */
+export const mapLabel = (maps: Record<string, string>, id: number) => maps[id] || KNOWN_MAPS[id] || `Map ${id}`;

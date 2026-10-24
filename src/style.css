@@ -507,3 +507,8 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
 .crash pre { max-height: 240px; overflow: auto; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
 .kill-history .seg { margin-bottom: 10px; }
 .arena-gear .cls-icon { margin-right: 6px; vertical-align: -6px; }
+.map-names { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-top: 12px; }
+.map-names input { width: 160px; margin-left: 6px; }
+.map-title { font: inherit; font-weight: 600; font-size: 16px; width: 220px; background: transparent; border-color: transparent; padding-left: 0; }
+.map-title:hover, .map-title:focus { border-color: var(--control); padding-left: 8px; }
+.warn-line { color: var(--warn-ink); margin: 8px 0 0; }
