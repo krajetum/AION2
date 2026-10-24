@@ -509,3 +509,5 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
 .arena-gear .cls-icon { margin-right: 6px; vertical-align: -6px; }
 .map-names { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-top: 12px; }
 .map-names input { width: 160px; margin-left: 6px; }
+.map-title { font: inherit; font-weight: 600; font-size: 16px; width: 220px; background: transparent; border-color: transparent; padding-left: 0; }
+.map-title:hover, .map-title:focus { border-color: var(--control); padding-left: 8px; }

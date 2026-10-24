@@ -33,7 +33,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   - `news.ts` — Steam feed parsing + read/unread cache; `save-file.ts` — default data + migration of old/imported saves
   - `meter.ts` — DPS meter update types (as the Rust engine sends them: fight, boss timers, Odyle energy, profile, last arena match), views (damage/healing/taken), number/HP formatting
   - `servers.ts` — server names by id (A2Tools' table), faction/region from the id, `gearUrl` (a player's profile on shugo.gg)
-  - `bosses.ts` — field-boss respawn timers from the maps opened in game, `bossLabel` (bosses the game data doesn't name: the player names them, `AppData.bossNames`); `arena.ts` — arena matchup log and kill history (`logKills`)
+  - `bosses.ts` — field-boss respawn timers from the maps opened in game, `bossLabel` (bosses the game data doesn't name: the player names them, `AppData.bossNames`); `arena.ts` — arena matchup log, kill history (`logKills`), map names (`mapLabel`: the player's, `KNOWN_MAPS` 20 = Abyss, else "Map id")
   - `map.ts` — Map page: cube spots / references on the player's own map image, clusters, pan/zoom math, game→pixel affine fit
     (`BUNDLED_FIT` for the bundled world map, map id `WORLD_MAP_ID`; the player's references override it); cubes found and
     cube codes learned (`takeCubes`, `KNOWN_CUBE_CODES`), `bearing` / `climb` for the cube popup, `onRadar` for the radar

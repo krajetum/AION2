@@ -1,7 +1,7 @@
 <script lang="ts">
   import { classIcon } from "../classes.ts";
   import { labelMap } from "../../app/arena.ts";
-  import { matchTotals } from "../../domain/arena.ts";
+  import { KNOWN_MAPS, mapLabel, matchTotals } from "../../domain/arena.ts";
   import { serverName } from "../../domain/servers.ts";
   import PlayerCard from "../parts/PlayerCard.svelte";
   import { clock, short, type ArenaMatch } from "../../domain/meter.ts";
@@ -18,9 +18,9 @@
   let killView = $state<KillKind>("kill"), killOpen = $state("");
   const count = (kind: KillKind) => log.kills.filter((k) => k.kind === kind).length;
   // Maps in the log without a name yet: named once, every match and kill there shows it.
-  const MAP_PRESETS = ["Arena", "Battlefield", "Altgard", "Verteron", "Lower Abyss"];
+  const MAP_PRESETS = ["Arena", "Battlefield", "Altgard", "Verteron", "Lower Abyss", "Upper Abyss"];
   const unnamed = $derived([...new Set([...log.kills.map((k) => k.mapId), ...log.matches.map((m) => m.mapId)])]
-    .filter((id): id is number => id != null && !log.maps[id]));
+    .filter((id): id is number => id != null && !log.maps[id] && !KNOWN_MAPS[id]));
   const kills = $derived(log.kills.filter((k) => k.kind === killView));
 
   const killKey = (k: { atMs: number; other: { id: number } }) => `${k.atMs}:${k.other.id}`;
@@ -38,7 +38,7 @@
   <tbody>{#each log.matches as m (key(m))}{@const t = matchTotals(m)}{@const k = key(m)}
     <tr class="prow" style:--p={String(t.dealt + t.taken ? t.dealt / (t.dealt + t.taken) : 0)} aria-expanded={open === k} onclick={() => { open = open === k ? "" : k; }}>
       <td>{when(m.startMs)}</td>
-      <td><span class="name">{log.maps[m.mapId] || `Map ${m.mapId}`}</span><small>{t.opponents} {t.opponents === 1 ? "opponent" : "opponents"}</small></td>
+      <td><span class="name">{mapLabel(log.maps, m.mapId)}</span><small>{t.opponents} {t.opponents === 1 ? "opponent" : "opponents"}</small></td>
       <td class="n">{clock(t.ms)}</td><td class="n">{short(t.dealt)}</td><td class="n">{short(t.taken)}</td>
       <td class="n">{t.ourDeaths} : {t.theirDeaths}</td></tr>
     {#if open === k}<tr class="skills"><td colspan="6">
@@ -72,7 +72,7 @@
         <td class="cls">{#if classIcon(o.job)}<img class="cls-icon" src={classIcon(o.job)} alt="" width="22" height="23">{/if}{o.job || "—"}</td>
         <td class="n">{serverName(o.serverId) || o.serverId || "—"}</td>
         <td>{#if k.mapId == null}<span class="hint" title="No map load since the app started: after the next teleport or zone change the map is known">Unknown</span>
-          {:else}{log.maps[k.mapId] || `Map ${k.mapId}`}{/if}</td>
+          {:else}{mapLabel(log.maps, k.mapId)}{/if}</td>
         <td class="n">{short(killView === "death" ? o.dealt : o.taken)}</td><td class="n">{short(killView === "death" ? o.taken : o.dealt)}</td></tr>
       {#if killOpen === kk}<tr class="skills"><td colspan="7"><PlayerCard p={o} /></td></tr>{/if}
     {/each}</tbody></table></div>
