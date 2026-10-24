@@ -53,7 +53,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   companion code goes in `engine.rs` / `snapshot.rs` / `arena.rs` / `recorder.rs` (Settings > Diagnostics: every frame the meter reads,
   plus the player's marks, to a text file in Downloads, for finding new records such as hidden cubes) / `position.rs` (your position:
   map loads, teleports, your own buffs) / `cubes.rs` (hidden cubes: object codes learned from openings, cubes in view,
-  openings placed by their loot) / `kills.rs` (your PvP kills and deaths: the last hit before a death, from the PvP ledger) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
+  openings placed by their loot) / `kills.rs` (your PvP kills, assists and deaths: the last hit before a death, your hit within 15 s for an assist, from the PvP ledger) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
 
 ## Rules
 - Never read game memory, inject code, simulate input or automate the game (ToS/anti-cheat). Tracker + notifications,

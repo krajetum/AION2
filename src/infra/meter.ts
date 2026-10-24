@@ -146,6 +146,7 @@ function demoUpdate(): MeterUpdate {
     // Near Safe Haven, walking slowly; as if read 2 s ago.
     kills: [
       { atMs: DEMO_SEEN - 40 * 60_000, kind: "kill", mapId: 1110, other: { ...DEMO_MATCH.players[2], dealt: 41_000, taken: 96_000 } },
+      { atMs: DEMO_SEEN - 32 * 60_000, kind: "assist", mapId: null, other: { ...DEMO_MATCH.players[3], dealt: 8_000, taken: 22_000 } },
       { atMs: DEMO_SEEN - 25 * 60_000, kind: "death", mapId: 600501, other: { ...DEMO_MATCH.players[3], dealt: 120_000, taken: 30_000 } },
     ],
     position: { x: -82550 + 40 * Math.sin(t / 20_000) * 100, y: -130802 - (t / 1000) * 30, z: 34431, mapId: 1110, atMs: Date.now() - 2000 },
