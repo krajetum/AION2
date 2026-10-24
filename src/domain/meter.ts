@@ -70,6 +70,7 @@ export interface MeterUpdate {
   position?: SelfPosition | null;
   cubes?: Cubes;
   kills?: Kill[];
+  lostPackets?: number; // thrown away since the start: the parser fell behind (crowded fights)
   demo?: boolean; // browser preview only
 }
 

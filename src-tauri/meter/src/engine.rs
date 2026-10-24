@@ -70,6 +70,8 @@ pub struct Update {
     pub position: Option<crate::position::SelfPosition>,
     /// Hidden cubes in view (learned codes) and opened since the meter started.
     pub cubes: crate::cubes::Cubes,
+    /// Packets lost since the start because the parser fell behind the capture (crowded fights).
+    pub lost_packets: u64,
     /// Your PvP kills and deaths since the meter started (the last 50).
     pub kills: Vec<crate::kills::Kill>,
 }
@@ -291,6 +293,7 @@ impl Engine {
                 crate::position::latest()
             },
             cubes: crate::cubes::snapshot(),
+            lost_packets: self.capturer.as_ref().map_or(0, |c| c.dropped()),
             kills,
         }
     }

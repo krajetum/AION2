@@ -81,8 +81,16 @@ test("next boss wave: every boss due in the same minute, only those", () => {
 test("boss names: the player's, the game's, or Unknown boss", () => {
   const b = (bossId: number, name: string) => ({ mapId: 1, bossId, name, up: false, timeMs: 0, seenMs: 0 });
   assert.equal(bossLabel(b(101006, "Bodyguard Teegant")), "Bodyguard Teegant");
-  assert.equal(bossLabel(b(2003, "Boss 2003")), "Unknown boss #2003");
-  assert.equal(bossLabel(b(2003, "")), "Unknown boss #2003");
-  assert.equal(bossLabel(b(2003, "Boss 2003"), { 2003: "Abyss Lord" }), "Abyss Lord");
+  assert.equal(bossLabel(b(2002, "Boss 2002")), "Unknown boss #2002");
+  assert.equal(bossLabel(b(2002, "")), "Unknown boss #2002");
+  assert.equal(bossLabel(b(2002, "Boss 2002"), { 2002: "Abyss Lord" }), "Abyss Lord");
   assert.ok(isUnnamed("Boss 2004") && !isUnnamed("Argo, the Spirit King"));
+});
+
+test("Abyss bosses the game doesn't name: known ones, the rest still to name", () => {
+  const b = (bossId: number) => ({ mapId: 20, bossId, name: `Boss ${bossId}`, up: false, timeMs: 0, seenMs: 0 });
+  assert.equal(bossLabel(b(2007)), "Executor Argo");
+  assert.equal(bossLabel(b(2004)), "Guardian Lord Nahma");
+  assert.equal(bossLabel(b(2002)), "Unknown boss #2002");
+  assert.equal(bossLabel(b(2007), { 2007: "Argo (after siege)" }), "Argo (after siege)");
 });

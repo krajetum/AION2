@@ -1,7 +1,7 @@
 <script lang="ts">
   import { addBossLead, removeBossLead, setBossLead, setBossName, setBossRepeat, toggleBossAlert } from "../../app/bosses.ts";
   import { channelVolume } from "../../domain/alerts.ts";
-  import { bossesByMap, bossLabel, bossState, isUnnamed } from "../../domain/bosses.ts";
+  import { bossesByMap, bossLabel, bossState, needsName } from "../../domain/bosses.ts";
   import { formatCountdown } from "../../domain/time.ts";
   import { playSound } from "../../infra/notifier.ts";
   import { act, commit } from "../actions.ts";
@@ -31,7 +31,7 @@
   <div class="scroll"><table class="sheet">
     <thead><tr><th>Boss</th><th>Status</th><th class="n">Time</th><th class="n">Alert</th></tr></thead>
     <tbody>{#each m.bosses as b (b.bossId)}{@const st = bossState(b, ui.now)}{@const a = alerts[b.bossId]}<tr class="boss {st}">
-      <td>{#if isUnnamed(b.name)}<input class="boss-name" list="abyss-bosses" value={ui.data.bossNames[b.bossId] ?? ""} placeholder="Unknown boss #{b.bossId}: name it"
+      <td>{#if needsName(b) || ui.data.bossNames[b.bossId]}<input class="boss-name" list="abyss-bosses" value={ui.data.bossNames[b.bossId] ?? ""} placeholder={needsName(b) ? `Unknown boss #${b.bossId}: name it` : bossLabel(b)}
           aria-label="Name for boss {b.bossId}" autocomplete="off" onchange={(e) => commit(e, (v) => setBossName(ui.data, b.bossId, v), () => ui.data.bossNames[b.bossId] ?? "")}>
         {:else}<span class="name">{bossLabel(b, ui.data.bossNames)}</span>{/if}</td>
       <td>{st === "up" ? "Up" : st === "due" ? "Respawning" : st === "passed" ? "Should be up" : "No time given"}</td>

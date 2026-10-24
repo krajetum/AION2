@@ -511,3 +511,4 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
 .map-names input { width: 160px; margin-left: 6px; }
 .map-title { font: inherit; font-weight: 600; font-size: 16px; width: 220px; background: transparent; border-color: transparent; padding-left: 0; }
 .map-title:hover, .map-title:focus { border-color: var(--control); padding-left: 8px; }
+.warn-line { color: var(--warn-ink); margin: 8px 0 0; }

@@ -4,7 +4,8 @@ This crate is the DPS meter core of AION 2 Companion. Most of it is taken from
 **A2Tools DPS Meter** by taengu, licensed under the GNU General Public License v3.0:
 
 - Repository: https://github.com/taengu/a2tools-dps-meter
-- Commit: `e6d4f6bec042fd44fbb0a4c9c3bd3519f78f634f` (2026-10-21)
+- Commit: `e6d4f6bec042fd44fbb0a4c9c3bd3519f78f634f` (2026-10-21), plus upstream fixes taken since:
+  `7a0ad04` (2026-10-22, "Parser: a hit into a shield is its value; a DoT tick into one counts", whole commit).
 - License: GPL-3.0 (see `LICENSE` at the root of this repository)
 
 Like A2Tools, it only reads a copy of the game's network traffic through Npcap (Windows)
@@ -36,6 +37,9 @@ and sends nothing to the game or anywhere else.
    are also recorded in a `pvp_ledger` (`PvpHits`, `note_pvp`, called first in `append_damage`'s
    friendly-action branch), with accessors `pvp_players`, `take_pvp_ledger` and `current_map_id`, and a
    test. What the meter counts is unchanged. The arena log reads them (`src/arena.rs`, `src/engine.rs`).
+   Later: `pvp_ledger()`, a read-only copy for the kill history (`src/kills.rs`).
+9. `capture/pcap_capturer.rs` (2026-10-24): `dropped()`, the count of packets thrown away because the parser
+   fell behind, so the companion can say when its numbers miss some.
 
 ## Written for the companion
 

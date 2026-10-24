@@ -28,6 +28,15 @@
     try { await what(); } catch (e) { showStatus("DPS meter: " + e, true); }
   }
   const toggle = (id: number) => (open.has(id) ? open.delete(id) : open.add(id));
+  // Packets lost in the last minute (the parser fell behind): the numbers miss some hits.
+  const lostLog: [number, number][] = [];
+  let lostRecently = $state(0);
+  $effect(() => {
+    const n = ui.meter?.lostPackets ?? 0, now = ui.now;
+    lostLog.push([now, n]);
+    while (lostLog.length && now - lostLog[0][0] > 60_000) lostLog.shift();
+    lostRecently = n - (lostLog[0]?.[1] ?? n);
+  });
 </script>
 
 <p class="hint dps-note">Reads a copy of the game's network traffic through Npcap. Never touches the game's memory or files.
@@ -37,6 +46,8 @@
 {#if !u || !f}<section><p class="hint">Starting the meter…</p></section>{:else}
   <div class="dps-status {u.status}"><span class="dot"></span><b>{STATUS_TEXT[u.status]}</b><span>{u.message}</span>
     {#if u.pingMs != null}<span class="ping num">{u.pingMs} ms</span>{/if}</div>
+  {#if lostRecently}<p class="hint warn-line">The meter fell behind the game's traffic and lost {lostRecently.toLocaleString("en-US")} packets in the
+    last minute: the numbers above miss some hits. It happens in very crowded fights (sieges).</p>{/if}
 
   {#if u.status === "no-capture"}<section><h2>Npcap is needed</h2><p>Install <a href="https://npcap.com/#download" target="_blank" rel="noopener">Npcap</a> (free),
       tick <b>“Install Npcap in WinPcap API-compatible Mode”</b>, then restart the companion. If you ticked “Restrict Npcap driver's access
