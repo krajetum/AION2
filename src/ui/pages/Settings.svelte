@@ -10,7 +10,7 @@
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { clearCubePicture, loadCubePicture, saveCubePicture, type Opener } from "../../infra/map-image.ts";
   import { isDesktop, setAutostart } from "../../infra/system.ts";
-  import { cubePopup, eventsOverlay, meterIdle, meterOverlay, overlayStyle } from "../../infra/meter.ts";
+  import { cubePopup, eventsOverlay, meterIdle, meterOverlay, overlayStyle, radarOverlay } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
   import { LABEL, pad, WEEKDAYS } from "../format.ts";
   import { ICON } from "../icons.ts";
@@ -94,6 +94,12 @@
     <label class="setting"><span>Cube popup size</span><select value={String(s.cubePopupSize)} disabled={!isDesktop() || !s.cubePopup}
       onchange={(e) => act(() => { s.cubePopupSize = +e.currentTarget.value; cubePopup(s.cubePopup, s.cubePopupSize); })}>
       {#each CUBE_SIZES as [k, label]}<option value={String(k)}>{label}</option>{/each}</select></label>
+    {@render toggle("Cube radar", s.radar, (e) => { s.radar = check(e); radarOverlay(s.radar); }, !isDesktop())}
+    {#if s.radar}<label class="setting"><span>Radar range</span><select value={String(s.radarRange)}
+        onchange={(e) => act(() => { s.radarRange = +e.currentTarget.value; })}>
+        {#each [50, 100, 200, 400] as m}<option value={String(m)}>{m} m</option>{/each}</select></label>
+      {@render toggle("Map under the radar", s.radarMap, (e) => { s.radarMap = check(e); })}
+      {@render toggle("Round radar", s.radarRound, (e) => { s.radarRound = check(e); })}{/if}
     {#each OPENERS as [who, label]}<div class="setting"><span>{label}</span><span class="ctl">
       {#if cubePictures[who]}<img class="cube-thumb" src={cubePictures[who]} alt="Chosen: {label}">{/if}
       <label class="btn">{cubePictures[who] ? "Change" : "Choose"} <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onchange={(e) => pickCubePicture(who, e)}></label>
@@ -105,6 +111,8 @@
       its distance and direction, chimes when one appears (sound: Notifications), turns green when you open one (red, with a sad sound, when someone else does) or shows your picture for it instead
       (pictures stay only on this PC).
       It learns cubes as they are opened near you; the first one is built in.
+      The cube radar shows the cubes around you, north up, centred on you: drag it over the game's minimap, size it by its
+      edges and set the range to match. It cannot turn with the camera, so it matches only a north-up minimap. Overlays remember where you put them.
       The overlays never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
   </section>
   <section><h2>System</h2>

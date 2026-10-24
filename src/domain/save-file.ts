@@ -42,6 +42,10 @@ export function defaultData(): AppData {
       eventsOverlay: false,
       cubePopup: false,
       cubePopupSize: 1,
+      radar: false,
+      radarRange: 100,
+      radarMap: true,
+      radarRound: true,
     },
   };
 }

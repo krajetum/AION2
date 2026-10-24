@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyAffine, bearing, BUNDLED_FIT, climb, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, x, y, kind: "cube", group: 0, label: "" });
 
@@ -102,4 +102,9 @@ test("climb: up, down or about level", () => {
   assert.deepEqual(climb({ z: 3750 }, { z: -70 }), { dz: -3820, way: "down" }); // the 20:18 cube, from the bank above it
   assert.equal(climb({ z: -68 }, { z: -70 }).way, "level");
   assert.equal(climb({ z: 100 }, { z: 900 }).way, "up");
+});
+
+test("radar: north up, east right, off the rim is off", () => {
+  assert.deepEqual(onRadar({ x: 0, y: 0 }, { x: 5000, y: -5000 }, 10_000, 100), { x: 50, y: -50 });
+  assert.equal(onRadar({ x: 0, y: 0 }, { x: 20_000, y: 0 }, 10_000, 100), null);
 });

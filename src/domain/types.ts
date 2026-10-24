@@ -50,6 +50,10 @@ export interface Settings {
   eventsOverlay: boolean;     // small always-on-top window with the event countdowns
   cubePopup: boolean;         // small always-on-top popup while a hidden cube is in view
   cubePopupSize: number;      // its scale, 1 = 260 × 96 px
+  radar: boolean;             // always-on-top radar of the cubes around you, to lay over the game's minimap
+  radarRange: number;         // its radius, metres
+  radarMap: boolean;          // the map under it (else only the dots)
+  radarRound: boolean;        // round (else square)
 }
 
 /** One undo step: the progress of each touched task before the change (null = it had none). */

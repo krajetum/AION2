@@ -15,6 +15,7 @@ const FRONT_CHECK: Duration = Duration::from_millis(500);
 const OVERLAY: &str = "overlay";
 const EVENTS: &str = "events";
 const CUBE: &str = "cube";
+const RADAR: &str = "radar";
 
 /// Seconds without damage, healing or damage taken before the fight resets (and the overlay hides).
 const DEFAULT_IDLE_SECS: u32 = 15;
@@ -36,6 +37,8 @@ struct Auto {
     cube_near: bool,
     /// The cube popup's size: 1 = 260 × 96.
     cube_scale: f64,
+    /// The radar (cubes around you, to lay over the game's minimap) is on.
+    radar: bool,
     /// Hide the overlays while another window than the game is in front (alt-tab).
     follow_game: bool,
     /// The game window was in front at the last check.
@@ -50,11 +53,27 @@ struct Auto {
 }
 
 impl Auto {
-    /// Which overlays should be on screen: (DPS overlay, event overlay, cube popup).
-    fn visible(&self) -> (bool, bool, bool) {
+    /// Which overlays should be on screen.
+    fn visible(&self) -> Visible {
         let front = self.front || !self.follow_game;
-        (self.overlay && self.wanted && front, self.events && front, self.cube && self.cube_near && front)
+        Visible {
+            dps: self.overlay && self.wanted && front,
+            events: self.events && front,
+            cube: self.cube && self.cube_near && front,
+            radar: self.radar && front,
+        }
     }
+    fn any(&self) -> bool {
+        self.overlay || self.events || self.cube || self.radar
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Visible {
+    dps: bool,
+    events: bool,
+    cube: bool,
+    radar: bool,
 }
 
 impl Default for MeterState {
@@ -68,6 +87,7 @@ impl Default for MeterState {
                 cube: false,
                 cube_near: false,
                 cube_scale: 1.0,
+                radar: false,
                 follow_game: true,
                 front: true,
                 opacity: 90,
@@ -146,10 +166,21 @@ pub fn meter_start(app: AppHandle) -> Update {
             let mut last: Option<serde_json::Value> = None;
             let mut sent = Instant::now();
             let mut front_checked = Instant::now() - FRONT_CHECK;
-            let mut shown: Option<(bool, bool, bool)> = None;
+            let mut shown: Option<Visible> = None;
             loop {
                 std::thread::sleep(RATE);
                 let mut u = e.update();
+                // The game in front? Asked twice a second, and only when it matters, never while holding
+                // `auto`: the commands that change the overlays lock it on the UI thread.
+                let front = {
+                    let state = app.state::<MeterState>();
+                    let a = state.auto.lock().expect("meter state poisoned");
+                    a.follow_game && a.any() && front_checked.elapsed() >= FRONT_CHECK
+                }
+                .then(|| {
+                    front_checked = Instant::now();
+                    aion2_meter::platform::window_detector::is_aion2_foreground()
+                });
                 let (step, want) = {
                     let state = app.state::<MeterState>();
                     let mut a = state.auto.lock().expect("meter state poisoned");
@@ -160,10 +191,8 @@ pub fn meter_start(app: AppHandle) -> Update {
                         Step::Nothing => {}
                     }
                     a.cube_near = cube_news(&u.cubes, aion2_meter::clock::now_ms());
-                    // The game in front? Asked twice a second, and only when it matters.
-                    if a.follow_game && (a.overlay || a.events || a.cube) && front_checked.elapsed() >= FRONT_CHECK {
-                        a.front = aion2_meter::platform::window_detector::is_aion2_foreground();
-                        front_checked = Instant::now();
+                    if let Some(f) = front {
+                        a.front = f;
                     }
                     (step, a.visible())
                 };
@@ -172,11 +201,13 @@ pub fn meter_start(app: AppHandle) -> Update {
                     u = e.update();
                 }
                 if Some(want) != shown {
-                    set_visible(&app, OVERLAY, want.0);
-                    set_visible(&app, EVENTS, want.1);
-                    set_visible(&app, CUBE, want.2);
+                    set_visible(&app, OVERLAY, want.dps);
+                    set_visible(&app, EVENTS, want.events);
+                    set_visible(&app, CUBE, want.cube);
+                    set_visible(&app, RADAR, want.radar);
                     shown = Some(want);
                 }
+                crate::places::flush();
                 let v = serde_json::to_value(&u).unwrap_or_default();
                 if last.as_ref() != Some(&v) || sent.elapsed() >= RESEND {
                     let _ = app.emit("meter-update", &v);
@@ -355,6 +386,18 @@ pub async fn cube_popup(app: AppHandle, show: bool, scale: Option<f64>) -> Resul
     Ok(())
 }
 
+/// The radar on or off: cubes around you, north up, to lay over the game's minimap.
+#[tauri::command]
+pub async fn radar_overlay(app: AppHandle, show: bool) -> Result<(), String> {
+    if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
+        a.radar = show;
+    }
+    if !show {
+        close(&app, RADAR);
+    }
+    Ok(())
+}
+
 /// The cube codes learned in earlier sessions (saved by the app), so cubes are known at once.
 #[tauri::command]
 pub fn meter_cube_codes(codes: Vec<u32>) {
@@ -391,6 +434,8 @@ fn set_visible(app: &AppHandle, label: &str, on: bool) {
 fn build(app: &AppHandle, label: &str) -> Result<(), String> {
     let (title, w, h, min_w, min_h) = if label == EVENTS {
         ("AION 2 Companion – Events", 300.0, 230.0, 200.0, 80.0)
+    } else if label == RADAR {
+        ("AION 2 Companion – Radar", 220.0, 220.0, 120.0, 120.0)
     } else if label == CUBE {
         let k = app.state::<MeterState>().auto.lock().map(|a| a.cube_scale).unwrap_or(1.0);
         ("AION 2 Companion – Hidden cube", CUBE_SIZE.0 * k, CUBE_SIZE.1 * k, 150.0, 55.0)
@@ -415,7 +460,7 @@ fn build(app: &AppHandle, label: &str) -> Result<(), String> {
         .focusable(false)
         .resizable(true)
         .build()
-        .map(|_| ())
+        .map(|w| crate::places::follow(app, label, &w))
         .map_err(|e| e.to_string())
 }
 
@@ -431,6 +476,7 @@ mod tests {
             cube: false,
             cube_near: false,
             cube_scale: 1.0,
+            radar: false,
             follow_game: true,
             front: true,
             opacity: 90,
@@ -445,20 +491,23 @@ mod tests {
         let mut a = auto(15);
         a.wanted = true;
         a.events = true;
+        let v = |dps, events, cube, radar| Visible { dps, events, cube, radar };
         a.cube = true;
-        assert_eq!(a.visible(), (true, true, false), "the cube popup waits for a cube");
+        a.radar = true;
+        assert_eq!(a.visible(), v(true, true, false, true), "the cube popup waits for a cube");
         a.cube_near = true;
-        assert_eq!(a.visible(), (true, true, true));
+        assert_eq!(a.visible(), v(true, true, true, true));
         a.front = false;
-        assert_eq!(a.visible(), (false, false, false));
+        assert_eq!(a.visible(), v(false, false, false, false));
         a.follow_game = false;
-        assert_eq!(a.visible(), (true, true, true));
+        assert_eq!(a.visible(), v(true, true, true, true));
         a.wanted = false; // idle or hidden by hand
-        assert_eq!(a.visible(), (false, true, true));
+        assert_eq!(a.visible(), v(false, true, true, true));
         a.overlay = false;
         a.wanted = true;
         a.cube = false;
-        assert_eq!(a.visible(), (false, true, false));
+        a.radar = false;
+        assert_eq!(a.visible(), v(false, true, false, false));
     }
 
     #[test]

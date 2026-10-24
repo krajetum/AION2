@@ -11,6 +11,8 @@ It is distributed WITHOUT ANY WARRANTY; see `LICENSE` for the full text.
 - **DPS meter core** (`src-tauri/meter/`): from A2Tools DPS Meter by taengu,
   https://github.com/taengu/a2tools-dps-meter, GPL-3.0. Origin and changes: `src-tauri/meter/NOTICE.md`.
 
+- **Server names** (`src/domain/servers.ts`): the English names from A2Tools DPS Meter's `src/data/servers.json` (GPL-3.0).
+
 - **Class emblems** (`src/ui/classes/*.png`): from A2Tools DPS Meter (`public/assets/`, GPL-3.0 repository),
   renamed to the English class names. The art itself is the game's (NCSOFT).
 

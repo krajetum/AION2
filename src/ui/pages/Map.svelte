@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   // Map page: the bundled world map (src/assets/ncsoft/, © NCSOFT) or one the player imported (kept only
   // on this PC, infra/map-image.ts), with their hidden-cube spots and reference points. Close markers merge into a numbered one when zoomed out.
   // You are drawn from the meter's position (src-tauri/meter/src/position.rs) through the game → pixel fit:
@@ -45,11 +46,16 @@
   const found = $derived(size.w ? ui.data.map.found.map((f) => ({ f, s: shown(f.x, f.y) })).filter((v) => v.s) : []);
   const live = $derived(size.w ? (ui.meter?.cubes?.live ?? []).map((c) => ({ c, s: shown(c.x, c.y) })).filter((v) => v.s) : []);
   const when = (t: number) => new Date(t).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  // Follow me: the view stays centred on you (on by default; dragging the map turns it off).
+  let follow = $state(true), zoomedIn = false;
   function centerOnMe() {
     if (!youPx) return;
-    const scale = Math.max(view.scale, 1);
+    const scale = zoomedIn ? view.scale : Math.max(view.scale, 1); // close up the first time only
+    zoomedIn = true;
     view = { scale, x: vw / 2 - youPx.x * scale, y: vh / 2 - youPx.y * scale };
   }
+  // Re-centres when you move (or the map or window size changes), not when the view itself does.
+  $effect(() => { if (follow && youPx && size.w && vw && vh) untrack(centerOnMe); });
   const minScale = $derived(size.w && vw ? fitView(size.w, size.h, vw, vh).scale / 2 : 0.05);
 
   async function load() {
@@ -84,7 +90,11 @@
     size = { w: img.naturalWidth, h: img.naturalHeight };
     refit();
   }
-  const zoom = (f: number, cx = vw / 2, cy = vh / 2) => { view = zoomAt(view, f, cx, cy, minScale, 4); };
+  // While following, zoom stays centred on you.
+  const zoom = (f: number, cx = vw / 2, cy = vh / 2) => {
+    const [x, y] = follow && youPx ? [vw / 2, vh / 2] : [cx, cy];
+    view = zoomAt(view, f, x, y, minScale, 4);
+  };
 
   // Wheel zoom needs a non-passive listener to keep the page from scrolling.
   $effect(() => {
@@ -111,6 +121,7 @@
     const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
     if (!drag.moved && Math.hypot(dx, dy) < 4) return;
     drag.moved = true;
+    follow = false;
     view = { ...view, x: drag.vx + dx, y: drag.vy + dy };
   }
   function up(e: PointerEvent) {
@@ -154,10 +165,11 @@
     <button class="ghost" aria-label="Zoom out" title="Zoom out" onclick={() => zoom(1 / 1.5)}>−</button>
     <button class="ghost" aria-label="Zoom in" title="Zoom in" onclick={() => zoom(1.5)}>+</button>
     <button class="ghost" onclick={refit}>Fit</button>
-    {#if youPx}<button class="ghost" onclick={centerOnMe}>Center on me</button>{/if}
+    {#if youPx}<button class="ghost" class:on={follow} aria-pressed={follow} title="Keep the map centred on you (dragging the map stops it)"
+      onclick={() => { follow = !follow; if (follow) centerOnMe(); }}>{follow ? "Following you" : "Follow me"}</button>{/if}
   </div>
 
-  <div class="map-view" class:adding={mode !== "move"} bind:this={box} bind:clientWidth={vw} bind:clientHeight={vh}
+  <div class="map-view" class:adding={mode !== "move"} class:gliding={follow && !!youPx} bind:this={box} bind:clientWidth={vw} bind:clientHeight={vh}
     onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={() => { drag = null; }} role="application" aria-label="Map">
     <img src={url} alt="" draggable="false" onload={loaded}
       style:transform="translate({view.x}px, {view.y}px) scale({view.scale})">

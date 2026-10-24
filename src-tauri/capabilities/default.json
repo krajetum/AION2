@@ -6,7 +6,8 @@
     "main",
     "overlay",
     "events",
-    "cube"
+    "cube",
+    "radar"
   ],
   "permissions": [
     "core:default",
