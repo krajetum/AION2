@@ -1968,6 +1968,11 @@ impl DataStorage {
         self.inner.read().current_map_id
     }
 
+    /// Companion: a copy of the PvP hits since the last `take_pvp_ledger` (the kill history reads them).
+    pub fn pvp_ledger(&self) -> HashMap<(i32, i32), PvpHits> {
+        self.inner.read().pvp_ledger.clone()
+    }
+
     /// Companion: the players in the PvP hits since the last `take_pvp_ledger`.
     pub fn pvp_players(&self) -> HashSet<i32> {
         self.inner.read().pvp_ledger.keys().flat_map(|&(a, t)| [a, t]).collect()

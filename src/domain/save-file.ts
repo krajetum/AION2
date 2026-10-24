@@ -20,7 +20,7 @@ export function defaultData(): AppData {
     bosses: [],
     bossAlerts: {},
     bossNames: {},
-    arena: { matches: [], maps: {} },
+    arena: { matches: [], maps: {}, kills: [] },
     map: emptyMap(),
     undo: [],
     settings: {
@@ -77,7 +77,8 @@ export function normalize(raw: any): AppData {
     bossNames: Object.fromEntries(Object.entries(raw.bossNames ?? {}).filter(([, v]) => typeof v === "string" && v.trim()) as [string, string][]),
     bossAlerts: Object.fromEntries(Object.entries(raw.bossAlerts ?? {}).map(([id, a]: [string, any]) =>
       [id, { leads: cleanLeads(a?.leads), repeat: !!a?.repeat }])),
-    arena: { matches: Array.isArray(raw.arena?.matches) ? raw.arena.matches : [], maps: raw.arena?.maps ?? {} },
+    arena: { matches: Array.isArray(raw.arena?.matches) ? raw.arena.matches : [], maps: raw.arena?.maps ?? {},
+      kills: Array.isArray(raw.arena?.kills) ? raw.arena.kills.filter((k: any) => k?.other && Number.isFinite(k.atMs)) : [] },
     map: cleanMap(raw.map),
     undo: Array.isArray(raw.undo) ? raw.undo : [],
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels },

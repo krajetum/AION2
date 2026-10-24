@@ -54,6 +54,9 @@ export interface Cube { entity: number; code: number; x: number; y: number; z: n
 /** A cube opened since the meter started, by you or another player in view. */
 export interface OpenedCube { code: number | null; x: number; y: number; z: number; byYou: boolean; atMs: number }
 export interface Cubes { live: Cube[]; opened: OpenedCube[]; codes: number[] }
+/** A PvP kill of yours, or your death, by the last hit before it (src-tauri/meter/src/kills.rs).
+ *  other.dealt / other.taken: their damage to you / yours to them since the map load. */
+export interface Kill { atMs: number; kind: "kill" | "death"; mapId: number | null; other: ArenaPlayer }
 export interface MeterUpdate {
   status: MeterStatus; message: string; port: number | null; device: string | null;
   pingMs: number | null; paused: boolean;
@@ -66,6 +69,7 @@ export interface MeterUpdate {
   arena: ArenaMatch | null; // the last match that ended
   position?: SelfPosition | null;
   cubes?: Cubes;
+  kills?: Kill[];
   demo?: boolean; // browser preview only
 }
 

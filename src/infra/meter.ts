@@ -144,6 +144,10 @@ function demoUpdate(): MeterUpdate {
     bosses: DEMO_BOSSES, odyle: { basic: 30, charged: 840, owner: "Main" },
     profile: { name: "Demo Alt", serverId: 1304, job: "Gladiator", level: 45, gearScore: 2040, combatPower: 51_000 }, arena: DEMO_MATCH,
     // Near Safe Haven, walking slowly; as if read 2 s ago.
+    kills: [
+      { atMs: DEMO_SEEN - 40 * 60_000, kind: "kill", mapId: 1110, other: { ...DEMO_MATCH.players[2], dealt: 41_000, taken: 96_000 } },
+      { atMs: DEMO_SEEN - 25 * 60_000, kind: "death", mapId: 600501, other: { ...DEMO_MATCH.players[3], dealt: 120_000, taken: 30_000 } },
+    ],
     position: { x: -82550 + 40 * Math.sin(t / 20_000) * 100, y: -130802 - (t / 1000) * 30, z: 34431, mapId: 1110, atMs: Date.now() - 2000 },
     // A demo cube 40 m north-east of the demo position: in view for 15 s, then opened (by you, then by
     // someone else, in turns), every 20 s.

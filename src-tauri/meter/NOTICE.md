@@ -42,7 +42,8 @@ and sends nothing to the game or anywhere else.
 `src/engine.rs` (starts the pipeline the way A2Tools' `app.rs` does; boss timers, Odyle energy, profile),
 `src/snapshot.rs` (the DPS tab's view of an update), `src/arena.rs` (arena matches from the PvP ledger),
 `src/recorder.rs` (packet recorder for diagnostics), `src/position.rs` (your position from map loads,
-teleports and your own buffs), `src/cubes.rs` (hidden cubes in view and opened),
+teleports and your own buffs), `src/cubes.rs` (hidden cubes in view and opened), `src/kills.rs` (your PvP kills and deaths, with
+`DataStorage::pvp_ledger`, a read-only copy of the companion's PvP ledger),
 `src/tap.rs` (all of them on A2Tools' frame tap),
 `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 

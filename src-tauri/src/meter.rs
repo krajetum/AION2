@@ -22,6 +22,8 @@ const DEFAULT_IDLE_SECS: u32 = 15;
 
 pub struct MeterState {
     engine: Mutex<Option<Arc<Engine>>>,
+    /// Held while the engine starts, so it starts once; `engine` itself stays free for the commands.
+    starting: Mutex<()>,
     auto: Mutex<Auto>,
 }
 
@@ -80,6 +82,7 @@ impl Default for MeterState {
     fn default() -> Self {
         Self {
             engine: Mutex::new(None),
+            starting: Mutex::new(()),
             auto: Mutex::new(Auto {
                 overlay: false,
                 wanted: false,
@@ -149,17 +152,28 @@ fn idle_step(a: &mut Auto, total: f64, paused: bool, now: Instant) -> Step {
 
 /// Starts capturing (once; later calls only return the current update). The main window calls
 /// it at startup: boss timers, Odyle energy, character detection and the arena log need it.
+///
+/// Async, and the start itself on a blocking thread: a synchronous command runs on the UI thread,
+/// and starting the capture asks Npcap for every network device, which on some PCs takes long or
+/// never returns. The window then stayed white and "not responding" from launch (2026-10-24, every
+/// version since the meter came in; 0.3.0, before it, was fine).
 #[tauri::command]
-pub fn meter_start(app: AppHandle) -> Update {
-    let state = app.state::<MeterState>();
-    let mut slot = state.engine.lock().expect("meter state poisoned");
-    if let Some(e) = slot.as_ref() {
-        return e.update();
-    }
-    let e = Engine::start();
+pub async fn meter_start(app: AppHandle) -> Result<Update, String> {
+    tauri::async_runtime::spawn_blocking(move || start(app)).await.map_err(|e| e.to_string())
+}
+
+fn start(app: AppHandle) -> Update {
+    let e = {
+        let state = app.state::<MeterState>();
+        let _once = state.starting.lock().expect("meter state poisoned");
+        if let Some(e) = engine(&app) {
+            return e.update();
+        }
+        let e = Engine::start();
+        *state.engine.lock().expect("meter state poisoned") = Some(e.clone());
+        e
+    };
     let first = e.update();
-    *slot = Some(e.clone());
-    drop(slot);
     std::thread::Builder::new()
         .name("meter-updates".into())
         .spawn(move || {
