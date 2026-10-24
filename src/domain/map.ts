@@ -82,6 +82,15 @@ export function climb(from: { z: number }, to: { z: number }): { dz: number; way
   return { dz, way: Math.abs(dz) < SAME_LEVEL ? "level" : dz > 0 ? "up" : "down" };
 }
 
+/**
+ * A point around you on a north-up radar of radius `r` px showing `range` game units: x east, y south.
+ * Null when it is off the radar (with a margin, so dots at the rim still show).
+ */
+export function onRadar(you: { x: number; y: number }, p: { x: number; y: number }, range: number, r: number): { x: number; y: number } | null {
+  const k = r / range, dx = (p.x - you.x) * k, dy = (p.y - you.y) * k;
+  return Math.hypot(dx, dy) <= r * 1.05 ? { x: dx, y: dy } : null;
+}
+
 /** From you to a point, on the map's axes (x east, y south): distance in game units and a compass label. */
 export function bearing(from: { x: number; y: number }, to: { x: number; y: number }): { dist: number; dir: string; deg: number } {
   const dx = to.x - from.x, dy = to.y - from.y;

@@ -443,9 +443,17 @@ body.overlay .status, body.overlay .react { display: none; }
 .found { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; transform: rotate(45deg);
   background: #b46bff; border: 1.5px solid #111; opacity: .85; }
 .live-cube { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 4px; pointer-events: none;
-  background: #d9a6ff; border: 2px solid #fff; animation: cube-pulse 1.2s ease-in-out infinite; }
-@keyframes cube-pulse { 50% { box-shadow: 0 0 0 10px color-mix(in srgb, #b46bff 0%, transparent), 0 0 0 4px #b46bff; } }
-@media (prefers-reduced-motion: reduce) { .live-cube { animation: none; } }
+  background: #f1dcff; border: 2px solid #fff; animation: cube-glow 1.1s ease-in-out infinite; }
+/* A cube still there shines: a bright core and a purple halo breathing in and out. */
+@keyframes cube-glow {
+  0%, 100% { transform: rotate(45deg) scale(1); box-shadow: 0 0 6px 2px #c98bff, 0 0 18px 6px color-mix(in srgb, #b46bff 60%, transparent); }
+  50% { transform: rotate(45deg) scale(1.25); box-shadow: 0 0 12px 5px #e2bfff, 0 0 34px 14px color-mix(in srgb, #b46bff 45%, transparent); }
+}
+/* Following you: the map glides to each new position instead of jumping. */
+.map-view.gliding img { transition: transform .6s linear; }
+.map-view.gliding :is(.mark, .me, .found, .live-cube) { transition: left .6s linear, top .6s linear; }
+@media (prefers-reduced-motion: reduce) { .map-view.gliding img, .map-view.gliding :is(.mark, .me, .found, .live-cube) { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .live-cube { animation: none; transform: rotate(45deg); } }
 .live-count { color: #d9a6ff; }
 .me.stale { border-color: var(--faint); box-shadow: none; opacity: .8; }
 .map-panel { position: absolute; top: 12px; right: 12px; width: min(340px, calc(100% - 24px)); padding: 14px 16px; cursor: auto;
@@ -462,7 +470,8 @@ body.overlay .status, body.overlay .react { display: none; }
 .cube-pop span { font-size: 13px; color: var(--muted); }
 .cube-arrow { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; flex: none;
   background: color-mix(in srgb, #b46bff 35%, transparent); color: #fff; font-size: 22px; font-weight: 700; }
-.cube-arrow i { font-style: normal; transform: rotate(var(--deg)); }
+.cube-arrow i { font-style: normal; transform: rotate(var(--deg)); transition: transform .8s cubic-bezier(.3, .7, .3, 1); }
+@media (prefers-reduced-motion: reduce) { .cube-arrow i { transition: none; } }
 .cube-pop.opened b { color: #6fe3a0; }
 .cube-pop .climb { font-style: normal; color: var(--text); font-weight: 600; }
 .cube-pop.lost b, .cube-picture b.lost { color: #ff8a8e; }
@@ -480,3 +489,19 @@ html.overlay::-webkit-scrollbar, body.overlay::-webkit-scrollbar { display: none
 .cube-picture b { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px; font-size: 14px; color: #6fe3a0;
   background: linear-gradient(transparent, rgba(0, 0, 0, .75)); }
 .cube-thumb { width: 36px; height: 36px; object-fit: cover; border-radius: var(--r-sm); }
+
+/* Radar (index.html#radar): lies over the game's minimap */
+body.overlay:has(.radar) #app { padding: 0; background: transparent; }
+.radar { position: fixed; inset: 0; overflow: hidden; cursor: move; border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--ground) calc(var(--ov-alpha, 90%) * .5), transparent); border: 1px solid rgba(255, 255, 255, .25); }
+.radar.round { border-radius: 50%; }
+.radar-map { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; opacity: .55; pointer-events: none; }
+.radar-n { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 0 3px #000; }
+.radar-you { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--accent); pointer-events: none; }
+.radar-cube { position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; transform: rotate(45deg); pointer-events: none;
+  background: #b46bff; border: 1px solid #111; transition: left .6s linear, top .6s linear; }
+.radar-cube.live { width: 12px; height: 12px; margin: -6px 0 0 -6px; background: #f1dcff; border: 2px solid #fff; animation: cube-glow 1.1s ease-in-out infinite; }
+.radar-note { position: absolute; bottom: 8%; left: 0; right: 0; text-align: center; font-size: 11px; color: #fff; text-shadow: 0 0 3px #000; }
+.arena-gear { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; padding: 6px 4px; }
+.crash pre { max-height: 240px; overflow: auto; font-size: 11px; white-space: pre-wrap; word-break: break-all; }

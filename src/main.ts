@@ -12,8 +12,9 @@ import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import EventsOverlay from "./ui/EventsOverlay.svelte";
 import CubeOverlay from "./ui/CubeOverlay.svelte";
+import RadarOverlay from "./ui/RadarOverlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
-import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, meterOverlay, onEventsOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
+import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, radarOverlay, meterOverlay, onEventsOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { ui } from "./ui/state.svelte.ts";
 
@@ -41,6 +42,7 @@ async function main() {
     if (data.settings.eventsOverlay) await eventsOverlay(true).catch(() => {});
     await meterCubeCodes(data.map.cubeCodes).catch(() => {});
     if (data.settings.cubePopup) await cubePopup(true, data.settings.cubePopupSize).catch(() => {});
+    if (data.settings.radar) await radarOverlay(true).catch(() => {});
   }
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
   onMeter((u) => {
@@ -84,5 +86,5 @@ function overlay(page: typeof Overlay) {
   onOpacity((o) => document.documentElement.style.setProperty("--ov-alpha", `${o}%`));
 }
 
-const page = { "#overlay": Overlay, "#events": EventsOverlay, "#cube": CubeOverlay }[location.hash];
+const page = { "#overlay": Overlay, "#events": EventsOverlay, "#cube": CubeOverlay, "#radar": RadarOverlay }[location.hash];
 (page ? Promise.resolve(overlay(page)) : main()).catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });

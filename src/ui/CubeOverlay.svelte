@@ -64,6 +64,14 @@
     if (showPicture) sizeOverlay(PICTURE.w * k, PICTURE.h * k);
     else sizeOverlay(BASE_WIDTH * k, BASE_HEIGHT * k);
   });
+  // The arrow turns smoothly: the shortest way to the new direction (350° → 10° is +20°, not -340°),
+  // eased by CSS, since positions come every few seconds.
+  let turned = $state(0);
+  $effect(() => {
+    if (!near) return;
+    const delta = ((near.b.deg - turned) % 360 + 540) % 360 - 180;
+    turned += delta;
+  });
   const near = $derived(pos && live.length
     ? live.map((c) => ({ c, b: bearing(pos, c), h: climb(pos, c) })).sort((a, b) => a.b.dist - b.b.dist)[0] : null);
 </script>
@@ -75,7 +83,7 @@
 </div>
 {:else}<div class="cube-pop" class:opened class:lost={opened && !lastOpened?.byYou} style:zoom={width / BASE_WIDTH} data-tauri-drag-region>
   {#if opened}<span class="cube-arrow" aria-hidden="true">{lastOpened?.byYou ? "✓" : "✗"}</span>
-  {:else if near}<span class="cube-arrow" aria-hidden="true"><i style:--deg="{near.b.deg}deg">↑</i></span>{/if}
+  {:else if near}<span class="cube-arrow" aria-hidden="true"><i style:--deg="{turned}deg">↑</i></span>{/if}
   <div data-tauri-drag-region>
     {#if opened}<b data-tauri-drag-region>Cube opened</b>
       <span data-tauri-drag-region>{lastOpened?.byYou ? "By you" : "By another player"}</span>

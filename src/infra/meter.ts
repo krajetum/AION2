@@ -68,6 +68,8 @@ export async function fitOverlayHeight(px: number) {
   const { getCurrentWindow, LogicalSize } = await import("@tauri-apps/api/window");
   await getCurrentWindow().setSize(new LogicalSize(window.innerWidth, h)).catch((e) => console.warn("Overlay resize failed", e));
 }
+/** The radar on or off (desktop only): cubes around you, north up, to lay over the game's minimap. */
+export const radarOverlay = (show: boolean) => (isTauri() ? invoke<void>("radar_overlay", { show }) : Promise.resolve());
 /** Sets this overlay window's size (desktop only): the cube popup grows for its "cube opened" picture. */
 export async function sizeOverlay(w: number, h: number) {
   if (!isTauri()) return;
@@ -83,6 +85,8 @@ export const onEventsOverlay = (fn: (on: boolean) => void) => (isTauri() ? liste
 /** The overlay was opened or closed (also from the overlay itself). */
 export const onOverlay = (fn: (open: boolean) => void) => (isTauri() ? listen<boolean>("meter-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 
+/** The crash log (desktop only): where it is and its last part, empty when nothing crashed. */
+export const crashLog = () => (isTauri() ? invoke<{ path: string | null; text: string }>("crash_log") : Promise.resolve(null));
 /** Packet recorder (desktop only; null in the browser): every frame the meter reads, to a file in Downloads. */
 const rec = (cmd: string, args?: Record<string, unknown>) => (isTauri() ? invoke<RecorderStatus>(cmd, args) : Promise.resolve(null));
 export const recorderStart = () => rec("recorder_start");

@@ -1,4 +1,6 @@
+mod crash;
 mod meter;
+mod places;
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -46,9 +48,13 @@ pub fn run() {
             meter::recorder_stop,
             meter::recorder_status,
             meter::cube_popup,
+            meter::radar_overlay,
+            crash::crash_log,
             meter::meter_cube_codes,
         ])
         .setup(|app| {
+            crash::install(app.handle());
+            places::load(app.handle());
             let open = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Mute for 1 hour", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
