@@ -15,6 +15,7 @@
   // Kill history: your kills or your deaths (who killed you).
   let killView = $state<"kill" | "death">("kill"), killOpen = $state("");
   const kills = $derived(log.kills.filter((k) => k.kind === killView));
+  const nk = $derived(log.kills.filter((k) => k.kind === "kill").length), nd = $derived(log.kills.length - nk);
   const killKey = (k: { atMs: number; other: { id: number } }) => `${k.atMs}:${k.other.id}`;
   const when = (t: number) => `${new Date(t).toLocaleDateString([], { day: "2-digit", month: "short" })} ${hm(t)}`;
   const gear = (v: number | null, f: (n: number) => string = String) => (v == null ? "—" : f(v));
@@ -50,7 +51,6 @@
   {/each}</tbody></table></div><p class="hint">Deaths: your side : theirs. Click a match for its players.</p></section>{/if}
 
 <section class="dps-table kill-history"><h2>Kill history
-    {@const nk = log.kills.filter((k) => k.kind === "kill").length}{@const nd = log.kills.length - nk}
     <span class="count">{nk} {nk === 1 ? "kill" : "kills"} · {nd} {nd === 1 ? "death" : "deaths"}</span></h2>
   <div class="seg" role="group" aria-label="Show">
     <button class:on={killView === "kill"} aria-pressed={killView === "kill"} onclick={() => { killView = "kill"; killOpen = ""; }}>Your kills</button>
