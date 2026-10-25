@@ -40,6 +40,9 @@ and sends nothing to the game or anywhere else.
    Later: `pvp_ledger()`, a read-only copy for the kill history (`src/kills.rs`).
 9. `capture/pcap_capturer.rs` (2026-10-24): `dropped()`, the count of packets thrown away because the parser
    fell behind, so the companion can say when its numbers miss some.
+10. `combat/dps_calculator.rs` (2026-10-25): `world_boss_rows` (you, your party and Others from the HP lost) also
+   applies to the Abyss's open-world bosses (`abyss_bosses.rs`), which the field-boss list leaves out; a test
+   for it (`an_abyss_world_boss_shows_others_too`).
 
 ## Written for the companion
 
@@ -49,6 +52,7 @@ and sends nothing to the game or anywhere else.
 teleports and your own buffs), `src/cubes.rs` (hidden cubes in view and opened), `src/kills.rs` (your PvP kills and deaths, with
 `DataStorage::pvp_ledger`, a read-only copy of the companion's PvP ledger),
 `src/souls.rs` (your mob kills that gave soul points, and where the mob died),
+`src/abyss_bosses.rs` (the Abyss's open-world bosses, for the Others row),
 `src/tap.rs` (all of them on A2Tools' frame tap),
 `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 

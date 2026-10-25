@@ -57,7 +57,8 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   plus the player's marks, to a text file in Downloads, for finding new records such as hidden cubes) / `position.rs` (your position:
   map loads, teleports, your own buffs) / `cubes.rs` (hidden cubes: object codes learned from openings, cubes in view,
   openings placed by their loot) / `souls.rs` (your mob kills that gave soul points: loot owner `04 8d`, loot place `1e 56`,
-  points `0d 90`; the engine adds the mob's name) / `kills.rs` (your PvP kills, assists and deaths: the last hit before a death, your hit within 15 s for an assist, from the PvP ledger) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
+  points `0d 90`; the engine adds the mob's name) / `abyss_bosses.rs` (the Abyss's world bosses: on them, as on field bosses, the
+  server sends no one else's direct hits, so rows are you, your party and Others from the HP lost) / `kills.rs` (your PvP kills, assists and deaths: the last hit before a death, your hit within 15 s for an assist, from the PvP ledger) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
 
 ## Rules
 - Never read game memory, inject code, simulate input or automate the game (ToS/anti-cheat). Tracker + notifications,

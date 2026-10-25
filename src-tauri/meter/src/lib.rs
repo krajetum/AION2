@@ -31,6 +31,8 @@ pub mod kills;
 pub mod cubes;
 /// Your mob kills that gave soul points, and where.
 pub mod souls;
+/// The Abyss's open-world bosses (the Others row on them).
+pub mod abyss_bosses;
 /// The companion's readers on the parser's frame tap.
 pub mod tap;
 

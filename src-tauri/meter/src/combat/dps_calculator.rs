@@ -619,7 +619,7 @@ impl DpsCalculator {
         let code = (target != 0).then(|| self.data_storage.mob_code(target)).flatten()?;
         // In an instance everyone there is your party, and before the meter
         // knows who you are it cannot tell who is yours.
-        if !crate::capture::field_bosses::is_field_boss(code)
+        if !(crate::capture::field_bosses::is_field_boss(code) || crate::abyss_bosses::is_abyss_world_boss(code))
             || self.data_storage.current_dungeon_id() != 0
             || local_ids.is_none()
         {
@@ -2339,6 +2339,32 @@ mod tests {
         assert_eq!((listed + others.amount) as i64, lost, "the rows add up to what the boss lost");
         let share: f64 = shown.map.values().map(|d| d.damage_contribution).sum();
         assert!((share - 100.0).abs() < 0.01);
+    }
+
+    /// Companion: the same on the Abyss's world bosses, which A2Tools' field-boss list leaves out
+    /// (Watcher Kaira, 2026-10-25: every stranger seen was a row, and you had 18% of what was seen).
+    #[test]
+    fn an_abyss_world_boss_shows_others_too() {
+        let storage = Arc::new(DataStorage::new());
+        storage.set_local_player_id(Some(7983));
+        storage.append_nickname_authoritative(7983, "Naicha");
+        let npcs = Arc::new(NpcLookup::new());
+        npcs.load_from_json(r#"{"2600089": {"name": "Watcher Kaira", "isBoss": true}}"#);
+        storage.append_mob(60_001, 2600089);
+        let mut calc = DpsCalculator::new(storage.clone(), Arc::new(SkillLookup::new()), npcs, Arc::new(PingTracker::new()));
+        storage.set_mob_current_hp(60_001, 1_000_000);
+        storage.append_damage(hit(7983, 60_001, 1_000));
+        calc.get_dps();
+        storage.append_damage(hit(2653, 60_001, 2_000)); // a stranger's damage over time
+        storage.set_mob_current_hp(60_001, 400_000);
+        storage.append_damage(hit(7983, 60_001, 3_000));
+        let shown = calc.get_dps();
+        let mut ids: Vec<i32> = shown.map.keys().copied().collect();
+        ids.sort_unstable();
+        assert_eq!(ids, vec![7983, OTHERS_ROW_ID], "the stranger is in Others, not a row");
+        let share: f64 = shown.map.values().map(|d| d.damage_contribution).sum();
+        assert!((share - 100.0).abs() < 0.01);
+        assert!(shown.map[&7983].damage_contribution < 5.0, "your share is of what the boss lost");
     }
 
     /// Someone joining between fights shows at once, not at the next hit:
