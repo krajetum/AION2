@@ -44,8 +44,8 @@
       applyResets(data, Date.now(), C);
       ui.data = data;
       ui.charId = data.characters[0].id;
-      showStatus("Import complete. Stonks.");
-    } catch (err) { showStatus("Import failed (skill issue): " + (err as Error).message, true); }
+      showStatus("Import complete.");
+    } catch (err) { showStatus("Import failed: " + (err as Error).message, true); }
     input.value = ""; // the old page was re-rendered here, so the same file can be picked again
     act(() => {});
   }
@@ -117,7 +117,6 @@
   </section>
   <section><h2>System</h2>
     {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}
-    {@render toggle("Meme mascot", s.memeMascot, (e) => { s.memeMascot = check(e); })}
     <div class="btns"><button onclick={() => exportJson(ui.data)}>Export JSON</button>
       <label class="btn">Import JSON <input type="file" accept=".json,application/json" hidden onchange={importFile}></label></div>
   </section>
@@ -142,8 +141,8 @@
     <div class="setting"><span>Quiet hours</span><span class="ctl">
       <input type="time" value={s.quietStart} aria-label="Quiet hours start" onchange={(e) => commit(e, (v) => { s.quietStart = v; }, () => s.quietStart)}> to
       <input type="time" value={s.quietEnd} aria-label="Quiet hours end" onchange={(e) => commit(e, (v) => { s.quietEnd = v; }, () => s.quietEnd)}></span></div>
-    <div class="btns"><button onclick={() => act(() => muteForAnHour(ui.data, Date.now()))}>Shhh (1 h)</button><button class="ghost" onclick={() => act(() => unmute(ui.data))}>Unshhh</button><button class="ghost"
-      onclick={() => toast(s, "AION 2 Companion", "If you can read this, it works. Probably.")}>Test notification</button></div>
+    <div class="btns"><button onclick={() => act(() => muteForAnHour(ui.data, Date.now()))}>Mute 1 h</button><button class="ghost" onclick={() => act(() => unmute(ui.data))}>Unmute</button><button class="ghost"
+      onclick={() => toast(s, "AION 2 Companion", "Notifications are working.")}>Test notification</button></div>
   </section>
   <section><h2>Reset times <span class="count">TO VERIFY</span></h2>
     <dl>

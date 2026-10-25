@@ -79,7 +79,7 @@
   </div>
 
   {#if f.target}{@const t = f.target}<section class="dps-target">
-    <div class="tname"><b>{t.name || "Unknown target"}</b>{#if t.isBoss}<span class="pill">Boss</span>{/if}<span class="num time">{clock(f.battleTimeMs)}</span></div>
+    <div class="tname"><b>{t.name || "Unknown target"}</b>{#if t.isBoss}<span class="pill magenta">Boss</span>{/if}<span class="num time">{clock(f.battleTimeMs)}</span></div>
     {#if left != null}<div class="bar hp"><i style:--p={String(left)}></i></div><small class="num">{Math.round(left * 100)}% of {short(t.maxHp)} HP</small>{/if}
   </section>{/if}
 
