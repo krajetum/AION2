@@ -88,6 +88,19 @@ pub fn loots() -> Vec<Loot> {
     with(|s| s.loots.iter().copied().collect())
 }
 
+/// The map learned for kills and loots read before the meter knew it (`position.rs`): no map load came
+/// between, so they were on it.
+pub fn fill_map(id: i32) {
+    with(|s| {
+        for k in s.kills.iter_mut().filter(|k| k.map_id.is_none()) {
+            k.map_id = Some(id);
+        }
+        for l in s.loots.iter_mut().filter(|l| l.map_id.is_none()) {
+            l.map_id = Some(id);
+        }
+    });
+}
+
 /// Forget everything (a capture restart).
 pub fn reset() {
     *STATE.lock() = None;

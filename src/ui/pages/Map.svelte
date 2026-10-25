@@ -398,7 +398,7 @@
       {#if layer === "cubes"}{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(ui.data.map.found.filter((f) => foundOn(f, current)).length)} cubes found{#if live.length}{" "}· <b class="live-count">{live.length} in view</b>{/if}
       {:else}{num(onThisMap.length)} soul point spots here · {num(drops.length)} in all{/if}
       · {num(refs.length)} references{#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 with game coordinates{/if}
-      · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{/if}</span>
+      · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if pos.mapId == null}<b>which map you are on is not known yet: open the game's map (M) once, or teleport</b>{:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{/if}</span>
     <span class="grow"></span>
     <label class="btn ghost">Import your own {mapName(current)} map <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>
     {#if custom && BUNDLED_IMAGE[current]}<button class="ghost" onclick={remove}>Back to the bundled map</button>{:else if custom}<button class="ghost" onclick={remove}>Remove the image</button>{/if}
