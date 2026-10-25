@@ -200,15 +200,23 @@ export const BUNDLED_FIT: Affine = [5.42103e-3, 4.33492e-5, 1494.327, 4.82447e-5
 export const WORLD_MAP_ID = 1110;
 
 /**
+ * Game → pixel fit of the bundled Abyss map (src/assets/ncsoft/abyss-map.webp), from the packet recording of
+ * 2026-10-25 14:28-14:30 on map 20: where the player stood (14:28:52) and arrived after two teleports
+ * (14:29:35, 14:30:11), marked 1-3 on a screenshot matched to the bundled image (scale 1.72). Three points
+ * only, so no rotation is fitted (as on the world map): they stay within 24 px of it (about 25 m); the
+ * player's references (3+) override it.
+ */
+export const ABYSS_FIT: Affine = [0.00921448, 0, 746.003, 0, 0.00939319, 654.083];
+
+/**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
- * (2026-10-25); map 20 is the Abyss as the player named it in the kill history; its fit comes from the
- * player's references until one is bundled. Elyos (Verteron): the player's screenshot (2026-10-25); its map id
+ * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot (2026-10-25); its map id
  * and fit are not known yet.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
   { key: "elyos", name: "Elyos", gameIds: [], fit: null, bundled: true },
-  { key: "abyss", name: "Abyss", gameIds: [20], fit: null, bundled: true },
+  { key: "abyss", name: "Abyss", gameIds: [20], fit: ABYSS_FIT, bundled: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**

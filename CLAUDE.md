@@ -35,7 +35,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   - `servers.ts` — server names by id (A2Tools' table), faction/region from the id, `gearUrl` (a player's profile on shugo.gg)
   - `bosses.ts` — field-boss respawn timers from the maps opened in game, `bossLabel` (bosses the game data doesn't name: `KNOWN_BOSS_NAMES` for the Abyss ones the player identified, else the player names them, `AppData.bossNames`); `arena.ts` — arena matchup log, kill history (`logKills`), map names (`mapLabel`: the player's, `KNOWN_MAPS` 20 = Abyss, else "Map id")
   - `map.ts` — Map page: three maps (`MAPS`: Asmodian = bundled world map, `BUNDLED_FIT`, map id `WORLD_MAP_ID`; Elyos, no image or
-    ids yet, takes map ids no other map claims (`onMap`); Abyss = bundled screenshot, map id 20, no fit yet), points per map, clusters,
+    ids yet, takes map ids no other map claims (`onMap`); Abyss = bundled screenshot, map id 20, `ABYSS_FIT` from 3 recorded spots), points per map, clusters,
     pan/zoom math, game→pixel affine fit (the player's references per map override the bundled one); pet shard drops (`PetDrop`:
     recorded with "Shard dropped here" or a click, shared as a `dropsFile` and merged by id, `petList` search, `petHome`); cubes found and
     cube codes learned (`takeCubes`, `KNOWN_CUBE_CODES`), `bearing` / `climb` for the cube popup, `onRadar` for the radar

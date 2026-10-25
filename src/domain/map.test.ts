@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { foundOn, invertAffine, mapOf, onMap, mergeDrops, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
-import { applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { ABYSS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
 
@@ -72,6 +72,16 @@ test("bundled fit puts the recorded teleports where the screenshots show them", 
   near(189516, -91914, 2517, 1151, 5); // Basfelt Ruins, arrow after the teleport
   near(-86370, -158622, 1023, 776, 12); // walked spots
   near(-43409, -150745, 1255, 829, 20);
+});
+
+test("Abyss fit puts the recorded spots where the player marked them", () => {
+  const near = (gx: number, gy: number, px: number, py: number) => {
+    const p = applyAffine(ABYSS_FIT, gx, gy);
+    assert.ok(Math.hypot(p.x - px, p.y - py) < 25, `${gx},${gy} → ${p.x.toFixed(0)},${p.y.toFixed(0)}, expected ${px},${py}`);
+  };
+  near(54425, -53376, 1246, 167); // 1: the fortress, 14:28:52
+  near(38010, 17550, 1098, 829); // 2: after the teleport, 14:29:35
+  near(-35673, -23916, 417, 406); // 3: after the teleport, 14:30:11
 });
 
 test("cube openings join the save once per spot; codes are learned", () => {
