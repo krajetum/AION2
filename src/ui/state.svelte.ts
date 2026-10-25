@@ -3,9 +3,12 @@ import { SvelteSet } from "svelte/reactivity";
 import type { MeterUpdate } from "../domain/meter.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
-export type Tab = Cadence | "plan" | "season" | "bosses" | "map" | "dps" | "arena" | "news" | "settings";
-export const TABS: Tab[] = [...CADENCES, "plan", "season", "bosses", "map", "dps", "arena", "news", "settings"];
-export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "daily"; };
+export type Tab = "home" | Cadence | "plan" | "season" | "bosses" | "map" | "dps" | "arena" | "news" | "settings";
+export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "bosses", "map", "dps", "arena", "news", "settings"];
+/** Sidebar groups. */
+export const GROUPS: [string, Tab[]][] = [["Overview", ["home"]], ["Tasks", [...CADENCES]], ["Progress", ["plan", "season"]],
+  ["World", ["bosses", "map"]], ["Combat", ["dps", "arena"]], ["Info", ["news", "settings"]]];
+export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "home"; };
 
 export const ui = $state({
   data: undefined as unknown as AppData, // set by main.ts before mounting

@@ -4,17 +4,18 @@ import type { Tab } from "./state.svelte.ts";
 
 /** Sidebar label and page header tagline. */
 export const PAGE: Record<Tab, [string, string]> = {
-  daily: ["Daily", "The grind never sleeps. You should, though."],
-  weekly: ["Weekly", "Wednesday is coming."],
-  monthly: ["Monthly", "Long-term commitment issues."],
-  plan: ["Planner", "Limited minutes, unlimited greed. Knapsack go brrr."],
-  season: ["Season Coins", "Oath Coin stonks. Numbers only go up."],
-  bosses: ["Field Bosses", "Respawn timers, straight from the world map."],
-  map: ["Map", "Cubes were here. Allegedly."],
-  dps: ["DPS Meter", "Numbers don't lie. Partymates do."],
-  arena: ["Arena Log", "Know thy enemy. Or at least their name."],
-  news: ["News", "Patch notes or it didn't happen."],
-  settings: ["Settings", "Knobs. So many knobs."],
+  home: ["Home", "Your day at a glance."],
+  daily: ["Daily", "Tasks that reset every day."],
+  weekly: ["Weekly", "Tasks that reset every week."],
+  monthly: ["Monthly", "Tasks that reset every month."],
+  plan: ["Planner", "Best use of the minutes you have."],
+  season: ["Season Coins", "Season Oath Coins: claimed, left and projected."],
+  bosses: ["Field Bosses", "Respawn timers from the world map."],
+  map: ["Map", "Where the cubes were seen."],
+  dps: ["DPS Meter", "Live damage, healing and damage taken."],
+  arena: ["Arena Log", "Every arena match and opponent."],
+  news: ["News", "Official announcements from Steam."],
+  settings: ["Settings", "Characters, notifications and data."],
 };
 export const LABEL: Record<Cadence, string> = { daily: "Daily", weekly: "Weekly", monthly: "Monthly" };
 export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

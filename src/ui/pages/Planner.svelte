@@ -8,9 +8,7 @@
   import { CADENCES, type Task } from "../../domain/types.ts";
   import { act, commit } from "../actions.ts";
   import { hm, LABEL, mins, PRIO } from "../format.ts";
-  import { MEME } from "../memes.ts";
   import Kpi from "../parts/Kpi.svelte";
-  import Meme from "../parts/Meme.svelte";
   import TaskRow from "../parts/TaskRow.svelte";
   import UndoButton from "../parts/UndoButton.svelte";
   import { doneHere, ui } from "../state.svelte.ts";
@@ -68,8 +66,8 @@
 </div>
 {#if view.r.steps.length}<section><h2>Plan <span class="count">{view.r.steps.length} steps</span></h2>{#each view.r.steps as st (st.kind + st.id + st.start)}{#if st.kind === "event"}<div class="step event"><time>{hm(st.start)}</time><div class="task"><span class="text">
       <span class="name">{st.name}</span><small class="plan-hint">Event · {mins(st.minutes)} reserved</small></span></div></div>{:else}<div class="step {st.urgent ? 'urgent' : ''}"><time>{hm(st.start)}</time><TaskRow t={findTask(ui.data, st.id)} hint={hint(st)} /></div>{/if}{/each}</section>
-{:else if view.r.candidates}<p class="empty"><Meme src={MEME.empty} w={160} h={120} />Nothing fits in {mins(view.left)}. Go get a coffee.</p>
-{:else}<section class="win"><Meme src={MEME.win} w={120} h={90} /><div><h2>Nothing left to plan</h2><p>Everything is done. Touch grass.</p></div></section>{/if}
+{:else if view.r.candidates}<p class="empty">Nothing fits in {mins(view.left)}.</p>
+{:else}<section class="win"><div><h2>Nothing left to plan</h2><p>Every task is done.</p></div></section>{/if}
 {#if done.length}<section><h2>Done just now <span class="count">ticked in your Daily / Weekly / Monthly lists too</span></h2>{#each done as id (id)}<TaskRow t={findTask(ui.data, id)} />{/each}</section>{/if}
 {#if view.r.skipped.length}<section><h2>Doesn't fit <span class="count">{view.r.skipped.length}</span></h2>{#each view.r.skipped as x}<div class="task"><span class="text"><span class="name">{x.name}</span>
       <small>{mins(x.minutes)}{#if x.urgent}{" · "}<span class="neg">resets before your next session</span>{/if}</small></span></div>{/each}</section>{/if}

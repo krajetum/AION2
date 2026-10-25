@@ -32,7 +32,6 @@ export function defaultData(): AppData {
         [c.id, { on: c.on, volume: 100, muted: false, ...(LEAD_CHANNELS.includes(c.id) && { leads: [5] }) }])),
       sound: true,
       volume: 70,
-      memeMascot: true,
       planMinutes: 40,
       planNextHours: 20,
       dpsOverlay: false,
@@ -55,8 +54,8 @@ export function normalize(raw: any): AppData {
   if (!raw || !Array.isArray(raw.tasks) || !Array.isArray(raw.characters) || !raw.characters.length)
     throw new Error("Invalid file: tasks or characters are missing");
   const d = defaultData();
-  // Older saves had cloudReminder / eventAlerts instead of channels.
-  const { cloudReminder, eventAlerts, ...rs } = raw.settings ?? {};
+  // Older saves had cloudReminder / eventAlerts instead of channels, and a memeMascot switch.
+  const { cloudReminder, eventAlerts, memeMascot, ...rs } = raw.settings ?? {};
   const channels = d.settings.channels;
   if (typeof cloudReminder === "boolean") channels.cloud.on = cloudReminder;
   for (const [id, on] of Object.entries(eventAlerts ?? {})) if (channels[id]) channels[id].on = !!on;

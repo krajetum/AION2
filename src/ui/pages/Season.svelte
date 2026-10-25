@@ -7,9 +7,7 @@
   import { lastBoundary } from "../../domain/time.ts";
   import { act, commit } from "../actions.ts";
   import { num } from "../format.ts";
-  import { MEME } from "../memes.ts";
   import Kpi from "../parts/Kpi.svelte";
-  import Meme from "../parts/Meme.svelte";
   import { ui } from "../state.svelte.ts";
 
   const s = $derived(ui.data.season[ui.charId] ?? emptySeason()); // App creates the entry
@@ -33,7 +31,7 @@
     title="Step {k}" onclick={() => act(() => set(k === done ? k - 1 : k))}></button>{/each}<span class="pip-n">{done}/{steps}</span></span>{/snippet}
 {#snippet coins(c: { coins: number; exact: boolean })}{#if !c.exact}<span class="est" title="Estimate: the coins of each step are not known, only the mission total">≈</span>{/if}{num(c.coins)}{/snippet}
 
-{#if sum.seasonalRemaining <= 0}<section class="win"><Meme src={MEME.win} w={120} h={90} /><div><h2>Seasonal coins: 100% looted</h2><p>Only weeklies left. Touch grass, come back Wednesday.</p></div></section>{/if}<div class="kpis">
+{#if sum.seasonalRemaining <= 0}<section class="win"><div><h2>Seasonal coins: all claimed</h2><p>Only weekly missions left.</p></div></section>{/if}<div class="kpis">
   <Kpi label="Realistic at season end" value={num(sum.realisticEnd)} sub="counted missions only" cls="hero" />
   <Kpi label="Max at season end" value={num(sum.maxAtEnd)} sub="every mission" />
   <Kpi label="Seasonal left" value={num(sum.seasonalRemaining)} sub="of {num(total)}" />
