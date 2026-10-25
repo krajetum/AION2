@@ -36,10 +36,10 @@ pub struct Kill {
     pub other: ArenaPlayer,
 }
 
-/// The last hitter on `victim` around `at`, if any.
-fn killer(hits: &HashMap<(i32, i32), PvpHits>, victim: i32, at: i64) -> Option<i32> {
+/// The last hitter on `victim` around `at` among the players `may` allows, if any.
+fn killer(hits: &HashMap<(i32, i32), PvpHits>, victim: i32, at: i64, may: &dyn Fn(i32) -> bool) -> Option<i32> {
     hits.iter()
-        .filter(|&(&(_, t), h)| t == victim && h.last_ms >= at - BEFORE_MS && h.last_ms <= at + AFTER_MS)
+        .filter(|&(&(a, t), h)| t == victim && may(a) && h.last_ms >= at - BEFORE_MS && h.last_ms <= at + AFTER_MS)
         .max_by_key(|&(&(a, _), h)| (h.last_ms, -a))
         .map(|(&(a, _), _)| a)
 }
@@ -55,6 +55,8 @@ pub fn find(
     party: &HashMap<String, PartyMember>,
     map_id: Option<i32>,
 ) -> Vec<Kill> {
+    let ours = |id: i32| id == me || party.contains_key(names(id).trim());
+    let on_us: std::collections::HashSet<i32> = hits.keys().filter(|&&(a, t)| !ours(a) && ours(t)).map(|&(a, _)| a).collect();
     let mut out: Vec<Kill> = Vec::new();
     let mut last_death: HashMap<i32, i64> = HashMap::new();
     for &(victim, at, _) in deaths {
@@ -65,7 +67,13 @@ pub fn find(
             continue;
         }
         last_death.insert(victim, at);
-        let Some(by) = killer(hits, victim, at) else { continue };
+        // The ledger holds every player-on-player action, heals and buffs included, and does not
+        // tell them apart: a party member's heal just before your death is not your killer. So a
+        // death on your side goes to the last hit from outside it, and a death on the other side
+        // to the last hit from your side or from a stranger, never from someone who acted on your
+        // side (the victim's team: their heals on the victim would otherwise take your kill).
+        let may = |a: i32| if ours(victim) { !ours(a) } else { ours(a) || !on_us.contains(&a) };
+        let Some(by) = killer(hits, victim, at, &may) else { continue };
         let helped = hits.get(&(me, victim)).is_some_and(|h| h.last_ms >= at - ASSIST_MS && h.last_ms <= at + AFTER_MS);
         let (kind, other) = match (by == me, victim == me) {
             (true, false) => ("kill", victim),
@@ -125,6 +133,7 @@ mod tests {
             1 => "Me".into(),
             3 => "Foe".into(),
             4 => "Other".into(),
+            5 => "Mate".into(),
             _ => String::new(),
         }
     }
@@ -154,6 +163,25 @@ mod tests {
         // Your last hit 20 s before their death: not an assist.
         let hits: HashMap<(i32, i32), PvpHits> = [((1, 3), hit(900, 1_000, 2_000)), ((4, 3), hit(300, 1_000, 22_000))].into();
         assert!(find(1, &[(3, 22_100, None)], 0, &hits, &names, &server, &HashMap::new(), None).is_empty());
+    }
+
+    /// 2026-10-25: a party member's heal landed last, and the history said they killed you.
+    #[test]
+    fn a_party_members_heal_is_not_the_killing_blow() {
+        let party: HashMap<String, PartyMember> = [("Mate".to_string(), PartyMember::default())].into();
+        let hits: HashMap<(i32, i32), PvpHits> = [((3, 1), hit(800, 1_000, 9_000)), ((5, 1), hit(500, 1_000, 9_500))].into();
+        let k = find(1, &[(1, 9_600, None)], 0, &hits, &names, &server, &party, None);
+        assert_eq!(k.iter().map(|k| (k.kind, k.other.id)).collect::<Vec<_>>(), [("death", 3)]);
+        // Only party members acted on you: no death to log.
+        let hits: HashMap<(i32, i32), PvpHits> = [((5, 1), hit(500, 1_000, 9_500))].into();
+        assert!(find(1, &[(1, 9_600, None)], 0, &hits, &names, &server, &party, None).is_empty());
+        // A heal on the foe from their team (who hit you) after your hit does not take your kill;
+        // a party member's later hit makes it an assist.
+        let hits: HashMap<(i32, i32), PvpHits> =
+            [((1, 3), hit(900, 1_000, 9_000)), ((4, 3), hit(50, 1_000, 9_400)), ((4, 1), hit(70, 1_000, 3_000))].into();
+        assert_eq!(find(1, &[(3, 9_500, None)], 0, &hits, &names, &server, &party, None)[0].kind, "kill");
+        let hits: HashMap<(i32, i32), PvpHits> = [((1, 3), hit(900, 1_000, 9_000)), ((5, 3), hit(50, 1_000, 9_400))].into();
+        assert_eq!(find(1, &[(3, 9_500, None)], 0, &hits, &names, &server, &party, None)[0].kind, "assist");
     }
 
     #[test]
