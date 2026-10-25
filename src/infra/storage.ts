@@ -27,14 +27,17 @@ export async function saveData(data: AppData) {
   await store.save();
 }
 
-export function exportJson(data: AppData) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+/** Saves `value` as a JSON file (the webview's download: the Downloads folder). */
+export function downloadJson(name: string, value: unknown) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `aion2-companion-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = name;
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+export const exportJson = (data: AppData) => downloadJson(`aion2-companion-backup-${new Date().toISOString().slice(0, 10)}.json`, data);
 
 export async function importJson(file: File): Promise<AppData> {
   return normalize(JSON.parse(await file.text()));

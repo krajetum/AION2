@@ -1,9 +1,9 @@
-// Map page use cases: points on the player's own map image (cube spots and references).
-import type { MapPoint, PointKind } from "../domain/map.ts";
+// Map page use cases: points on the map images (cube spots and references), pet shard drops.
+import { mergeDrops, type MapKey, type MapPoint, type PetDrop, type PointKind } from "../domain/map.ts";
 import type { AppData } from "../domain/types.ts";
 
-export function addPoint(data: AppData, x: number, y: number, kind: PointKind, group: number): MapPoint {
-  const p: MapPoint = { id: crypto.randomUUID(), x: Math.round(x), y: Math.round(y), kind, group, label: "" };
+export function addPoint(data: AppData, map: MapKey, x: number, y: number, kind: PointKind, group: number): MapPoint {
+  const p: MapPoint = { id: crypto.randomUUID(), map, x: Math.round(x), y: Math.round(y), kind, group, label: "" };
   data.map.points.push(p);
   return p;
 }
@@ -29,3 +29,15 @@ export function setPointGame(data: AppData, id: string, gx: string, gy: string) 
   if (Number.isFinite(x) && Number.isFinite(y)) p.game = { x, y };
   else delete p.game;
 }
+
+/** A pet's shard drop at a place in game units (your position, or a click on a fitted map). */
+export function addDrop(data: AppData, pet: string, map: MapKey, mapId: number | null, x: number, y: number, z: number, by: string, atMs = Date.now()): PetDrop {
+  const d: PetDrop = { id: crypto.randomUUID(), pet: pet.trim(), mapId, map, x: Math.round(x), y: Math.round(y), z: Math.round(z), atMs, by };
+  data.map.pets.push(d);
+  return d;
+}
+export function deleteDrop(data: AppData, id: string) {
+  data.map.pets = data.map.pets.filter((d) => d.id !== id);
+}
+/** Friends' drops into yours; returns how many were new. */
+export const importDrops = (data: AppData, drops: PetDrop[]) => mergeDrops(data.map, drops);

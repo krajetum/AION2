@@ -1,9 +1,11 @@
 # NCSOFT material — not covered by this project's GPL-3.0 license
 
-`world-map.webp` is the AION 2 world map, stitched from in-game screenshots (2898 × 3498 px).
-AION 2 and its art are © NCSOFT Corporation. This file is **not** licensed under GPL-3.0 with
-the rest of the repository; it is included only so the Map page has a map to start from, and it
+`world-map.webp` is the AION 2 world map (Asmodian), stitched from in-game screenshots (2898 × 3498 px).
+`elyos-map.webp` is the Elyos map (Verteron), from an in-game screenshot (3148 × 3124 px, 2026-10-25).
+`abyss-map.webp` is the Abyss map, from an in-game screenshot (1725 × 1187 px, 2026-10-25).
+AION 2 and its art are © NCSOFT Corporation. These files are **not** licensed under GPL-3.0 with
+the rest of the repository; they are included only so the Map page has maps to start from, and it
 will be removed at NCSOFT's request.
 
-The app works without it: the Map page can import any map image, which then stays on the
+The app works without them: the Map page can import any map image for each map, which then stays on the
 player's PC only.

@@ -11,7 +11,7 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   const bosses = mergeBosses(data.bosses, u.bosses ?? []);
   if (bosses) data.bosses = bosses;
   const match = !!u.arena && logMatch(data.arena, u.arena);
-  const cubes = !!u.cubes && takeCubes(data.map, u.cubes.codes, u.cubes.opened);
+  const cubes = !!u.cubes && takeCubes(data.map, u.cubes.codes, u.cubes.opened, u.position?.mapId ?? null);
   const kills = logKills(data.arena, u.kills ?? []) > 0;
   return !!bosses || match || cubes || kills;
 }

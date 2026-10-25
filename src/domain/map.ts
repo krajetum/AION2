@@ -2,10 +2,24 @@
 // for zoomed-out views, pan/zoom math, and the fit from game coordinates to image pixels.
 // Pure, no DOM. The image itself is never in the save file (infra/map-image.ts keeps it local).
 
+/** The maps the page offers: one image each, with its own points and fit. */
+export type MapKey = "asmodian" | "elyos" | "abyss";
+export interface WorldMap {
+  key: MapKey;
+  name: string;
+  /** The game's map ids (map loads, `21 36`) that this image shows. */
+  gameIds: number[];
+  /** The bundled image's game → pixel fit, null until one is known (the player's references then place you). */
+  fit: Affine | null;
+  /** Whether an image is bundled (src/assets/ncsoft/); without one the player imports their own. */
+  bundled: boolean;
+}
+
 /** A hidden-cube spot, or a reference: a place whose game coordinates are known (for the fit). */
 export type PointKind = "cube" | "ref";
 export interface MapPoint {
   id: string;
+  map: MapKey; // the image it was placed on
   x: number; y: number; // image pixels, x right, y down
   kind: PointKind;
   group: number; // index in GROUP_COLORS: cubes of one spawn group share it
@@ -13,11 +27,19 @@ export interface MapPoint {
   game?: { x: number; y: number }; // references: the game's coordinates of this place
 }
 /** A hidden cube seen opened (by the meter): where it stood, game units. Placed on the map through the fit. */
-export interface FoundCube { x: number; y: number; z: number; code: number | null; atMs: number; byYou: boolean }
+export interface FoundCube { x: number; y: number; z: number; code: number | null; atMs: number; byYou: boolean; mapId?: number | null }
+/**
+ * Where a pet's shard dropped (game units, the map of the last map load). Recorded by a player with the
+ * "Shard dropped here" button (their position then) or a click on a fitted map; shared as a file and merged.
+ */
+export interface PetDrop { id: string; pet: string; mapId: number | null; map?: MapKey; x: number; y: number; z: number; atMs: number; by: string }
+/** The page map a drop is on: the one it was recorded on, else the one its game map id belongs to. */
+export const dropMap = (d: PetDrop): MapKey | null => d.map ?? mapOf(d.mapId);
 export interface MapData {
   points: MapPoint[];
   found: FoundCube[];   // cubes opened in view, newest last
   cubeCodes: number[];  // object codes known to be hidden cubes (learned from openings)
+  pets: PetDrop[];      // shard drops recorded here or imported from friends' files
 }
 
 /** Cube codes seen so far: 1301199, the cube of the 2026-10-23 20:18 recording (seen coming into view, then opened). */
@@ -29,7 +51,7 @@ const MAX_FOUND = 2000;
 /** Spawn-group colors, picked to stay apart on the map's greens, browns and blues. */
 export const GROUP_COLORS = ["#ff5a5f", "#ffb020", "#f5f05a", "#4fe08a", "#3fd6ff", "#5a8bff", "#c46bff", "#ff6bd0"];
 
-export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES] });
+export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [] });
 
 /** A saved or imported map section, cleaned: bad points are dropped, not guessed. */
 export function cleanMap(raw: any): MapData {
@@ -37,7 +59,7 @@ export function cleanMap(raw: any): MapData {
   const points = (Array.isArray(raw?.points) ? raw.points : [])
     .filter((p: any) => p && typeof p.id === "string" && ok(p.x) && ok(p.y))
     .map((p: any): MapPoint => ({
-      id: p.id, x: p.x, y: p.y,
+      id: p.id, map: isMapKey(p.map) ? p.map : "asmodian", x: p.x, y: p.y, // points before the map choice: the bundled world
       kind: p.kind === "ref" ? "ref" : "cube",
       group: Number.isInteger(p.group) && p.group >= 0 && p.group < GROUP_COLORS.length ? p.group : 0,
       label: typeof p.label === "string" ? p.label : "",
@@ -45,22 +67,24 @@ export function cleanMap(raw: any): MapData {
     }));
   const found = (Array.isArray(raw?.found) ? raw.found : [])
     .filter((f: any) => f && ok(f.x) && ok(f.y) && ok(f.z) && ok(f.atMs))
-    .map((f: any): FoundCube => ({ x: f.x, y: f.y, z: f.z, code: ok(f.code) ? f.code : null, atMs: f.atMs, byYou: !!f.byYou }));
+    .map((f: any): FoundCube => ({ x: f.x, y: f.y, z: f.z, code: ok(f.code) ? f.code : null, atMs: f.atMs, byYou: !!f.byYou, ...(ok(f.mapId) && { mapId: f.mapId }) }));
   const codes = (Array.isArray(raw?.cubeCodes) ? raw.cubeCodes : []).filter((c: unknown) => Number.isInteger(c) && (c as number) > 0);
-  return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b) };
+  return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets: cleanDrops(raw?.pets) };
 }
+
+export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss";
 
 /**
  * The meter's cube news into the save: new codes, and openings not already found at the same spot
  * (an opening of the same spot later only refreshes its time). Returns true if anything changed.
  */
-export function takeCubes(map: MapData, codes: number[], opened: FoundCube[]): boolean {
+export function takeCubes(map: MapData, codes: number[], opened: FoundCube[], mapId: number | null = null): boolean {
   let changed = false;
   for (const c of codes) if (!map.cubeCodes.includes(c)) { map.cubeCodes.push(c); changed = true; }
   if (changed) map.cubeCodes.sort((a, b) => a - b);
   for (const o of opened) {
     const same = map.found.find((f) => Math.hypot(f.x - o.x, f.y - o.y) < SAME_SPOT);
-    if (!same) { map.found.push({ ...o }); changed = true; }
+    if (!same) { map.found.push({ ...o, ...(mapId != null && { mapId }) }); changed = true; }
     else if (o.atMs > same.atMs) { same.atMs = o.atMs; same.code ??= o.code; changed = true; }
   }
   if (map.found.length > MAX_FOUND) map.found.splice(0, map.found.length - MAX_FOUND);
@@ -174,6 +198,112 @@ export function fitAffine(refs: { game: { x: number; y: number }; x: number; y: 
 export const BUNDLED_FIT: Affine = [5.42103e-3, 4.33492e-5, 1494.327, 4.82447e-5, 5.57267e-3, 1657.268];
 /** The map id of the bundled world (map loads of the same recording). Elsewhere the fit does not apply. */
 export const WORLD_MAP_ID = 1110;
+
+/**
+ * Game → pixel fit of the bundled Abyss map (src/assets/ncsoft/abyss-map.webp), from the packet recording of
+ * 2026-10-25 14:28-14:30 on map 20: where the player stood (14:28:52) and arrived after two teleports
+ * (14:29:35, 14:30:11), marked 1-3 on a screenshot matched to the bundled image (scale 1.72). Three points
+ * only, so no rotation is fitted (as on the world map): they stay within 24 px of it (about 25 m); the
+ * player's references (3+) override it.
+ */
+export const ABYSS_FIT: Affine = [0.00921448, 0, 746.003, 0, 0.00939319, 654.083];
+
+/**
+ * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
+ * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot (2026-10-25); its map id
+ * and fit are not known yet.
+ */
+export const MAPS: WorldMap[] = [
+  { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
+  { key: "elyos", name: "Elyos", gameIds: [], fit: null, bundled: true },
+  { key: "abyss", name: "Abyss", gameIds: [20], fit: ABYSS_FIT, bundled: true },
+];
+export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
+/**
+ * Whether you, on game map `mapId`, are on page map `key`: a map whose ids are known claims them; a map
+ * with none known yet (Elyos) takes any id no other map claims. Before any map load: the world map.
+ */
+export function onMap(mapId: number | null, key: MapKey): boolean {
+  if (mapId == null) return key === "asmodian";
+  const owner = mapOf(mapId);
+  return owner ? owner === key : worldMap(key).gameIds.length === 0;
+}
+/** The page's map for a game map id, if one shows it. */
+export const mapOf = (mapId: number | null | undefined): MapKey | null =>
+  mapId == null ? null : MAPS.find((m) => m.gameIds.includes(mapId))?.key ?? null;
+/** Saved cubes from before map ids were kept were all opened on the bundled world. */
+export const foundOn = (f: FoundCube, key: MapKey) => (f.mapId == null ? key === "asmodian" : mapOf(f.mapId) === key);
+
+/** Pixel → game, the fit's inverse; null for a fit that squashes the plane. */
+export function invertAffine(t: Affine): Affine | null {
+  const [a, b, c, d, e, f] = t, det = a * e - b * d;
+  if (!det) return null;
+  return [e / det, -b / det, (b * f - c * e) / det, -d / det, a / det, (c * d - a * f) / det];
+}
+
+// ---------- pet shard drops ----------
+/** Pet names from the bundled data, before anyone records a drop (empty until a verified list is added). */
+export const KNOWN_PETS: string[] = [];
+const MAX_DROPS = 20_000;
+
+/** Saved or imported drops, cleaned: bad entries dropped, ids unique. */
+export function cleanDrops(raw: unknown): PetDrop[] {
+  const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+  const seen = new Set<string>(), out: PetDrop[] = [];
+  for (const d of Array.isArray(raw) ? raw : []) {
+    if (!d || typeof d.id !== "string" || typeof d.pet !== "string" || !d.pet.trim() || !ok(d.x) || !ok(d.y) || !ok(d.atMs) || seen.has(d.id)) continue;
+    seen.add(d.id);
+    out.push({ id: d.id, pet: d.pet.trim(), mapId: ok(d.mapId) ? d.mapId : null, ...(isMapKey(d.map) && { map: d.map }), x: d.x, y: d.y, z: ok(d.z) ? d.z : 0, atMs: d.atMs, by: typeof d.by === "string" ? d.by : "" });
+  }
+  return out.slice(-MAX_DROPS);
+}
+
+/** Adds drops not already there (by id): importing the same file twice adds nothing. Returns how many were new. */
+export function mergeDrops(map: MapData, drops: PetDrop[]): number {
+  const have = new Set(map.pets.map((d) => d.id));
+  const fresh = cleanDrops(drops).filter((d) => !have.has(d.id));
+  map.pets.push(...fresh);
+  if (map.pets.length > MAX_DROPS) map.pets.splice(0, map.pets.length - MAX_DROPS);
+  return fresh.length;
+}
+
+/** The file friends send each other: format tag, version, drops. */
+export const DROPS_FILE = "aion2-companion-pet-drops";
+export const dropsFile = (drops: PetDrop[]) => ({ format: DROPS_FILE, version: 1, drops });
+/** A drops file's drops; throws on anything else. */
+export function readDropsFile(raw: any): PetDrop[] {
+  if (raw?.format !== DROPS_FILE || !Array.isArray(raw.drops)) throw new Error("not a pet drops file");
+  return cleanDrops(raw.drops);
+}
+
+export interface PetEntry { name: string; drops: number; maps: MapKey[] }
+/** Pets by name (known ones and every recorded one), filtered by `query` (any part of the name, any case), A-Z. */
+export function petList(drops: PetDrop[], query = ""): PetEntry[] {
+  const by = new Map<string, PetEntry>();
+  const entry = (name: string) => {
+    const k = name.toLowerCase();
+    if (!by.has(k)) by.set(k, { name, drops: 0, maps: [] });
+    return by.get(k)!;
+  };
+  for (const n of KNOWN_PETS) entry(n);
+  for (const d of drops) {
+    const e = entry(d.pet), m = dropMap(d);
+    e.drops++;
+    if (m && !e.maps.includes(m)) e.maps.push(m);
+  }
+  const q = query.trim().toLowerCase();
+  return [...by.values()].filter((e) => !q || e.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** The map with most of a pet's drops (the page switches to it), null when none is on a page map. */
+export function petHome(drops: PetDrop[], pet: string): MapKey | null {
+  const n = new Map<MapKey, number>();
+  for (const d of drops) {
+    const m = d.pet.toLowerCase() === pet.toLowerCase() ? dropMap(d) : null;
+    if (m) n.set(m, (n.get(m) ?? 0) + 1);
+  }
+  return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
 
 export const applyAffine = (t: Affine, gx: number, gy: number) => ({ x: t[0] * gx + t[1] * gy + t[2], y: t[3] * gx + t[4] * gy + t[5] });
 

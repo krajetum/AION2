@@ -1,9 +1,10 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
+import { ABYSS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
-const pt = (id: string, x: number, y: number): MapPoint => ({ id, x, y, kind: "cube", group: 0, label: "" });
+const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
 
 test("fit view centres the whole image", () => {
   const v = fitView(2000, 1000, 1000, 1000);
@@ -51,13 +52,13 @@ test("affine fit needs three references off one line", () => {
 test("saved points are cleaned, bad ones dropped", () => {
   const m = cleanMap({ points: [
     { id: "a", x: 1, y: 2, kind: "ref", group: 3, label: "Obelisk", game: { x: 5, y: 6 } },
-    { id: "b", x: 1, y: 2, kind: "weird", group: 99, game: { x: "?" } },
+    { id: "b", map: "abyss", x: 1, y: 2, kind: "weird", group: 99, game: { x: "?" } },
     { id: "c", x: "1", y: 2 },
     null,
   ] });
   assert.deepEqual(m.points, [
-    { id: "a", x: 1, y: 2, kind: "ref", group: 3, label: "Obelisk", game: { x: 5, y: 6 } },
-    { id: "b", x: 1, y: 2, kind: "cube", group: 0, label: "" },
+    { id: "a", map: "asmodian", x: 1, y: 2, kind: "ref", group: 3, label: "Obelisk", game: { x: 5, y: 6 } },
+    { id: "b", map: "abyss", x: 1, y: 2, kind: "cube", group: 0, label: "" },
   ]);
   assert.deepEqual(cleanMap(undefined).points, []);
 });
@@ -71,6 +72,16 @@ test("bundled fit puts the recorded teleports where the screenshots show them", 
   near(189516, -91914, 2517, 1151, 5); // Basfelt Ruins, arrow after the teleport
   near(-86370, -158622, 1023, 776, 12); // walked spots
   near(-43409, -150745, 1255, 829, 20);
+});
+
+test("Abyss fit puts the recorded spots where the player marked them", () => {
+  const near = (gx: number, gy: number, px: number, py: number) => {
+    const p = applyAffine(ABYSS_FIT, gx, gy);
+    assert.ok(Math.hypot(p.x - px, p.y - py) < 25, `${gx},${gy} → ${p.x.toFixed(0)},${p.y.toFixed(0)}, expected ${px},${py}`);
+  };
+  near(54425, -53376, 1246, 167); // 1: the fortress, 14:28:52
+  near(38010, 17550, 1098, 829); // 2: after the teleport, 14:29:35
+  near(-35673, -23916, 417, 406); // 3: after the teleport, 14:30:11
 });
 
 test("cube openings join the save once per spot; codes are learned", () => {
@@ -107,4 +118,47 @@ test("climb: up, down or about level", () => {
 test("radar: north up, east right, off the rim is off", () => {
   assert.deepEqual(onRadar({ x: 0, y: 0 }, { x: 5000, y: -5000 }, 10_000, 100), { x: 50, y: -50 });
   assert.equal(onRadar({ x: 0, y: 0 }, { x: 20_000, y: 0 }, 10_000, 100), null);
+});
+
+const drop = (id: string, pet: string, mapId: number | null, x = 0): PetDrop => ({ id, pet, mapId, x, y: 0, z: 0, atMs: 1, by: "" });
+
+test("game map ids pick the page's map; old found cubes stay on the world map", () => {
+  assert.equal(mapOf(1110), "asmodian");
+  assert.equal(mapOf(20), "abyss");
+  assert.equal(mapOf(61), null);
+  assert.equal(mapOf(null), null);
+  assert.ok(onMap(null, "asmodian") && onMap(20, "abyss") && !onMap(20, "elyos"));
+  assert.ok(onMap(777, "elyos") && !onMap(777, "asmodian"), "an unclaimed id is the map with no ids yet");
+  assert.ok(foundOn({ x: 0, y: 0, z: 0, code: null, atMs: 1, byYou: true }, "asmodian"));
+  assert.ok(foundOn({ x: 0, y: 0, z: 0, code: null, atMs: 1, byYou: true, mapId: 20 }, "abyss"));
+  const m = emptyMap();
+  takeCubes(m, [], [{ x: 0, y: 0, z: 0, code: null, atMs: 1, byYou: true }], 20);
+  assert.equal(m.found[0].mapId, 20);
+});
+
+test("the inverse fit takes a pixel back to the game", () => {
+  const inv = invertAffine(BUNDLED_FIT)!;
+  const p = applyAffine(BUNDLED_FIT, 109370, 189246), g = applyAffine(inv, p.x, p.y);
+  assert.ok(Math.abs(g.x - 109370) < 0.01 && Math.abs(g.y - 189246) < 0.01, JSON.stringify(g));
+  assert.equal(invertAffine([1, 2, 0, 2, 4, 0]), null);
+});
+
+test("friends' drops merge once; bad entries are dropped", () => {
+  const m = emptyMap();
+  assert.equal(mergeDrops(m, [drop("a", "Fox", 1110), drop("b", "Fox", 20)]), 2);
+  assert.equal(mergeDrops(m, [drop("a", "Fox", 1110), drop("c", " Owl ", null), { id: "d", pet: "", x: 1, y: 1, atMs: 1 } as any]), 1, "same file again adds only the new one");
+  assert.deepEqual(m.pets.map((d) => d.pet), ["Fox", "Fox", "Owl"]);
+  const back = readDropsFile(JSON.parse(JSON.stringify(dropsFile(m.pets))));
+  assert.deepEqual(back, m.pets);
+  assert.throws(() => readDropsFile({ version: 1, drops: [] }));
+  assert.deepEqual(cleanMap({ points: [] }).pets, []);
+});
+
+test("pet list: search by any part of the name, maps with drops, the map with the most", () => {
+  const drops = [drop("a", "Fox", 1110), drop("b", "fox", 20), drop("c", "Fox", 20), drop("d", "Owl", 61)];
+  assert.deepEqual(petList(drops), [{ name: "Fox", drops: 3, maps: ["asmodian", "abyss"] }, { name: "Owl", drops: 1, maps: [] }]);
+  assert.deepEqual(petList(drops, "OW").map((e) => e.name), ["Owl"]);
+  assert.equal(petHome(drops, "fox"), "abyss");
+  assert.equal(petHome(drops, "Owl"), null);
+  assert.equal(petHome([...drops, { ...drop("e", "Owl", 61), map: "elyos" }], "Owl"), "elyos", "the map it was recorded on wins");
 });
