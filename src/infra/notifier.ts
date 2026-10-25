@@ -11,6 +11,13 @@ export function playSound(names: string[], volume: number) {
   a.play().catch(() => { if (rest.length) playSound(rest, volume); });
 }
 
+/** Hopex's birthday song; never below 5 %, whatever the save file says. */
+export function playBirthday(volume: number) {
+  const a = new Audio("/sounds/happy-birthday.mp3");
+  a.volume = Math.max(5, Math.min(100, volume || 5)) / 100;
+  a.play().catch(() => {});
+}
+
 export async function toast(s: Settings, title: string, body: string, sound: string[] = ["default"]) {
   const vol = channelVolume(s, sound[0]);
   if (vol) playSound(sound, vol);

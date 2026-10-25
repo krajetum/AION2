@@ -32,6 +32,7 @@ export function defaultData(): AppData {
         [c.id, { on: c.on, volume: 100, muted: false, ...(LEAD_CHANNELS.includes(c.id) && { leads: [5] }) }])),
       sound: true,
       volume: 70,
+      birthdayVolume: 50,
       planMinutes: 40,
       planNextHours: 20,
       dpsOverlay: false,
