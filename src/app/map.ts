@@ -1,5 +1,5 @@
-// Map page use cases: points on the map images (cube spots and references), pet shard drops.
-import { mergeDrops, type MapKey, type MapPoint, type PetDrop, type PointKind } from "../domain/map.ts";
+// Map page use cases: points on the map images (cube spots and references), pets' soul point drops.
+import { mergeDrops, type MapKey, type MapPoint, type PetDrop, type PointKind, type SoulNames } from "../domain/map.ts";
 import type { AppData } from "../domain/types.ts";
 
 export function addPoint(data: AppData, map: MapKey, x: number, y: number, kind: PointKind, group: number): MapPoint {
@@ -30,7 +30,7 @@ export function setPointGame(data: AppData, id: string, gx: string, gy: string) 
   else delete p.game;
 }
 
-/** A pet's shard drop at a place in game units (your position, or a click on a fitted map). */
+/** Soul points by hand at a place in game units (your position, or a click on a fitted map). */
 export function addDrop(data: AppData, pet: string, map: MapKey, mapId: number | null, x: number, y: number, z: number, by: string, atMs = Date.now()): PetDrop {
   const d: PetDrop = { id: crypto.randomUUID(), pet: pet.trim(), mapId, map, x: Math.round(x), y: Math.round(y), z: Math.round(z), atMs, by };
   data.map.pets.push(d);
@@ -39,5 +39,12 @@ export function addDrop(data: AppData, pet: string, map: MapKey, mapId: number |
 export function deleteDrop(data: AppData, id: string) {
   data.map.pets = data.map.pets.filter((d) => d.id !== id);
 }
-/** Friends' drops into yours; returns how many were new. */
-export const importDrops = (data: AppData, drops: PetDrop[]) => mergeDrops(data.map, drops);
+/** Friends' drops (and their soul names) into yours; returns how many drops were new. */
+export const importDrops = (data: AppData, drops: PetDrop[], souls: SoulNames) => mergeDrops(data.map, drops, souls);
+/** The soul a mob's kills give; empty = back to the name each drop was recorded with. */
+export function setMobSoul(data: AppData, mob: string, soul: string) {
+  const k = mob.trim().toLowerCase();
+  if (!k) return;
+  if (soul.trim()) data.map.souls[k] = soul.trim();
+  else delete data.map.souls[k];
+}

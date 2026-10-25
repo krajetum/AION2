@@ -1,11 +1,11 @@
 // Arena log and field-boss use cases: what the meter sends, merged into the save file.
 import { logKills, logMatch } from "../domain/arena.ts";
 import { mergeBosses } from "../domain/bosses.ts";
-import { takeCubes } from "../domain/map.ts";
+import { takeCubes, takeSouls } from "../domain/map.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
 
-/** Takes a meter update's boss timers, last arena match and hidden cubes (codes learned, cubes opened).
+/** Takes a meter update's boss timers, last arena match, hidden cubes (codes learned, cubes opened) and soul kills.
  *  Returns true if it changed data (needs saving). */
 export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   const bosses = mergeBosses(data.bosses, u.bosses ?? []);
@@ -13,7 +13,8 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   const match = !!u.arena && logMatch(data.arena, u.arena);
   const cubes = !!u.cubes && takeCubes(data.map, u.cubes.codes, u.cubes.opened, u.position?.mapId ?? null);
   const kills = logKills(data.arena, u.kills ?? []) > 0;
-  return !!bosses || match || cubes || kills;
+  const souls = !!u.souls?.length && takeSouls(data.map, u.souls, u.profile?.name ?? "");
+  return !!bosses || match || cubes || kills || souls;
 }
 
 /** Names an arena map ("Arena of Solitude"); empty = unnamed. */

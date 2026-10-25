@@ -48,6 +48,7 @@ and sends nothing to the game or anywhere else.
 `src/recorder.rs` (packet recorder for diagnostics), `src/position.rs` (your position from map loads,
 teleports and your own buffs), `src/cubes.rs` (hidden cubes in view and opened), `src/kills.rs` (your PvP kills and deaths, with
 `DataStorage::pvp_ledger`, a read-only copy of the companion's PvP ledger),
+`src/souls.rs` (your mob kills that gave soul points, and where the mob died),
 `src/tap.rs` (all of them on A2Tools' frame tap),
 `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 

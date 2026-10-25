@@ -29,17 +29,25 @@ export interface MapPoint {
 /** A hidden cube seen opened (by the meter): where it stood, game units. Placed on the map through the fit. */
 export interface FoundCube { x: number; y: number; z: number; code: number | null; atMs: number; byYou: boolean; mapId?: number | null }
 /**
- * Where a pet's shard dropped (game units, the map of the last map load). Recorded by a player with the
- * "Shard dropped here" button (their position then) or a click on a fitted map; shared as a file and merged.
+ * Where a pet's soul points dropped (game units, the map of the last map load). Recorded by the meter for
+ * every kill of yours that gave soul points (`mob` = the mob, placed where it died; src-tauri/meter/src/souls.rs),
+ * or by hand: the "Soul points here" button (your position then) or a click on a fitted map. Shared as a file
+ * and merged. `pet` is the soul's name when recorded; for a mob's drops the player's name for its soul wins (`soulOf`).
  */
-export interface PetDrop { id: string; pet: string; mapId: number | null; map?: MapKey; x: number; y: number; z: number; atMs: number; by: string }
+export interface PetDrop { id: string; pet: string; mob?: string; mapId: number | null; map?: MapKey; x: number; y: number; z: number; atMs: number; by: string }
 /** The page map a drop is on: the one it was recorded on, else the one its game map id belongs to. */
 export const dropMap = (d: PetDrop): MapKey | null => d.map ?? mapOf(d.mapId);
+/** Mob name (lower case) → the soul its kills give, as the player named it (a mob's name is not always its soul's). */
+export type SoulNames = Record<string, string>;
+/** The soul a drop is of: its mob's soul as named, else the name it was recorded with. */
+export const soulOf = (names: SoulNames, d: PetDrop): string => (d.mob && names[d.mob.toLowerCase()]) || d.pet;
 export interface MapData {
   points: MapPoint[];
   found: FoundCube[];   // cubes opened in view, newest last
   cubeCodes: number[];  // object codes known to be hidden cubes (learned from openings)
-  pets: PetDrop[];      // shard drops recorded here or imported from friends' files
+  pets: PetDrop[];      // soul point drops recorded here or imported from friends' files
+  souls: SoulNames;     // mob → the soul its kills give
+  soulsSeenMs: number;  // the meter's soul kills up to this time are taken
 }
 
 /** Cube codes seen so far: 1301199, the cube of the 2026-10-23 20:18 recording (seen coming into view, then opened). */
@@ -51,7 +59,7 @@ const MAX_FOUND = 2000;
 /** Spawn-group colors, picked to stay apart on the map's greens, browns and blues. */
 export const GROUP_COLORS = ["#ff5a5f", "#ffb020", "#f5f05a", "#4fe08a", "#3fd6ff", "#5a8bff", "#c46bff", "#ff6bd0"];
 
-export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [] });
+export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, soulsSeenMs: 0 });
 
 /** A saved or imported map section, cleaned: bad points are dropped, not guessed. */
 export function cleanMap(raw: any): MapData {
@@ -69,7 +77,8 @@ export function cleanMap(raw: any): MapData {
     .filter((f: any) => f && ok(f.x) && ok(f.y) && ok(f.z) && ok(f.atMs))
     .map((f: any): FoundCube => ({ x: f.x, y: f.y, z: f.z, code: ok(f.code) ? f.code : null, atMs: f.atMs, byYou: !!f.byYou, ...(ok(f.mapId) && { mapId: f.mapId }) }));
   const codes = (Array.isArray(raw?.cubeCodes) ? raw.cubeCodes : []).filter((c: unknown) => Number.isInteger(c) && (c as number) > 0);
-  return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets: cleanDrops(raw?.pets) };
+  return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets: cleanDrops(raw?.pets),
+    souls: cleanSoulNames(raw?.souls), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0 };
 }
 
 export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss";
@@ -241,7 +250,7 @@ export function invertAffine(t: Affine): Affine | null {
   return [e / det, -b / det, (b * f - c * e) / det, -d / det, a / det, (c * d - a * f) / det];
 }
 
-// ---------- pet shard drops ----------
+// ---------- pet soul point drops ----------
 /** Pet names from the bundled data, before anyone records a drop (empty until a verified list is added). */
 export const KNOWN_PETS: string[] = [];
 const MAX_DROPS = 20_000;
@@ -253,13 +262,23 @@ export function cleanDrops(raw: unknown): PetDrop[] {
   for (const d of Array.isArray(raw) ? raw : []) {
     if (!d || typeof d.id !== "string" || typeof d.pet !== "string" || !d.pet.trim() || !ok(d.x) || !ok(d.y) || !ok(d.atMs) || seen.has(d.id)) continue;
     seen.add(d.id);
-    out.push({ id: d.id, pet: d.pet.trim(), mapId: ok(d.mapId) ? d.mapId : null, ...(isMapKey(d.map) && { map: d.map }), x: d.x, y: d.y, z: ok(d.z) ? d.z : 0, atMs: d.atMs, by: typeof d.by === "string" ? d.by : "" });
+    out.push({ id: d.id, pet: d.pet.trim(), ...(typeof d.mob === "string" && d.mob.trim() && { mob: d.mob.trim() }), mapId: ok(d.mapId) ? d.mapId : null, ...(isMapKey(d.map) && { map: d.map }), x: d.x, y: d.y, z: ok(d.z) ? d.z : 0, atMs: d.atMs, by: typeof d.by === "string" ? d.by : "" });
   }
   return out.slice(-MAX_DROPS);
 }
 
-/** Adds drops not already there (by id): importing the same file twice adds nothing. Returns how many were new. */
-export function mergeDrops(map: MapData, drops: PetDrop[]): number {
+export function cleanSoulNames(raw: unknown): SoulNames {
+  const out: SoulNames = {};
+  if (raw && typeof raw === "object") for (const [k, v] of Object.entries(raw)) if (k.trim() && typeof v === "string" && v.trim()) out[k.trim().toLowerCase()] = v.trim();
+  return out;
+}
+
+/**
+ * Adds drops not already there (by id): importing the same file twice adds nothing. A file's soul names fill in
+ * mobs not named here (yours stay). Returns how many drops were new.
+ */
+export function mergeDrops(map: MapData, drops: PetDrop[], souls: SoulNames = {}): number {
+  for (const [mob, soul] of Object.entries(cleanSoulNames(souls))) map.souls[mob] ??= soul;
   const have = new Set(map.pets.map((d) => d.id));
   const fresh = cleanDrops(drops).filter((d) => !have.has(d.id));
   map.pets.push(...fresh);
@@ -267,39 +286,76 @@ export function mergeDrops(map: MapData, drops: PetDrop[]): number {
   return fresh.length;
 }
 
-/** The file friends send each other: format tag, version, drops. */
+/** The file friends send each other: format tag, version, drops and their soul names. */
 export const DROPS_FILE = "aion2-companion-pet-drops";
-export const dropsFile = (drops: PetDrop[]) => ({ format: DROPS_FILE, version: 1, drops });
-/** A drops file's drops; throws on anything else. */
-export function readDropsFile(raw: any): PetDrop[] {
+export const dropsFile = (drops: PetDrop[], souls: SoulNames = {}) => ({ format: DROPS_FILE, version: 2, drops, souls });
+/** A drops file's drops and soul names (version 1 had none); throws on anything else. */
+export function readDropsFile(raw: any): { drops: PetDrop[]; souls: SoulNames } {
   if (raw?.format !== DROPS_FILE || !Array.isArray(raw.drops)) throw new Error("not a pet drops file");
-  return cleanDrops(raw.drops);
+  return { drops: cleanDrops(raw.drops), souls: cleanSoulNames(raw.souls) };
 }
 
-export interface PetEntry { name: string; drops: number; maps: MapKey[] }
-/** Pets by name (known ones and every recorded one), filtered by `query` (any part of the name, any case), A-Z. */
-export function petList(drops: PetDrop[], query = ""): PetEntry[] {
+/** A kill of yours that gave soul points, as the meter sends it (src/domain/meter.ts `SoulDrop`). */
+export interface SoulKill { entity: number; x: number; y: number; z: number; mapId: number | null; points: number; atMs: number; mob: string }
+/** Kills of one mob closer than this (game units, ~15 m) to one already saved add nothing: the map shows where, not how many. */
+export const NEAR_DROP = 1500;
+
+/**
+ * The meter's soul kills into the drops: those after `soulsSeenMs` whose mob is known (a mob seen spawning),
+ * one per mob and spot, on the page map of their game map. Ids come from the kill, so a kill taken twice, or
+ * merged back from a friend's copy of your file, is one drop. Returns true if anything changed.
+ */
+export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean {
+  let changed = false;
+  for (const k of kills) {
+    if (k.atMs <= map.soulsSeenMs) continue;
+    map.soulsSeenMs = k.atMs;
+    changed = true;
+    const mob = k.mob.trim();
+    if (!mob) continue;
+    const page = MAPS.find((m) => onMap(k.mapId, m.key))?.key;
+    const near = map.pets.some((d) => d.mob?.toLowerCase() === mob.toLowerCase() && dropMap(d) === page && Math.hypot(d.x - k.x, d.y - k.y) < NEAR_DROP);
+    if (near) continue;
+    map.pets.push({
+      id: `kill:${by || "?"}:${k.atMs}:${k.entity}`, pet: map.souls[mob.toLowerCase()] || mob, mob, mapId: k.mapId,
+      ...(page && { map: page }), x: Math.round(k.x), y: Math.round(k.y), z: Math.round(k.z), atMs: k.atMs, by,
+    });
+  }
+  if (map.pets.length > MAX_DROPS) map.pets.splice(0, map.pets.length - MAX_DROPS);
+  return changed;
+}
+
+export interface PetEntry { name: string; drops: number; maps: MapKey[]; mobs: string[] }
+/**
+ * Souls by name (known ones and every recorded one) with the mobs that drop them, filtered by `query` (any part of
+ * the soul's or a mob's name, any case), A-Z.
+ */
+export function petList(drops: PetDrop[], query = "", names: SoulNames = {}): PetEntry[] {
   const by = new Map<string, PetEntry>();
   const entry = (name: string) => {
     const k = name.toLowerCase();
-    if (!by.has(k)) by.set(k, { name, drops: 0, maps: [] });
+    if (!by.has(k)) by.set(k, { name, drops: 0, maps: [], mobs: [] });
     return by.get(k)!;
   };
   for (const n of KNOWN_PETS) entry(n);
   for (const d of drops) {
-    const e = entry(d.pet), m = dropMap(d);
+    const e = entry(soulOf(names, d)), m = dropMap(d);
     e.drops++;
     if (m && !e.maps.includes(m)) e.maps.push(m);
+    if (d.mob && !e.mobs.some((x) => x.toLowerCase() === d.mob!.toLowerCase())) e.mobs.push(d.mob);
   }
+  for (const e of by.values()) e.mobs.sort((a, b) => a.localeCompare(b));
   const q = query.trim().toLowerCase();
-  return [...by.values()].filter((e) => !q || e.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+  return [...by.values()]
+    .filter((e) => !q || e.name.toLowerCase().includes(q) || e.mobs.some((m) => m.toLowerCase().includes(q)))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** The map with most of a pet's drops (the page switches to it), null when none is on a page map. */
-export function petHome(drops: PetDrop[], pet: string): MapKey | null {
+/** The map with most of a soul's drops (the page switches to it), null when none is on a page map. */
+export function petHome(drops: PetDrop[], pet: string, names: SoulNames = {}): MapKey | null {
   const n = new Map<MapKey, number>();
   for (const d of drops) {
-    const m = d.pet.toLowerCase() === pet.toLowerCase() ? dropMap(d) : null;
+    const m = soulOf(names, d).toLowerCase() === pet.toLowerCase() ? dropMap(d) : null;
     if (m) n.set(m, (n.get(m) ?? 0) + 1);
   }
   return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;

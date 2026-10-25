@@ -29,6 +29,8 @@ pub mod position;
 pub mod kills;
 /// Hidden cubes from the traffic.
 pub mod cubes;
+/// Your mob kills that gave soul points, and where.
+pub mod souls;
 /// The companion's readers on the parser's frame tap.
 pub mod tap;
 
