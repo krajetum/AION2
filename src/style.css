@@ -470,6 +470,8 @@ body.overlay .status { display: none; }
 .map-menu { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 8px; width: min(300px, calc(100% - 24px));
   max-height: calc(100% - 24px); padding: 10px; cursor: auto; background: color-mix(in srgb, var(--surface) 94%, transparent);
   border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+.map-menu { overflow-y: auto; }
+.map-menu > * { flex-shrink: 0; }
 .map-menu-head { display: flex; align-items: center; gap: 6px; }
 .map-menu-head .seg { flex: 1; }
 .map-menu .seg { display: flex; }
@@ -492,6 +494,8 @@ body.overlay .status { display: none; }
 .soul-mobs .setting { display: flex; align-items: center; gap: 8px; margin: 0; }
 .soul-mobs .setting span { flex: 1; font-size: 13px; }
 .soul-mobs input { width: 150px; }
+.soul-mobs summary { cursor: pointer; }
+details.soul-mobs[open] { gap: 6px; }
 .map-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; color: var(--muted); cursor: auto; }
 
 /* Hidden cube popup (index.html#cube) */

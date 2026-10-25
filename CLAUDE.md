@@ -37,7 +37,8 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   - `map.ts` — Map page: three maps (`MAPS`: Asmodian = bundled world map, `BUNDLED_FIT`, map id `WORLD_MAP_ID`; Elyos (Verteron) = bundled screenshot, no
     ids or fit yet, takes map ids no other map claims (`onMap`); Abyss = bundled screenshot, map id 20, `ABYSS_FIT` from 3 recorded spots), points per map, clusters,
     pan/zoom math, game→pixel affine fit (the player's references per map override the bundled one); pets' soul point drops (`PetDrop`:
-    from the meter's soul kills (`takeSouls`, one per mob and spot), "Soul points here" or a click; `souls` = mob → soul as the player
+    from the meter's soul kills (`takeSouls`, one per mob and spot) and your loots of an item the player named as a pet's crystal
+    (`takeLoots`, `items`: a finished collection drops a crystal instead of soul points), "Soul points here" or a click; `souls` = mob → soul as the player
     named it (`soulOf`), shared as a `dropsFile` with the names and merged by id, `petList` search by soul or mob, `petHome`); cubes found and
     cube codes learned (`takeCubes`, `KNOWN_CUBE_CODES`), `bearing` / `climb` for the cube popup, `onRadar` for the radar
 - `src/app/` — use cases that change `AppData` (progress, tasks, characters, season, settings, planner session, `checkNotifications`, `arena.ts`: meter data into the save file)
@@ -56,8 +57,9 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   companion code goes in `engine.rs` / `snapshot.rs` / `arena.rs` / `recorder.rs` (Settings > Diagnostics: every frame the meter reads,
   plus the player's marks, to a text file in Downloads, for finding new records such as hidden cubes) / `position.rs` (your position:
   map loads, teleports, your own buffs) / `cubes.rs` (hidden cubes: object codes learned from openings, cubes in view,
-  openings placed by their loot) / `souls.rs` (your mob kills that gave soul points: loot owner `04 8d`, loot place `1e 56`,
-  points `0d 90`; the engine adds the mob's name) / `kills.rs` (your PvP kills, assists and deaths: the last hit before a death, your hit within 15 s for an assist, from the PvP ledger) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
+  openings placed by their loot) / `souls.rs` (your mob kills that gave soul points, and your loots with their item code: loot owner `04 8d`,
+  loot place and item `1e 56`, points `0d 90`; the engine adds the mob's name) / `abyss_bosses.rs` (the Abyss's world bosses: on them, as on field bosses, the
+  server sends no one else's direct hits, so rows are you, your party and Others from the HP lost) / `kills.rs` (your PvP kills, assists and deaths: the last hit before a death, your hit within 15 s for an assist, from the PvP ledger) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
 
 ## Rules
 - Never read game memory, inject code, simulate input or automate the game (ToS/anti-cheat). Tracker + notifications,

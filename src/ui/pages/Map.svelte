@@ -6,7 +6,7 @@
   // recorded here or merged from friends' files). Close markers merge into a numbered one when zoomed out.
   // You are drawn from the meter's position (src-tauri/meter/src/position.rs) through the map's game → pixel fit:
   // the bundled image's own, or the player's references (3+ with game coordinates).
-  import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
+  import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, onMap, petHome, petList,
     readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
@@ -79,10 +79,22 @@
   $effect(() => remember("pet", pet));
   const drops = $derived(ui.data.map.pets);
   const names = $derived(ui.data.map.souls);
-  const soul = (d: (typeof drops)[number]) => soulOf(names, d);
+  const items = $derived(ui.data.map.items);
+  const soul = (d: (typeof drops)[number]) => soulOf(names, d, items);
   const isPet = (d: (typeof drops)[number]) => soul(d).toLowerCase() === pet.toLowerCase();
-  const pets = $derived(petList(drops, query, names));
-  const chosen = $derived(pets.find((e) => e.name.toLowerCase() === pet.toLowerCase()) ?? petList(drops, "", names).find((e) => e.name.toLowerCase() === pet.toLowerCase()));
+  const pets = $derived(petList(drops, query, names, items));
+  const chosen = $derived(pets.find((e) => e.name.toLowerCase() === pet.toLowerCase()) ?? petList(drops, "", names, items).find((e) => e.name.toLowerCase() === pet.toLowerCase()));
+  // The chosen soul's mobs whose kills gave soul points (a crystal is named by its item, not its mob).
+  const pointMobs = $derived((chosen?.mobs ?? []).filter((m) => drops.some((d) => d.item == null && d.mob?.toLowerCase() === m.toLowerCase())));
+  // Your last loots this session, one per item and mob, newest first: name the ones that are a pet's crystal.
+  const lastLoots = $derived.by(() => {
+    const out: { item: number; mob: string; atMs: number }[] = [];
+    for (const l of [...(ui.meter?.loots ?? [])].reverse()) {
+      if (!out.some((o) => o.item === l.item && o.mob === l.mob)) out.push({ item: l.item, mob: l.mob, atMs: l.atMs });
+      if (out.length >= 8) break;
+    }
+    return out;
+  });
   const petName = $derived((pet || query).trim());
   const onThisMap = $derived(drops.filter((d) => dropMap(d) === current));
   // A pet chosen: its drops, bright; none: every drop on this map, dimmer.
@@ -94,7 +106,7 @@
     pet = pet.toLowerCase() === name.toLowerCase() ? "" : name;
     selectedDrop = "";
     if (!pet) return;
-    const home = petHome(drops, pet, names);
+    const home = petHome(drops, pet, names, items);
     if (home && home !== current && !onThisMap.some(isPet)) current = home;
     focusPet = true;
   }
@@ -124,7 +136,7 @@
     notice = `${petName}: drop saved where you stand.`;
   }
   function exportDrops() {
-    downloadJson(`aion2-pet-drops-${(me() || "player").replace(/[^\w-]+/g, "_")}-${new Date().toISOString().slice(0, 10)}.json`, dropsFile(drops, names));
+    downloadJson(`aion2-pet-drops-${(me() || "player").replace(/[^\w-]+/g, "_")}-${new Date().toISOString().slice(0, 10)}.json`, dropsFile(drops, names, items));
     notice = `${num(drops.length)} drops saved to your Downloads folder: send the file to whoever collects them.`;
   }
   async function pickDrops(e: Event) {
@@ -135,7 +147,7 @@
     try {
       const incoming = readDropsFile(JSON.parse(await file.text()));
       let added = 0;
-      act(() => { added = importDrops(ui.data, incoming.drops, incoming.souls); });
+      act(() => { added = importDrops(ui.data, incoming.drops, incoming.souls, incoming.items); });
       notice = `${num(added)} new drops added (${num(incoming.drops.length - added)} already here).`;
     } catch (err) { error = `Could not read the drops file: ${err instanceof Error ? err.message : err}`; }
   }
@@ -327,11 +339,21 @@
             {:else}<li class="hint">{query.trim() ? `No soul or mob named like "${query.trim()}" yet.` : "No souls yet: kill a mob that gives soul points (meter running) and it joins the list."}</li>{/each}
           </ul>
           {#if pet && !onThisMap.some(isPet)}<p class="hint">No {pet} spots on the {mapName(current)} map.</p>{/if}
-          {#if chosen?.mobs.length}<div class="soul-mobs"><span class="hint">The soul each mob gives (a mob's name is not always its soul's):</span>
-            {#each chosen.mobs as mob (mob)}<label class="setting"><span>{mob}</span>
+          {#if chosen && pointMobs.length}<div class="soul-mobs"><span class="hint">The soul each mob gives (a mob's name is not always its soul's):</span>
+            {#each pointMobs as mob (mob)}<label class="setting"><span>{mob}</span>
               <input list="soul-names" value={names[mob.toLowerCase()] ?? chosen.name} aria-label="Soul of {mob}" autocomplete="off"
                 onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; act(() => setMobSoul(ui.data, mob, v)); if (v.trim()) pet = v.trim(); }}></label>{/each}
-            <datalist id="soul-names">{#each petList(drops, "", names) as e (e.name)}<option value={e.name}></option>{/each}</datalist></div>{/if}
+            </div>{/if}
+          <datalist id="soul-names">{#each petList(drops, "", names, items) as e (e.name)}<option value={e.name}></option>{/each}</datalist>
+          <details class="soul-mobs">
+            <summary class="hint">Your last loots: name a pet's crystal ({num(Object.keys(items).length)} named)</summary>
+            <span class="hint">Once a pet's collection is done its mobs drop a crystal instead of soul points. Write which pet's an item is,
+              once: from then on its drops go on the map, this session's included.</span>
+            {#each lastLoots as l (l.item + ":" + l.mob)}<label class="setting"><span>{l.mob || "Unknown mob"} · <span class="num">{l.item}</span></span>
+              <input list="soul-names" value={items[String(l.item)] ?? ""} placeholder="Not a crystal" aria-label="Crystal of (item {l.item})" autocomplete="off"
+                onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; act(() => setItemSoul(ui.data, l.item, v)); if (v.trim()) pet = v.trim(); }}></label>
+            {:else}<span class="hint">No loot yet this session (desktop app with the meter running).</span>{/each}
+          </details>
           <div class="btns">
             <button disabled={!pos || !petName} title={!pos ? "Needs your position from the meter (desktop app)" : !petName ? "Pick or type the soul first" : "Saves your position now, for kills the meter missed"}
               onclick={dropHere}>Soul points here{petName ? `: ${petName}` : ""}</button>

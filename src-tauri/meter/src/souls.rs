@@ -1,14 +1,19 @@
-//! Your mob kills that gave soul points, with where the mob died (companion code). The Map page's
-//! pet layer places them, so the player sees where each pet's soul points drop. Records, from the
-//! packet recordings of 2026-10-25 18:23 and 18:30 (13 kills of Slink, Young Slink and Withered
-//! Branch Spider, Verteron):
+//! Your mob kills that gave soul points, and your loots, with where the mob died (companion code).
+//! The Map page's pet layer places them, so the player sees where each pet's soul points and shards
+//! drop. Records, from the packet recordings of 2026-10-25 18:23 and 18:30 (13 kills of Slink, Young
+//! Slink and Withered Branch Spider, Verteron) and 19:16 (a friend's: Mutated Forest Guardian,
+//! Mutated Elim, Burned Wild Rat):
 //!
 //! ```text
 //! <len> 04 8d <mob varint> <4 bytes> <owner varint> <server u16> <len><name> ...   the loot's owner
-//! <len> 1e 56 01 <mob u32> <x f32> <y f32> <z f32> ...                             loot of a mob that died there
+//! <len> 1e 56 01 <mob u32> <x y z f32> <x y z f32> <u32> <u32> <item u32> ...       an item a mob dropped there
 //! <len> 0d 90 01 <kind u32> <points u32>                                          soul points (+points)
 //! ```
 //!
+//! - One `1e 56` per item: a kill dropping two items sends two, with the same mob and place. The item
+//!   code is the same for every drop of one thing (534660178 on every Mutated Forest Guardian, 610531002
+//!   on three of them: the "Agrint" the player looted). The game data here has no item names, so the
+//!   player names the codes that are shards (the app); every loot of yours is passed on.
 //! - Every kill of yours (owner = you) was followed, 0.3-0.5 s later, by one `0d 90` with 1 point; the
 //!   loots of other players' kills in the same recordings never were, and no `0d 90` came without a
 //!   kill of yours (none in five recordings without kills).
@@ -26,6 +31,20 @@ use crate::capture::stream_processor::read_varint;
 const POINTS_WITHIN_MS: i64 = 3_000;
 const MAX_OWNERS: usize = 2_000;
 const MAX_KILLS: usize = 200;
+const MAX_LOOTS: usize = 200;
+
+/// An item a mob you killed dropped for you, and where the mob died.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Loot {
+    pub entity: i32,
+    pub item: u32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub map_id: Option<i32>,
+    pub at_ms: i64,
+}
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -50,6 +69,7 @@ struct State {
     /// Your kills' loots waiting for their soul points: (entity, xyz, when).
     waiting: VecDeque<(i32, [f32; 3], i64)>,
     kills: VecDeque<SoulKill>,
+    loots: VecDeque<Loot>,
 }
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
@@ -61,6 +81,11 @@ fn with<T>(f: impl FnOnce(&mut State) -> T) -> T {
 /// Your kills with soul points since the meter started, oldest first (the last MAX_KILLS).
 pub fn snapshot() -> Vec<SoulKill> {
     with(|s| s.kills.iter().copied().collect())
+}
+
+/// Your loots since the meter started, oldest first (the last MAX_LOOTS).
+pub fn loots() -> Vec<Loot> {
+    with(|s| s.loots.iter().copied().collect())
 }
 
 /// Forget everything (a capture restart).
@@ -113,6 +138,16 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
             if !at.iter().all(|v| v.is_finite() && v.abs() < 1_000_000.0) {
                 return None;
             }
+            if let Some(item) = u32_at(frame, body + 37).filter(|&i| i != 0) {
+                if s.loots.len() >= MAX_LOOTS {
+                    s.loots.pop_front();
+                }
+                s.loots.push_back(Loot { entity: mob, item, x: at[0], y: at[1], z: at[2], map_id, at_ms: now_ms });
+            }
+            // A kill's second item is the same kill: it waits once.
+            if s.waiting.iter().any(|w| w.0 == mob && now_ms - w.2 <= POINTS_WITHIN_MS) {
+                return Some(());
+            }
             s.waiting.retain(|w| now_ms - w.2 <= POINTS_WITHIN_MS && w.0 != mob);
             s.waiting.push_back((mob, at, now_ms));
         }
@@ -158,6 +193,26 @@ mod tests {
         let k = s.kills[0];
         assert_eq!((k.entity, k.kind, k.points, k.at_ms, k.map_id), (56726, 1016, 1, 1_543, Some(7)));
         assert_eq!((k.x.round(), k.y.round()), (155815.0, 102300.0));
+    }
+
+    /// 2026-10-25 19:16 (a friend's recording): a Mutated Forest Guardian of yours drops two items,
+    /// Agrint (610531002) and its usual one; another player's Mutated Elim drops one for them.
+    #[test]
+    fn your_loots_are_kept_with_their_items() {
+        let mut s = State::default();
+        let me = 12996; // `c4 65`, Selphine
+        for f in [
+            "2f048df98c01a4aaf500c4650e090853656c7068696e650b496e697469617469766532020000000000000100",
+            "471e560179460000203286c6b7001947006066466dbb86c6a1571947008066469083000026ae1d00baf6632401000000020eb4020000000e09e0725b74a1010000010301",
+            "471e560179460000203286c6b700194700606646907586c6e18a1847006866469083000027ae1d005244de1f01000000020eb4020000000e09e0725b74a1010000010301",
+            "22048dcbdf0260dc0301be560e09064661666e697000000000000000000100",
+            "471e5601cbaf0000b72845c6654b124700906446650945c6e6cd1247007864469d820000b5aa1d006744de1f0100000002bdbe020000000e0924255b74a1010000010301",
+        ] {
+            read(&mut s, &hex(f), me, Some(1010), 5_000);
+        }
+        assert_eq!(s.loots.iter().map(|l| (l.entity, l.item)).collect::<Vec<_>>(), [(18041, 610531002), (18041, 534660178)]);
+        assert_eq!((s.loots[0].x.round(), s.loots[0].y.round(), s.loots[0].map_id), (-17177.0, 39169.0, Some(1010)));
+        assert_eq!(s.waiting.len(), 1, "one kill waits for soul points, not one per item");
     }
 
     #[test]

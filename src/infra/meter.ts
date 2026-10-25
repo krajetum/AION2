@@ -153,6 +153,12 @@ function demoUpdate(): MeterUpdate {
     // A demo cube 40 m north-east of the demo position: in view for 15 s, then opened (by you, then by
     // someone else, in turns), every 20 s.
     cubes: demoCubes(t),
+    // Loots of the friend's recording of 2026-10-25 19:16 (610531002 = Agrint), near the demo position.
+    loots: [
+      { entity: 18041, item: 610531002, x: -82000, y: -131500, z: 34400, mapId: 1110, atMs: DEMO_SEEN - 5 * 60_000, mobCode: 2400214, mob: "Mutated Forest Guardian" },
+      { entity: 18041, item: 534660178, x: -82000, y: -131500, z: 34400, mapId: 1110, atMs: DEMO_SEEN - 5 * 60_000, mobCode: 2400214, mob: "Mutated Forest Guardian" },
+      { entity: 32522, item: 534660199, x: -83500, y: -129000, z: 34400, mapId: 1110, atMs: DEMO_SEEN - 3 * 60_000, mobCode: 2400221, mob: "Mutated Elim" },
+    ],
     fight: { target: { name: "Demo Boss", isBoss: true, maxHp: 40_000_000, currentHp: -1, damageDealt: total }, targetMode: demo.mode, battleTimeMs: t, rows },
   };
 }

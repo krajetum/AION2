@@ -1,6 +1,7 @@
 // Map page use cases: points on the map images (cube spots and references), pets' soul point drops.
 import { mergeDrops, type MapKey, type MapPoint, type PetDrop, type PointKind, type SoulNames } from "../domain/map.ts";
 import type { AppData } from "../domain/types.ts";
+import { seenLoots } from "./arena.ts";
 
 export function addPoint(data: AppData, map: MapKey, x: number, y: number, kind: PointKind, group: number): MapPoint {
   const p: MapPoint = { id: crypto.randomUUID(), map, x: Math.round(x), y: Math.round(y), kind, group, label: "" };
@@ -40,7 +41,13 @@ export function deleteDrop(data: AppData, id: string) {
   data.map.pets = data.map.pets.filter((d) => d.id !== id);
 }
 /** Friends' drops (and their soul names) into yours; returns how many drops were new. */
-export const importDrops = (data: AppData, drops: PetDrop[], souls: SoulNames) => mergeDrops(data.map, drops, souls);
+export const importDrops = (data: AppData, drops: PetDrop[], souls: SoulNames, items: SoulNames = {}) => mergeDrops(data.map, drops, souls, items);
+/** Names an item code as a crystal / shard of a soul (empty = not one); this session's loots of it are looked at again. */
+export function setItemSoul(data: AppData, item: number, soul: string) {
+  if (soul.trim()) data.map.items[String(item)] = soul.trim();
+  else delete data.map.items[String(item)];
+  seenLoots.clear();
+}
 /** The soul a mob's kills give; empty = back to the name each drop was recorded with. */
 export function setMobSoul(data: AppData, mob: string, soul: string) {
   const k = mob.trim().toLowerCase();
