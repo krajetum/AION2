@@ -13,6 +13,7 @@ export function setOverlayOpacity(data: AppData, v: string) { data.settings.over
 /** 0 = never reset; at most an hour. */
 export function setDpsIdleSeconds(data: AppData, v: string) { data.settings.dpsIdleSeconds = Math.max(0, Math.min(3600, Math.round(+v) || 0)); }
 export function setVolume(data: AppData, v: string) { data.settings.volume = Math.max(0, Math.min(100, +v || 0)); }
+export function setBirthdayVolume(data: AppData, v: string) { data.settings.birthdayVolume = Math.max(5, Math.min(100, +v || 5)); }
 export function setWarnHours(data: AppData, cad: Cadence, v: string) { data.settings.warnHours[cad] = Math.max(0, +v || 0); }
 
 export function setChannelOn(data: AppData, id: string, on: boolean) { data.settings.channels[id].on = on; }

@@ -14,6 +14,11 @@
   import { act, markRead, undo } from "./actions.ts";
   import { hm, LABEL, num, PAGE } from "./format.ts";
   import { ICON } from "./icons.ts";
+  import { playBirthday } from "../infra/notifier.ts";
+  import balloons from "../assets/birthday/balloons.png";
+  import cake from "../assets/birthday/cake.png";
+  import confetti from "../assets/birthday/confetti.png";
+  import gift from "../assets/birthday/gift.png";
   import Arena from "./pages/Arena.svelte";
   import Bosses from "./pages/Bosses.svelte";
   import Dps from "./pages/Dps.svelte";
@@ -74,6 +79,18 @@
       undo();
     }
   }
+  // Hopex's birthday: 15 January, local time; the whole day counts as "today".
+  const bday = $derived.by(() => {
+    const n = new Date(ui.now), y = n.getFullYear();
+    if (n.getMonth() === 0 && n.getDate() === 15) return "";
+    return formatCountdown(new Date(n < new Date(y, 0, 15) ? y : y + 1, 0, 15).getTime() - ui.now);
+  });
+  // The song plays once when the countdown reaches zero with the app open (not on every start that day).
+  let wasCounting = false;
+  $effect(() => {
+    if (bday) wasCounting = true;
+    else if (wasCounting) { wasCounting = false; playBirthday(s.birthdayVolume); }
+  });
   function cycle(c: (typeof CADENCES)[number]) {
     const next = nextBoundary(c, ui.now, C), last = lastBoundary(c, ui.now, C);
     return { left: next - ui.now, p: (ui.now - last) / (next - last) };
@@ -93,6 +110,9 @@
   </nav>
 
   <main>
+    <div class="bday"><img src={balloons} alt="" /><img src={cake} alt="" />
+      <div class="grow"><b>Hopex's Birthday</b><span>{bday ? `in ${bday}` : "Happy birthday, Hopex!"}</span></div>
+      <img src={gift} alt="" /><img src={confetti} alt="" /></div>
     <div class="page-head"><h1>{PAGE[ui.tab][0]}</h1><p>{PAGE[ui.tab][1]}</p></div>
     {#if offer}<div class="banner"><span class="grow">Playing <b>{offer}</b> in game.</span>
       <button onclick={switchTo}>{detected ? "Switch" : "Add character"}</button>

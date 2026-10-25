@@ -1,12 +1,12 @@
 <script lang="ts">
   import { EVENTS, RESET_CONFIG as C } from "../../config.ts";
   import { addCharacter, deleteCharacter, renameCharacter } from "../../app/characters.ts";
-  import { addLead, muteForAnHour, removeLead, setChannelOn, setDpsIdleSeconds, setOverlayOpacity, setLead, setChannelVolume, setVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
+  import { addLead, muteForAnHour, removeLead, setChannelOn, setDpsIdleSeconds, setOverlayOpacity, setLead, setChannelVolume, setVolume, setBirthdayVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
   import { applyResets } from "../../domain/resets.ts";
   import { nextEvent } from "../../domain/time.ts";
   import { CHANNELS } from "../../domain/alerts.ts";
   import { CADENCES } from "../../domain/types.ts";
-  import { playSound, toast } from "../../infra/notifier.ts";
+  import { playBirthday, playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { clearCubePicture, loadCubePicture, saveCubePicture, type Opener } from "../../infra/map-image.ts";
   import { isDesktop, setAutostart } from "../../infra/system.ts";
@@ -126,6 +126,9 @@
     {@render toggle("Sound", s.sound, (e) => { s.sound = check(e); })}
     <label class="setting"><span>Master volume</span><input type="range" min="0" max="100" value={s.volume}
       onchange={(e) => commit(e, (v) => setVolume(ui.data, v), () => s.volume)}></label>
+    <div class="setting"><span>Hopex's birthday song</span><span class="ctl"><input type="range" min="5" max="100" value={s.birthdayVolume}
+      aria-label="Birthday song volume" onchange={(e) => commit(e, (v) => setBirthdayVolume(ui.data, v), () => s.birthdayVolume)}>
+      <button class="ghost" aria-label="Play the birthday song" title="sounds/happy-birthday.mp3" onclick={() => playBirthday(s.birthdayVolume)}>{@html ICON.play}</button></span></div>
     {#each CHANNELS as c}{@const ch = s.channels[c.id]}<div class="setting chan">
       {#if c.id === "check"}<span>{c.name}</span>{:else}<label class="switch"><input type="checkbox" checked={ch.on}
         onchange={(e) => act(() => setChannelOn(ui.data, c.id, check(e)))}><span>{c.name}</span></label>{/if}
