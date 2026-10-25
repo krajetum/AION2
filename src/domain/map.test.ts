@@ -127,7 +127,7 @@ test("game map ids pick the page's map; old found cubes stay on the world map", 
   assert.equal(mapOf(20), "abyss");
   assert.equal(mapOf(61), null);
   assert.equal(mapOf(null), null);
-  assert.ok(onMap(null, "asmodian") && onMap(20, "abyss") && !onMap(20, "elyos"));
+  assert.ok(!onMap(null, "asmodian") && !onMap(null, "elyos") && onMap(20, "abyss") && !onMap(20, "elyos"), "an unknown map is on none");
   assert.ok(onMap(777, "elyos") && !onMap(777, "asmodian"), "an unclaimed id is the map with no ids yet");
   assert.ok(foundOn({ x: 0, y: 0, z: 0, code: null, atMs: 1, byYou: true }, "asmodian"));
   assert.ok(foundOn({ x: 0, y: 0, z: 0, code: null, atMs: 1, byYou: true, mapId: 20 }, "abyss"));
@@ -209,4 +209,18 @@ test("crystals: a named item's loots become drops, once each; renaming moves the
   assert.deepEqual(petList(m.pets, "", m.souls, m.items).map((e) => [e.name, e.drops]), [["Agrint Crystal", 2]]);
   m.souls["mutated forest guardian"] = "Something";
   assert.equal(soulOf(m.souls, m.pets[0], m.items), "Agrint Crystal", "a crystal is named by its item, not its mob");
+});
+
+test("kills and loots on a map not known yet wait until the meter fills it in", () => {
+  const m = emptyMap(), seen = new Set<string>();
+  const k = (atMs: number, mapId: number | null): SoulKill => ({ entity: atMs, x: atMs * 5000, y: 0, z: 0, mapId, points: 1, atMs, mob: "Abyss Aberrant Swarm" });
+  assert.equal(takeSouls(m, [k(1, null), k(2, null)], "Leo"), false);
+  assert.equal(m.pets.length, 0);
+  assert.equal(m.soulsSeenMs, 0, "nothing taken");
+  takeSouls(m, [k(1, 20), k(2, 20)], "Leo"); // the field-boss map said 20
+  assert.deepEqual(m.pets.map((d) => d.map), ["abyss", "abyss"]);
+  m.items["610531002"] = "Agrint";
+  const l = (mapId: number | null): LootKill => ({ entity: 9, item: 610531002, x: 0, y: 0, z: 0, mapId, atMs: 3, mob: "Mutated Elim" });
+  assert.equal(takeLoots(m, [l(null)], "Leo", seen), false);
+  assert.equal(takeLoots(m, [l(20)], "Leo", seen), true, "looked at again once known");
 });

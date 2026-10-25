@@ -235,10 +235,12 @@ export const MAPS: WorldMap[] = [
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**
  * Whether you, on game map `mapId`, are on page map `key`: a map whose ids are known claims them; a map
- * with none known yet (Elyos) takes any id no other map claims. Before any map load: the world map.
+ * with none known yet (Elyos) takes any id no other map claims. An unknown map (null: the meter has seen
+ * no map load and no field-boss map yet) is on none: placing it on the world map put Abyss positions in
+ * the middle of the Asmodian map (2026-10-25).
  */
 export function onMap(mapId: number | null, key: MapKey): boolean {
-  if (mapId == null) return key === "asmodian";
+  if (mapId == null) return false;
   const owner = mapOf(mapId);
   return owner ? owner === key : worldMap(key).gameIds.length === 0;
 }
@@ -315,6 +317,7 @@ export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean 
   let changed = false;
   for (const k of kills) {
     if (k.atMs <= map.soulsSeenMs) continue;
+    if (k.mapId == null) break; // the meter fills it in once it learns the map: these and later ones wait
     map.soulsSeenMs = k.atMs;
     changed = true;
     const mob = k.mob.trim();
@@ -346,7 +349,7 @@ export function takeLoots(map: MapData, loots: LootKill[], by: string, seen: Set
     const key = `${l.atMs}:${l.entity}:${l.item}`;
     if (seen.has(key)) continue;
     const soul = map.items[String(l.item)];
-    if (!soul) continue; // looked at again once named
+    if (!soul || l.mapId == null) continue; // looked at again once named, or once the meter knows the map
     seen.add(key);
     const id = `loot:${by || "?"}:${key}`;
     if (map.pets.some((d) => d.id === id)) continue;

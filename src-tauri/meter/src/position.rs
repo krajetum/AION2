@@ -9,7 +9,13 @@
 //! ```
 //!
 //! The last one comes every few seconds while you play (your own buffs, procs, skills), so the map
-//! follows you with a few seconds' lag, and stands still when nothing is applied. Found in the packet
+//! follows you with a few seconds' lag, and stands still when nothing is applied.
+//!
+//! The map id comes with map loads. Until one is seen (the meter started with you already in the
+//! world), the field-boss map the game sends when you open its map (`01 91`, `capture::boss_map`:
+//! "only the home map and the Abyss come this way") names it: 20 in the Abyss recording of
+//! 2026-10-25, 1110 in the world recordings of 2026-10-23, the same as their map loads. That is taken
+//! only while no load has said, and the kills read meanwhile get it too (`souls::fill_map`). Found in the packet
 //! recording of 2026-10-23 (two teleports, three walks): the map-load and placed positions match to
 //! the unit, and the buff positions track the walk between them. Layout of 2a/2b 38: `capture::abnormal`.
 
@@ -70,9 +76,40 @@ fn xyz_at(b: &[u8], at: usize) -> Option<(f32, f32, f32)> {
 
 /// Reads one game frame (its length varint, 2-byte type, body), as the parser hands it on.
 pub fn observe(frame: &[u8]) {
-    if let Some(p) = read(frame, ME.load(Ordering::Relaxed), &mut MAP.lock(), crate::clock::now_ms()) {
-        *LAST.lock() = Some(p);
+    let learned = {
+        let mut map = MAP.lock();
+        let learned = learn_map(frame, &mut map);
+        if let Some(p) = read(frame, ME.load(Ordering::Relaxed), &mut map, crate::clock::now_ms()) {
+            *LAST.lock() = Some(p);
+        }
+        learned
+    };
+    if let Some(id) = learned {
+        if let Some(p) = LAST.lock().as_mut() {
+            p.map_id.get_or_insert(id);
+        }
+        crate::souls::fill_map(id);
     }
+}
+
+/// The map a field-boss map record (`01 91`, header 0) names, taken while no map load has said.
+fn learn_map(frame: &[u8], map: &mut Option<i32>) -> Option<i32> {
+    if map.is_some() {
+        return None;
+    }
+    let len = read_varint(frame, 0);
+    if len.length <= 0 {
+        return None;
+    }
+    let body = len.length as usize + 2;
+    if frame.get(body - 2..body)? != [0x01, 0x91] || frame.get(body..body + 2)? != [0, 0] {
+        return None;
+    }
+    let id = i32::from_le_bytes(frame.get(body + 2..body + 6)?.try_into().ok()?);
+    (1..10_000_000).contains(&id).then(|| {
+        *map = Some(id);
+        id
+    })
 }
 
 /// The position in `frame`, if it holds yours. `map` keeps the map of the last map load.
@@ -138,6 +175,19 @@ mod tests {
         let other = hex("302a38ce0a0111b804122700008813000000000000b356d369a1010000ce0a0100d4af93c7d57a03c800e60d47");
         assert_eq!(read(&other, ME, &mut map, 5), None);
         assert_eq!(read(&added, 0, &mut map, 5), None);
+    }
+
+    /// 2026-10-25 14:28: the Abyss's field-boss map, 3 s into a recording that saw no map load yet.
+    #[test]
+    fn the_boss_map_names_the_map_until_a_load_does() {
+        let boss_map = hex("6901910000140000000800d10f0000aca873a101000000");
+        let mut map = None;
+        assert_eq!(learn_map(&boss_map, &mut map), Some(20));
+        assert_eq!(map, Some(20));
+        assert_eq!(learn_map(&boss_map, &mut map), None, "known already");
+        let mut loaded = Some(1110);
+        assert_eq!(learn_map(&boss_map, &mut loaded), None, "a map load's word stands");
+        assert_eq!(loaded, Some(1110));
     }
 
     #[test]

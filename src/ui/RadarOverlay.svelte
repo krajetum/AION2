@@ -19,7 +19,8 @@
   let settings = $state<Settings | undefined>(), found = $state<FoundCube[]>([]), points = $state<MapPoint[]>([]);
   // The page map you are on (before any map load says, the world map), its image and whether it is imported.
   const pos = $derived(u?.position ?? null);
-  const key = $derived<MapKey | null>(pos?.mapId == null ? "asmodian" : mapOf(pos.mapId));
+  // Unknown until a map load or the game's map (M) names it (position.rs): no map is guessed.
+  const key = $derived<MapKey | null>(pos?.mapId == null ? null : mapOf(pos.mapId));
   let image = $state<string | null>(null), custom = $state(false), imageOf: MapKey | null = null;
   const fit = $derived<Affine | null>(key ? fitFor(points, key, custom) : null);
   // Settings and cubes every 3 s (so a change in Settings shows at once), the map image every 30 s and on a map change.
@@ -45,8 +46,8 @@
   });
   $effect(() => { reloadImage(key); });
 
-  // Found cubes on the map you are on (cubes saved before map ids were kept: the world map).
-  const here = (c: FoundCube) => (c.mapId != null ? c.mapId === pos?.mapId : pos?.mapId == null || pos.mapId === WORLD_MAP_ID);
+  // Found cubes on the map you are on (cubes saved before map ids were kept: the world map); none while it is unknown.
+  const here = (c: FoundCube) => pos?.mapId != null && (c.mapId != null ? c.mapId === pos.mapId : pos.mapId === WORLD_MAP_ID);
   const elsewhere = $derived(!!pos && !key);
   const r = $derived(Math.min(w, h) / 2 - 4);
   const range = $derived((settings?.radarRange ?? 100) * 100); // metres → game units (cm)
@@ -74,5 +75,6 @@
   {#each dots as d}<i class="radar-cube" class:live={d.live} style:left="{w / 2 + d.at!.x}px" style:top="{h / 2 + d.at!.y}px"></i>{/each}
   <i class="radar-you"></i>
   {#if !pos}<small class="radar-note" data-tauri-drag-region>Waiting for your position</small>
+  {:else if pos.mapId == null && !dots.length}<small class="radar-note" data-tauri-drag-region>Open the game's map (M) once</small>
   {:else if elsewhere && !dots.length}<small class="radar-note" data-tauri-drag-region>Another map</small>{/if}
 </div>
