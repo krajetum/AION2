@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, takeSouls, soulOf, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, takeLoots, takeSouls, soulOf, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
 import { ABYSS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
@@ -149,7 +149,7 @@ test("friends' drops merge once; bad entries are dropped", () => {
   assert.equal(mergeDrops(m, [drop("a", "Fox", 1110), drop("c", " Owl ", null), { id: "d", pet: "", x: 1, y: 1, atMs: 1 } as any]), 1, "same file again adds only the new one");
   assert.deepEqual(m.pets.map((d) => d.pet), ["Fox", "Fox", "Owl"]);
   const back = readDropsFile(JSON.parse(JSON.stringify(dropsFile(m.pets, { "young slink": "Slink" }))));
-  assert.deepEqual(back, { drops: m.pets, souls: { "young slink": "Slink" } });
+  assert.deepEqual(back, { drops: m.pets, souls: { "young slink": "Slink" }, items: {} });
   assert.deepEqual(readDropsFile({ format: "aion2-companion-pet-drops", version: 1, drops: [] }).souls, {}, "version 1 files have no names");
   assert.throws(() => readDropsFile({ version: 1, drops: [] }));
   assert.deepEqual(cleanMap({ points: [] }).pets, []);
@@ -189,4 +189,24 @@ test("a friend's soul names fill in, yours stay", () => {
   mergeDrops(m, [], { "Young Slink": "Something else", "Withered Branch Spider": "Withered Branch Spider Soul" });
   assert.deepEqual(m.souls, { "young slink": "Slink", "withered branch spider": "Withered Branch Spider Soul" });
   assert.deepEqual(cleanMap({}).souls, {});
+});
+
+test("crystals: a named item's loots become drops, once each; renaming moves them all", () => {
+  const m = emptyMap(), seen = new Set<string>();
+  // The friend's recording of 2026-10-25 19:16: Mutated Forest Guardian drops Agrint (610531002) and its usual item.
+  const l = (entity: number, item: number, x: number, atMs: number, mob = "Mutated Forest Guardian"): LootKill =>
+    ({ entity, item, x, y: 39169, z: 3, mapId: 777, atMs, mob });
+  const loots = [l(18041, 610531002, -17177, 1), l(18041, 534660178, -17177, 1), l(34090, 610531002, -9000, 2)];
+  assert.equal(takeLoots(m, loots, "Selphine", seen), false, "nothing named yet");
+  m.items["610531002"] = "Agrint";
+  seen.clear();
+  assert.equal(takeLoots(m, loots, "Selphine", seen), true);
+  assert.deepEqual(m.pets.map((d) => [d.pet, d.item, d.mob, d.map, d.x]), [["Agrint", 610531002, "Mutated Forest Guardian", "elyos", -17177], ["Agrint", 610531002, "Mutated Forest Guardian", "elyos", -9000]]);
+  assert.equal(takeLoots(m, loots, "Selphine", seen), false, "the meter resends them: nothing new");
+  assert.equal(takeLoots(m, [l(1, 610531002, -17100, 3)], "Selphine", new Set()), false, "the same spot again adds nothing");
+  m.items["610531002"] = "Agrint Crystal";
+  assert.equal(soulOf(m.souls, m.pets[0], m.items), "Agrint Crystal");
+  assert.deepEqual(petList(m.pets, "", m.souls, m.items).map((e) => [e.name, e.drops]), [["Agrint Crystal", 2]]);
+  m.souls["mutated forest guardian"] = "Something";
+  assert.equal(soulOf(m.souls, m.pets[0], m.items), "Agrint Crystal", "a crystal is named by its item, not its mob");
 });

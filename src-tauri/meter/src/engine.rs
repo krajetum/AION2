@@ -74,6 +74,8 @@ pub struct Update {
     pub lost_packets: u64,
     /// Your mob kills that gave soul points since the meter started, with the mob's name.
     pub souls: Vec<SoulDrop>,
+    /// Your loots since the meter started (the item and where the mob died), with the mob's name.
+    pub loots: Vec<LootDrop>,
     /// Your PvP kills and deaths since the meter started (the last 50).
     pub kills: Vec<crate::kills::Kill>,
 }
@@ -121,6 +123,16 @@ pub struct SoulDrop {
     pub kill: crate::souls::SoulKill,
     pub mob_code: Option<i32>,
     /// Empty when the spawn was not seen (the mob was there before the meter ran).
+    pub mob: String,
+}
+
+/// An item a mob you killed dropped for you, with the mob's code and name when its spawn was seen.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LootDrop {
+    #[serde(flatten)]
+    pub loot: crate::souls::Loot,
+    pub mob_code: Option<i32>,
     pub mob: String,
 }
 
@@ -312,6 +324,14 @@ impl Engine {
                     let mob_code = self.storage.mob_code(kill.entity);
                     let mob = mob_code.map(|c| self.npcs.get_npc_name(c)).unwrap_or_default();
                     SoulDrop { kill, mob_code, mob }
+                })
+                .collect(),
+            loots: crate::souls::loots()
+                .into_iter()
+                .map(|loot| {
+                    let mob_code = self.storage.mob_code(loot.entity);
+                    let mob = mob_code.map(|c| self.npcs.get_npc_name(c)).unwrap_or_default();
+                    LootDrop { loot, mob_code, mob }
                 })
                 .collect(),
             lost_packets: self.capturer.as_ref().map_or(0, |c| c.dropped()),
