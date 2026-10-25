@@ -202,11 +202,12 @@ export const WORLD_MAP_ID = 1110;
 /**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
  * (2026-10-25); map 20 is the Abyss as the player named it in the kill history; its fit comes from the
- * player's references until one is bundled. Elyos: no image yet (the player imports one).
+ * player's references until one is bundled. Elyos (Verteron): the player's screenshot (2026-10-25); its map id
+ * and fit are not known yet.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
-  { key: "elyos", name: "Elyos", gameIds: [], fit: null, bundled: false },
+  { key: "elyos", name: "Elyos", gameIds: [], fit: null, bundled: true },
   { key: "abyss", name: "Abyss", gameIds: [20], fit: null, bundled: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
