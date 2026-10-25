@@ -11,7 +11,7 @@ export const PAGE: Record<Tab, [string, string]> = {
   plan: ["Planner", "Best use of the minutes you have."],
   season: ["Season Coins", "Season Oath Coins: claimed, left and projected."],
   bosses: ["Field Bosses", "Respawn timers from the world map."],
-  map: ["Map", "Hidden cubes and pet shard drops."],
+  map: ["Map", "Hidden cubes and where pets' soul points drop."],
   dps: ["DPS Meter", "Live damage, healing and damage taken."],
   arena: ["Arena Log", "Every arena match and opponent."],
   news: ["News", "Official announcements from Steam."],

@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, takeSouls, soulOf, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
 import { ABYSS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
@@ -148,17 +148,45 @@ test("friends' drops merge once; bad entries are dropped", () => {
   assert.equal(mergeDrops(m, [drop("a", "Fox", 1110), drop("b", "Fox", 20)]), 2);
   assert.equal(mergeDrops(m, [drop("a", "Fox", 1110), drop("c", " Owl ", null), { id: "d", pet: "", x: 1, y: 1, atMs: 1 } as any]), 1, "same file again adds only the new one");
   assert.deepEqual(m.pets.map((d) => d.pet), ["Fox", "Fox", "Owl"]);
-  const back = readDropsFile(JSON.parse(JSON.stringify(dropsFile(m.pets))));
-  assert.deepEqual(back, m.pets);
+  const back = readDropsFile(JSON.parse(JSON.stringify(dropsFile(m.pets, { "young slink": "Slink" }))));
+  assert.deepEqual(back, { drops: m.pets, souls: { "young slink": "Slink" } });
+  assert.deepEqual(readDropsFile({ format: "aion2-companion-pet-drops", version: 1, drops: [] }).souls, {}, "version 1 files have no names");
   assert.throws(() => readDropsFile({ version: 1, drops: [] }));
   assert.deepEqual(cleanMap({ points: [] }).pets, []);
 });
 
 test("pet list: search by any part of the name, maps with drops, the map with the most", () => {
   const drops = [drop("a", "Fox", 1110), drop("b", "fox", 20), drop("c", "Fox", 20), drop("d", "Owl", 61)];
-  assert.deepEqual(petList(drops), [{ name: "Fox", drops: 3, maps: ["asmodian", "abyss"] }, { name: "Owl", drops: 1, maps: [] }]);
+  assert.deepEqual(petList(drops), [{ name: "Fox", drops: 3, maps: ["asmodian", "abyss"], mobs: [] }, { name: "Owl", drops: 1, maps: [], mobs: [] }]);
   assert.deepEqual(petList(drops, "OW").map((e) => e.name), ["Owl"]);
   assert.equal(petHome(drops, "fox"), "abyss");
   assert.equal(petHome(drops, "Owl"), null);
   assert.equal(petHome([...drops, { ...drop("e", "Owl", 61), map: "elyos" }], "Owl"), "elyos", "the map it was recorded on wins");
+});
+
+test("soul kills: placed where the mob died, one per mob and spot, named by the player's soul names", () => {
+  const m = emptyMap();
+  const k = (entity: number, mob: string, x: number, atMs: number, mapId: number | null = 1110): SoulKill =>
+    ({ entity, x, y: 0, z: 5, mapId, points: 1, atMs, mob });
+  assert.equal(takeSouls(m, [k(1, "Slink", 0, 10), k(2, "Slink", 900, 11), k(3, "Young Slink", 900, 12), k(4, "", 0, 13)], "Leo"), true);
+  assert.deepEqual(m.pets.map((d) => [d.id, d.pet, d.mob, d.map]), [["kill:Leo:10:1", "Slink", "Slink", "asmodian"], ["kill:Leo:12:3", "Young Slink", "Young Slink", "asmodian"]],
+    "the second Slink 9 m away adds nothing; a mob never seen spawning is left out");
+  assert.equal(m.soulsSeenMs, 13);
+  assert.equal(takeSouls(m, [k(1, "Slink", 0, 10)], "Leo"), false, "the same kills again");
+  takeSouls(m, [k(5, "Slink", 5000, 20, 20), k(6, "Slink", 5000, 21, 777)], "Leo");
+  assert.deepEqual(m.pets.slice(2).map((d) => d.map), ["abyss", "elyos"], "map 20 is the Abyss; an unclaimed id the Elyos map");
+  // Young Slink gives Slink soul points: named once, all its drops follow.
+  m.souls["young slink"] = "Slink";
+  assert.equal(soulOf(m.souls, m.pets[1]), "Slink");
+  assert.deepEqual(petList(m.pets, "", m.souls).map((e) => [e.name, e.drops, e.mobs]), [["Slink", 4, ["Slink", "Young Slink"]]]);
+  assert.deepEqual(petList(m.pets, "young", m.souls).map((e) => e.name), ["Slink"], "a mob's name finds its soul");
+  assert.equal(petHome(m.pets, "slink", m.souls), "asmodian");
+});
+
+test("a friend's soul names fill in, yours stay", () => {
+  const m = emptyMap();
+  m.souls["young slink"] = "Slink";
+  mergeDrops(m, [], { "Young Slink": "Something else", "Withered Branch Spider": "Withered Branch Spider Soul" });
+  assert.deepEqual(m.souls, { "young slink": "Slink", "withered branch spider": "Withered Branch Spider Soul" });
+  assert.deepEqual(cleanMap({}).souls, {});
 });

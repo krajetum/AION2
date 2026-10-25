@@ -2,14 +2,14 @@
   import { untrack } from "svelte";
   // Map page: three maps (Asmodian, Elyos, Abyss), each the bundled image (src/assets/ncsoft/, © NCSOFT) or one the
   // player imported (kept only on this PC, infra/map-image.ts), with its own points and fit. Two layers, picked in the
-  // corner menu: hidden cubes (spots, cubes found and in view) and pets (where their shards dropped, searchable;
+  // corner menu: hidden cubes (spots, cubes found and in view) and pets (where their soul points drop, by soul and mob, searchable;
   // recorded here or merged from friends' files). Close markers merge into a numbered one when zoomed out.
   // You are drawn from the meter's position (src-tauri/meter/src/position.rs) through the map's game → pixel fit:
   // the bundled image's own, or the player's references (3+ with game coordinates).
-  import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
+  import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, onMap, petHome, petList,
-    readDropsFile, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
+    readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
   } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import { downloadJson } from "../../infra/storage.ts";
@@ -78,27 +78,31 @@
   let query = $state(""), pet = $state(remembered("pet"));
   $effect(() => remember("pet", pet));
   const drops = $derived(ui.data.map.pets);
-  const pets = $derived(petList(drops, query));
+  const names = $derived(ui.data.map.souls);
+  const soul = (d: (typeof drops)[number]) => soulOf(names, d);
+  const isPet = (d: (typeof drops)[number]) => soul(d).toLowerCase() === pet.toLowerCase();
+  const pets = $derived(petList(drops, query, names));
+  const chosen = $derived(pets.find((e) => e.name.toLowerCase() === pet.toLowerCase()) ?? petList(drops, "", names).find((e) => e.name.toLowerCase() === pet.toLowerCase()));
   const petName = $derived((pet || query).trim());
   const onThisMap = $derived(drops.filter((d) => dropMap(d) === current));
   // A pet chosen: its drops, bright; none: every drop on this map, dimmer.
   const petDrops = $derived(size.w && layer === "pets"
-    ? onThisMap.filter((d) => !pet || d.pet.toLowerCase() === pet.toLowerCase()).map((d) => ({ d, s: shown(d.x, d.y) })).filter((v) => v.s)
+    ? onThisMap.filter((d) => !pet || isPet(d)).map((d) => ({ d, s: shown(d.x, d.y) })).filter((v) => v.s)
     : []);
   const selDrop = $derived(drops.find((d) => d.id === selectedDrop));
   function choosePet(name: string) {
     pet = pet.toLowerCase() === name.toLowerCase() ? "" : name;
     selectedDrop = "";
     if (!pet) return;
-    const home = petHome(drops, pet);
-    if (home && home !== current && !onThisMap.some((d) => d.pet.toLowerCase() === pet.toLowerCase())) current = home;
+    const home = petHome(drops, pet, names);
+    if (home && home !== current && !onThisMap.some(isPet)) current = home;
     focusPet = true;
   }
   // After choosing a pet: the view frames its drops on this map (once the image and its fit are there).
   let focusPet = $state(false);
   $effect(() => {
     if (!focusPet || imageOf !== current || !size.w || !vw || !fit) return;
-    const px = onThisMap.filter((d) => d.pet.toLowerCase() === pet.toLowerCase()).map((d) => applyAffine(fit!, d.x, d.y));
+    const px = onThisMap.filter(isPet).map((d) => applyAffine(fit!, d.x, d.y));
     untrack(() => {
       focusPet = false;
       if (!px.length) return;
@@ -120,7 +124,7 @@
     notice = `${petName}: drop saved where you stand.`;
   }
   function exportDrops() {
-    downloadJson(`aion2-pet-drops-${(me() || "player").replace(/[^\w-]+/g, "_")}-${new Date().toISOString().slice(0, 10)}.json`, dropsFile(drops));
+    downloadJson(`aion2-pet-drops-${(me() || "player").replace(/[^\w-]+/g, "_")}-${new Date().toISOString().slice(0, 10)}.json`, dropsFile(drops, names));
     notice = `${num(drops.length)} drops saved to your Downloads folder: send the file to whoever collects them.`;
   }
   async function pickDrops(e: Event) {
@@ -131,8 +135,8 @@
     try {
       const incoming = readDropsFile(JSON.parse(await file.text()));
       let added = 0;
-      act(() => { added = importDrops(ui.data, incoming); });
-      notice = `${num(added)} new drops added (${num(incoming.length - added)} already here).`;
+      act(() => { added = importDrops(ui.data, incoming.drops, incoming.souls); });
+      notice = `${num(added)} new drops added (${num(incoming.drops.length - added)} already here).`;
     } catch (err) { error = `Could not read the drops file: ${err instanceof Error ? err.message : err}`; }
   }
 
@@ -261,7 +265,8 @@
   const mapName = (k: MapKey) => worldMap(k).name;
 </script>
 
-<p class="hint dps-note">Hidden cubes and pet shard drops on the Asmodian, Elyos and Abyss maps (corner menu). Each map can use your own image
+<p class="hint dps-note">Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
+  of yours that gives soul points is put where the mob died (desktop app with the meter running). Each map can use your own image
   instead of the bundled one: it stays only on this PC. The gold dot is you: the game says where you are on teleports and whenever a
   buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running).</p>
 {#if error}<p class="hint error">{error}</p>{/if}
@@ -297,7 +302,7 @@
       title="Hidden cube opened here · {when(f.atMs)}{f.byYou ? ' · by you' : ''}"></div>{/each}
     {#each live as { c, s: at } (c.entity)}<div class="live-cube" style:left="{at!.x}px" style:top="{at!.y}px" title="Hidden cube in view"></div>{/each}
     {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!pet} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
-      aria-label="{d.pet} shard drop" title="{d.pet} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
+      aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
       onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}
     {#if you}<div class="me" class:stale={age > 30} style:left="{you.x}px" style:top="{you.y}px" title="You · {ago(age)}"></div>{/if}
 
@@ -314,17 +319,22 @@
           <button class:on={layer === "cubes"} aria-pressed={layer === "cubes"} onclick={() => { layer = "cubes"; selectedDrop = ""; }}>Cubes</button>
           <button class:on={layer === "pets"} aria-pressed={layer === "pets"} onclick={() => { layer = "pets"; selected = ""; }}>Pets</button></div>
         {#if layer === "pets"}
-          <input type="search" placeholder="Search a pet" aria-label="Search a pet" autocomplete="off" bind:value={query}>
+          <input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query}>
           <ul class="pet-list" aria-label="Pets">
             {#each pets as e (e.name)}<li><button class:on={pet.toLowerCase() === e.name.toLowerCase()} aria-pressed={pet.toLowerCase() === e.name.toLowerCase()}
               onclick={() => choosePet(e.name)}><span class="name">{e.name}</span>
-              <span class="hint">{e.drops ? `${num(e.drops)} drop${e.drops === 1 ? "" : "s"}` : "no drops yet"}{e.maps.length ? ` · ${e.maps.map(mapName).join(", ")}` : ""}</span></button></li>
-            {:else}<li class="hint">{query.trim() ? `No pet named like "${query.trim()}" yet: drop its shard and it joins the list.` : "No pets yet: record a shard drop to start the list."}</li>{/each}
+              <span class="hint">{e.mobs.length ? `from ${e.mobs.join(", ")} · ` : ""}{e.drops ? `${num(e.drops)} spot${e.drops === 1 ? "" : "s"}` : "no spots yet"}{e.maps.length ? ` · ${e.maps.map(mapName).join(", ")}` : ""}</span></button></li>
+            {:else}<li class="hint">{query.trim() ? `No soul or mob named like "${query.trim()}" yet.` : "No souls yet: kill a mob that gives soul points (meter running) and it joins the list."}</li>{/each}
           </ul>
-          {#if pet && !onThisMap.some((d) => d.pet.toLowerCase() === pet.toLowerCase())}<p class="hint">No {pet} drops on the {mapName(current)} map.</p>{/if}
+          {#if pet && !onThisMap.some(isPet)}<p class="hint">No {pet} spots on the {mapName(current)} map.</p>{/if}
+          {#if chosen?.mobs.length}<div class="soul-mobs"><span class="hint">The soul each mob gives (a mob's name is not always its soul's):</span>
+            {#each chosen.mobs as mob (mob)}<label class="setting"><span>{mob}</span>
+              <input list="soul-names" value={names[mob.toLowerCase()] ?? chosen.name} aria-label="Soul of {mob}" autocomplete="off"
+                onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; act(() => setMobSoul(ui.data, mob, v)); if (v.trim()) pet = v.trim(); }}></label>{/each}
+            <datalist id="soul-names">{#each petList(drops, "", names) as e (e.name)}<option value={e.name}></option>{/each}</datalist></div>{/if}
           <div class="btns">
-            <button disabled={!pos || !petName} title={!pos ? "Needs your position from the meter (desktop app)" : !petName ? "Pick or type the pet first" : "Saves your position now"}
-              onclick={dropHere}>Shard dropped here{petName ? `: ${petName}` : ""}</button>
+            <button disabled={!pos || !petName} title={!pos ? "Needs your position from the meter (desktop app)" : !petName ? "Pick or type the soul first" : "Saves your position now, for kills the meter missed"}
+              onclick={dropHere}>Soul points here{petName ? `: ${petName}` : ""}</button>
           </div>
           <div class="btns">
             <button class="ghost" disabled={!drops.length} onclick={exportDrops}>Export drops</button>
@@ -353,8 +363,8 @@
       <div class="btns"><button onclick={() => { const id = sel.id; selected = ""; act(() => deletePoint(ui.data, id)); }}>Delete point</button></div>
     </div>{/if}
 
-    {#if selDrop}<div class="map-panel" role="dialog" aria-label="Shard drop" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
-      <h2>{selDrop.pet} <span class="count">shard drop</span>
+    {#if selDrop}<div class="map-panel" role="dialog" aria-label="Soul points" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
+      <h2>{soul(selDrop)} <span class="count">{selDrop.mob ? `from ${selDrop.mob}` : "soul points"}</span>
         <button class="ghost" aria-label="Close" title="Close" onclick={() => { selectedDrop = ""; }}>{@html ICON.close}</button></h2>
       <p class="hint">{when(selDrop.atMs)}{selDrop.by ? ` · recorded by ${selDrop.by}` : ""} · game x {selDrop.x}, y {selDrop.y}{selDrop.mapId != null ? ` · map ${selDrop.mapId}` : ""}</p>
       <div class="btns"><button onclick={() => { const id = selDrop.id; selectedDrop = ""; act(() => deleteDrop(ui.data, id)); }}>Delete drop</button></div>
@@ -364,7 +374,7 @@
   <div class="map-foot">
     <span class="hint">{mapName(current)} map ·
       {#if layer === "cubes"}{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(ui.data.map.found.filter((f) => foundOn(f, current)).length)} cubes found{#if live.length}{" "}· <b class="live-count">{live.length} in view</b>{/if}
-      {:else}{num(onThisMap.length)} shard drops here · {num(drops.length)} in all{/if}
+      {:else}{num(onThisMap.length)} soul point spots here · {num(drops.length)} in all{/if}
       · {num(refs.length)} references{#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 with game coordinates{/if}
       · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{/if}</span>
     <span class="grow"></span>
