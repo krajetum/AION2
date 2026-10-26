@@ -329,6 +329,18 @@ export function readDropsFile(raw: any): { drops: PetDrop[] } & FileNames {
     petNames: cleanSoulNames(raw.petNames), kinds: cleanSoulNames(raw.kinds) };
 }
 
+/**
+ * What a looted item probably is, by its code. From the loots seen (2026-10-25/26): every kill drops one item
+ * coded 5346600xx-5346601xx (one code per mob: 534660178 every Mutated Forest Guardian, 534660061 every
+ * Starturtle); the crystals named by players are 610531002 (Agrint), 610530014 and 610530011 (a maxed
+ * Starturtle's). A guess from few codes: the player's naming decides, and "Show every loot" shows all.
+ */
+export function lootKind(item: number): "common" | "crystal" | "other" {
+  if (item >= 534_660_000 && item < 534_670_000) return "common";
+  if (item >= 610_530_000 && item < 610_540_000) return "crystal";
+  return "other";
+}
+
 /** A kill of yours that gave soul points, as the meter sends it (src/domain/meter.ts `SoulDrop`). */
 export interface SoulKill { entity: number; x: number; y: number; z: number; mapId: number | null; kind?: number; points: number; atMs: number; mob: string }
 /**

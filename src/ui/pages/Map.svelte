@@ -9,7 +9,7 @@
   import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, onMap, petHome, petList,
-    petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
+    lootKind, petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
   } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import { downloadJson } from "../../infra/storage.ts";
@@ -96,13 +96,16 @@
   // The chosen soul's mobs whose kills gave soul points (a crystal is named by its item, not its mob).
   const pointMobs = $derived((chosen?.mobs ?? []).filter((m) => drops.some((d) => d.item == null && d.mob?.toLowerCase() === m.toLowerCase())));
   // Your last loots this session, one per item and mob, newest first: name the ones that are a pet's crystal.
+  // Likely crystals first; each kill's common item hidden unless "Show every loot" (lootKind: a guess from the codes).
+  let everyLoot = $state(false);
   const lastLoots = $derived.by(() => {
-    const out: { item: number; mob: string; atMs: number }[] = [];
+    const out: { item: number; mob: string; atMs: number; kind: ReturnType<typeof lootKind> }[] = [];
     for (const l of [...(ui.meter?.loots ?? [])].reverse()) {
-      if (!out.some((o) => o.item === l.item && o.mob === l.mob)) out.push({ item: l.item, mob: l.mob, atMs: l.atMs });
-      if (out.length >= 8) break;
+      const kind = lootKind(l.item);
+      if ((everyLoot || kind !== "common") && !out.some((o) => o.item === l.item && o.mob === l.mob)) out.push({ item: l.item, mob: l.mob, atMs: l.atMs, kind });
+      if (out.length >= 12) break;
     }
-    return out;
+    return out.sort((a, b) => Number(b.kind === "crystal") - Number(a.kind === "crystal"));
   });
   const petName = $derived((pet || query).trim());
   // The chosen soul, while it is in the list: one the "still to collect" filter hides (or with no spots left) is
@@ -364,10 +367,12 @@
             <summary class="hint">Your last loots: name a pet's crystal ({num(Object.keys(items).length)} named)</summary>
             <span class="hint">Once a pet's collection is done its mobs drop a crystal instead of soul points. Write which pet's an item is,
               once: from then on its drops go on the map, this session's included.</span>
-            {#each lastLoots as l (l.item + ":" + l.mob)}<label class="setting"><span>{l.mob || "Unknown mob"} · <span class="num">{l.item}</span></span>
+            <label class="toggle-line"><input type="checkbox" bind:checked={everyLoot}> Show every loot (each kill's usual item too)</label>
+            {#each lastLoots as l (l.item + ":" + l.mob)}<label class="setting" class:likely={l.kind === "crystal"}><span>{l.mob || "Unknown mob"} · <span class="num">{l.item}</span>
+              {#if l.kind === "crystal"}<small class="likely-tag">likely crystal</small>{/if}</span>
               <input list="soul-names" value={items[String(l.item)] ?? ""} placeholder="Not a crystal" aria-label="Crystal of (item {l.item})" autocomplete="off"
                 onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; act(() => setItemSoul(ui.data, l.item, v)); if (v.trim()) pet = v.trim(); }}></label>
-            {:else}<span class="hint">No loot yet this session (desktop app with the meter running).</span>{/each}
+            {:else}<span class="hint">{everyLoot ? "No loot yet this session (desktop app with the meter running)." : "No crystal or unusual item yet this session."}</span>{/each}
           </details>
           <div class="btns">
             <button disabled={!pos || !petName} title={!pos ? "Needs your position from the meter (desktop app)" : !petName ? "Pick or type the soul first" : "Saves your position now, for kills the meter missed"}

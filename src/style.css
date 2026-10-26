@@ -497,6 +497,8 @@ body.overlay .status { display: none; }
 .soul-mobs summary { cursor: pointer; }
 details.soul-mobs[open] { gap: 6px; }
 .map-menu .showing { align-self: flex-start; height: 26px; padding: 0 10px; border: 1px solid var(--accent); color: var(--accent); }
+.soul-mobs .likely span:first-child { color: var(--text); }
+.likely-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: var(--r-pill); background: var(--gold-bg); color: var(--gold-ink); font-size: 11px; }
 .toggle-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
 .toggle-line input { width: auto; height: auto; }
 .pets-page .map-tools { margin-bottom: 10px; }
