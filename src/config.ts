@@ -33,9 +33,9 @@ export const EVENTS: GameEvent[] = [
   { id: "rift", name: "Spacetime Rift", everyHours: 3, minute: 0, firstHour: 0, duration: 15 },          // TO VERIFY (anchor hour + duration)
 ];
 
-/** The crowd Worker (server/): shared boss timers and cube spots. Set the workers.dev subdomain after the first deploy.
+/** The crowd Worker (server/): shared boss timers and cube spots.
  *  `VITE_CROWD_URL=http://localhost:8787 npm run dev` points the browser preview at `wrangler dev`. */
-export const CROWD_URL = "https://aion2-companion.TO-SET.workers.dev";
+export const CROWD_URL = "https://aion2-companion.krajetum.workers.dev";
 
 /** Current season: end date (00:00 in RESET_CONFIG.timeZone). Source: the user's Oath Coin sheet (2026-10-20). */
 export const SEASON = { name: "Season 1 Oath Coin", end: "2026-12-16" }; // TO VERIFY in game
