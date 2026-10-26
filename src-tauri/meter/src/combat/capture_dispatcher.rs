@@ -489,7 +489,10 @@ impl CaptureDispatcher {
                 at + capture_clock_offset.unwrap_or(0)
             });
             processor.set_override_timestamp(captured_at);
-            let parsed = assembler.process_chunk(&cap.data, processor);
+            // Companion: once locked, the game's segments in sequence order (`capture::tcp_order`); a
+            // payload with no sequence number (a test, a file replay) as it comes.
+            let seq = (!unlocked && cap.tcp_seq != 0).then_some(cap.tcp_seq);
+            let parsed = assembler.process_segment(seq, &cap.data, captured_at.unwrap_or(now), processor);
             processor.set_override_timestamp(None);
 
             let signature_locked =

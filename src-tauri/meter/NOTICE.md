@@ -45,6 +45,10 @@ and sends nothing to the game or anywhere else.
    for it (`an_abyss_world_boss_shows_others_too`).
 11. `capture/stream_processor.rs` (2026-10-26): `scan_embedded_bundles_for_identity` also hands each frame of
    a bundle inside another packet to `crate::tap::embedded` (the pet collection and the packet recorder).
+12. `capture/stream_assembler.rs`, `combat/capture_dispatcher.rs` (2026-10-26): once the port is locked, each
+   segment goes through `process_segment` with its TCP sequence number, which puts the segments back in
+   stream order first (`capture/tcp_order.rs`, companion code): retransmissions read once, out-of-order
+   segments wait for the missing one, at most 1 s. Before, they were appended as captured.
 
 ## Written for the companion
 
@@ -56,7 +60,7 @@ teleports and your own buffs), `src/cubes.rs` (hidden cubes in view and opened),
 `src/souls.rs` (your mob kills that gave soul points, and where the mob died),
 `src/abyss_bosses.rs` (the Abyss's open-world bosses, for the Others row),
 `src/pets.rs` (your pet collection, sent on entering the world),
-`src/tap.rs` (all of them on A2Tools' frame tap),
+`src/tap.rs` (all of them on A2Tools' frame tap), `src/capture/tcp_order.rs` (TCP segments in stream order),
 `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 
 ## Game data
