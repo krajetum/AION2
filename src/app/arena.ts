@@ -2,6 +2,7 @@
 import { logKills, logMatch } from "../domain/arena.ts";
 import { mergeBosses } from "../domain/bosses.ts";
 import { takeCubes, takeLoots, takeSouls } from "../domain/map.ts";
+import { addSoulPoints, takeCollection } from "../domain/pets.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
 
@@ -18,7 +19,11 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   const kills = logKills(data.arena, u.kills ?? []) > 0;
   const souls = !!u.souls?.length && takeSouls(data.map, u.souls, u.profile?.name ?? "");
   const loots = !!u.loots?.length && takeLoots(data.map, u.loots, u.profile?.name ?? "", seenLoots);
-  return !!bosses || match || cubes || kills || souls || loots;
+  // The collection read when the Pets menu opened, then the soul points gained since (per character).
+  const me = u.profile?.name ?? "";
+  const read = !!u.pets && takeCollection(data.pets, me, u.pets);
+  const gained = !!data.pets[me] && !!u.souls?.length && addSoulPoints(data.pets[me], u.souls);
+  return !!bosses || match || cubes || kills || souls || loots || read || gained;
 }
 
 /** Names an arena map ("Arena of Solitude"); empty = unnamed. */

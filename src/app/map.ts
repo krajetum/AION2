@@ -55,3 +55,9 @@ export function setMobSoul(data: AppData, mob: string, soul: string) {
   if (soul.trim()) data.map.souls[k] = soul.trim();
   else delete data.map.souls[k];
 }
+
+/** The player's name for a pet number; empty = back to the mob's name or the number. */
+export function setPetName(data: AppData, id: number, name: string) {
+  if (name.trim()) data.map.petNames[String(id)] = name.trim();
+  else delete data.map.petNames[String(id)];
+}

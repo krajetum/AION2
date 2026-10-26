@@ -53,6 +53,7 @@ teleports and your own buffs), `src/cubes.rs` (hidden cubes in view and opened),
 `DataStorage::pvp_ledger`, a read-only copy of the companion's PvP ledger),
 `src/souls.rs` (your mob kills that gave soul points, and where the mob died),
 `src/abyss_bosses.rs` (the Abyss's open-world bosses, for the Others row),
+`src/pets.rs` (your pet collection, when the game's Pets menu opens),
 `src/tap.rs` (all of them on A2Tools' frame tap),
 `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 

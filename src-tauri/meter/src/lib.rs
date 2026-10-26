@@ -33,6 +33,8 @@ pub mod cubes;
 pub mod souls;
 /// The Abyss's open-world bosses (the Others row on them).
 pub mod abyss_bosses;
+/// Your pet collection (levels and soul points), when the Pets menu opens.
+pub mod pets;
 /// The companion's readers on the parser's frame tap.
 pub mod tap;
 

@@ -1,5 +1,5 @@
 //! The companion's readers on A2Tools' frame tap (`capture::frame_tap`, one slot): every frame the
-//! parser reads goes to the packet recorder (while it records), your position, the hidden cubes and your kills' soul points.
+//! parser reads goes to the packet recorder (while it records), your position, the hidden cubes, your kills' soul points and your pet collection.
 
 use std::sync::{Arc, Once};
 
@@ -12,6 +12,7 @@ pub fn install() {
             crate::position::observe(frame);
             crate::cubes::observe(frame, crate::position::me(), crate::clock::now_ms());
             crate::souls::observe(frame, crate::position::me(), crate::clock::now_ms());
+            crate::pets::observe(frame, crate::clock::now_ms());
             crate::recorder::frame(frame);
         })));
     });

@@ -153,6 +153,15 @@ function demoUpdate(): MeterUpdate {
     // A demo cube 40 m north-east of the demo position: in view for 15 s, then opened (by you, then by
     // someone else, in turns), every 20 s.
     cubes: demoCubes(t),
+    // Part of the collection read on 2026-10-26 12:05 (Unstable Spider 1117, Armadon 1046), and two kills since.
+    pets: { atMs: DEMO_SEEN - 10 * 60_000, pets: [
+      { id: 1117, level: 2, points: 55 }, { id: 1046, level: 2, points: 39 }, { id: 1005, level: 3, points: 0 },
+      { id: 1097, level: 1, points: 21 }, { id: 1016, level: 2, points: 12 }, { id: 1039, level: 1, points: 19 },
+    ] },
+    souls: [
+      { entity: 40080, x: -81500, y: -131000, z: 34400, mapId: 1110, kind: 1097, points: 1, atMs: DEMO_SEEN - 4 * 60_000, mobCode: 2100752, mob: "Highland Karnif" },
+      { entity: 40081, x: -84000, y: -132500, z: 34400, mapId: 1110, kind: 1005, points: 1, atMs: DEMO_SEEN - 2 * 60_000, mobCode: 2100700, mob: "Demo Maxed Mob" },
+    ],
     // Loots of the friend's recording of 2026-10-25 19:16 (610531002 = Agrint), near the demo position.
     loots: [
       { entity: 18041, item: 610531002, x: -82000, y: -131500, z: 34400, mapId: 1110, atMs: DEMO_SEEN - 5 * 60_000, mobCode: 2400214, mob: "Mutated Forest Guardian" },

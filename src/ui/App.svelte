@@ -20,6 +20,7 @@
   import confetti from "../assets/birthday/confetti.png";
   import gift from "../assets/birthday/gift.png";
   import Arena from "./pages/Arena.svelte";
+  import Pets from "./pages/Pets.svelte";
   import Bosses from "./pages/Bosses.svelte";
   import Dps from "./pages/Dps.svelte";
   import MapPage from "./pages/Map.svelte";
@@ -57,6 +58,11 @@
   function badge(t: Tab) {
     if (t === "home" || t === "settings" || t === "news" || t === "dps") return "";
     if (t === "map") return ui.data.map.points.length ? num(ui.data.map.points.length) : "";
+    if (t === "pets") {
+      // Pets at level 3, of those owned, for the character read last.
+      const c = Object.values(ui.data.pets).sort((a, b) => b.atMs - a.atMs)[0];
+      return c ? `${c.pets.filter((p) => p.level >= 3).length}/${c.pets.filter((p) => p.level > 0).length}` : "";
+    }
     if (t === "bosses") { const up = ui.data.bosses.filter((b) => b.up).length; return up ? `${up} up` : ""; }
     if (t === "arena") return ui.data.arena.matches.length ? num(ui.data.arena.matches.length) : "";
     if (t === "plan") return plan ? `${Math.ceil(planLeft(plan, ui.now))}m` : "";
@@ -119,7 +125,7 @@
       <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => { dismissed = offer; }}>{@html ICON.close}</button></div>{/if}
     {#each ui.data.news.filter((n) => !n.read && isImportant(n)) as n (n.gid)}<div class="banner info"><a href={n.url} target="_blank" rel="noopener" onclick={() => markRead(n.gid)}>{n.title}</a>
       <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => markRead(n.gid)}>{@html ICON.close}</button></div>{/each}
-    {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "plan"}<Planner />{:else}<TaskList cad={ui.tab} />{/if}
+    {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else}<TaskList cad={ui.tab} />{/if}
   </main>
 
   <aside class="inspector" aria-label="Timers">

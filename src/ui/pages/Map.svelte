@@ -9,7 +9,7 @@
   import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, onMap, petHome, petList,
-    readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
+    petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
   } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import { downloadJson } from "../../infra/storage.ts";
@@ -17,6 +17,7 @@
   import { num } from "../format.ts";
   import { ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
+  import { wanted } from "../../domain/pets.ts";
   import { ui } from "../state.svelte.ts";
 
   type Layer = "cubes" | "pets";
@@ -77,13 +78,21 @@
   // ---------- pets ----------
   let query = $state(""), pet = $state(remembered("pet"));
   $effect(() => remember("pet", pet));
-  const drops = $derived(ui.data.map.pets);
+  // "Only still to collect": spots of pets you own below level 3 or not at all, by the collection the Pets page shows.
+  let onlyWanted = $state(remembered("wanted") === "1");
+  $effect(() => remember("wanted", onlyWanted ? "1" : ""));
+  const collection = $derived(ui.data.pets[ui.meter?.profile?.name ?? ""] ?? Object.values(ui.data.pets).sort((a, b) => b.atMs - a.atMs)[0]);
+  const stillWanted = (d: (typeof ui.data.map.pets)[number]) => {
+    const id = petOf(d, ui.data.map.kinds);
+    return id == null ? d.item == null : wanted(collection, id); // a crystal drops once a collection is done
+  };
+  const drops = $derived(onlyWanted && collection ? ui.data.map.pets.filter(stillWanted) : ui.data.map.pets);
   const names = $derived(ui.data.map.souls);
   const items = $derived(ui.data.map.items);
-  const soul = (d: (typeof drops)[number]) => soulOf(names, d, items);
+  const soul = (d: (typeof drops)[number]) => soulOf(ui.data.map, d);
   const isPet = (d: (typeof drops)[number]) => soul(d).toLowerCase() === pet.toLowerCase();
-  const pets = $derived(petList(drops, query, names, items));
-  const chosen = $derived(pets.find((e) => e.name.toLowerCase() === pet.toLowerCase()) ?? petList(drops, "", names, items).find((e) => e.name.toLowerCase() === pet.toLowerCase()));
+  const pets = $derived(petList(drops, query, ui.data.map));
+  const chosen = $derived(pets.find((e) => e.name.toLowerCase() === pet.toLowerCase()) ?? petList(drops, "", ui.data.map).find((e) => e.name.toLowerCase() === pet.toLowerCase()));
   // The chosen soul's mobs whose kills gave soul points (a crystal is named by its item, not its mob).
   const pointMobs = $derived((chosen?.mobs ?? []).filter((m) => drops.some((d) => d.item == null && d.mob?.toLowerCase() === m.toLowerCase())));
   // Your last loots this session, one per item and mob, newest first: name the ones that are a pet's crystal.
@@ -106,7 +115,7 @@
     pet = pet.toLowerCase() === name.toLowerCase() ? "" : name;
     selectedDrop = "";
     if (!pet) return;
-    const home = petHome(drops, pet, names, items);
+    const home = petHome(drops, pet, ui.data.map);
     if (home && home !== current && !onThisMap.some(isPet)) current = home;
     focusPet = true;
   }
@@ -332,6 +341,8 @@
           <button class:on={layer === "pets"} aria-pressed={layer === "pets"} onclick={() => { layer = "pets"; selected = ""; }}>Pets</button></div>
         {#if layer === "pets"}
           <input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query}>
+          <label class="toggle-line" title={collection ? "Hides the spots of pets you have at level 3 (Pets page)" : "Open the Pets menu in game once, with the companion running"}>
+            <input type="checkbox" bind:checked={onlyWanted} disabled={!collection}> Only pets still to collect</label>
           <ul class="pet-list" aria-label="Pets">
             {#each pets as e (e.name)}<li><button class:on={pet.toLowerCase() === e.name.toLowerCase()} aria-pressed={pet.toLowerCase() === e.name.toLowerCase()}
               onclick={() => choosePet(e.name)}><span class="name">{e.name}</span>
@@ -344,7 +355,7 @@
               <input list="soul-names" value={names[mob.toLowerCase()] ?? chosen.name} aria-label="Soul of {mob}" autocomplete="off"
                 onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; act(() => setMobSoul(ui.data, mob, v)); if (v.trim()) pet = v.trim(); }}></label>{/each}
             </div>{/if}
-          <datalist id="soul-names">{#each petList(drops, "", names, items) as e (e.name)}<option value={e.name}></option>{/each}</datalist>
+          <datalist id="soul-names">{#each petList(drops, "", ui.data.map) as e (e.name)}<option value={e.name}></option>{/each}</datalist>
           <details class="soul-mobs">
             <summary class="hint">Your last loots: name a pet's crystal ({num(Object.keys(items).length)} named)</summary>
             <span class="hint">Once a pet's collection is done its mobs drop a crystal instead of soul points. Write which pet's an item is,

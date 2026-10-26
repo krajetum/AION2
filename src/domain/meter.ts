@@ -61,6 +61,7 @@ export interface Kill { atMs: number; kind: "kill" | "assist" | "death"; mapId: 
 export interface SoulDrop { entity: number; x: number; y: number; z: number; mapId: number | null; kind: number; points: number; atMs: number; mobCode: number | null; mob: string }
 /** An item a mob you killed dropped for you (src-tauri/meter/src/souls.rs `Loot`), where the mob died. */
 export interface LootDrop { entity: number; item: number; x: number; y: number; z: number; mapId: number | null; atMs: number; mobCode: number | null; mob: string }
+import type { PetCollection } from "./pets.ts";
 export interface MeterUpdate {
   status: MeterStatus; message: string; port: number | null; device: string | null;
   pingMs: number | null; paused: boolean;
@@ -76,6 +77,7 @@ export interface MeterUpdate {
   kills?: Kill[];
   souls?: SoulDrop[];
   loots?: LootDrop[];
+  pets?: PetCollection | null; // from the last time the game's Pets menu opened
   lostPackets?: number; // thrown away since the start: the parser fell behind (crowded fights)
   demo?: boolean; // browser preview only
 }
