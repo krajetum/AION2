@@ -304,23 +304,29 @@ export function cleanSoulNames(raw: unknown): SoulNames {
  * Adds drops not already there (by id): importing the same file twice adds nothing. A file's soul names fill in
  * mobs not named here (yours stay). Returns how many drops were new.
  */
-export function mergeDrops(map: MapData, drops: PetDrop[], souls: SoulNames = {}, items: SoulNames = {}): number {
-  for (const [mob, soul] of Object.entries(cleanSoulNames(souls))) map.souls[mob] ??= soul;
-  for (const [code, soul] of Object.entries(cleanSoulNames(items))) map.items[code] ??= soul;
+export function mergeDrops(map: MapData, drops: PetDrop[], names: Partial<FileNames> = {}): number {
+  for (const key of ["souls", "items", "petNames", "kinds"] as const)
+    for (const [k, v] of Object.entries(cleanSoulNames(names[key]))) map[key][k] ??= v;
   const have = new Set(map.pets.map((d) => d.id));
   const fresh = cleanDrops(drops).filter((d) => !have.has(d.id));
+  // A kill's pet number and mob name a pet (Pets page) as the meter's own kills do.
+  for (const d of fresh) if (d.kind != null && d.mob && !d.mob.startsWith("Unknown mob #")) map.kinds[String(d.kind)] ??= d.mob;
   map.pets.push(...fresh);
   if (map.pets.length > MAX_DROPS) map.pets.splice(0, map.pets.length - MAX_DROPS);
   return fresh.length;
 }
 
-/** The file friends send each other: format tag, version, drops and their soul names. */
+/** The names a drops file carries: mob → soul, crystal item → soul, pet number → the player's name and → its mob. */
+export interface FileNames { souls: SoulNames; items: SoulNames; petNames: SoulNames; kinds: SoulNames }
+/** The file friends send each other: format tag, version, all drops and the names. */
 export const DROPS_FILE = "aion2-companion-pet-drops";
-export const dropsFile = (drops: PetDrop[], souls: SoulNames = {}, items: SoulNames = {}) => ({ format: DROPS_FILE, version: 3, drops, souls, items });
-/** A drops file's drops, soul names and item names (older versions had fewer); throws on anything else. */
-export function readDropsFile(raw: any): { drops: PetDrop[]; souls: SoulNames; items: SoulNames } {
+export const dropsFile = (map: Pick<MapData, "pets" | keyof FileNames>) =>
+  ({ format: DROPS_FILE, version: 4, drops: map.pets, souls: map.souls, items: map.items, petNames: map.petNames, kinds: map.kinds });
+/** A drops file's drops and names (older versions had fewer); throws on anything else. */
+export function readDropsFile(raw: any): { drops: PetDrop[] } & FileNames {
   if (raw?.format !== DROPS_FILE || !Array.isArray(raw.drops)) throw new Error("not a pet drops file");
-  return { drops: cleanDrops(raw.drops), souls: cleanSoulNames(raw.souls), items: cleanSoulNames(raw.items) };
+  return { drops: cleanDrops(raw.drops), souls: cleanSoulNames(raw.souls), items: cleanSoulNames(raw.items),
+    petNames: cleanSoulNames(raw.petNames), kinds: cleanSoulNames(raw.kinds) };
 }
 
 /** A kill of yours that gave soul points, as the meter sends it (src/domain/meter.ts `SoulDrop`). */

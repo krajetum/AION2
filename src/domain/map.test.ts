@@ -159,8 +159,9 @@ test("friends' drops merge once; bad entries are dropped", () => {
   assert.equal(mergeDrops(m, [drop("a", "Fox", 1110), drop("b", "Fox", 20)]), 2);
   assert.equal(mergeDrops(m, [drop("a", "Fox", 1110), drop("c", " Owl ", null), { id: "d", pet: "", x: 1, y: 1, atMs: 1 } as any]), 1, "same file again adds only the new one");
   assert.deepEqual(m.pets.map((d) => d.pet), ["Fox", "Fox", "Owl"]);
-  const back = readDropsFile(JSON.parse(JSON.stringify(dropsFile(m.pets, { "young slink": "Slink" }))));
-  assert.deepEqual(back, { drops: m.pets, souls: { "young slink": "Slink" }, items: {} });
+  m.souls["young slink"] = "Slink";
+  const back = readDropsFile(JSON.parse(JSON.stringify(dropsFile(m))));
+  assert.deepEqual(back, { drops: m.pets, souls: { "young slink": "Slink" }, items: {}, petNames: {}, kinds: {} });
   assert.deepEqual(readDropsFile({ format: "aion2-companion-pet-drops", version: 1, drops: [] }).souls, {}, "version 1 files have no names");
   assert.throws(() => readDropsFile({ version: 1, drops: [] }));
   assert.deepEqual(cleanMap({ points: [] }).pets, []);
@@ -197,7 +198,7 @@ test("soul kills: placed where the mob died, one per mob and spot, named by the 
 test("a friend's soul names fill in, yours stay", () => {
   const m = emptyMap();
   m.souls["young slink"] = "Slink";
-  mergeDrops(m, [], { "Young Slink": "Something else", "Withered Branch Spider": "Withered Branch Spider Soul" });
+  mergeDrops(m, [], { souls: { "Young Slink": "Something else", "Withered Branch Spider": "Withered Branch Spider Soul" } });
   assert.deepEqual(m.souls, { "young slink": "Slink", "withered branch spider": "Withered Branch Spider Soul" });
   assert.deepEqual(cleanMap({}).souls, {});
 });
@@ -252,4 +253,14 @@ test("kills whose mob was not seen spawning are named by their kind, now or once
   takeSouls(m, [k(18212, 1045, "Highland Sylphen", 20000, 5)], "Randronirk");
   assert.equal(m.pets[0].mob, "Highland Sylphen");
   assert.equal(m.pets[0].pet, "Sylphen", "renamed to the soul named for its mob");
+});
+
+test("a friend's file names pets: their names, and the mob of each kill's pet number", () => {
+  const m = emptyMap();
+  m.petNames["1117"] = "My Spider";
+  const kill = (id: string, kind: number, mob: string): PetDrop => ({ id, pet: mob, mob, kind, mapId: 1010, x: 0, y: 0, z: 0, atMs: 1, by: "Friend" });
+  mergeDrops(m, [kill("k1", 1097, "Highland Karnif"), kill("k2", 1045, "Unknown mob #1045")],
+    { petNames: { "1117": "Unstable Spider", "1046": "Armadon" }, kinds: { "1121": "Young Slink" } });
+  assert.deepEqual(m.petNames, { "1117": "My Spider", "1046": "Armadon" }, "yours stay");
+  assert.deepEqual(m.kinds, { "1121": "Young Slink", "1097": "Highland Karnif" }, "an unknown mob names nothing");
 });

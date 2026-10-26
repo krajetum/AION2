@@ -148,8 +148,8 @@
     notice = `${petName}: drop saved where you stand.`;
   }
   function exportDrops() {
-    downloadJson(`aion2-pet-drops-${(me() || "player").replace(/[^\w-]+/g, "_")}-${new Date().toISOString().slice(0, 10)}.json`, dropsFile(drops, names, items));
-    notice = `${num(drops.length)} drops saved to your Downloads folder: send the file to whoever collects them.`;
+    downloadJson(`aion2-pet-drops-${(me() || "player").replace(/[^\w-]+/g, "_")}-${new Date().toISOString().slice(0, 10)}.json`, dropsFile(ui.data.map)); // every spot, whatever the filter shows
+    notice = `${num(ui.data.map.pets.length)} drops saved to your Downloads folder: send the file to whoever collects them.`;
   }
   async function pickDrops(e: Event) {
     const input = e.currentTarget as HTMLInputElement, file = input.files?.[0];
@@ -159,7 +159,7 @@
     try {
       const incoming = readDropsFile(JSON.parse(await file.text()));
       let added = 0;
-      act(() => { added = importDrops(ui.data, incoming.drops, incoming.souls, incoming.items); });
+      act(() => { added = importDrops(ui.data, incoming.drops, incoming); });
       notice = `${num(added)} new drops added (${num(incoming.drops.length - added)} already here).`;
     } catch (err) { error = `Could not read the drops file: ${err instanceof Error ? err.message : err}`; }
   }
@@ -374,7 +374,7 @@
               onclick={dropHere}>Soul points here{petName ? `: ${petName}` : ""}</button>
           </div>
           <div class="btns">
-            <button class="ghost" disabled={!drops.length} onclick={exportDrops}>Export drops</button>
+            <button class="ghost" disabled={!ui.data.map.pets.length} onclick={exportDrops}>Export drops</button>
             <label class="btn ghost">Import a friend's drops <input type="file" accept="application/json,.json" hidden onchange={pickDrops}></label>
           </div>
         {/if}
