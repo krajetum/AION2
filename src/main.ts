@@ -4,6 +4,8 @@ import { RESET_CONFIG as C } from "./config.ts";
 import { checkNotifications } from "./app/notifications.ts";
 import { muteForAnHour } from "./app/settings.ts";
 import { applyResets } from "./domain/resets.ts";
+import { BUNDLED_DROPS, takeBundledDrops } from "./domain/map.ts";
+import petDropsUrl from "./assets/pet-drops.json?url";
 import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
 import { findUpdate, getAutostart, isDesktop, onTrayMute } from "./infra/system.ts";
@@ -24,6 +26,9 @@ async function main() {
   const data = await loadData();
   ui.charId = data.characters[0].id;
   if (isDesktop()) ui.autostart = await getAutostart().catch(() => false);
+  // The pet drops shared with the app (src/assets/pet-drops.json), once per bundle: a separate file, fetched only then.
+  if (data.map.bundledDrops !== BUNDLED_DROPS)
+    await fetch(petDropsUrl).then((r) => r.json()).then((f) => takeBundledDrops(data.map, f)).catch((e) => console.warn("Bundled pet drops not loaded", e));
   applyResets(data, Date.now(), C);
   checkNotifications(data, Date.now(), toast);
   ui.data = data;

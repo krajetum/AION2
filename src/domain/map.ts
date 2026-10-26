@@ -66,6 +66,7 @@ export interface MapData {
   petNames: SoulNames;  // pet number → the player's name for it (the game sends numbers only)
   items: SoulNames;     // item code → the soul it is a crystal / shard of (looted once a pet's collection is done)
   soulsSeenMs: number;  // the meter's soul kills up to this time are taken
+  bundledDrops: string; // the bundled drops (src/assets/pet-drops.json) merged in, by their date: "" = none yet
 }
 
 /** Cube codes seen so far: 1301199, the cube of the 2026-10-23 20:18 recording (seen coming into view, then opened). */
@@ -77,7 +78,7 @@ const MAX_FOUND = 2000;
 /** Spawn-group colors, picked to stay apart on the map's greens, browns and blues. */
 export const GROUP_COLORS = ["#ff5a5f", "#ffb020", "#f5f05a", "#4fe08a", "#3fd6ff", "#5a8bff", "#c46bff", "#ff6bd0"];
 
-export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, kinds: {}, petNames: {}, soulsSeenMs: 0 });
+export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, kinds: {}, petNames: {}, soulsSeenMs: 0, bundledDrops: "" });
 
 /** A saved or imported map section, cleaned: bad points are dropped, not guessed. */
 export function cleanMap(raw: any): MapData {
@@ -98,7 +99,8 @@ export function cleanMap(raw: any): MapData {
   const pets = cleanDrops(raw?.pets), kinds = cleanSoulNames(raw?.kinds);
   learnKinds(kinds, pets); // drops imported before files named pets still name them
   return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets,
-    souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds, petNames: cleanSoulNames(raw?.petNames), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0 };
+    souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds, petNames: cleanSoulNames(raw?.petNames), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0,
+    bundledDrops: typeof raw?.bundledDrops === "string" ? raw.bundledDrops : "" };
 }
 
 /** Pet number → mob, from drops that carry both (a kill's own; "Unknown mob #…" names nothing). Names already known stay. */
@@ -309,15 +311,18 @@ export function cleanSoulNames(raw: unknown): SoulNames {
   return out;
 }
 
+/** The same drop under another id (the bundled copy of a file you imported, or of your own kills): same time, spot and mob. */
+const sameDrop = (d: PetDrop) => `${d.atMs}:${d.x}:${d.y}:${d.z}:${d.mob ?? d.pet}`;
+
 /**
- * Adds drops not already there (by id): importing the same file twice adds nothing. A file's soul names fill in
- * mobs not named here (yours stay). Returns how many drops were new.
+ * Adds drops not already there (by id, or by time and spot): importing the same file twice adds nothing. A file's
+ * soul names fill in mobs not named here (yours stay). Returns how many drops were new.
  */
 export function mergeDrops(map: MapData, drops: PetDrop[], names: Partial<FileNames> = {}): number {
   for (const key of ["souls", "items", "petNames", "kinds"] as const)
     for (const [k, v] of Object.entries(cleanSoulNames(names[key]))) map[key][k] ??= v;
-  const have = new Set(map.pets.map((d) => d.id));
-  const fresh = cleanDrops(drops).filter((d) => !have.has(d.id));
+  const have = new Set(map.pets.flatMap((d) => [d.id, sameDrop(d)]));
+  const fresh = cleanDrops(drops).filter((d) => !have.has(d.id) && !have.has(sameDrop(d)));
   learnKinds(map.kinds, fresh); // a kill's pet number and mob name a pet (Pets page) as the meter's own kills do
   map.pets.push(...fresh);
   if (map.pets.length > MAX_DROPS) map.pets.splice(0, map.pets.length - MAX_DROPS);
@@ -330,6 +335,21 @@ export interface FileNames { souls: SoulNames; items: SoulNames; petNames: SoulN
 export const DROPS_FILE = "aion2-companion-pet-drops";
 export const dropsFile = (map: Pick<MapData, "pets" | keyof FileNames>) =>
   ({ format: DROPS_FILE, version: 4, drops: map.pets, souls: map.souls, items: map.items, petNames: map.petNames, kinds: map.kinds });
+/**
+ * The drops bundled with the app (src/assets/pet-drops.json): the players' shared file of 2026-10-26, 2,849 spots on
+ * the three maps, with the players' names taken out. Merged into every save once per bundle date, so spots the
+ * player deletes stay deleted until a newer bundle.
+ */
+export const BUNDLED_DROPS = "2026-10-26";
+/** Merges the bundled drops file unless this bundle was merged already; returns how many drops were new (-1: skipped). */
+export function takeBundledDrops(map: MapData, raw: any): number {
+  if (map.bundledDrops === BUNDLED_DROPS) return -1;
+  const { drops, ...names } = readDropsFile(raw);
+  const n = mergeDrops(map, drops, names);
+  map.bundledDrops = BUNDLED_DROPS;
+  return n;
+}
+
 /** A drops file's drops and names (older versions had fewer); throws on anything else. */
 export function readDropsFile(raw: any): { drops: PetDrop[] } & FileNames {
   if (raw?.format !== DROPS_FILE || !Array.isArray(raw.drops)) throw new Error("not a pet drops file");

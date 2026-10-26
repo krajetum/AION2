@@ -1,7 +1,8 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops } from "./map.ts";
+import { readFileSync } from "node:fs";
 import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
@@ -278,4 +279,29 @@ test("a saved file's drops name their pets on load (imported before files named 
   const d = (id: string, kind: number | undefined, mob: string) => ({ id, pet: mob, mob, ...(kind != null && { kind }), mapId: 1010, x: 0, y: 0, z: 0, atMs: 1, by: "Friend" });
   const m = cleanMap({ pets: [d("a", 2400300, "Aullaeu Apprentice Shaman"), d("b", 1045, "Unknown mob #1045"), d("c", undefined, "Slink")], kinds: { "1097": "Highland Karnif" } });
   assert.deepEqual(m.kinds, { "1097": "Highland Karnif", "2400300": "Aullaeu Apprentice Shaman" });
+});
+
+test("the bundled drops: no player names, every spot on its map, merged once, no copy of drops you already have", () => {
+  const raw = JSON.parse(readFileSync(new URL("../assets/pet-drops.json", import.meta.url), "utf8"));
+  assert.equal(raw.bundle, BUNDLED_DROPS, "bump BUNDLED_DROPS with the file");
+  const file = readDropsFile(raw);
+  assert.equal(file.drops.length, 2849);
+  assert.ok(file.drops.every((d) => d.by === "" && d.id.startsWith("bundled:")), "players' names stay out of the repo");
+  assert.ok(file.drops.every((d) => d.map != null && mapOf(d.mapId) === d.map), "each spot's map id is the map it was put on");
+  const m = emptyMap();
+  // A kill of yours that is also in the bundle (the players' file had it under your name).
+  const mine = { ...file.drops[0], id: "kill:Me:1:2", by: "Me" };
+  m.pets.push(mine);
+  m.petNames["1206"] = "My Guardite"; // names the player gave stay
+  m.kinds["1007"] = "My Crab";
+  assert.equal(takeBundledDrops(m, raw), 2848, "your own kill is not added twice");
+  assert.equal(m.pets[0], mine, "what you had stays as it was, first");
+  assert.equal(m.petNames["1206"], "My Guardite");
+  assert.equal(m.kinds["1007"], "My Crab");
+  assert.equal(m.petNames["1091"], "Red Spark Ignus", "names you had not given come from the bundle");
+  assert.equal(m.bundledDrops, BUNDLED_DROPS);
+  m.pets.splice(5, 1); // a spot the player deletes
+  assert.equal(takeBundledDrops(m, raw), -1, "merged once: deleted spots stay deleted");
+  assert.equal(m.pets.length, 2848);
+  assert.equal(cleanMap(JSON.parse(JSON.stringify(m))).bundledDrops, BUNDLED_DROPS, "kept in the save");
 });
