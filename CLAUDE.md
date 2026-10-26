@@ -60,7 +60,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   plus the player's marks, to a text file in Downloads, for finding new records such as hidden cubes) / `position.rs` (your position:
   map loads, teleports, your own buffs; the map id from map loads, or from the field-boss map `01 91` while none was seen) / `cubes.rs` (hidden cubes: object codes learned from openings, cubes in view,
   openings placed by their loot) / `souls.rs` (your mob kills that gave soul points, and your loots with their item code: loot owner `04 8d`,
-  loot place and item `1e 56`, points `0d 90`; the engine adds the mob's name) / `pets.rs` (your pet collection, `00 90` when the Pets menu opens: owned pets with level, soul points; the pet number is the soul points' kind) / `abyss_bosses.rs` (the Abyss's world bosses: on them, as on field bosses, the
+  loot place and item `1e 56`, points `0d 90`, every one also kept as a gain for the collection; the engine adds the mob's name) / `pets.rs` (your pet collection, `00 90` when the Pets menu opens: owned pets with level, soul points; the pet number is the soul points' kind) / `abyss_bosses.rs` (the Abyss's world bosses: on them, as on field bosses, the
   server sends no one else's direct hits, so rows are you, your party and Others from the HP lost) / `kills.rs` (your PvP kills, assists and deaths: the last hit before a death, your hit within 15 s for an assist, from the PvP ledger) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
 
 ## Rules

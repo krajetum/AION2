@@ -22,7 +22,9 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   // The collection read when the Pets menu opened, then the soul points gained since (per character).
   const me = u.profile?.name ?? "";
   const read = !!u.pets && takeCollection(data.pets, me, u.pets);
-  const gained = !!data.pets[me] && !!u.souls?.length && addSoulPoints(data.pets[me], u.souls);
+  // Every soul point counts, placed on the map or not (an older meter sends only the placed ones).
+  const gains = u.soulGains ?? u.souls ?? [];
+  const gained = !!data.pets[me] && gains.length > 0 && addSoulPoints(data.pets[me], gains);
   return !!bosses || match || cubes || kills || souls || loots || read || gained;
 }
 

@@ -76,6 +76,8 @@ pub struct Update {
     pub souls: Vec<SoulDrop>,
     /// Your pet collection, from the last time the game's Pets menu opened since the meter started.
     pub pets: Option<crate::pets::Collection>,
+    /// Every soul point gain since the meter started (the collection counts these; `souls` only the placed ones).
+    pub soul_gains: Vec<crate::souls::Gain>,
     /// Your loots since the meter started (the item and where the mob died), with the mob's name.
     pub loots: Vec<LootDrop>,
     /// Your PvP kills and deaths since the meter started (the last 50).
@@ -329,6 +331,7 @@ impl Engine {
                 })
                 .collect(),
             pets: crate::pets::latest(),
+            soul_gains: crate::souls::gains(),
             loots: crate::souls::loots()
                 .into_iter()
                 .map(|loot| {

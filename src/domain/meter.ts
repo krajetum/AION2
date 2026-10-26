@@ -76,6 +76,7 @@ export interface MeterUpdate {
   cubes?: Cubes;
   kills?: Kill[];
   souls?: SoulDrop[];
+  soulGains?: { kind: number; points: number; atMs: number }[]; // every soul point gain: the collection counts these
   loots?: LootDrop[];
   pets?: PetCollection | null; // from the last time the game's Pets menu opened
   lostPackets?: number; // thrown away since the start: the parser fell behind (crowded fights)
