@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
 import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
@@ -263,4 +263,13 @@ test("a friend's file names pets: their names, and the mob of each kill's pet nu
     { petNames: { "1117": "Unstable Spider", "1046": "Armadon" }, kinds: { "1121": "Young Slink" } });
   assert.deepEqual(m.petNames, { "1117": "My Spider", "1046": "Armadon" }, "yours stay");
   assert.deepEqual(m.kinds, { "1121": "Young Slink", "1097": "Highland Karnif" }, "an unknown mob names nothing");
+});
+
+test("loot codes: each kill's common item, the crystals, the rest", () => {
+  assert.equal(lootKind(534660178), "common"); // every Mutated Forest Guardian
+  assert.equal(lootKind(534660061), "common"); // every Starturtle
+  assert.equal(lootKind(610531002), "crystal"); // Agrint
+  assert.equal(lootKind(610530011), "crystal"); // a maxed Starturtle's
+  assert.equal(lootKind(110460025), "other");
+  assert.equal(lootKind(210660022), "other");
 });
