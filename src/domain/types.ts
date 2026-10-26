@@ -55,6 +55,7 @@ export interface Settings {
   radarRange: number;         // its radius, metres
   radarMap: boolean;          // the map under it (else only the dots)
   radarRound: boolean;        // round (else square)
+  crowdShare: boolean;        // send the boss timers and cube openings the meter sees to the crowd Worker
 }
 
 /** One undo step: the progress of each touched task before the change (null = it had none). */
@@ -98,5 +99,7 @@ export interface AppData {
   pets: Record<string, PetCollection>; // character name → its pet collection as last read (src/domain/pets.ts)
   plan?: ActivePlan;
   undo: UndoEntry[]; // newest last, max 30 (src/undo.ts)
+  install: string;          // random id of this install for the crowd Worker (one report per install counts)
+  serverId: number | null;  // game server of the last character the meter saw (crowd boss timers are per server)
   settings: Settings;
 }

@@ -16,6 +16,7 @@ import EventsOverlay from "./ui/EventsOverlay.svelte";
 import CubeOverlay from "./ui/CubeOverlay.svelte";
 import RadarOverlay from "./ui/RadarOverlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
+import { bossEvery, flushCubes, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, radarOverlay, meterOverlay, onEventsOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { ui } from "./ui/state.svelte.ts";
@@ -52,21 +53,38 @@ async function main() {
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
   onMeter((u) => {
     ui.meter = u;
-    if (takeMeterData(ui.data, u)) save();
+    const shared = shareFromMeter(ui.data, u); // before takeMeterData: it compares with the saved data
+    if (takeMeterData(ui.data, u) || shared) save();
   });
   if (isDesktop()) await onTrayMute(() => act(() => muteForAnHour(ui.data, Date.now())));
 
   if (isDesktop()) checkUpdate();
   refreshNews();
+  crowdBosses();
+  crowdCubes();
   let ticks = 0;
   setInterval(async () => {
     ui.now = Date.now();
     if (++ticks % 1800 === 0) refreshNews(); // every 30 min
+    // Other players' boss timers every 2 min and cube spots every hour, only while you play.
+    if (ticks % bossEvery === 0 && gameActive(ui.now)) crowdBosses();
+    if (ticks % 3600 === 0 && gameActive(ui.now)) crowdCubes();
+    if (ticks % 600 === 0) flushCubes(ui.data);
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(ui.data, now, C).length > 0;
     if (checkNotifications(ui.data, now, toast) || reset) await save();
   }, 1000);
+}
+
+async function crowdBosses() {
+  if (await syncBosses(ui.data)) await save();
+}
+
+async function crowdCubes() {
+  const { changed, codes } = await syncCubes(ui.data);
+  if (codes && isDesktop()) await meterCubeCodes(ui.data.map.cubeCodes).catch(() => {});
+  if (changed) await save();
 }
 
 // Update from GitHub Releases; the Windows installer closes and relaunches the app itself.

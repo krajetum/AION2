@@ -115,6 +115,12 @@
       edges and set the range to match. It cannot turn with the camera, so it matches only a north-up minimap. Overlays remember where you put them.
       The overlays never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
   </section>
+  <section><h2>Other players</h2>
+    {@render toggle("Share boss timers and cube spots", s.crowdShare, (e) => { s.crowdShare = check(e); })}
+    <p class="hint">The app shows the field-boss timers other players on your server read, and the hidden cubes three or more
+      players saw opened. Sharing sends what your meter sees: server, map and boss ids with their times, and where cubes were
+      opened. Never names, yours or anyone's. Turn it off and you still get the others' timers and cubes.</p>
+  </section>
   <section><h2>System</h2>
     {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}
     <div class="btns"><button onclick={() => exportJson(ui.data)}>Export JSON</button>

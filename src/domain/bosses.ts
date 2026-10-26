@@ -6,10 +6,15 @@ import type { BossAlert } from "./types.ts";
 /** The saved timers with the maps read since: a map read again replaces its bosses.
  *  undefined when nothing is newer (the meter resends every map with each update). */
 export function mergeBosses(saved: BossTimer[], fresh: BossTimer[]): BossTimer[] | undefined {
-  const seen = new Map(saved.map((b) => [b.mapId, b.seenMs]));
-  const newer = new Set(fresh.filter((b) => b.seenMs > (seen.get(b.mapId) ?? -1)).map((b) => b.mapId));
+  const newer = newerMaps(saved, fresh);
   if (!newer.size) return undefined;
   return [...saved.filter((b) => !newer.has(b.mapId)), ...fresh.filter((b) => newer.has(b.mapId))];
+}
+
+/** The maps in `fresh` read later than the saved ones. */
+export function newerMaps(saved: BossTimer[], fresh: BossTimer[]): Set<number> {
+  const seen = new Map(saved.map((b) => [b.mapId, b.seenMs]));
+  return new Set(fresh.filter((b) => b.seenMs > (seen.get(b.mapId) ?? -1)).map((b) => b.mapId));
 }
 
 /** up: up since timeMs (when the map was read) · due: respawns at timeMs · passed: its respawn time

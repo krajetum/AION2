@@ -9,7 +9,7 @@
     "build": "tsc && vite build",
     "check": "svelte-check",
     "tauri": "tauri",
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"src/**/*.test.ts\" \"server/**/*.test.ts\""
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

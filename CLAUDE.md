@@ -4,12 +4,17 @@ Windows desktop tracker for recurring AION 2 (EU server) tasks, replacing a Goog
 Tauri 2 + TypeScript + Svelte 5 + Vite. Single user, multiple characters, everything local. License: GPL-3.0 (`LICENSE`, `NOTICE.md`).
 
 ## Commands
-- `npm test` — domain tests, `src/**/*.test.ts` (`node --test`, Node 24 runs `.ts` natively, no test deps)
+- `npm test` — domain + server tests, `src/**/*.test.ts` and `server/**/*.test.ts` (`node --test`, Node 24 runs `.ts` natively, no test deps)
 - `npx tsc --noEmit` — type-check `.ts`; `npm run check` — svelte-check (also covers `.svelte` files)
 - `cargo test -p aion2-meter` (in `src-tauri/`) — DPS meter parser tests (A2Tools' own, with byte samples from live captures)
 - `cargo run -p aion2-meter --example smoke` — starts the live capture and prints updates (Linux needs libpcap)
 - `npm run tauri dev` — real desktop app (needs Rust + MSVC; first build ~2 min)
-- Release: automatic. Every merge into `main` (except `.md`-only changes) → `.github/workflows/release.yml` bumps the patch version, commits and tags it on `main`, builds, signs and publishes a GitHub Release + `latest.json` (the updater endpoint). Minor/major: "Run workflow" in Actions. Don't bump the version by hand; pull after a merge. Version lives only in `package.json`.
+- CI: one workflow, `.github/workflows/release.yml`, on every merge into `main` (except `.md`-only changes); nothing runs on branches or PRs,
+  so run `npm test` / `npm run check` locally before merging. Jobs: `check` (ubuntu: npm test, tsc for app and `server/`, svelte-check, then what changed) →
+  `server` (only if `server/` changed: D1 migrations + deploy of the Cloudflare Worker, no version bump) and
+  `release` (only if anything outside `server/` changed: `cargo test -p aion2-meter`, then bumps the patch version, commits and tags it on `main`,
+  builds, signs and publishes a GitHub Release + `latest.json`, the updater endpoint). Minor/major: "Run workflow" in Actions (runs both).
+  Don't bump the version by hand; pull after a merge. Version lives only in `package.json`.
 - `npm run dev` — UI only in a browser on http://localhost:1420 (launch config `web-ui` in `.claude/launch.json`)
 
 ## Verifying changes
@@ -31,6 +36,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
     (seasonal, and weekly per weekly reset) → claimed / still to claim this week (≈ for partial steps: only mission totals are known); `SEASON` end date lives in `config.ts`
   - `undo.ts` — saved undo history for progress (ticks, counters, Reset button); `applyResets` prunes it
   - `news.ts` — Steam feed parsing + read/unread cache; `save-file.ts` — default data + migration of old/imported saves
+  - `crowd.ts` — crowdsourcing (the `server/` Worker): which boss maps / cube openings to share, the Worker's answers onto the local clock
   - `meter.ts` — DPS meter update types (as the Rust engine sends them: fight, boss timers, Odyle energy, profile, last arena match), views (damage/healing/taken), number/HP formatting
   - `servers.ts` — server names by id (A2Tools' table), faction/region from the id, `gearUrl` (a player's profile on shugo.gg)
   - `pets.ts` — your pet collection per character (`AppData.pets`, sent on entering the world: login or character select), soul points gained since
@@ -43,10 +49,11 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
     (`takeLoots`, `items`: a finished collection drops a crystal instead of soul points), "Soul points here" or a click; `souls` = mob → soul as the player
     named it (`soulOf`), shared as a `dropsFile` with the names and merged by id or same time+spot+mob (adds only, names already set stay); `src/assets/pet-drops.json` = the players' shared drops without their names, merged once per `BUNDLED_DROPS` date (`takeBundledDrops`, fetched in `main.ts`), `petList` search by soul or mob, `petHome`); cubes found and
     cube codes learned (`takeCubes`, `KNOWN_CUBE_CODES`), `bearing` / `climb` for the cube popup, `onRadar` for the radar
-- `src/app/` — use cases that change `AppData` (progress, tasks, characters, season, settings, planner session, `checkNotifications`, `arena.ts`: meter data into the save file)
-- `src/infra/` — Tauri adapters: `storage.ts` (plugin-store `data.json`, export/import), `notifier.ts` (toasts, sounds), `steam.ts` (news fetch), `map-image.ts` (images the player picks, in IndexedDB, never in the save file, export or repo: an imported image per map, else the bundled one in `src/assets/ncsoft/` (`ui/maps.ts`), © NCSOFT, outside the GPL; the cube popup's "opened by you / by others" pictures), `system.ts` (autostart, updater, `tray-mute` event), `meter.ts` (DPS engine commands + `meter-update` / `meter-overlay` events, browser demo)
+- `src/app/` — use cases that change `AppData` (progress, tasks, characters, season, settings, planner session, `checkNotifications`, `arena.ts`: meter data into the save file, `crowd.ts`: share/download boss timers and cube spots, boss reads every 2 min only while playing)
+- `src/infra/` — Tauri adapters: `storage.ts` (plugin-store `data.json`, export/import), `notifier.ts` (toasts, sounds), `steam.ts` (news fetch), `map-image.ts` (images the player picks, in IndexedDB, never in the save file, export or repo: an imported image per map, else the bundled one in `src/assets/ncsoft/` (`ui/maps.ts`), © NCSOFT, outside the GPL; the cube popup's "opened by you / by others" pictures), `system.ts` (autostart, updater, `tray-mute` event), `meter.ts` (DPS engine commands + `meter-update` / `meter-overlay` events, browser demo), `crowd.ts` (calls the Worker at `CROWD_URL` in `config.ts`, `VITE_CROWD_URL` overrides it)
 - `src/ui/` — Svelte UI: `App.svelte` (header, timers, sidebar), `pages/*` (`Dps.svelte` = DPS meter, `Arena.svelte` = arena log + kill history, `parts/PlayerCard.svelte` = a player's server, gear, shugo.gg link, `Map.svelte` = map with a corner menu: map, Cubes / Pets, soul search, each mob's soul, drops, only pets still to collect; `Pets.svelte` = your collection, progress, rename, spots on the map), `parts/*`, `Overlay.svelte` (DPS overlay window), `EventsOverlay.svelte` (event countdown window + next field-boss respawn, all bosses due that minute), `CubeOverlay.svelte` (popup while a hidden cube is in view: distance, compass direction, up/down (`climb`), chime; 5 s "opened" state or picture, sad sound when another player opens it; size from Settings, top centre at first), `RadarOverlay.svelte` (cubes around you, north up, to lay over the game's minimap); `state.svelte.ts` (`ui.data` = reactive save file), `actions.ts` (save after each change, undo, news refresh)
 - `src/main.ts` — startup: load, resets, mount, meter capture (from app start), 1 s clock; `index.html#overlay` / `#events` / `#cube` / `#radar` mount only that overlay's component
+- `server/` — Cloudflare Worker + D1, deployed by the `server` job; optional: the app works without it
 - `src-tauri/src/lib.rs` — plugins, tray menu (emits `tray-mute`), close → hide to tray; `crash.rs` (panic hook → `crash.log` in the
   app's log folder, `crash_log` command); `places.rs` (overlay windows reopen where the player left them, `overlay-positions.json`)
 - `src-tauri/src/meter.rs` — DPS meter commands (`meter_*`; `meter_start` is async and starts the engine on a blocking thread:
