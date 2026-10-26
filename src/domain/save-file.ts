@@ -1,6 +1,7 @@
 // Save-file rules: the default data and the migration of old or imported saves. Pure.
 import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
 import { cleanMap, emptyMap } from "./map.ts";
+import { cleanCollections } from "./pets.ts";
 import { seedTasks } from "./seed.ts";
 import type { AppData, Channel } from "./types.ts";
 
@@ -22,6 +23,7 @@ export function defaultData(): AppData {
     bossNames: {},
     arena: { matches: [], maps: {}, kills: [] },
     map: emptyMap(),
+    pets: {},
     undo: [],
     settings: {
       warnHours: { daily: 2, weekly: 12, monthly: 24 },
@@ -80,6 +82,7 @@ export function normalize(raw: any): AppData {
     arena: { matches: Array.isArray(raw.arena?.matches) ? raw.arena.matches : [], maps: raw.arena?.maps ?? {},
       kills: Array.isArray(raw.arena?.kills) ? raw.arena.kills.filter((k: any) => k?.other && Number.isFinite(k.atMs)) : [] },
     map: cleanMap(raw.map),
+    pets: cleanCollections(raw.pets),
     undo: Array.isArray(raw.undo) ? raw.undo : [],
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels },
   };

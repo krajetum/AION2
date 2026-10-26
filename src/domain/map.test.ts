@@ -188,10 +188,10 @@ test("soul kills: placed where the mob died, one per mob and spot, named by the 
   assert.deepEqual(m.pets.slice(2).map((d) => d.map ?? null), ["abyss", "elyos", null], "map 20 is the Abyss, 1010 Elyos; an arena on none");
   // Young Slink gives Slink soul points: named once, all its drops follow.
   m.souls["young slink"] = "Slink";
-  assert.equal(soulOf(m.souls, m.pets[1]), "Slink");
-  assert.deepEqual(petList(m.pets, "", m.souls).map((e) => [e.name, e.drops, e.mobs]), [["Slink", 5, ["Slink", "Young Slink"]]]);
-  assert.deepEqual(petList(m.pets, "young", m.souls).map((e) => e.name), ["Slink"], "a mob's name finds its soul");
-  assert.equal(petHome(m.pets, "slink", m.souls), "asmodian");
+  assert.equal(soulOf(m, m.pets[1]), "Slink");
+  assert.deepEqual(petList(m.pets, "", m).map((e) => [e.name, e.drops, e.mobs]), [["Slink", 5, ["Slink", "Young Slink"]]]);
+  assert.deepEqual(petList(m.pets, "young", m).map((e) => e.name), ["Slink"], "a mob's name finds its soul");
+  assert.equal(petHome(m.pets, "slink", m), "asmodian");
 });
 
 test("a friend's soul names fill in, yours stay", () => {
@@ -216,10 +216,10 @@ test("crystals: a named item's loots become drops, once each; renaming moves the
   assert.equal(takeLoots(m, loots, "Selphine", seen), false, "the meter resends them: nothing new");
   assert.equal(takeLoots(m, [l(1, 610531002, -17100, 3)], "Selphine", new Set()), false, "the same spot again adds nothing");
   m.items["610531002"] = "Agrint Crystal";
-  assert.equal(soulOf(m.souls, m.pets[0], m.items), "Agrint Crystal");
-  assert.deepEqual(petList(m.pets, "", m.souls, m.items).map((e) => [e.name, e.drops]), [["Agrint Crystal", 2]]);
+  assert.equal(soulOf(m, m.pets[0]), "Agrint Crystal");
+  assert.deepEqual(petList(m.pets, "", m).map((e) => [e.name, e.drops]), [["Agrint Crystal", 2]]);
   m.souls["mutated forest guardian"] = "Something";
-  assert.equal(soulOf(m.souls, m.pets[0], m.items), "Agrint Crystal", "a crystal is named by its item, not its mob");
+  assert.equal(soulOf(m, m.pets[0]), "Agrint Crystal", "a crystal is named by its item, not its mob");
 });
 
 test("kills and loots on a map not known yet wait until the meter fills it in", () => {

@@ -1,5 +1,6 @@
 import type { ArenaLog } from "./arena.ts";
 import type { MapData } from "./map.ts";
+import type { PetCollection } from "./pets.ts";
 import type { BossTimer } from "./meter.ts";
 
 export type Cadence = "daily" | "weekly" | "monthly";
@@ -94,6 +95,7 @@ export interface AppData {
   bossNames: Record<string, string>;     // world-map boss id → the player's name for a boss the game data doesn't name
   arena: ArenaLog;                    // arena matchup log (src/domain/arena.ts)
   map: MapData;                       // points on the player's own map image (src/domain/map.ts); the image stays out
+  pets: Record<string, PetCollection>; // character name → its pet collection as last read (src/domain/pets.ts)
   plan?: ActivePlan;
   undo: UndoEntry[]; // newest last, max 30 (src/undo.ts)
   settings: Settings;

@@ -74,6 +74,8 @@ pub struct Update {
     pub lost_packets: u64,
     /// Your mob kills that gave soul points since the meter started, with the mob's name.
     pub souls: Vec<SoulDrop>,
+    /// Your pet collection, from the last time the game's Pets menu opened since the meter started.
+    pub pets: Option<crate::pets::Collection>,
     /// Your loots since the meter started (the item and where the mob died), with the mob's name.
     pub loots: Vec<LootDrop>,
     /// Your PvP kills and deaths since the meter started (the last 50).
@@ -326,6 +328,7 @@ impl Engine {
                     SoulDrop { kill, mob_code, mob }
                 })
                 .collect(),
+            pets: crate::pets::latest(),
             loots: crate::souls::loots()
                 .into_iter()
                 .map(|loot| {
