@@ -284,6 +284,12 @@ input::placeholder { color: var(--faint); }
 .primary { background: var(--primary-fill); color: var(--primary-ink); font-weight: 600; }
 .primary:hover { background: color-mix(in srgb, var(--primary-fill) 85%, #fff); }
 .ghost { background: transparent; color: var(--muted); }
+/* An action that reads as a button: a border, a fill and an icon (export, import, show on map). */
+.act { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font-weight: 500; }
+.act:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--raised)); }
+.act svg { width: 16px; height: 16px; flex: none; }
+.act.strong { border-color: var(--accent); color: var(--accent); }
+.act:disabled { border-color: var(--border); color: var(--muted); }
 .ghost:hover { color: var(--text); background: var(--raised); }
 .ghost svg { width: 16px; height: 16px; vertical-align: -3px; }
 

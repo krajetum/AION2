@@ -371,11 +371,11 @@
           </details>
           <div class="btns">
             <button disabled={!pos || !petName} title={!pos ? "Needs your position from the meter (desktop app)" : !petName ? "Pick or type the soul first" : "Saves your position now, for kills the meter missed"}
-              onclick={dropHere}>Soul points here{petName ? `: ${petName}` : ""}</button>
+              class="act strong" onclick={dropHere}>{@html ICON.pin}Soul points here{petName ? `: ${petName}` : ""}</button>
           </div>
           <div class="btns">
-            <button class="ghost" disabled={!ui.data.map.pets.length} onclick={exportDrops}>Export drops</button>
-            <label class="btn ghost">Import a friend's drops <input type="file" accept="application/json,.json" hidden onchange={pickDrops}></label>
+            <button class="act" disabled={!ui.data.map.pets.length} title="Save every spot and name to a file in Downloads, to send to friends" onclick={exportDrops}>{@html ICON.download}Export drops</button>
+            <label class="btn act" title="Add the spots and names of a friend's exported file">{@html ICON.upload}Import a friend's drops <input type="file" accept="application/json,.json" hidden onchange={pickDrops}></label>
           </div>
         {/if}
       {/if}
@@ -415,7 +415,7 @@
       · {num(refs.length)} references{#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 with game coordinates{/if}
       · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if pos.mapId == null}<b>which map you are on is not known yet: open the game's map (M) once, or teleport</b>{:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{/if}</span>
     <span class="grow"></span>
-    <label class="btn ghost">Import your own {mapName(current)} map <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>
+    <label class="btn act">{@html ICON.upload}Import your own {mapName(current)} map <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>
     {#if custom && BUNDLED_IMAGE[current]}<button class="ghost" onclick={remove}>Back to the bundled map</button>{:else if custom}<button class="ghost" onclick={remove}>Remove the image</button>{/if}
   </div>
   {#if !custom && url}<p class="hint">Map: AION 2 © NCSOFT, from in-game screenshots (not covered by this app's license).</p>{/if}
