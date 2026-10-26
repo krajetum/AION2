@@ -33,7 +33,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   - `news.ts` — Steam feed parsing + read/unread cache; `save-file.ts` — default data + migration of old/imported saves
   - `meter.ts` — DPS meter update types (as the Rust engine sends them: fight, boss timers, Odyle energy, profile, last arena match), views (damage/healing/taken), number/HP formatting
   - `servers.ts` — server names by id (A2Tools' table), faction/region from the id, `gearUrl` (a player's profile on shugo.gg)
-  - `pets.ts` — your pet collection per character (`AppData.pets`, read when the game's Pets menu opens), soul points gained since
+  - `pets.ts` — your pet collection per character (`AppData.pets`, sent on entering the world: login or character select), soul points gained since
     (`addSoulPoints`: unlock at 5, level 2 at 25, level 3 at 75 more, the last), `petName` (the player's, else `pet-names.ts` = gamers4.life's 227 names, else the mob's, else "Pet #id"), `wanted`
   - `bosses.ts` — field-boss respawn timers from the maps opened in game, `bossLabel` (bosses the game data doesn't name: `KNOWN_BOSS_NAMES` for the Abyss ones the player identified, else the player names them, `AppData.bossNames`); `arena.ts` — arena matchup log, kill history (`logKills`), map names (`mapLabel`: the player's, `KNOWN_MAPS` 20 = Abyss, else "Map id")
   - `map.ts` — Map page: three maps (`MAPS`: Asmodian = bundled world map, `BUNDLED_FIT`, map id `WORLD_MAP_ID`; Elyos (Verteron) = bundled screenshot, map
@@ -60,7 +60,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   plus the player's marks, to a text file in Downloads, for finding new records such as hidden cubes) / `position.rs` (your position:
   map loads, teleports, your own buffs; the map id from map loads, or from the field-boss map `01 91` while none was seen) / `cubes.rs` (hidden cubes: object codes learned from openings, cubes in view,
   openings placed by their loot) / `souls.rs` (your mob kills that gave soul points, and your loots with their item code: loot owner `04 8d`,
-  loot place and item `1e 56`, points `0d 90`, every one also kept as a gain for the collection; the engine adds the mob's name) / `pets.rs` (your pet collection, `00 90` when the Pets menu opens: owned pets with level, soul points; the pet number is the soul points' kind) / `abyss_bosses.rs` (the Abyss's world bosses: on them, as on field bosses, the
+  loot place and item `1e 56`, points `0d 90`, every one also kept as a gain for the collection; the engine adds the mob's name) / `pets.rs` (your pet collection, `00 90` on entering the world (not on opening the Pets menu: in two recordings it came 4-6 s after the first map load and never again): owned pets with level, soul points; the pet number is the soul points' kind) / `abyss_bosses.rs` (the Abyss's world bosses: on them, as on field bosses, the
   server sends no one else's direct hits, so rows are you, your party and Others from the HP lost) / `kills.rs` (your PvP kills, assists and deaths: the last hit before a death, your hit within 15 s for an assist, from the PvP ledger) / `tap.rs` (all three on A2Tools' one-slot frame tap). Game patches renumber opcodes: update from A2Tools first.
 
 ## Rules

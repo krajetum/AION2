@@ -1,11 +1,11 @@
 <script lang="ts">
-  // Pets page: your pet collection as the game sent it when its Pets menu opened (src-tauri/meter/src/pets.rs),
+  // Pets page: your pet collection as the game sent it on entering the world (src-tauri/meter/src/pets.rs),
   // with the soul points gained since, and where each pet's soul points drop (the Map page's spots, by pet number).
   import { setPetName } from "../../app/map.ts";
   import { dropMap, MAPS, petOf, soulOf, worldMap, type MapKey } from "../../domain/map.ts";
   import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
   import { MAX_LEVEL, maxed, needed, petName, type Pet } from "../../domain/pets.ts";
-  import { act, commit } from "../actions.ts";
+  import { commit } from "../actions.ts";
   import { hm, num } from "../format.ts";
   import { ICON } from "../icons.ts";
   import { ui } from "../state.svelte.ts";
@@ -68,15 +68,15 @@
   }
 </script>
 
-<p class="hint dps-note">Your pets as the game sent them the last time you opened its Pets menu with the companion running, plus the soul
-  points your kills gave since. Open the Pets menu in game to refresh. The game sends numbers, not names: names come from the
-  gamers4.life database, else from the mob its soul points came from, and you can rename any. Level {MAX_LEVEL} is the last.</p>
+<p class="hint dps-note">Your pets as the game sent them when you last entered the world (login or character select) with the companion
+  running, plus the soul points your kills gave since. Changing character in game reads the whole collection again. The game sends numbers, not names:
+  names come from the gamers4.life database, else from the mob its soul points came from, and you can rename any. Level {MAX_LEVEL} is the last.</p>
 
-{#if !collection}<section class="empty-fight"><p class="hint">No collection read yet{me ? ` for ${me}` : ""}. Open the Pets menu in game with the companion running (desktop app).</p></section>
+{#if !collection}<section class="empty-fight"><p class="hint">No collection read yet{me ? ` for ${me}` : ""}. Log in or change character in game with the companion running (desktop app).</p></section>
 {:else}
 {#if unlinked}<p class="hint">{num(unlinked)} spot{unlinked === 1 ? "" : "s"} on the map {unlinked === 1 ? "has" : "have"} no pet number
-  (recorded with an app older than this page, often a friend's file): {unlinked === 1 ? "it shows" : "they show"} on the map but not here.
-  Ask your friend to update the app and export again; kills recorded from then on carry the number.</p>{/if}
+  (recorded with an app older than this page, in a friend's file or in the spots shared with the app): {unlinked === 1 ? "it shows" : "they show"} on the map but not here.
+  A mob's name alone does not tell its pet (Young Slink and Slink are two); kills recorded from now on carry the number.</p>{/if}
 <section class="dps-table pets-page">
   <h2>{me} <span class="count">{num(owned)} owned · {num(full)} at level {MAX_LEVEL} · read {hm(collection.atMs)}</span></h2>
   <div class="map-tools">

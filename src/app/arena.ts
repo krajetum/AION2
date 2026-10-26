@@ -19,7 +19,7 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   const kills = logKills(data.arena, u.kills ?? []) > 0;
   const souls = !!u.souls?.length && takeSouls(data.map, u.souls, u.profile?.name ?? "");
   const loots = !!u.loots?.length && takeLoots(data.map, u.loots, u.profile?.name ?? "", seenLoots);
-  // The collection read when the Pets menu opened, then the soul points gained since (per character).
+  // The collection read on entering the world, then the soul points gained since (per character).
   const me = u.profile?.name ?? "";
   const read = !!u.pets && takeCollection(data.pets, me, u.pets);
   // Every soul point counts, placed on the map or not (an older meter sends only the placed ones).

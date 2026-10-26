@@ -1,4 +1,4 @@
-// Your pet collection (src-tauri/meter/src/pets.rs: read when the game's Pets menu opens) and the rules around it.
+// Your pet collection (src-tauri/meter/src/pets.rs: sent on entering the world: login or character select) and the rules around it.
 // Pure. A pet is a number (the game sends no names); the soul points' kind of a kill is the same number, so the
 // map's spots and the collection meet on it.
 //

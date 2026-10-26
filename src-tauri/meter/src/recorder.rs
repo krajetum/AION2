@@ -5,7 +5,8 @@
 //! of the traffic. Nothing is sent anywhere; the file stays on the player's disk.
 //!
 //! File format, one entry per line:
-//! `# ...` header, `F <ms> <frame hex>` a frame, `M <ms> <label>` a mark;
+//! `# ...` header, `F <ms> <frame hex>` a frame, `E <ms> <frame hex>` a frame from a bundle inside another
+//! packet (which the parser only scans for identity, `tap::embedded`), `M <ms> <label>` a mark;
 //! `<ms>` counts from the start of the recording.
 
 use parking_lot::Mutex;
@@ -79,10 +80,19 @@ impl<W: Write> Recording<W> {
 
     /// A game frame (its length varint, 2-byte type and body, as the parser reads it).
     pub fn frame(&mut self, frame: &[u8]) {
+        self.frame_as('F', frame);
+    }
+
+    /// A frame from a bundle inside another packet (`E` lines).
+    pub fn embedded(&mut self, frame: &[u8]) {
+        self.frame_as('E', frame);
+    }
+
+    fn frame_as(&mut self, kind: char, frame: &[u8]) {
         if !self.status.recording {
             return;
         }
-        let mut text = format!("F {} ", self.ms());
+        let mut text = format!("{kind} {} ", self.ms());
         text.reserve(frame.len() * 2 + 1);
         for b in frame {
             text.push_str(&format!("{b:02x}"));
@@ -150,6 +160,13 @@ pub fn frame(frame: &[u8]) {
     }
 }
 
+/// A frame from a bundle inside another packet (`crate::tap::embedded`).
+pub fn embedded(frame: &[u8]) {
+    if let Some(r) = CURRENT.lock().as_mut() {
+        r.embedded(frame);
+    }
+}
+
 pub fn mark(label: &str) {
     if let Some(r) = CURRENT.lock().as_mut() {
         r.mark(label);
@@ -185,13 +202,15 @@ mod tests {
         let mut r = Recording::new(Vec::new(), None, MAX_TIME, MAX_BYTES).unwrap();
         r.frame(&[0x05, 0x41, 0x36, 0x0a, 0xff]);
         r.mark("cube\nheard");
+        r.embedded(&[0x0f, 0x00, 0x90]);
         let t = text(&r);
         let lines: Vec<&str> = t.lines().filter(|l| !l.starts_with('#')).collect();
-        assert_eq!(lines.len(), 2);
+        assert_eq!(lines.len(), 3);
+        assert!(lines[2].starts_with("E ") && lines[2].ends_with(" 0f0090"), "{}", lines[2]);
         assert!(lines[0].starts_with("F ") && lines[0].ends_with(" 0541360aff"), "{}", lines[0]);
         assert!(lines[1].starts_with("M ") && lines[1].ends_with(" cube heard"), "{}", lines[1]);
         let s = r.status();
-        assert_eq!((s.recording, s.frames, s.marks, s.bytes), (true, 1, 1, t.len() as u64));
+        assert_eq!((s.recording, s.frames, s.marks, s.bytes), (true, 2, 1, t.len() as u64));
     }
 
     #[test]

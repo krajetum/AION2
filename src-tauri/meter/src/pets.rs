@@ -1,4 +1,6 @@
-//! Your pet collection, as the game sends it when its Pets menu opens (companion code). From the packet
+//! Your pet collection, as the game sends it on entering the world (companion code). Not on opening the Pets
+//! menu: in the recordings of 2026-10-26 11:14 and 12:05 it came once, 4-6 s after the first map load (`21 36`),
+//! and never again in 4-7 minutes, the menu opened in the second. From the packet
 //! recording of 2026-10-26 12:05, checked against what the player read in the menu (Unstable Spider 55/75,
 //! Armadon 39/75, a Lesser Fire Spirit 19/25, no Skama):
 //!

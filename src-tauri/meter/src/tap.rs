@@ -17,3 +17,12 @@ pub fn install() {
         })));
     });
 }
+
+/// A frame from a compressed bundle inside another packet, which A2Tools' parser opens only for your identity
+/// (`scan_embedded_bundles_for_identity`). The game sends some records this way, later copies of `33 36` among
+/// them, so they may be copies of frames also read normally: only the pet collection, where a copy changes
+/// nothing, is read from them; the recorder writes them all (`E` lines) to find out what else comes this way.
+pub fn embedded(frame: &[u8]) {
+    crate::pets::observe(frame, crate::clock::now_ms());
+    crate::recorder::embedded(frame);
+}

@@ -347,7 +347,7 @@
           <button class:on={layer === "pets"} aria-pressed={layer === "pets"} onclick={() => { layer = "pets"; selected = ""; }}>Pets</button></div>
         {#if layer === "pets"}
           <input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query}>
-          <label class="toggle-line" title={collection ? "Hides the spots of pets you have at level 3 (Pets page)" : "Open the Pets menu in game once, with the companion running"}>
+          <label class="toggle-line" title={collection ? "Hides the spots of pets you have at level 3 (Pets page)" : "Log in or change character in game once, with the companion running"}>
             <input type="checkbox" bind:checked={onlyWanted} disabled={!collection} onchange={() => { if (onlyWanted) { pet = ""; selectedDrop = ""; } }}> Only pets still to collect</label>
           {#if active}<button class="ghost showing" title="Show every soul's spots" onclick={() => { pet = ""; selectedDrop = ""; }}>Showing: {active} ✕</button>{/if}
           <ul class="pet-list" aria-label="Pets">
