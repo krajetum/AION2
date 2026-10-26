@@ -187,7 +187,10 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
             if s.gains.len() >= MAX_GAINS {
                 s.gains.pop_front();
             }
-            s.gains.push_back(Gain { kind, points, at_ms: now_ms });
+            // Strictly increasing times: the collection counts the gains after the last one it took (by time),
+            // and several kills in one batch (an area attack) arrive in the same millisecond.
+            let at_ms = s.gains.back().map_or(now_ms, |g| now_ms.max(g.at_ms + 1));
+            s.gains.push_back(Gain { kind, points, at_ms });
             s.waiting.retain(|w| now_ms - w.2 <= POINTS_WITHIN_MS);
             // The oldest kill still waiting: points come in the order of the kills.
             let (entity, [x, y, z], _) = s.waiting.pop_front()?;
@@ -259,6 +262,17 @@ mod tests {
         read(&mut s, &hex("0f0d90014904000001000000"), 0, None, 2_000);
         assert!(s.kills.is_empty());
         assert_eq!(s.gains.iter().map(|g| (g.kind, g.points, g.at_ms)).collect::<Vec<_>>(), [(1121, 1, 1_000), (1097, 1, 2_000)]);
+    }
+
+    /// Three mobs killed by one area attack: three gains in the same millisecond, each counted.
+    #[test]
+    fn gains_in_the_same_millisecond_get_their_own_times() {
+        let mut s = State::default();
+        for _ in 0..3 {
+            read(&mut s, &hex("0f0d90016104000001000000"), ME, None, 1_000);
+        }
+        read(&mut s, &hex("0f0d90016104000001000000"), ME, None, 1_001);
+        assert_eq!(s.gains.iter().map(|g| g.at_ms).collect::<Vec<_>>(), [1_000, 1_001, 1_002, 1_003]);
     }
 
     #[test]

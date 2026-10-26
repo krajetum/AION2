@@ -1,4 +1,4 @@
-// Your pet collection (src-tauri/meter/src/pets.rs: read when the game's Pets menu opens) and the rules around it.
+// Your pet collection (src-tauri/meter/src/pets.rs: sent on entering the world: login or character select) and the rules around it.
 // Pure. A pet is a number (the game sends no names); the soul points' kind of a kill is the same number, so the
 // map's spots and the collection meet on it.
 //
@@ -61,6 +61,19 @@ export function addSoulPoints(c: PetCollection, gains: SoulGain[]): boolean {
     if (maxed(p)) p.points = 0;
   }
   return changed;
+}
+
+/**
+ * The player's correction of a pet (the game's Pets menu shows the truth; a soul point the capture missed, or one
+ * from outside a kill, leaves the count behind): level 0-3, points within the level (none at the last).
+ * The collection keeps its time, so soul points gained after it still add up.
+ */
+export function setPet(c: PetCollection, id: number, level: number, points: number) {
+  const lv = Math.min(MAX_LEVEL, Math.max(0, Math.trunc(level) || 0));
+  let p = c.pets.find((p) => p.id === id);
+  if (!p) c.pets.push((p = { id, level: 0, points: 0 }));
+  p.level = lv;
+  p.points = lv >= MAX_LEVEL ? 0 : Math.min(needed(p) - 1, Math.max(0, Math.trunc(points) || 0));
 }
 
 /** The collection a new read replaces, unless it is older than the one kept. Returns true if it was taken. */
