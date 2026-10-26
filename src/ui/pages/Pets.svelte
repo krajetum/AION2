@@ -6,6 +6,7 @@
   import { MAX_LEVEL, maxed, needed, petName, type Pet } from "../../domain/pets.ts";
   import { act, commit } from "../actions.ts";
   import { hm, num } from "../format.ts";
+  import { ICON } from "../icons.ts";
   import { ui } from "../state.svelte.ts";
 
   type Filter = "wanted" | "all" | "maxed";
@@ -79,7 +80,7 @@
           <td>{#if maxed(p)}<span class="dim">done</span>{:else}<span class="pet-progress"><span class="bar" style:--p={share(p)}><i></i></span>
             <span class="num">{p.points}/{needed(p)}</span></span>{/if}</td>
           <td class="num">{n || ""}</td>
-          <td>{#if n}<button class="ghost" onclick={() => showOnMap(p.id)}>Map</button>{/if}</td>
+          <td>{#if n}<button class="act" title="Open the map on this pet's spots" onclick={() => showOnMap(p.id)}>{@html ICON.map}Show on map</button>{/if}</td>
         </tr>
       {:else}<tr><td colspan="6" class="hint">{query.trim() ? "No pet matches." : filter === "wanted" ? "Every pet you own is at level 3." : "Nothing here."}</td></tr>{/each}
     </tbody>
