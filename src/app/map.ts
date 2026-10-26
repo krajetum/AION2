@@ -1,5 +1,5 @@
 // Map page use cases: points on the map images (cube spots and references), pets' soul point drops.
-import { mergeDrops, type MapKey, type MapPoint, type PetDrop, type PointKind, type SoulNames } from "../domain/map.ts";
+import { mergeDrops, type FileNames, type MapKey, type MapPoint, type PetDrop, type PointKind, type SoulNames } from "../domain/map.ts";
 import type { AppData } from "../domain/types.ts";
 import { seenLoots } from "./arena.ts";
 
@@ -41,7 +41,7 @@ export function deleteDrop(data: AppData, id: string) {
   data.map.pets = data.map.pets.filter((d) => d.id !== id);
 }
 /** Friends' drops (and their soul names) into yours; returns how many drops were new. */
-export const importDrops = (data: AppData, drops: PetDrop[], souls: SoulNames, items: SoulNames = {}) => mergeDrops(data.map, drops, souls, items);
+export const importDrops = (data: AppData, drops: PetDrop[], names: Partial<FileNames>) => mergeDrops(data.map, drops, names);
 /** Names an item code as a crystal / shard of a soul (empty = not one); this session's loots of it are looked at again. */
 export function setItemSoul(data: AppData, item: number, soul: string) {
   if (soul.trim()) data.map.items[String(item)] = soul.trim();
