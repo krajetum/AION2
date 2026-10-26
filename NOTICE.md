@@ -16,6 +16,11 @@ It is distributed WITHOUT ANY WARRANTY; see `LICENSE` for the full text.
 - **Class emblems** (`src/ui/classes/*.png`): from A2Tools DPS Meter (`public/assets/`, GPL-3.0 repository),
   renamed to the English class names. The art itself is the game's (NCSOFT).
 
+## Data from other sources
+
+- **Pet names** (`src/domain/pet-names.ts`): pet number → name for 227 pets, from the gamers4.life AION 2 database
+  (https://gamers4.life/aion-2/database/en/pet/), saved 2026-10-26. The names are the game's (NCSOFT).
+
 ## NCSOFT material, not under GPL-3.0
 
 - **World map** (`src/assets/ncsoft/world-map.webp`): stitched from AION 2 screenshots, © NCSOFT.

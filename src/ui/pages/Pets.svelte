@@ -3,6 +3,7 @@
   // with the soul points gained since, and where each pet's soul points drop (the Map page's spots, by pet number).
   import { setPetName } from "../../app/map.ts";
   import { dropMap, MAPS, petOf, soulOf, worldMap, type MapKey } from "../../domain/map.ts";
+  import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
   import { MAX_LEVEL, maxed, needed, petName, type Pet } from "../../domain/pets.ts";
   import { act, commit } from "../actions.ts";
   import { hm, num } from "../format.ts";
@@ -34,10 +35,11 @@
     }
     return by;
   });
-  // Owned pets, and pets not owned that have spots (seen dropping soul points).
+  // Owned pets, and the ones not owned: every pet of the database (pet-names.ts) and any other with spots.
   const rows = $derived.by(() => {
     const out: Pet[] = [...(collection?.pets ?? [])];
-    for (const id of spots.keys()) if (!out.some((p) => p.id === id)) out.push({ id, level: 0, points: 0 });
+    const ids = new Set([...spots.keys(), ...Object.keys(KNOWN_PET_NAMES).map(Number)]);
+    for (const id of ids) if (!out.some((p) => p.id === id)) out.push({ id, level: 0, points: 0 });
     const q = query.trim().toLowerCase();
     return out
       .filter((p) => shows(filter, p) && placed(where, p.id))
@@ -67,8 +69,8 @@
 </script>
 
 <p class="hint dps-note">Your pets as the game sent them the last time you opened its Pets menu with the companion running, plus the soul
-  points your kills gave since. Open the Pets menu in game to refresh. The game sends numbers, not names: a pet is named after the mob
-  its soul points came from, and you can rename it. Level {MAX_LEVEL} is the last.</p>
+  points your kills gave since. Open the Pets menu in game to refresh. The game sends numbers, not names: names come from the
+  gamers4.life database, else from the mob its soul points came from, and you can rename any. Level {MAX_LEVEL} is the last.</p>
 
 {#if !collection}<section class="empty-fight"><p class="hint">No collection read yet{me ? ` for ${me}` : ""}. Open the Pets menu in game with the companion running (desktop app).</p></section>
 {:else}

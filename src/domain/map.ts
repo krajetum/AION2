@@ -1,6 +1,7 @@
 // Map page rules (src/ui/pages/Map.svelte): points the player puts on their own map image, clusters
 // for zoomed-out views, pan/zoom math, and the fit from game coordinates to image pixels.
 // Pure, no DOM. The image itself is never in the save file (infra/map-image.ts keeps it local).
+import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 /** The maps the page offers: one image each, with its own points and fit. */
 export type MapKey = "asmodian" | "elyos" | "abyss";
@@ -42,11 +43,12 @@ export type SoulNames = Record<string, string>;
 /** The names the player gave: mob → soul (`souls`), item → crystal's soul (`items`), pet number → name (`petNames`). */
 export interface Naming { souls: SoulNames; items?: SoulNames; petNames?: SoulNames }
 /**
- * The soul a drop is of: a crystal's as its item is named now; a kill's as its pet number is named, else as its
- * mob is named now; else the name it was recorded with.
+ * The soul a drop is of: a crystal's as its item is named now; a kill's as the player named its pet number, else
+ * its mob, else as the database names its pet number (pet-names.ts); else the name it was recorded with.
  */
 export const soulOf = (n: Naming, d: PetDrop): string =>
-  (d.item != null ? n.items?.[String(d.item)] : (d.kind != null && n.petNames?.[String(d.kind)]) || (d.mob && n.souls[d.mob.toLowerCase()])) || d.pet;
+  (d.item != null ? n.items?.[String(d.item)]
+    : (d.kind != null && n.petNames?.[String(d.kind)]) || (d.mob && n.souls[d.mob.toLowerCase()]) || (d.kind != null && KNOWN_PET_NAMES[d.kind])) || d.pet;
 /** The pet number of a drop: the soul points' kind it came with, else the kind its mob was seen with (`kinds`). */
 export function petOf(d: PetDrop, kinds: SoulNames): number | null {
   if (d.kind != null) return d.kind;

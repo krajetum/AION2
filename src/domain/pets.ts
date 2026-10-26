@@ -7,6 +7,7 @@
 // collection no level 1 pet had more than 24 points, no level 2 pet more than 66, and every level 3 pet 0.
 
 import type { SoulNames } from "./map.ts";
+import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 export interface Pet { id: number; level: number; points: number }
 export interface PetCollection { pets: Pet[]; atMs: number }
@@ -69,8 +70,9 @@ export function takeCollection(all: Record<string, PetCollection>, name: string,
   return true;
 }
 
-/** A pet's name: the player's, else the mob its soul points were seen with, else its number. */
-export const petName = (id: number, petNames: SoulNames, kinds: SoulNames) => petNames[String(id)] || kinds[String(id)] || `Pet #${id}`;
+/** A pet's name: the player's, else the database's (pet-names.ts), else the mob its soul points were seen with, else its number. */
+export const petName = (id: number, petNames: SoulNames, kinds: SoulNames) =>
+  petNames[String(id)] || KNOWN_PET_NAMES[id] || kinds[String(id)] || `Pet #${id}`;
 
 /** Whether a pet number still needs soul points (not owned, or below the last level): what "unobtained" shows. */
 export const wanted = (c: PetCollection | undefined, id: number) => !maxed(c?.pets.find((p) => p.id === id));
