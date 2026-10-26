@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, takeLoots, takeSouls, soulOf, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
 import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
@@ -234,4 +234,22 @@ test("kills and loots on a map not known yet wait until the meter fills it in", 
   const l = (mapId: number | null): LootKill => ({ entity: 9, item: 610531002, x: 0, y: 0, z: 0, mapId, atMs: 3, mob: "Mutated Elim" });
   assert.equal(takeLoots(m, [l(null)], "Leo", seen), false);
   assert.equal(takeLoots(m, [l(20)], "Leo", seen), true, "looked at again once known");
+});
+
+test("kills whose mob was not seen spawning are named by their kind, now or once a named one shows it", () => {
+  // The recording of 2026-10-26 11:29: 8 kills in Verteron, 5 with the spawn unseen.
+  const m = emptyMap();
+  const k = (entity: number, kind: number, mob: string, x: number, atMs: number): SoulKill =>
+    ({ entity, x, y: 0, z: 0, mapId: 1010, kind, points: 1, atMs, mob });
+  takeSouls(m, [k(47337, 1045, "", 0, 1), k(22001, 1097, "", 5000, 2)], "Randronirk");
+  assert.deepEqual(m.pets.map((d) => d.mob), [unknownMob(1045), unknownMob(1097)], "kept, not dropped");
+  takeSouls(m, [k(40080, 1097, "Highland Karnif", 9000, 3), k(27012, 1097, "", 13000, 4)], "Randronirk");
+  assert.deepEqual(m.pets.map((d) => [d.mob, d.pet]), [
+    [unknownMob(1045), unknownMob(1045)], ["Highland Karnif", "Highland Karnif"], ["Highland Karnif", "Highland Karnif"], ["Highland Karnif", "Highland Karnif"],
+  ], "the earlier unnamed Karnif renamed, the later one named at once");
+  assert.equal(m.kinds["1097"], "Highland Karnif");
+  m.souls["highland sylphen"] = "Sylphen";
+  takeSouls(m, [k(18212, 1045, "Highland Sylphen", 20000, 5)], "Randronirk");
+  assert.equal(m.pets[0].mob, "Highland Sylphen");
+  assert.equal(m.pets[0].pet, "Sylphen", "renamed to the soul named for its mob");
 });

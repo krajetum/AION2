@@ -37,7 +37,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   - `map.ts` — Map page: three maps (`MAPS`: Asmodian = bundled world map, `BUNDLED_FIT`, map id `WORLD_MAP_ID`; Elyos (Verteron) = bundled screenshot, map
     id 1010, `ELYOS_FIT` from a recorded walk; an id no map claims, or an unknown map (null), is on none (`onMap`); Abyss = bundled screenshot, map id 20, `ABYSS_FIT` from 3 recorded spots), points per map, clusters,
     pan/zoom math, game→pixel affine fit (the player's references per map override the bundled one); pets' soul point drops (`PetDrop`:
-    from the meter's soul kills (`takeSouls`, one per mob and spot) and your loots of an item the player named as a pet's crystal
+    from the meter's soul kills (`takeSouls`, one per mob and spot; a mob not seen spawning named by its soul kind, `kinds`) and your loots of an item the player named as a pet's crystal
     (`takeLoots`, `items`: a finished collection drops a crystal instead of soul points), "Soul points here" or a click; `souls` = mob → soul as the player
     named it (`soulOf`), shared as a `dropsFile` with the names and merged by id, `petList` search by soul or mob, `petHome`); cubes found and
     cube codes learned (`takeCubes`, `KNOWN_CUBE_CODES`), `bearing` / `climb` for the cube popup, `onRadar` for the radar

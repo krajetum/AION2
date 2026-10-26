@@ -51,6 +51,7 @@ export interface MapData {
   cubeCodes: number[];  // object codes known to be hidden cubes (learned from openings)
   pets: PetDrop[];      // soul point drops recorded here or imported from friends' files
   souls: SoulNames;     // mob → the soul its kills give
+  kinds: SoulNames;     // soul points' kind → the mob it was seen with (names kills whose mob was not seen spawning)
   items: SoulNames;     // item code → the soul it is a crystal / shard of (looted once a pet's collection is done)
   soulsSeenMs: number;  // the meter's soul kills up to this time are taken
 }
@@ -64,7 +65,7 @@ const MAX_FOUND = 2000;
 /** Spawn-group colors, picked to stay apart on the map's greens, browns and blues. */
 export const GROUP_COLORS = ["#ff5a5f", "#ffb020", "#f5f05a", "#4fe08a", "#3fd6ff", "#5a8bff", "#c46bff", "#ff6bd0"];
 
-export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, soulsSeenMs: 0 });
+export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, kinds: {}, soulsSeenMs: 0 });
 
 /** A saved or imported map section, cleaned: bad points are dropped, not guessed. */
 export function cleanMap(raw: any): MapData {
@@ -83,7 +84,7 @@ export function cleanMap(raw: any): MapData {
     .map((f: any): FoundCube => ({ x: f.x, y: f.y, z: f.z, code: ok(f.code) ? f.code : null, atMs: f.atMs, byYou: !!f.byYou, ...(ok(f.mapId) && { mapId: f.mapId }) }));
   const codes = (Array.isArray(raw?.cubeCodes) ? raw.cubeCodes : []).filter((c: unknown) => Number.isInteger(c) && (c as number) > 0);
   return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets: cleanDrops(raw?.pets),
-    souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0 };
+    souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds: cleanSoulNames(raw?.kinds), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0 };
 }
 
 export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss";
@@ -313,13 +314,20 @@ export function readDropsFile(raw: any): { drops: PetDrop[]; souls: SoulNames; i
 }
 
 /** A kill of yours that gave soul points, as the meter sends it (src/domain/meter.ts `SoulDrop`). */
-export interface SoulKill { entity: number; x: number; y: number; z: number; mapId: number | null; points: number; atMs: number; mob: string }
+export interface SoulKill { entity: number; x: number; y: number; z: number; mapId: number | null; kind?: number; points: number; atMs: number; mob: string }
+/**
+ * The name a kill gets while its mob is not known (its spawn unseen: it was in view before the meter ran).
+ * The soul points' kind is the same for every kill of one mob (Highland Karnif 1097, Highland Sylphen 1045 in
+ * the recording of 2026-10-26 11:29), so the first kill of a known mob of that kind names them all.
+ */
+export const unknownMob = (kind: number) => `Unknown mob #${kind}`;
 /** Kills of one mob closer than this (game units, ~15 m) to one already saved add nothing: the map shows where, not how many. */
 export const NEAR_DROP = 1500;
 
 /**
- * The meter's soul kills into the drops: those after `soulsSeenMs` whose mob is known (a mob seen spawning),
- * one per mob and spot, on the page map of their game map. Ids come from the kill, so a kill taken twice, or
+ * The meter's soul kills into the drops: those after `soulsSeenMs`, one per mob and spot, on the page map of their
+ * game map. A kill whose mob was not seen spawning is named by its kind (`kinds`, else `unknownMob`), and a later
+ * kill of a known mob of the same kind renames those. Ids come from the kill, so a kill taken twice, or
  * merged back from a friend's copy of your file, is one drop. Returns true if anything changed.
  */
 export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean {
@@ -329,7 +337,16 @@ export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean 
     if (k.mapId == null) break; // the meter fills it in once it learns the map: these and later ones wait
     map.soulsSeenMs = k.atMs;
     changed = true;
-    const mob = k.mob.trim();
+    let mob = k.mob.trim();
+    if (mob && k.kind != null && map.kinds[String(k.kind)] !== mob) {
+      map.kinds[String(k.kind)] = mob;
+      const placeholder = unknownMob(k.kind);
+      for (const d of map.pets.filter((d) => d.mob === placeholder)) {
+        d.mob = mob;
+        if (d.pet === placeholder) d.pet = map.souls[mob.toLowerCase()] || mob;
+      }
+    }
+    if (!mob && k.kind != null) mob = map.kinds[String(k.kind)] || unknownMob(k.kind);
     if (!mob) continue;
     const page = MAPS.find((m) => onMap(k.mapId, m.key))?.key;
     const near = map.pets.some((d) => d.mob?.toLowerCase() === mob.toLowerCase() && dropMap(d) === page && Math.hypot(d.x - k.x, d.y - k.y) < NEAR_DROP);
