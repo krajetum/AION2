@@ -1,6 +1,9 @@
-# Every merge into main (or "Run workflow" in Actions, which can pick minor/major) -> bumps the version in package.json,
-# commits and tags it, builds the Windows installer, signs it and publishes a GitHub Release with latest.json,
-# which installed apps read to update themselves. Pushes made with GITHUB_TOKEN don't re-trigger this workflow.
+# The only workflow; nothing runs on branches or pull requests (run npm test / npm run check locally before merging).
+# Every merge into main (or "Run workflow" in Actions, which can pick minor/major) -> checks, then:
+# - server: if server/ changed, applies the D1 migrations and deploys the Cloudflare Worker (no app version bump);
+# - release: if anything else changed, bumps the version in package.json, commits and tags it, builds the Windows
+#   installer, signs it and publishes a GitHub Release with latest.json, which installed apps read to update themselves.
+# Pushes made with GITHUB_TOKEN don't re-trigger this workflow.
 name: release
 on:
   push:
@@ -19,7 +22,62 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.changes.outputs.app }}
+      server: ${{ steps.changes.outputs.server }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit
+      - run: npx tsc -p server
+      - run: npm run check
+      - name: What changed
+        id: changes
+        shell: bash
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Manual run, first push, or a "before" commit no longer in history (force push): do both.
+          if [ "${{ github.event_name }}" != push ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+            echo "server=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(git diff --name-only "$BEFORE" "$GITHUB_SHA" | grep -v '\.md$' || true) # .md alone never releases
+          echo "$files"
+          if echo "$files" | grep -qv '^server/'; then app=true; else app=false; fi
+          if echo "$files" | grep -q '^server/'; then server=true; else server=false; fi
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+          echo "server=$server" >> "$GITHUB_OUTPUT"
+
+  server:
+    needs: check
+    if: needs.check.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          wranglerVersion: "4.149.0"
+          workingDirectory: server
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: |
+            d1 migrations apply aion2 --remote
+            deploy
+
   release:
+    needs: check
+    if: needs.check.outputs.app == 'true'
     runs-on: windows-latest
     permissions:
       contents: write
@@ -31,6 +89,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      # Before the bump: a failing parser test creates no commit and no tag.
+      - run: cargo test -p aion2-meter
+        working-directory: src-tauri
       - name: Bump version, commit and tag
         shell: bash
         run: |
@@ -50,10 +115,6 @@ jobs:
             sleep $((try * 5))
           done
           exit 1
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
       - run: npm ci
       - uses: tauri-apps/tauri-action@v0
         env:

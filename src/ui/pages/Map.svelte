@@ -8,7 +8,7 @@
   // the bundled image's own, or the player's references (3+ with game coordinates).
   import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import {
-    applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, onMap, petHome, petList,
+    applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, mapOf, onMap, petHome, petList,
     lootKind, petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
   } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
@@ -72,6 +72,9 @@
   }
   // Hidden cubes from the meter: opened ones (saved, game units) and the ones in view now.
   const found = $derived(size.w && layer === "cubes" ? ui.data.map.found.filter((f) => foundOn(f, current)).map((f) => ({ f, s: shown(f.x, f.y) })).filter((v) => v.s) : []);
+  // Spots other players reported (src/app/crowd.ts), on this page map.
+  const sharedHere = $derived(ui.data.map.shared.filter((c) => mapOf(c.mapId) === current));
+  const shared = $derived(size.w && layer === "cubes" ? sharedHere.map((c) => ({ c, s: shown(c.x, c.y) })).filter((v) => v.s) : []);
   const live = $derived(size.w && layer === "cubes" && here ? (ui.meter?.cubes?.live ?? []).map((c) => ({ c, s: shown(c.x, c.y) })).filter((v) => v.s) : []);
   const when = (t: number) => new Date(t).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
@@ -327,6 +330,8 @@
         onpointerdown={(e) => e.stopPropagation()} onclick={() => open(c)}>{c.points.length > 1 ? c.points.length : ""}</button>{/each}
     {#each found as { f, s: at } (f.x + ":" + f.y)}<div class="found" style:left="{at!.x}px" style:top="{at!.y}px"
       title="Hidden cube opened here · {when(f.atMs)}{f.byYou ? ' · by you' : ''}"></div>{/each}
+    {#each shared as { c, s: at } (c.mapId + ":" + c.x + ":" + c.y)}<div class="found shared" style:left="{at!.x}px" style:top="{at!.y}px"
+      title="Hidden cube · reported by {c.n} players"></div>{/each}
     {#each live as { c, s: at } (c.entity)}<div class="live-cube" style:left="{at!.x}px" style:top="{at!.y}px" title="Hidden cube in view"></div>{/each}
     {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!active} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
       aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
@@ -415,7 +420,7 @@
 
   <div class="map-foot">
     <span class="hint">{mapName(current)} map ·
-      {#if layer === "cubes"}{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(ui.data.map.found.filter((f) => foundOn(f, current)).length)} cubes found{#if live.length}{" "}· <b class="live-count">{live.length} in view</b>{/if}
+      {#if layer === "cubes"}{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(ui.data.map.found.filter((f) => foundOn(f, current)).length)} cubes found{#if sharedHere.length} · {num(sharedHere.length)} from other players{/if}{#if live.length}{" "}· <b class="live-count">{live.length} in view</b>{/if}
       {:else}{num(onThisMap.length)} soul point spots here · {num(drops.length)} in all{/if}
       · {num(refs.length)} references{#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 with game coordinates{/if}
       · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if pos.mapId == null}<b>which map you are on is not known yet: open the game's map (M) once, or teleport</b>{:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{/if}</span>

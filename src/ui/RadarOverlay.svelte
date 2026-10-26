@@ -3,7 +3,7 @@
   // cubes around you, north up, centred on you, to lay over the game's minimap. Found cubes of the map you are on (purple),
   // cubes in view now (shining), the map under it if wanted. A normal always-on-top window: it never
   // touches the game's own minimap. Drag it into place and size it by its edges.
-  import { applyAffine, mapOf, onRadar, WORLD_MAP_ID, type Affine, type FoundCube, type MapKey, type MapPoint } from "../domain/map.ts";
+  import { applyAffine, mapOf, onRadar, WORLD_MAP_ID, type Affine, type FoundCube, type MapKey, type MapPoint, type SharedCube } from "../domain/map.ts";
   import type { MeterUpdate } from "../domain/meter.ts";
   import type { Settings } from "../domain/types.ts";
   import { loadMapImage } from "../infra/map-image.ts";
@@ -15,8 +15,8 @@
   $effect(() => onMeter((x) => { u = x; }));
   let w = $state(220), h = $state(220);
 
-  // From the save file (refreshed): settings, cubes found, the points (for the fit).
-  let settings = $state<Settings | undefined>(), found = $state<FoundCube[]>([]), points = $state<MapPoint[]>([]);
+  // From the save file (refreshed): settings, cubes found and from other players, the points (for the fit).
+  let settings = $state<Settings | undefined>(), found = $state<FoundCube[]>([]), shared = $state<SharedCube[]>([]), points = $state<MapPoint[]>([]);
   // The page map you are on (before any map load says, the world map), its image and whether it is imported.
   const pos = $derived(u?.position ?? null);
   // Unknown until a map load or the game's map (M) names it (position.rs): no map is guessed.
@@ -29,6 +29,7 @@
       const d = await loadData();
       settings = d.settings;
       found = d.map.found;
+      shared = d.map.shared;
       points = d.map.points;
     } catch { /* keep what is shown */ }
   }
@@ -55,8 +56,9 @@
     if (!pos) return [];
     const seen = [...found.filter(here), ...(u?.cubes?.opened ?? [])];
     return [
-      ...seen.map((c) => ({ at: onRadar(pos, c, range, r), live: false })),
-      ...(u?.cubes?.live ?? []).map((c) => ({ at: onRadar(pos, c, range, r), live: true })),
+      ...seen.map((c) => ({ at: onRadar(pos, c, range, r), live: false, shared: false })),
+      ...shared.filter((c) => c.mapId === pos.mapId).map((c) => ({ at: onRadar(pos, c, range, r), live: false, shared: true })),
+      ...(u?.cubes?.live ?? []).map((c) => ({ at: onRadar(pos, c, range, r), live: true, shared: false })),
     ].filter((d) => d.at);
   });
   // The map under the radar: image pixels scaled to the radar's units, you at the centre.
@@ -72,7 +74,7 @@
 <div class="radar" class:round={settings?.radarRound !== false} data-tauri-drag-region>
   {#if backdrop && image}<img class="radar-map" src={image} alt="" draggable="false" style:transform={backdrop}>{/if}
   <span class="radar-n" data-tauri-drag-region>N</span>
-  {#each dots as d}<i class="radar-cube" class:live={d.live} style:left="{w / 2 + d.at!.x}px" style:top="{h / 2 + d.at!.y}px"></i>{/each}
+  {#each dots as d}<i class="radar-cube" class:live={d.live} class:shared={d.shared} style:left="{w / 2 + d.at!.x}px" style:top="{h / 2 + d.at!.y}px"></i>{/each}
   <i class="radar-you"></i>
   {#if !pos}<small class="radar-note" data-tauri-drag-region>Waiting for your position</small>
   {:else if pos.mapId == null && !dots.length}<small class="radar-note" data-tauri-drag-region>Open the game's map (M) once</small>

@@ -56,6 +56,8 @@ export function petOf(d: PetDrop, kinds: SoulNames): number | null {
   const k = Object.keys(kinds).find((k) => kinds[k] === d.mob);
   return k ? Number(k) : null;
 }
+/** A cube spot other players reported (the crowd Worker, src/app/crowd.ts): n = how many installs saw it opened. */
+export interface SharedCube { mapId: number; x: number; y: number; z: number; code: number | null; n: number }
 export interface MapData {
   points: MapPoint[];
   found: FoundCube[];   // cubes opened in view, newest last
@@ -67,6 +69,7 @@ export interface MapData {
   items: SoulNames;     // item code → the soul it is a crystal / shard of (looted once a pet's collection is done)
   soulsSeenMs: number;  // the meter's soul kills up to this time are taken
   bundledDrops: string; // the bundled drops (src/assets/pet-drops.json) merged in, by their date: "" = none yet
+  shared: SharedCube[]; // cube spots from other players, replaced at each download
 }
 
 /** Cube codes seen so far: 1301199, the cube of the 2026-10-23 20:18 recording (seen coming into view, then opened). */
@@ -78,7 +81,15 @@ const MAX_FOUND = 2000;
 /** Spawn-group colors, picked to stay apart on the map's greens, browns and blues. */
 export const GROUP_COLORS = ["#ff5a5f", "#ffb020", "#f5f05a", "#4fe08a", "#3fd6ff", "#5a8bff", "#c46bff", "#ff6bd0"];
 
-export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, kinds: {}, petNames: {}, soulsSeenMs: 0, bundledDrops: "" });
+export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, kinds: {}, petNames: {}, soulsSeenMs: 0, bundledDrops: "", shared: [] });
+
+/** Shared spots, cleaned (saved data and the Worker's answer alike). */
+export function cleanShared(raw: unknown): SharedCube[] {
+  const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+  return (Array.isArray(raw) ? raw : [])
+    .filter((s: any) => s && Number.isInteger(s.mapId) && ok(s.x) && ok(s.y) && ok(s.z) && Number.isInteger(s.n) && s.n > 0)
+    .map((s: any): SharedCube => ({ mapId: s.mapId, x: s.x, y: s.y, z: s.z, code: Number.isInteger(s.code) ? s.code : null, n: s.n }));
+}
 
 /** A saved or imported map section, cleaned: bad points are dropped, not guessed. */
 export function cleanMap(raw: any): MapData {
@@ -100,7 +111,7 @@ export function cleanMap(raw: any): MapData {
   learnKinds(kinds, pets); // drops imported before files named pets still name them
   return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets,
     souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds, petNames: cleanSoulNames(raw?.petNames), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0,
-    bundledDrops: typeof raw?.bundledDrops === "string" ? raw.bundledDrops : "" };
+    bundledDrops: typeof raw?.bundledDrops === "string" ? raw.bundledDrops : "", shared: cleanShared(raw?.shared) };
 }
 
 /** Pet number → mob, from drops that carry both (a kill's own; "Unknown mob #…" names nothing). Names already known stay. */

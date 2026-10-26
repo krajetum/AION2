@@ -452,6 +452,8 @@ body.overlay .status { display: none; }
   background: #fff; border: 4px solid var(--accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent); }
 .found { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; transform: rotate(45deg);
   background: #b46bff; border: 1.5px solid #111; opacity: .85; }
+/* Reported by other players: hollow, so your own finds stay apart. */
+.found.shared, .radar-cube.shared { background: transparent; border-color: #b46bff; border-width: 2px; }
 .live-cube { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 4px; pointer-events: none;
   background: #f1dcff; border: 2px solid #fff; animation: cube-glow 1.1s ease-in-out infinite; }
 /* A cube still there shines: a bright core and a purple halo breathing in and out. */

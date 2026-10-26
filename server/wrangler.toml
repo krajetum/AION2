@@ -1,0 +1,15 @@
+# Crowdsourced boss timers and cube spots. Deployed by .github/workflows/release.yml (migrations, then deploy).
+name = "aion2-companion"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aion2"
+database_id = "cedcf412-bb99-4bdf-b11f-9ca6d363f6f2"
+
+[vars]
+POLL_SECONDS = "120" # every client polls this often: raise and redeploy to slow everyone down
+
+[triggers]
+crons = ["17 4 * * *"] # daily cleanup

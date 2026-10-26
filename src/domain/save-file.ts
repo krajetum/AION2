@@ -25,6 +25,8 @@ export function defaultData(): AppData {
     map: emptyMap(),
     pets: {},
     undo: [],
+    install: crypto.randomUUID(),
+    serverId: null,
     settings: {
       warnHours: { daily: 2, weekly: 12, monthly: 24 },
       quietStart: "01:00",
@@ -48,6 +50,7 @@ export function defaultData(): AppData {
       radarRange: 100,
       radarMap: true,
       radarRound: true,
+      crowdShare: true,
     },
   };
 }
@@ -84,6 +87,8 @@ export function normalize(raw: any): AppData {
     map: cleanMap(raw.map),
     pets: cleanCollections(raw.pets),
     undo: Array.isArray(raw.undo) ? raw.undo : [],
+    install: typeof raw.install === "string" && raw.install ? raw.install : d.install,
+    serverId: Number.isInteger(raw.serverId) ? raw.serverId : null,
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels },
   };
 }
