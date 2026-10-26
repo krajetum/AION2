@@ -340,7 +340,12 @@ impl Engine {
                     LootDrop { loot, mob_code, mob }
                 })
                 .collect(),
-            lost_packets: self.capturer.as_ref().map_or(0, |c| c.dropped()),
+            lost_packets: {
+                let lost = self.capturer.as_ref().map_or(0, |c| c.dropped());
+                let gaps = crate::capture::tcp_order::GAPS_SKIPPED.load(std::sync::atomic::Ordering::Relaxed);
+                crate::recorder::note_capture(port, lost, gaps);
+                lost
+            },
             kills,
         }
     }

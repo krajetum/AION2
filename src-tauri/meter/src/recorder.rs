@@ -167,6 +167,29 @@ pub fn embedded(frame: &[u8]) {
     }
 }
 
+/// What the capture went through, written as automatic marks while a recording runs when it changes: the
+/// game's port, packets lost (the parser behind), TCP gaps gone past without their bytes (`tcp_order`).
+pub fn note_capture(port: Option<u16>, lost: u64, gaps: u64) {
+    static LAST: Mutex<Option<(Option<u16>, u64, u64)>> = Mutex::new(None);
+    let mut last = LAST.lock();
+    let mut current = CURRENT.lock();
+    let Some(r) = current.as_mut().filter(|r| r.status.recording) else {
+        *last = None;
+        return;
+    };
+    let (p0, l0, g0) = last.unwrap_or((port, lost, gaps));
+    if last.is_none() || p0 != port {
+        r.mark(&format!("auto: game port {}", port.map_or("none".into(), |p| p.to_string())));
+    }
+    if lost > l0 {
+        r.mark(&format!("auto: {} packets lost", lost - l0));
+    }
+    if gaps > g0 {
+        r.mark(&format!("auto: {} TCP gaps skipped", gaps - g0));
+    }
+    *last = Some((port, lost, gaps));
+}
+
 pub fn mark(label: &str) {
     if let Some(r) = CURRENT.lock().as_mut() {
         r.mark(label);
