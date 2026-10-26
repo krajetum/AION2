@@ -9,8 +9,10 @@
   import { ICON } from "../icons.ts";
   import { ui } from "../state.svelte.ts";
 
-  type Filter = "wanted" | "all" | "maxed";
-  const FILTERS: [Filter, string][] = [["wanted", "Still to collect"], ["all", "All"], ["maxed", "Level 3"]];
+  type Filter = "wanted" | "all" | "l0" | "l1" | "l2" | "maxed";
+  const FILTERS: [Filter, string][] = [["wanted", "Still to collect"], ["all", "All"], ["l0", "Not owned"], ["l1", "Level 1"], ["l2", "Level 2"], ["maxed", "Level 3"]];
+  const shows = (f: Filter, p: Pet) =>
+    f === "all" || (f === "wanted" ? !maxed(p) : f === "maxed" ? maxed(p) : p.level === Number(f.slice(1)));
   let filter = $state<Filter>("wanted"), query = $state("");
 
   // Yours: the character the meter says you play, else the one read last.
@@ -32,7 +34,7 @@
     for (const id of spots.keys()) if (!out.some((p) => p.id === id)) out.push({ id, level: 0, points: 0 });
     const q = query.trim().toLowerCase();
     return out
-      .filter((p) => filter === "all" || (filter === "maxed" ? maxed(p) : !maxed(p)))
+      .filter((p) => shows(filter, p))
       .filter((p) => !q || name(p.id).toLowerCase().includes(q) || String(p.id).includes(q)
         || (spots.get(p.id) ?? []).some((d) => d.mob?.toLowerCase().includes(q)))
       // Closest to the next level first: the cheapest to finish.
@@ -88,7 +90,7 @@
           <td class="num">{n || ""}</td>
           <td>{#if n}<button class="act" title="Open the map on this pet's spots" onclick={() => showOnMap(p.id)}>{@html ICON.map}Show on map</button>{/if}</td>
         </tr>
-      {:else}<tr><td colspan="6" class="hint">{query.trim() ? "No pet matches." : filter === "wanted" ? "Every pet you own is at level 3." : "Nothing here."}</td></tr>{/each}
+      {:else}<tr><td colspan="6" class="hint">{query.trim() ? "No pet matches." : filter === "wanted" ? "Every pet you own is at level 3." : "No pet at this level."}</td></tr>{/each}
     </tbody>
   </table>
 </section>
