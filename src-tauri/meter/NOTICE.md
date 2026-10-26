@@ -43,6 +43,8 @@ and sends nothing to the game or anywhere else.
 10. `combat/dps_calculator.rs` (2026-10-25): `world_boss_rows` (you, your party and Others from the HP lost) also
    applies to the Abyss's open-world bosses (`abyss_bosses.rs`), which the field-boss list leaves out; a test
    for it (`an_abyss_world_boss_shows_others_too`).
+11. `capture/stream_processor.rs` (2026-10-26): `scan_embedded_bundles_for_identity` also hands each frame of
+   a bundle inside another packet to `crate::tap::embedded` (the pet collection and the packet recorder).
 
 ## Written for the companion
 
@@ -53,7 +55,7 @@ teleports and your own buffs), `src/cubes.rs` (hidden cubes in view and opened),
 `DataStorage::pvp_ledger`, a read-only copy of the companion's PvP ledger),
 `src/souls.rs` (your mob kills that gave soul points, and where the mob died),
 `src/abyss_bosses.rs` (the Abyss's open-world bosses, for the Others row),
-`src/pets.rs` (your pet collection, when the game's Pets menu opens),
+`src/pets.rs` (your pet collection, sent on entering the world),
 `src/tap.rs` (all of them on A2Tools' frame tap),
 `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 

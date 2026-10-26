@@ -200,6 +200,10 @@ impl StreamProcessor {
             match bundle {
                 Some((end, data)) => {
                     let walk = super::framing::walk_inner(&data);
+                    // Companion: the frames to its readers too (`crate::tap::embedded`).
+                    for f in walk.frames.iter().filter(|f| matches!(f.kind, super::framing::FrameKind::Packet)) {
+                        crate::tap::embedded(f.bytes(&data));
+                    }
                     let regions = super::framing::regions(&walk.frames, data.len());
                     for r in &regions {
                         self.scan_masked_identity(&data[r.clone()]);
