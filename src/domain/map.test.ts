@@ -273,3 +273,9 @@ test("loot codes: each kill's common item, the crystals, the rest", () => {
   assert.equal(lootKind(110460025), "other");
   assert.equal(lootKind(210660022), "other");
 });
+
+test("a saved file's drops name their pets on load (imported before files named pets)", () => {
+  const d = (id: string, kind: number | undefined, mob: string) => ({ id, pet: mob, mob, ...(kind != null && { kind }), mapId: 1010, x: 0, y: 0, z: 0, atMs: 1, by: "Friend" });
+  const m = cleanMap({ pets: [d("a", 2400300, "Aullaeu Apprentice Shaman"), d("b", 1045, "Unknown mob #1045"), d("c", undefined, "Slink")], kinds: { "1097": "Highland Karnif" } });
+  assert.deepEqual(m.kinds, { "1097": "Highland Karnif", "2400300": "Aullaeu Apprentice Shaman" });
+});

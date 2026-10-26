@@ -93,8 +93,15 @@ export function cleanMap(raw: any): MapData {
     .filter((f: any) => f && ok(f.x) && ok(f.y) && ok(f.z) && ok(f.atMs))
     .map((f: any): FoundCube => ({ x: f.x, y: f.y, z: f.z, code: ok(f.code) ? f.code : null, atMs: f.atMs, byYou: !!f.byYou, ...(ok(f.mapId) && { mapId: f.mapId }) }));
   const codes = (Array.isArray(raw?.cubeCodes) ? raw.cubeCodes : []).filter((c: unknown) => Number.isInteger(c) && (c as number) > 0);
-  return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets: cleanDrops(raw?.pets),
-    souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds: cleanSoulNames(raw?.kinds), petNames: cleanSoulNames(raw?.petNames), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0 };
+  const pets = cleanDrops(raw?.pets), kinds = cleanSoulNames(raw?.kinds);
+  learnKinds(kinds, pets); // drops imported before files named pets still name them
+  return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets,
+    souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds, petNames: cleanSoulNames(raw?.petNames), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0 };
+}
+
+/** Pet number → mob, from drops that carry both (a kill's own; "Unknown mob #…" names nothing). Names already known stay. */
+export function learnKinds(kinds: SoulNames, drops: PetDrop[]) {
+  for (const d of drops) if (d.kind != null && d.mob && !d.mob.startsWith("Unknown mob #")) kinds[String(d.kind)] ??= d.mob;
 }
 
 export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss";
@@ -309,8 +316,7 @@ export function mergeDrops(map: MapData, drops: PetDrop[], names: Partial<FileNa
     for (const [k, v] of Object.entries(cleanSoulNames(names[key]))) map[key][k] ??= v;
   const have = new Set(map.pets.map((d) => d.id));
   const fresh = cleanDrops(drops).filter((d) => !have.has(d.id));
-  // A kill's pet number and mob name a pet (Pets page) as the meter's own kills do.
-  for (const d of fresh) if (d.kind != null && d.mob && !d.mob.startsWith("Unknown mob #")) map.kinds[String(d.kind)] ??= d.mob;
+  learnKinds(map.kinds, fresh); // a kill's pet number and mob name a pet (Pets page) as the meter's own kills do
   map.pets.push(...fresh);
   if (map.pets.length > MAX_DROPS) map.pets.splice(0, map.pets.length - MAX_DROPS);
   return fresh.length;

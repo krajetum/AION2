@@ -33,12 +33,15 @@
     const q = query.trim().toLowerCase();
     return out
       .filter((p) => filter === "all" || (filter === "maxed" ? maxed(p) : !maxed(p)))
-      .filter((p) => !q || name(p.id).toLowerCase().includes(q) || String(p.id).includes(q))
+      .filter((p) => !q || name(p.id).toLowerCase().includes(q) || String(p.id).includes(q)
+        || (spots.get(p.id) ?? []).some((d) => d.mob?.toLowerCase().includes(q)))
       // Closest to the next level first: the cheapest to finish.
       .sort((a, b) => (maxed(a) ? 1 : 0) - (maxed(b) ? 1 : 0) || share(b) - share(a) || a.id - b.id);
   });
   const name = (id: number) => petName(id, map.petNames, map.kinds);
   const share = (p: Pet) => (needed(p) ? p.points / needed(p) : 1);
+  // Kills recorded by an app older than the Pets page carry no pet number: on the map, not here.
+  const unlinked = $derived(map.pets.filter((d) => d.item == null && d.mob && petOf(d, map.kinds) == null).length);
   const owned = $derived(collection?.pets.filter((p) => p.level > 0).length ?? 0);
   const full = $derived(collection?.pets.filter(maxed).length ?? 0);
 
@@ -61,6 +64,9 @@
 
 {#if !collection}<section class="empty-fight"><p class="hint">No collection read yet{me ? ` for ${me}` : ""}. Open the Pets menu in game with the companion running (desktop app).</p></section>
 {:else}
+{#if unlinked}<p class="hint">{num(unlinked)} spot{unlinked === 1 ? "" : "s"} on the map {unlinked === 1 ? "has" : "have"} no pet number
+  (recorded with an app older than this page, often a friend's file): {unlinked === 1 ? "it shows" : "they show"} on the map but not here.
+  Ask your friend to update the app and export again; kills recorded from then on carry the number.</p>{/if}
 <section class="dps-table pets-page">
   <h2>{me} <span class="count">{num(owned)} owned · {num(full)} at level {MAX_LEVEL} · read {hm(collection.atMs)}</span></h2>
   <div class="map-tools">
