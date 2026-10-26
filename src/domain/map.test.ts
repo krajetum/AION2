@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { foundOn, invertAffine, mapOf, onMap, mergeDrops, takeLoots, takeSouls, soulOf, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop } from "./map.ts";
-import { ABYSS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
 
@@ -74,6 +74,16 @@ test("bundled fit puts the recorded teleports where the screenshots show them", 
   near(-43409, -150745, 1255, 829, 20);
 });
 
+test("Elyos fit puts the recorded walk where the screenshots show it", () => {
+  const near = (gx: number, gy: number, px: number, py: number, tol: number) => {
+    const p = applyAffine(ELYOS_FIT, gx, gy);
+    assert.ok(Math.hypot(p.x - px, p.y - py) < tol, `${gx},${gy} → ${p.x.toFixed(0)},${p.y.toFixed(0)}, expected ${px},${py}`);
+  };
+  near(12337, 5864, 1845, 1377, 2); // arrived, 11:08:10
+  near(135104, -79098, 2528, 897, 2); // near Drana, 11:11:48
+  near(94058, 15873, 2332, 1495, 70); // last position before the third screenshot, walked on from there
+});
+
 test("Abyss fit puts the recorded spots where the player marked them", () => {
   const near = (gx: number, gy: number, px: number, py: number) => {
     const p = applyAffine(ABYSS_FIT, gx, gy);
@@ -128,7 +138,8 @@ test("game map ids pick the page's map; old found cubes stay on the world map", 
   assert.equal(mapOf(61), null);
   assert.equal(mapOf(null), null);
   assert.ok(!onMap(null, "asmodian") && !onMap(null, "elyos") && onMap(20, "abyss") && !onMap(20, "elyos"), "an unknown map is on none");
-  assert.ok(onMap(777, "elyos") && !onMap(777, "asmodian"), "an unclaimed id is the map with no ids yet");
+  assert.equal(mapOf(1010), "elyos", "Verteron's map load, 2026-10-26");
+  assert.ok(!onMap(777, "elyos") && !onMap(777, "asmodian"), "an id no map claims is on none");
   assert.ok(foundOn({ x: 0, y: 0, z: 0, code: null, atMs: 1, byYou: true }, "asmodian"));
   assert.ok(foundOn({ x: 0, y: 0, z: 0, code: null, atMs: 1, byYou: true, mapId: 20 }, "abyss"));
   const m = emptyMap();
@@ -173,12 +184,12 @@ test("soul kills: placed where the mob died, one per mob and spot, named by the 
     "the second Slink 9 m away adds nothing; a mob never seen spawning is left out");
   assert.equal(m.soulsSeenMs, 13);
   assert.equal(takeSouls(m, [k(1, "Slink", 0, 10)], "Leo"), false, "the same kills again");
-  takeSouls(m, [k(5, "Slink", 5000, 20, 20), k(6, "Slink", 5000, 21, 777)], "Leo");
-  assert.deepEqual(m.pets.slice(2).map((d) => d.map), ["abyss", "elyos"], "map 20 is the Abyss; an unclaimed id the Elyos map");
+  takeSouls(m, [k(5, "Slink", 5000, 20, 20), k(6, "Slink", 5000, 21, 1010), k(7, "Slink", 5000, 22, 61)], "Leo");
+  assert.deepEqual(m.pets.slice(2).map((d) => d.map ?? null), ["abyss", "elyos", null], "map 20 is the Abyss, 1010 Elyos; an arena on none");
   // Young Slink gives Slink soul points: named once, all its drops follow.
   m.souls["young slink"] = "Slink";
   assert.equal(soulOf(m.souls, m.pets[1]), "Slink");
-  assert.deepEqual(petList(m.pets, "", m.souls).map((e) => [e.name, e.drops, e.mobs]), [["Slink", 4, ["Slink", "Young Slink"]]]);
+  assert.deepEqual(petList(m.pets, "", m.souls).map((e) => [e.name, e.drops, e.mobs]), [["Slink", 5, ["Slink", "Young Slink"]]]);
   assert.deepEqual(petList(m.pets, "young", m.souls).map((e) => e.name), ["Slink"], "a mob's name finds its soul");
   assert.equal(petHome(m.pets, "slink", m.souls), "asmodian");
 });
@@ -195,7 +206,7 @@ test("crystals: a named item's loots become drops, once each; renaming moves the
   const m = emptyMap(), seen = new Set<string>();
   // The friend's recording of 2026-10-25 19:16: Mutated Forest Guardian drops Agrint (610531002) and its usual item.
   const l = (entity: number, item: number, x: number, atMs: number, mob = "Mutated Forest Guardian"): LootKill =>
-    ({ entity, item, x, y: 39169, z: 3, mapId: 777, atMs, mob });
+    ({ entity, item, x, y: 39169, z: 3, mapId: 1010, atMs, mob });
   const loots = [l(18041, 610531002, -17177, 1), l(18041, 534660178, -17177, 1), l(34090, 610531002, -9000, 2)];
   assert.equal(takeLoots(m, loots, "Selphine", seen), false, "nothing named yet");
   m.items["610531002"] = "Agrint";
