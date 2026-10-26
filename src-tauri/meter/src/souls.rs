@@ -20,6 +20,7 @@
 //! - `kind` is the same for every kill of one mob (Slink 1016, Young Slink 1121, Withered Branch
 //!   Spider 1116), but not the soul's: the player's Young Slink kills gave "Slink soul points". So
 //!   the soul is named by the player per mob (the app), and `kind` is only passed on.
+//! - Every `0d 90` is also kept as a gain (`gains`): the collection counts them all, placed or not.
 
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -70,7 +71,19 @@ struct State {
     waiting: VecDeque<(i32, [f32; 3], i64)>,
     kills: VecDeque<SoulKill>,
     loots: VecDeque<Loot>,
+    gains: VecDeque<Gain>,
 }
+
+/// Soul points the game gave you, whether or not a loot of yours places them: the collection counts them all
+/// (party kills whose loot went to someone else, points picked up late; 2026-10-26: the Pets page fell behind).
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Gain {
+    pub kind: u32,
+    pub points: u32,
+    pub at_ms: i64,
+}
+const MAX_GAINS: usize = 1_000;
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
 
@@ -81,6 +94,11 @@ fn with<T>(f: impl FnOnce(&mut State) -> T) -> T {
 /// Your kills with soul points since the meter started, oldest first (the last MAX_KILLS).
 pub fn snapshot() -> Vec<SoulKill> {
     with(|s| s.kills.iter().copied().collect())
+}
+
+/// Every soul point gain since the meter started, oldest first (the last MAX_GAINS).
+pub fn gains() -> Vec<Gain> {
+    with(|s| s.gains.iter().copied().collect())
 }
 
 /// Your loots since the meter started, oldest first (the last MAX_LOOTS).
@@ -108,10 +126,10 @@ pub fn reset() {
 
 /// Reads one game frame (its length varint, 2-byte type, body), as the parser hands it on.
 pub fn observe(frame: &[u8], me: i32, now_ms: i64) {
-    if me != 0 {
-        let map = crate::position::latest().and_then(|p| p.map_id);
-        with(|s| read(s, frame, me, map, now_ms));
-    }
+    // Read even before the meter knows who you are: soul points are yours whatever the loots say
+    // (with `me` 0 no loot is yours, so nothing is placed).
+    let map = crate::position::latest().and_then(|p| p.map_id);
+    with(|s| read(s, frame, me, map, now_ms));
 }
 
 fn u32_at(b: &[u8], at: usize) -> Option<u32> {
@@ -166,6 +184,10 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
         }
         [0x0D, 0x90] if *frame.get(body)? == 1 => {
             let (kind, points) = (u32_at(frame, body + 1)?, u32_at(frame, body + 5)?);
+            if s.gains.len() >= MAX_GAINS {
+                s.gains.pop_front();
+            }
+            s.gains.push_back(Gain { kind, points, at_ms: now_ms });
             s.waiting.retain(|w| now_ms - w.2 <= POINTS_WITHIN_MS);
             // The oldest kill still waiting: points come in the order of the kills.
             let (entity, [x, y, z], _) = s.waiting.pop_front()?;
@@ -226,6 +248,17 @@ mod tests {
         assert_eq!(s.loots.iter().map(|l| (l.entity, l.item)).collect::<Vec<_>>(), [(18041, 610531002), (18041, 534660178)]);
         assert_eq!((s.loots[0].x.round(), s.loots[0].y.round(), s.loots[0].map_id), (-17177.0, 39169.0, Some(1010)));
         assert_eq!(s.waiting.len(), 1, "one kill waits for soul points, not one per item");
+    }
+
+    /// Points with no loot of yours waiting (a party member's loot, a late pick-up) still count for the
+    /// collection, though they place no spot.
+    #[test]
+    fn every_soul_point_counts_even_without_a_loot_of_yours() {
+        let mut s = State::default();
+        read(&mut s, &hex("0f0d90016104000001000000"), ME, None, 1_000);
+        read(&mut s, &hex("0f0d90014904000001000000"), 0, None, 2_000);
+        assert!(s.kills.is_empty());
+        assert_eq!(s.gains.iter().map(|g| (g.kind, g.points, g.at_ms)).collect::<Vec<_>>(), [(1121, 1, 1_000), (1097, 1, 2_000)]);
     }
 
     #[test]
