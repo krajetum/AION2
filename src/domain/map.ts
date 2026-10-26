@@ -223,13 +223,22 @@ export const WORLD_MAP_ID = 1110;
 export const ABYSS_FIT: Affine = [0.00921448, 0, 746.003, 0, 0.00939319, 654.083];
 
 /**
+ * Game → pixel fit of the bundled Elyos map (src/assets/ncsoft/elyos-map.webp), from the packet recording of
+ * 2026-10-26 11:08-11:15 on map 1010 (its map load): where the player arrived (11:08:10) and stood 21 s near
+ * Drana (11:11:48), against the arrow in screenshots matched to the bundled image (1:1, no rotation). Two
+ * points, axis-aligned as the other fits; a third screenshot (Destroyed Temple) lies 60 px on from the last
+ * position the recording has, along the way the player walked.
+ */
+export const ELYOS_FIT: Affine = [0.00556664, 0, 1775.92, 0, 0.00565312, 1343.75];
+
+/**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
- * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot (2026-10-25); its map id
- * and fit are not known yet.
+ * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot
+ * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
-  { key: "elyos", name: "Elyos", gameIds: [], fit: null, bundled: true },
+  { key: "elyos", name: "Elyos", gameIds: [1010], fit: ELYOS_FIT, bundled: true },
   { key: "abyss", name: "Abyss", gameIds: [20], fit: ABYSS_FIT, bundled: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;

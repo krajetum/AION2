@@ -34,8 +34,8 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   - `meter.ts` — DPS meter update types (as the Rust engine sends them: fight, boss timers, Odyle energy, profile, last arena match), views (damage/healing/taken), number/HP formatting
   - `servers.ts` — server names by id (A2Tools' table), faction/region from the id, `gearUrl` (a player's profile on shugo.gg)
   - `bosses.ts` — field-boss respawn timers from the maps opened in game, `bossLabel` (bosses the game data doesn't name: `KNOWN_BOSS_NAMES` for the Abyss ones the player identified, else the player names them, `AppData.bossNames`); `arena.ts` — arena matchup log, kill history (`logKills`), map names (`mapLabel`: the player's, `KNOWN_MAPS` 20 = Abyss, else "Map id")
-  - `map.ts` — Map page: three maps (`MAPS`: Asmodian = bundled world map, `BUNDLED_FIT`, map id `WORLD_MAP_ID`; Elyos (Verteron) = bundled screenshot, no
-    ids or fit yet, takes map ids no other map claims (`onMap`; an unknown map, null, is on none); Abyss = bundled screenshot, map id 20, `ABYSS_FIT` from 3 recorded spots), points per map, clusters,
+  - `map.ts` — Map page: three maps (`MAPS`: Asmodian = bundled world map, `BUNDLED_FIT`, map id `WORLD_MAP_ID`; Elyos (Verteron) = bundled screenshot, map
+    id 1010, `ELYOS_FIT` from a recorded walk; an id no map claims, or an unknown map (null), is on none (`onMap`); Abyss = bundled screenshot, map id 20, `ABYSS_FIT` from 3 recorded spots), points per map, clusters,
     pan/zoom math, game→pixel affine fit (the player's references per map override the bundled one); pets' soul point drops (`PetDrop`:
     from the meter's soul kills (`takeSouls`, one per mob and spot) and your loots of an item the player named as a pet's crystal
     (`takeLoots`, `items`: a finished collection drops a crystal instead of soul points), "Soul points here" or a click; `souls` = mob → soul as the player
