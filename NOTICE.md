@@ -20,6 +20,8 @@ It is distributed WITHOUT ANY WARRANTY; see `LICENSE` for the full text.
 
 - **Pet names** (`src/domain/pet-names.ts`): pet number → name for 227 pets, from the gamers4.life AION 2 database
   (https://gamers4.life/aion-2/database/en/pet/), saved 2026-10-26. The names are the game's (NCSOFT).
+- **Pet soul point spots** (`src/assets/pet-drops.json`): 2,849 drops recorded with this app by its players and
+  shared on 2026-10-26, with the players' names taken out. Merged once into every save (`takeBundledDrops`).
 
 ## NCSOFT material, not under GPL-3.0
 
