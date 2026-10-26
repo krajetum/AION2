@@ -11,5 +11,10 @@ database_id = "cedcf412-bb99-4bdf-b11f-9ca6d363f6f2"
 [vars]
 POLL_SECONDS = "120" # every client polls this often: raise and redeploy to slow everyone down
 
+[observability.logs] # Workers Logs (dashboard > Observability); kept here so a deploy doesn't turn them off
+enabled = true
+invocation_logs = true
+persist = true
+
 [triggers]
 crons = ["17 4 * * *"] # daily cleanup
