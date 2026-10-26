@@ -33,7 +33,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   - `news.ts` — Steam feed parsing + read/unread cache; `save-file.ts` — default data + migration of old/imported saves
   - `meter.ts` — DPS meter update types (as the Rust engine sends them: fight, boss timers, Odyle energy, profile, last arena match), views (damage/healing/taken), number/HP formatting
   - `servers.ts` — server names by id (A2Tools' table), faction/region from the id, `gearUrl` (a player's profile on shugo.gg)
-  - `pets.ts` — your pet collection per character (`AppData.pets`, sent on entering the world: login or character select; the player can correct a pet, `setPet`), soul points gained since
+  - `pets.ts` — your pet collection per character (`AppData.pets`, sent on entering the world: login or character select), soul points gained since
     (`addSoulPoints`: unlock at 5, level 2 at 25, level 3 at 75 more, the last), `petName` (the player's, else `pet-names.ts` = gamers4.life's 227 names, else the mob's, else "Pet #id"), `wanted`
   - `bosses.ts` — field-boss respawn timers from the maps opened in game, `bossLabel` (bosses the game data doesn't name: `KNOWN_BOSS_NAMES` for the Abyss ones the player identified, else the player names them, `AppData.bossNames`); `arena.ts` — arena matchup log, kill history (`logKills`), map names (`mapLabel`: the player's, `KNOWN_MAPS` 20 = Abyss, else "Map id")
   - `map.ts` — Map page: three maps (`MAPS`: Asmodian = bundled world map, `BUNDLED_FIT`, map id `WORLD_MAP_ID`; Elyos (Verteron) = bundled screenshot, map

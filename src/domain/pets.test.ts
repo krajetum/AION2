@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addSoulPoints, cleanCollections, setPet, needed, petName, takeCollection, wanted, type PetCollection } from "./pets.ts";
+import { addSoulPoints, cleanCollections, needed, petName, takeCollection, wanted, type PetCollection } from "./pets.ts";
 
 // From the collection read on 2026-10-26 12:05: Unstable Spider 1117 (2, 55/75), Armadon 1046 (2, 39/75), 1005 at level 3.
 const read = (): PetCollection => ({ atMs: 100, pets: [{ id: 1117, level: 2, points: 55 }, { id: 1046, level: 2, points: 39 }, { id: 1005, level: 3, points: 0 }] });
@@ -41,17 +41,4 @@ test("names and what is still wanted", () => {
   assert.equal(wanted(read(), 1005), false, "level 3");
   assert.equal(wanted(read(), 1400), true, "not owned");
   assert.equal(wanted(undefined, 1005), true, "no collection read: everything");
-});
-
-test("the player's correction: level and points within it, gains after it still count", () => {
-  const c = read();
-  setPet(c, 1117, 2, 72); // Poison Blood's case: the game said level 3 while the count stood at 72/75
-  setPet(c, 1117, 3, 72);
-  assert.deepEqual(c.pets[0], { id: 1117, level: 3, points: 0 }, "the last level keeps no points");
-  setPet(c, 1046, 1, 99);
-  assert.deepEqual(c.pets[1], { id: 1046, level: 1, points: 24 }, "points stay below the next level");
-  setPet(c, 1500, 1, 3);
-  assert.deepEqual(c.pets[3], { id: 1500, level: 1, points: 3 }, "a pet not in the read is added");
-  addSoulPoints(c, [{ kind: 1500, points: 2, atMs: 101 }]);
-  assert.deepEqual(c.pets[3], { id: 1500, level: 1, points: 5 });
 });

@@ -513,10 +513,6 @@ details.soul-mobs[open] { gap: 6px; }
 .pets-page tr.done { opacity: .6; }
 .pet-progress { display: flex; align-items: center; gap: 8px; }
 .pet-progress .bar { width: 120px; }
-.pets-page select.pet-level { height: 28px; background: transparent; border-color: transparent; }
-.pets-page input.pet-points { width: 4.5em; height: 28px; padding: 0 4px; text-align: right; background: transparent; border-color: transparent; }
-.pets-page select.pet-level:hover, .pets-page select.pet-level:focus,
-.pets-page input.pet-points:hover, .pets-page input.pet-points:focus { border-color: var(--border); background: var(--ground); }
 .map-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; color: var(--muted); cursor: auto; }
 
 /* Hidden cube popup (index.html#cube) */

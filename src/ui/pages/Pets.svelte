@@ -2,7 +2,6 @@
   // Pets page: your pet collection as the game sent it on entering the world (src-tauri/meter/src/pets.rs),
   // with the soul points gained since, and where each pet's soul points drop (the Map page's spots, by pet number).
   import { setPetName } from "../../app/map.ts";
-  import { setPetProgress } from "../../app/pets.ts";
   import { dropMap, MAPS, petOf, soulOf, worldMap, type MapKey } from "../../domain/map.ts";
   import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
   import { MAX_LEVEL, maxed, needed, petName, type Pet } from "../../domain/pets.ts";
@@ -70,8 +69,7 @@
 </script>
 
 <p class="hint dps-note">Your pets as the game sent them when you last entered the world (login or character select) with the companion
-  running, plus the soul points your kills gave since. If a pet differs from the game's Pets menu (a soul point the capture missed),
-  set its level and points here; changing character in game reads the whole collection again. The game sends numbers, not names:
+  running, plus the soul points your kills gave since. Changing character in game reads the whole collection again. The game sends numbers, not names:
   names come from the gamers4.life database, else from the mob its soul points came from, and you can rename any. Level {MAX_LEVEL} is the last.</p>
 
 {#if !collection}<section class="empty-fight"><p class="hint">No collection read yet{me ? ` for ${me}` : ""}. Log in or change character in game with the companion running (desktop app).</p></section>
@@ -96,12 +94,9 @@
           <td><input class="pet-name" value={map.petNames[String(p.id)] ?? ""} placeholder={name(p.id)} aria-label="Name of pet {p.id}" autocomplete="off"
             onchange={(e) => commit(e, (v) => setPetName(ui.data, p.id, v), () => map.petNames[String(p.id)] ?? "")}></td>
           <td class="num dim">{p.id}</td>
-          <td><select class="pet-level" value={p.level} aria-label="Level of {name(p.id)}" title="Set the level the game shows"
-            onchange={(e) => commit(e, (v) => setPetProgress(ui.data, me, p.id, Number(v), p.points), () => p.level)}>
-            {#each [0, 1, 2, 3] as lv}<option value={lv}>{lv ? `Level ${lv}` : "Not owned"}</option>{/each}</select></td>
+          <td>{p.level ? `Level ${p.level}` : "Not owned"}</td>
           <td>{#if maxed(p)}<span class="dim">done</span>{:else}<span class="pet-progress"><span class="bar" style:--p={share(p)}><i></i></span>
-            <span class="num"><input class="pet-points" type="number" min="0" max={needed(p) - 1} value={p.points} aria-label="Soul points of {name(p.id)}"
-              title="Set the soul points the game shows" onchange={(e) => commit(e, (v) => setPetProgress(ui.data, me, p.id, p.level, Number(v)), () => p.points)}>/{needed(p)}</span></span>{/if}</td>
+            <span class="num">{p.points}/{needed(p)}</span></span>{/if}</td>
           <td class="num">{n || ""}</td>
           <td class="dim">{mapsOf(p.id).map((m) => worldMap(m).name).join(", ") || "—"}</td>
           <td>{#if n}<button class="act" title="Open the map on this pet's spots" onclick={() => showOnMap(p.id)}>{@html ICON.map}Show on map</button>{/if}</td>

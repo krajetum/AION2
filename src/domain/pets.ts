@@ -63,19 +63,6 @@ export function addSoulPoints(c: PetCollection, gains: SoulGain[]): boolean {
   return changed;
 }
 
-/**
- * The player's correction of a pet (the game's Pets menu shows the truth; a soul point the capture missed, or one
- * from outside a kill, leaves the count behind): level 0-3, points within the level (none at the last).
- * The collection keeps its time, so soul points gained after it still add up.
- */
-export function setPet(c: PetCollection, id: number, level: number, points: number) {
-  const lv = Math.min(MAX_LEVEL, Math.max(0, Math.trunc(level) || 0));
-  let p = c.pets.find((p) => p.id === id);
-  if (!p) c.pets.push((p = { id, level: 0, points: 0 }));
-  p.level = lv;
-  p.points = lv >= MAX_LEVEL ? 0 : Math.min(needed(p) - 1, Math.max(0, Math.trunc(points) || 0));
-}
-
 /** The collection a new read replaces, unless it is older than the one kept. Returns true if it was taken. */
 export function takeCollection(all: Record<string, PetCollection>, name: string, c: PetCollection): boolean {
   if (!name.trim() || (all[name] && all[name].atMs >= c.atMs)) return false;
