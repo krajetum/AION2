@@ -105,10 +105,13 @@
     return out;
   });
   const petName = $derived((pet || query).trim());
+  // The chosen soul, while it is in the list: one the "still to collect" filter hides (or with no spots left) is
+  // not chosen, so the map shows every spot instead of nothing (2026-10-26).
+  const active = $derived(pet && petList(drops, "", ui.data.map).some((e) => e.name.toLowerCase() === pet.toLowerCase()) ? pet : "");
   const onThisMap = $derived(drops.filter((d) => dropMap(d) === current));
   // A pet chosen: its drops, bright; none: every drop on this map, dimmer.
   const petDrops = $derived(size.w && layer === "pets"
-    ? onThisMap.filter((d) => !pet || isPet(d)).map((d) => ({ d, s: shown(d.x, d.y) })).filter((v) => v.s)
+    ? onThisMap.filter((d) => !active || isPet(d)).map((d) => ({ d, s: shown(d.x, d.y) })).filter((v) => v.s)
     : []);
   const selDrop = $derived(drops.find((d) => d.id === selectedDrop));
   function choosePet(name: string) {
@@ -322,7 +325,7 @@
     {#each found as { f, s: at } (f.x + ":" + f.y)}<div class="found" style:left="{at!.x}px" style:top="{at!.y}px"
       title="Hidden cube opened here · {when(f.atMs)}{f.byYou ? ' · by you' : ''}"></div>{/each}
     {#each live as { c, s: at } (c.entity)}<div class="live-cube" style:left="{at!.x}px" style:top="{at!.y}px" title="Hidden cube in view"></div>{/each}
-    {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!pet} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
+    {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!active} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
       aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
       onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}
     {#if you}<div class="me" class:stale={age > 30} style:left="{you.x}px" style:top="{you.y}px" title="You · {ago(age)}"></div>{/if}
@@ -342,14 +345,15 @@
         {#if layer === "pets"}
           <input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query}>
           <label class="toggle-line" title={collection ? "Hides the spots of pets you have at level 3 (Pets page)" : "Open the Pets menu in game once, with the companion running"}>
-            <input type="checkbox" bind:checked={onlyWanted} disabled={!collection}> Only pets still to collect</label>
+            <input type="checkbox" bind:checked={onlyWanted} disabled={!collection} onchange={() => { if (onlyWanted) { pet = ""; selectedDrop = ""; } }}> Only pets still to collect</label>
+          {#if active}<button class="ghost showing" title="Show every soul's spots" onclick={() => { pet = ""; selectedDrop = ""; }}>Showing: {active} ✕</button>{/if}
           <ul class="pet-list" aria-label="Pets">
             {#each pets as e (e.name)}<li><button class:on={pet.toLowerCase() === e.name.toLowerCase()} aria-pressed={pet.toLowerCase() === e.name.toLowerCase()}
               onclick={() => choosePet(e.name)}><span class="name">{e.name}</span>
               <span class="hint">{e.mobs.length ? `from ${e.mobs.join(", ")} · ` : ""}{e.drops ? `${num(e.drops)} spot${e.drops === 1 ? "" : "s"}` : "no spots yet"}{e.maps.length ? ` · ${e.maps.map(mapName).join(", ")}` : ""}</span></button></li>
             {:else}<li class="hint">{query.trim() ? `No soul or mob named like "${query.trim()}" yet.` : "No souls yet: kill a mob that gives soul points (meter running) and it joins the list."}</li>{/each}
           </ul>
-          {#if pet && !onThisMap.some(isPet)}<p class="hint">No {pet} spots on the {mapName(current)} map.</p>{/if}
+          {#if active && !onThisMap.some(isPet)}<p class="hint">No {active} spots on the {mapName(current)} map.</p>{/if}
           {#if chosen && pointMobs.length}<div class="soul-mobs"><span class="hint">The soul each mob gives (a mob's name is not always its soul's):</span>
             {#each pointMobs as mob (mob)}<label class="setting"><span>{mob}</span>
               <input list="soul-names" value={names[mob.toLowerCase()] ?? chosen.name} aria-label="Soul of {mob}" autocomplete="off"
