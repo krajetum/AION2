@@ -135,6 +135,13 @@ fn read(s: &mut State, frame: &[u8], me: i32, now_ms: i64) -> Option<()> {
             let (entity, _) = varint_at(frame, body)?;
             s.live.remove(&entity);
         }
+        // A map load (a teleport, an arena, a rift): what was in view is gone, and no `35 36` says so for
+        // each (2026-10-26: a cube's popup stayed up inside an arena). Opened cubes stay.
+        [0x21, 0x36] => {
+            s.live.clear();
+            s.objects.clear();
+            s.pending.clear();
+        }
         [0x3A, 0x36] if frame.ends_with(&OPENED) => {
             let (entity, at) = varint_at(frame, body)?;
             let (actor, _) = varint_at(frame, at)?;
@@ -186,6 +193,19 @@ mod tests {
     // 19:48: another player opens a cube that was in view before the recording started.
     const OPEN_OTHER: &str = "133a36ceef0298310100000023c59a25";
     const LOOT_OTHER: &str = "471e5601ceb70000c93c30458c6c014700f85f460030274500970147005c6146ae810000e87e5b00418ee91f0500000002329e040000000e09f0d3e269a1010000010301";
+
+    /// 2026-10-26: a cube in view, then an arena (a map load, the one of the 2026-10-23 teleport): no
+    /// popup inside it.
+    #[test]
+    fn a_map_load_clears_the_cubes_in_view() {
+        let mut s = State::default();
+        s.codes.insert(1301199);
+        s.live.insert(7, Cube { entity: 7, code: 1301199, x: 0.0, y: 0.0, z: 0.0, seen_ms: 1 });
+        s.objects.insert(7, (1301199, [0.0; 3]));
+        let load = hex("3421360300000056040000d4df590000000000d09cd5476fcf38480070944631b3ccc20200000000000000000000000000");
+        read(&mut s, &load, 0, 2);
+        assert!(s.live.is_empty() && s.objects.is_empty());
+    }
 
     #[test]
     fn a_cube_opened_in_view_teaches_its_code_and_place() {
