@@ -31,9 +31,12 @@ test("a newer read replaces the kept one, an older does not; per character", () 
 });
 
 test("names and what is still wanted", () => {
-  assert.equal(petName(1097, {}, { "1097": "Highland Karnif" }), "Highland Karnif");
+  assert.equal(petName(1097, {}, { "1097": "Highland Karnif" }), "Karnif", "the database's name before the mob's");
+  assert.equal(petName(1117, {}, {}), "Unstable Spider"); // 55/75 in the player's collection
+  assert.equal(petName(1046, {}, {}), "Armadon"); // 39/75
+  assert.equal(petName(9999, {}, { "9999": "Some Mob" }), "Some Mob", "not in the database: the mob's");
   assert.equal(petName(1097, { "1097": "Karnif" }, { "1097": "Highland Karnif" }), "Karnif");
-  assert.equal(petName(1299, {}, {}), "Pet #1299");
+  assert.equal(petName(9998, {}, {}), "Pet #9998");
   assert.equal(wanted(read(), 1117), true);
   assert.equal(wanted(read(), 1005), false, "level 3");
   assert.equal(wanted(read(), 1400), true, "not owned");
