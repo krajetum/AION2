@@ -7,10 +7,13 @@
 //!       <action> 00 <slot u32> ... <item u32 @+10> <amount u64 @+14> ...
 //! ```
 //!
-//! Each currency is an item with its own code, preceded by `00 00`, its amount a u64 after it:
+//! Each item is `<slot u32> 00 <place u16> 00 <code u32> <amount u64>`, a currency an item with its own code. The
+//! place is a u16: from 256 on its high byte is not 0 (`14 01`, a friend's Kina, 2026-10-27 14:00), so the bytes
+//! before the code are `00 ?? ?? 00`, not `00 00` (read that way, that Kina was missed):
 //! - 930100031 Kina (unbound): 5,238,554 -> 5,239,061 on a kill (2026-10-27 11:49), the same +507 as the daily counter `a6 ff`;
 //!   5,143,092 -> 5,061,092 at a shop (12:47).
-//! - 930100001 bound Kina: 30,000 on 2026-10-26; to 0 in the same record as that Kina, a buy of "101k Kina"
+//! - 930100001 bound Kina: 12,000 + 500 Kina paid a 12,500 potion (14:00: 1,946,232 in all -> Kina 1,933,732);
+//!   30,000 on 2026-10-26; to 0 in the same record as that Kina, a buy of "101k Kina"
 //!   paid with the bound Kina first (the player: "about 19k", = 101k - 82,000) and 82,000 of the unbound.
 //! - 930100003 Abyss Points: "about 300k", 300,795 -> 300,824 on kills, -75,000 at a shop to 225,824.
 //! - 930100017 Nightmare Coins: "38k", -3,000 at a shop to 35,085.
@@ -102,13 +105,15 @@ fn read(s: &mut State, frame: &[u8], now_ms: i64) {
     }
 }
 
-/// The currencies in a record: each code preceded by `00 00`, its amount the u64 after it.
+/// The currencies in a record: each code after `00 <place u16> 00`, its amount the u64 after it (less than 10^13:
+/// a code's bytes inside another field give nonsense).
 fn amounts(body: &[u8]) -> BTreeMap<u32, u64> {
     let mut out = BTreeMap::new();
-    for i in 2..body.len().saturating_sub(12) {
+    for i in 4..body.len().saturating_sub(11) {
         let code = u32::from_le_bytes(body[i..i + 4].try_into().unwrap());
-        if CODES.contains(&code) && body[i - 2..i] == [0, 0] {
-            out.insert(code, u64::from_le_bytes(body[i + 4..i + 12].try_into().unwrap()));
+        let amount = u64::from_le_bytes(body[i + 4..i + 12].try_into().unwrap());
+        if CODES.contains(&code) && body[i - 4] == 0 && body[i - 1] == 0 && amount < 10_000_000_000_000 {
+            out.insert(code, amount);
         }
     }
     out
@@ -149,6 +154,17 @@ mod tests {
         assert!(claim(&mut s, Some("Old")).is_none(), "the profile still says the old character");
         read(&mut s, &[0x06, 0x33, 0x36, 0, 0, 0], 6);
         assert_eq!(claim(&mut s, Some("New")).unwrap().owner.as_deref(), Some("New"));
+    }
+
+    /// 2026-10-27 14:00, a friend buys a 12,500 Kina potion: 12,000 bound Kina used up, then Kina (in place 276,
+    /// `14 01`) from 1,934,232 to 1,933,732. The game showed 1,946,232 before: both together.
+    #[test]
+    fn an_item_placed_past_255_is_read_too() {
+        let mut s = State::default();
+        read(&mut s, &hex("7d1b560302000fab110000f3000021337037000000000000000001010000000000000000000000000000420001006f030f00001401003f337037a4811d000000000001000000000000000000000000000042000000eda6130000080100b314991f320000000000000001010000000000000000000000002f0000"), 1);
+        assert_eq!(s.wallet.values, BTreeMap::from([(BOUND_KINA, 0), (KINA, 1_933_732)]));
+        // The same Kina in the inventory read on entering the world.
+        assert_eq!(amounts(&hex("6f030f00001401003f33703798831d000000000001000000000000000000000000000004ec140000da0000a6ed981f37")), BTreeMap::from([(KINA, 1_934_232)]));
     }
 
     #[test]
