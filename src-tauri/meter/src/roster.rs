@@ -6,8 +6,10 @@
 //! per team:   <v u32> 00 00 00 00 <v u32> <players u32>          (v: 1656 for the 1v1's you, a rating?)
 //!   per player: <character u32> 00 00 <server u16> <name len u8> <name> <class u32> <race u8: 1|2> <level u32>
 //!               00000000 <server2 u16> <u32> ...
-//! The two servers are mostly the same; for 2 of the 5v5's 10 they differ (MentalGesund 2304 / 2306, Dewy 1321 /
-//! 1304): which one shugo.gg knows the character by is not checked yet. The first is taken.
+//! The two servers are mostly the same. Where they differ the second is the player's: the game showed Jedaq (SIE)
+//! = Siel 1301 in the 5v5 of 2026-10-27 19:30, first 1321, second 1301 (and spawn records carry the second).
+//! The u32 after it is the player's RP before the match (Randronirk 1307, then 1280 after -27, as the game said);
+//! a team header's v is the team's RP (1,341 and 1,340 on screen).
 //! ```
 //! A player's team is the last team header before it (0, 1).
 //!
@@ -182,7 +184,7 @@ fn read(frame: &[u8]) -> Option<Vec<RosterPlayer>> {
         }
         let team = headers.iter().filter(|&&h| h < p).count().saturating_sub(1) as u32;
         if !out.iter().any(|q| q.name == name) {
-            out.push(RosterPlayer { name: name.to_string(), server_id: server, level: level as i32, team });
+            out.push(RosterPlayer { name: name.to_string(), server_id: again, level: level as i32, team });
         }
     }
     (!out.is_empty()).then_some(out)
@@ -217,10 +219,21 @@ mod tests {
         framed.append(&mut f);
         let r = read(&framed).unwrap();
         let names: Vec<(&str, u16)> = r.iter().map(|p| (p.name.as_str(), p.server_id)).collect();
-        assert_eq!(names, [("Ezio", 2301), ("Deepstrike", 2303), ("Oxsi", 2321), ("MentalGesund", 2304), ("Yuzunamiku", 2323),
-            ("Randronirk", 2318), ("Blackdevil", 2304), ("Dewy", 1321), ("Atticus", 2302), ("MOLDDRED", 1303)]);
+        assert_eq!(names, [("Ezio", 2301), ("Deepstrike", 2303), ("Oxsi", 2321), ("MentalGesund", 2306), ("Yuzunamiku", 2323),
+            ("Randronirk", 2318), ("Blackdevil", 2304), ("Dewy", 1304), ("Atticus", 2302), ("MOLDDRED", 1303)]);
         assert!(r.iter().all(|p| p.level == 45));
         assert_eq!(r.iter().map(|p| p.team).collect::<Vec<_>>(), [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
+    }
+
+    /// The 5v5 of 2026-10-27 19:30, as the game showed it: (KRO) xSmithBLKx, (HIT) TQA, (BAB) maestor, (SIE) Jedaq,
+    /// (BAB) Akavedia against (BAB) Randronirk, (ARI) Cymaril, (LUD) Blazo, (KRO) Шпак, (ODA) Airan. Jedaq's first
+    /// server says 1321, the second 1301 = Siel: the second is the player's.
+    #[test]
+    fn the_line_up_matches_the_games_screen() {
+        let r = read(&hex(include_str!("lineup_5v5_1930.hex").trim())).unwrap();
+        let got: Vec<(&str, u16, u32)> = r.iter().map(|p| (p.name.as_str(), p.server_id, p.team)).collect();
+        assert_eq!(got, [("xSmithBLKx", 2316, 0), ("TQA", 1309, 0), ("maestor", 2318, 0), ("Jedaq", 1301, 0), ("Akavedia", 2318, 0),
+            ("Randronirk", 2318, 1), ("Cymaril", 1306, 1), ("Blazo", 2311, 1), ("Шпак", 2316, 1), ("Airan", 2314, 1)]);
     }
 
     /// Spawns of 2026-10-27: an Elyos in the Abyss with a legion (Kochi), and the 5v5's Deepstrike (no legion).
