@@ -415,9 +415,13 @@ export const NEAR_DROP = 1500;
  */
 export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean {
   let changed = false;
-  for (const k of kills) {
-    if (k.atMs <= map.soulsSeenMs) continue;
-    if (k.mapId == null) break; // the meter fills it in once it learns the map: these and later ones wait
+  for (const raw of kills) {
+    if (raw.atMs <= map.soulsSeenMs) continue;
+    // The map not known yet (the app started in game, no map load since): the one the mob's spots are on, else
+    // these and later kills wait for the meter to learn it (a teleport, or the game's map opened).
+    const mapId = raw.mapId ?? mapOfMob(map, raw.mob || (raw.kind != null ? map.kinds[String(raw.kind)] ?? "" : ""), raw.x, raw.y);
+    if (mapId == null) break;
+    const k = { ...raw, mapId };
     map.soulsSeenMs = k.atMs;
     changed = true;
     let mob = k.mob.trim();
@@ -441,6 +445,22 @@ export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean 
   }
   if (map.pets.length > MAX_DROPS) map.pets.splice(0, map.pets.length - MAX_DROPS);
   return changed;
+}
+
+/** A known spot of the same mob this close (game units) or closer says which map a kill is on. */
+export const SAME_MOB_NEAR = 30_000;
+/**
+ * The map a kill of `mob` at (x, y) is on, while the meter does not know it: the map id every recorded spot of
+ * that mob has (yours, friends', the bundled ones), if one of them is within SAME_MOB_NEAR. A mob whose spots are
+ * on two maps, or none near, says nothing (null).
+ */
+export function mapOfMob(map: Pick<MapData, "pets">, mob: string, x: number, y: number): number | null {
+  const name = mob.trim().toLowerCase();
+  if (!name) return null;
+  const same = map.pets.filter((d) => d.mapId != null && d.item == null && d.mob?.toLowerCase() === name);
+  const ids = new Set(same.map((d) => d.mapId));
+  if (ids.size !== 1 || !same.some((d) => Math.hypot(d.x - x, d.y - y) <= SAME_MOB_NEAR)) return null;
+  return same[0].mapId;
 }
 
 /** An item a mob you killed dropped for you, as the meter sends it (src/domain/meter.ts `LootDrop`). */
