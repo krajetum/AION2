@@ -520,6 +520,8 @@ details.soul-mobs[open] { gap: 6px; }
 .pet-progress .bar { width: 120px; }
 .drop-pet { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 6px 0; }
 .drop-pet .bar { width: 90px; }
+.drop-pet-set { display: grid; gap: 4px; margin: 6px 0; }
+.drop-pet-set select { max-width: 260px; }
 .map-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; color: var(--muted); cursor: auto; }
 
 /* Hidden cube popup (index.html#cube) */

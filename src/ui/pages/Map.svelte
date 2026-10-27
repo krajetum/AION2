@@ -6,7 +6,7 @@
   // recorded here or merged from friends' files). Close markers merge into a numbered one when zoomed out.
   // You are drawn from the meter's position (src-tauri/meter/src/position.rs) through the map's game → pixel fit:
   // the bundled image's own, or the player's references (3+ with game coordinates).
-  import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
+  import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobPet, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, mapOf, onMap, petHome, petList,
     lootKind, petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
@@ -18,6 +18,8 @@
   import { ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
   import { MAX_LEVEL, needed, petName as petNameOf, wanted } from "../../domain/pets.ts";
+  import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
+  const PET_CHOICES = Object.entries(KNOWN_PET_NAMES).sort((a, b) => a[1].localeCompare(b[1]));
   import { ui } from "../state.svelte.ts";
 
   type Layer = "cubes" | "pets";
@@ -427,7 +429,13 @@
         {:else if selPet.level >= MAX_LEVEL}<span class="pet-progress">Level {MAX_LEVEL} · done</span>
         {:else}<span class="pet-progress">{selPet.level ? `Level ${selPet.level}` : "Not owned"}<span class="bar" style:--p={selPet.points / selPet.need}><i></i></span>
           <span class="num">{selPet.points}/{selPet.need}</span></span>{/if}</div>
-      {:else if selDrop.item == null}<p class="hint">Which pet this is is not known yet: kills recorded from now on carry its number.</p>{/if}
+      {/if}
+      {#if selDrop.item == null && selDrop.mob && (selDrop.kind == null || selDrop.linked)}{@const mob = selDrop.mob}
+        <label class="drop-pet-set"><span class="hint">{ui.data.map.mobPets[mob.toLowerCase()] != null ? `Pet of every ${mob}, as you set it:` : selPet ? `Pet of every ${mob}, from its other kills. Wrong? Pick it:` : `Which pet do ${mob}'s soul points go to? Kills recorded before pet numbers don't say.`}</span>
+          <select value={String(ui.data.map.mobPets[mob.toLowerCase()] ?? "")} aria-label="Pet of {mob}"
+            onchange={(e) => { const v = e.currentTarget.value; act(() => setMobPet(ui.data, mob, v ? Number(v) : null)); }}>
+            <option value="">{selPet && ui.data.map.mobPets[mob.toLowerCase()] == null ? `${selPet.name} (from its other kills)` : "From its other kills / not known"}</option>
+            {#each PET_CHOICES as [id, n] (id)}<option value={id}>{n}</option>{/each}</select></label>{/if}
       <p class="hint">{when(selDrop.atMs)}{selDrop.by ? ` · recorded by ${selDrop.by}` : ""} · game x {selDrop.x}, y {selDrop.y}{selDrop.mapId != null ? ` · map ${selDrop.mapId}` : ""}</p>
       <div class="btns"><button onclick={() => { const id = selDrop.id; selectedDrop = ""; act(() => deleteDrop(ui.data, id)); }}>Delete drop</button></div>
     </div>{/if}
