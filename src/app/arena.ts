@@ -7,6 +7,13 @@ import { takeOdyle, takeWallet } from "../domain/wallet.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
 
+/**
+ * The character the meter last said you play, and since when (0: the first this session). The meter's soul point
+ * gains are not tagged with a character: those before a character change are the previous character's, and were
+ * added to the new one's collection when its own read (on entering the world) was missed or came later.
+ */
+const playing = { name: "", sinceMs: 0 };
+
 /** The meter's loots already looked at this session (`takeLoots`); emptied when an item is named. */
 export const seenLoots = new Set<string>();
 
@@ -24,7 +31,11 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   const me = u.profile?.name ?? "";
   const read = !!u.pets && takeCollection(data.pets, me, u.pets);
   // Every soul point counts, placed on the map or not (an older meter sends only the placed ones).
-  const gains = u.soulGains ?? u.souls ?? [];
+  if (me && me !== playing.name) {
+    playing.sinceMs = playing.name ? Date.now() : 0;
+    playing.name = me;
+  }
+  const gains = (u.soulGains ?? u.souls ?? []).filter((g) => g.atMs >= playing.sinceMs);
   const gained = !!data.pets[me] && gains.length > 0 && addSoulPoints(data.pets[me], gains);
   // Currencies and Odyle energy, kept per character for the sidebar.
   const wallet = takeWallet(data.wallets, u.wallet);
