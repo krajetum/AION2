@@ -38,7 +38,7 @@
   <tbody>{#each log.matches as m (key(m))}{@const t = matchTotals(m)}{@const k = key(m)}
     <tr class="prow" style:--p={String(t.dealt + t.taken ? t.dealt / (t.dealt + t.taken) : 0)} aria-expanded={open === k} onclick={() => { open = open === k ? "" : k; }}>
       <td>{when(m.startMs)}</td>
-      <td><span class="name">{mapLabel(log.maps, m.mapId)}</span><small>{t.opponents} {t.opponents === 1 ? "opponent" : "opponents"}</small></td>
+      <td><span class="name">{mapLabel(log.maps, m.mapId)}</span><small>{t.opponents} {t.opponents === 1 ? "opponent" : "opponents"}{#if m.rounds}{" "}· {m.rounds.length} rounds{/if}</small></td>
       <td class="n">{clock(t.ms)}</td><td class="n">{short(t.dealt)}</td><td class="n">{short(t.taken)}</td>
       <td class="n">{t.ourDeaths} : {t.theirDeaths}</td></tr>
     {#if open === k}<tr class="skills"><td colspan="6">

@@ -149,6 +149,8 @@ struct ArenaWatch {
     map: Option<i32>,
     names: HashMap<i32, String>,
     last: Option<ArenaMatch>,
+    /// When the zone of the match being watched began (its line-up comes after).
+    zone_since_ms: i64,
 }
 
 pub struct Engine {
@@ -283,7 +285,7 @@ impl Engine {
             let hits = self.storage.pvp_ledger();
             let s = &self.storage;
             let found = crate::kills::find(me, &deaths, k.0, &hits, &|id| s.get_nickname(id).unwrap_or_default(),
-                &|n| s.player_server(n), &s.fight_roster(), s.current_map_id());
+                &|n| match s.player_server(n) { 0 => crate::roster::server_of(n), id => id }, &s.fight_roster(), s.current_map_id());
             k.1.extend(found);
             let extra = k.1.len().saturating_sub(50);
             k.1.drain(..extra);
@@ -439,15 +441,21 @@ impl Engine {
         let hits = self.storage.take_pvp_ledger();
         let map = std::mem::replace(&mut a.map, self.storage.current_map_id());
         a.zone = zone;
+        let since = std::mem::replace(&mut a.zone_since_ms, crate::clock::now_ms());
         let names = std::mem::take(&mut a.names);
         if let Some(map_id) = map.filter(|&m| !is_open_world_map(m)) {
             let me = self.storage.local_player_id().map(|id| id as i32);
             let deaths = self.storage.deaths_between(i64::MIN, i64::MAX);
-            if let Some(mut m) = build_match(map_id, &hits, me, &names, &self.storage.fight_roster(), &deaths) {
+            let me_name = self.storage.local_profile().name;
+            let (line_up, teams) = crate::roster::latest(since);
+            if let Some(mut m) = build_match(map_id, &hits, me, &names, &self.storage.fight_roster(), &deaths, me_name.as_deref(), &line_up, teams) {
                 let profile = self.storage.local_profile();
                 for p in &mut m.players {
                     if p.server_id == 0 && !p.name.is_empty() {
                         p.server_id = self.storage.player_server(&p.name);
+                    }
+                    if p.server_id == 0 && !p.name.is_empty() {
+                        p.server_id = crate::roster::server_of(&p.name);
                     }
                     if p.side == "you" {
                         p.level = p.level.or(profile.level.map(|l| l as i32));
