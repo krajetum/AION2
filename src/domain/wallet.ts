@@ -4,6 +4,7 @@
 /** The currencies, by the item code the game sends (checked against the amounts in game, 2026-10-27). */
 export const CURRENCIES: { code: number; name: string }[] = [
   { code: 930_100_031, name: "Kina" },
+  { code: 930_100_001, name: "Bound Kina" }, // spent first at a shop: to 0 in the same record as the Kina
   { code: 930_100_003, name: "Abyss Points" },
   { code: 930_100_017, name: "Nightmare Coins" },
   { code: 930_100_011, name: "Shugo Coins" },

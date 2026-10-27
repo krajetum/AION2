@@ -1,4 +1,4 @@
-//! Your currencies (companion code): Kina, Abyss Points, Nightmare Coins and Shugo Coins, as items of the
+//! Your currencies (companion code): Kina and bound Kina, Abyss Points, Nightmare Coins and Shugo Coins, as items of the
 //! inventory. From the packet recordings of 2026-10-26/27, checked against what the player read in game:
 //!
 //! ```text
@@ -8,8 +8,10 @@
 //! ```
 //!
 //! Each currency is an item with its own code, preceded by `00 00`, its amount a u64 after it:
-//! - 930100031 Kina: 5,238,554 -> 5,239,061 on a kill (2026-10-27 11:49), the same +507 as the daily counter `a6 ff`;
+//! - 930100031 Kina (unbound): 5,238,554 -> 5,239,061 on a kill (2026-10-27 11:49), the same +507 as the daily counter `a6 ff`;
 //!   5,143,092 -> 5,061,092 at a shop (12:47).
+//! - 930100001 bound Kina: 30,000 on 2026-10-26; to 0 in the same record as that Kina, a buy of "101k Kina"
+//!   paid with the bound Kina first (the player: "about 19k", = 101k - 82,000) and 82,000 of the unbound.
 //! - 930100003 Abyss Points: "about 300k", 300,795 -> 300,824 on kills, -75,000 at a shop to 225,824.
 //! - 930100017 Nightmare Coins: "38k", -3,000 at a shop to 35,085.
 //! - 930100011 Shugo Coins: "255", -20 at a shop to 235.
@@ -25,10 +27,11 @@ use serde::Serialize;
 use crate::capture::stream_processor::read_varint;
 
 pub const KINA: u32 = 930_100_031;
+pub const BOUND_KINA: u32 = 930_100_001;
 pub const ABYSS_POINTS: u32 = 930_100_003;
 pub const NIGHTMARE_COINS: u32 = 930_100_017;
 pub const SHUGO_COINS: u32 = 930_100_011;
-const CODES: [u32; 4] = [KINA, ABYSS_POINTS, NIGHTMARE_COINS, SHUGO_COINS];
+const CODES: [u32; 5] = [KINA, BOUND_KINA, ABYSS_POINTS, NIGHTMARE_COINS, SHUGO_COINS];
 
 /// A character's currencies as last seen: item code -> amount.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
@@ -119,14 +122,14 @@ mod tests {
         (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
     }
 
-    /// 2026-10-27 12:47, the shop: Nightmare Coins 35,085 (spent 3k of "38k"), then a record of three items whose
-    /// second is Kina, 5,061,092.
+    /// 2026-10-27 12:47, the shop: Nightmare Coins 35,085 (spent 3k of "38k"), then a record of three items: the
+    /// bound Kina used up, Kina 5,061,092, and another item.
     #[test]
     fn changed_items_update_the_amounts() {
         let mut s = State::default();
         read(&mut s, &hex("561b56020100d595080000240000313370370d89000000000000010700000000000000000000000000000f000000f8a40200007e00006a26b41f02000000000000000400000000000000000000000000130000"), 1);
         read(&mut s, &hex("7d1b560302003e0f05000024000021337037000000000000000001010000000000000000000000000000420001000af10100008300003f337037e4394d00000000000100000000000000000000000000004200010046b90200006900002455a71fea0100000000000001200000000000000000000000002f0000"), 2);
-        assert_eq!(s.wallet.values, BTreeMap::from([(NIGHTMARE_COINS, 35_085), (KINA, 5_061_092)]));
+        assert_eq!(s.wallet.values, BTreeMap::from([(NIGHTMARE_COINS, 35_085), (BOUND_KINA, 0), (KINA, 5_061_092)]));
         assert_eq!(s.wallet.at_ms, 2);
         assert_eq!(claim(&mut s, Some("Randronirk")).unwrap().owner.as_deref(), Some("Randronirk"), "mid-session: the character played");
     }
