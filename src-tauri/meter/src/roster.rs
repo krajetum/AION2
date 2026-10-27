@@ -15,6 +15,11 @@
 //! of Blackdevil, Dewy, Atticus and MOLDDRED; Ezio, Deepstrike, Oxsi, MentalGesund and Yuzunamiku on the other
 //! (the four of them who fought are the 5v5's opponents); Nocturna 2316 (the 1v1's opponent). A player is
 //! read only when both servers are set, the race is 1 or 2, the level 1-100 and the zeros are there.
+//!
+//! Outside arenas (the Abyss) there is no line-up: other players' servers come from their spawn records
+//! (`spawn_server`), for the kill history and the shugo.gg link.
+
+use std::collections::HashMap;
 
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -40,16 +45,93 @@ pub fn latest(after_ms: i64) -> (Vec<RosterPlayer>, bool) {
     LAST.lock().as_ref().map(|(at, r)| (r.clone(), *at >= after_ms)).unwrap_or_default()
 }
 
-/// A player's server from the last line-up (0: not in it).
+/// Servers from other players' spawn records (`45 36`), by name.
+static SPAWNED: Mutex<Option<HashMap<String, u16>>> = Mutex::new(None);
+const MAX_SPAWNED: usize = 20_000;
+
+/// A player's server: from the last line-up, else from their spawn record (0: neither said).
 pub fn server_of(name: &str) -> u16 {
-    LAST.lock().as_ref().and_then(|(_, r)| r.iter().find(|p| p.name == name.trim()).map(|p| p.server_id)).unwrap_or(0)
+    let name = name.trim();
+    let listed = LAST.lock().as_ref().and_then(|(_, r)| r.iter().find(|p| p.name == name).map(|p| p.server_id));
+    listed.or_else(|| SPAWNED.lock().as_ref()?.get(name).copied()).unwrap_or(0)
 }
 
 /// Reads one game frame (its length varint, 2-byte type, body), as the parser hands it on.
 pub fn observe(frame: &[u8], now_ms: i64) {
     if let Some(players) = read(frame) {
         *LAST.lock() = Some((now_ms, players));
+    } else if let Some((name, server)) = spawn_server(frame) {
+        let mut seen = SPAWNED.lock();
+        let seen = seen.get_or_insert_with(HashMap::new);
+        if seen.len() < MAX_SPAWNED || seen.contains_key(&name) {
+            seen.insert(name, server);
+        }
     }
+}
+
+/// A server id as the game numbers them: 1xxx Elyos, 2xxx Asmodian, the hundreds the region, then 01-58
+/// (A2Tools' server table).
+fn server_like(v: u16) -> bool {
+    (1..=2).contains(&(v / 1000)) && (v % 1000) / 100 <= 5 && (1..=58).contains(&(v % 100))
+}
+
+/// Another player's name and server from their spawn record (`45 36`, the mask-gated name as A2Tools reads it).
+/// The server sits ~100 bytes after the name, after `a0 86 01 00 a0 86 01 00` (100,000 twice) and a pair of equal
+/// u32: either as the legion's `<server u16> <u32> 00 00 <server u16, again> <legion name>`, or after a run of
+/// `01|02` + 3 byte entries (optionally led by `01 00 00 00`) and a `00|01|02` byte. Checked on 692 spawns in the
+/// recordings of 2026-10-23 to 27: 540 of 557 players got one, never two different ones; in the Abyss every one
+/// Baba (2318) or Kochi (1318), the only two servers there (the player); in the arenas the servers their line-up
+/// gives as its second one (`19 e3`).
+fn spawn_server(frame: &[u8]) -> Option<(String, u16)> {
+    let len = read_varint(frame, 0);
+    if len.length <= 0 {
+        return None;
+    }
+    let body = len.length as usize + 2;
+    if frame.get(body - 2..body)? != [0x45, 0x36] {
+        return None;
+    }
+    let id = read_varint(frame, body);
+    if id.length <= 0 {
+        return None;
+    }
+    let mask2 = body + id.length as usize + 4;
+    if frame.get(mask2)? & 0x01 == 0 {
+        return None;
+    }
+    let n = *frame.get(mask2 + 1)? as usize;
+    let name = std::str::from_utf8(frame.get(mask2 + 2..mask2 + 2 + n)?).ok()?;
+    if n == 0 || name.chars().any(|c| c.is_control() || c.is_whitespace()) {
+        return None;
+    }
+    const ANCHOR: [u8; 8] = [0xa0, 0x86, 0x01, 0x00, 0xa0, 0x86, 0x01, 0x00];
+    let after = mask2 + 2 + n;
+    let anchor = frame.get(after..)?.windows(8).position(|w| w == ANCHOR)? + after;
+    let p = anchor + 16;
+    let u16_ = |k: usize| u16_at(frame, k);
+    // The legion form: the server twice, 8 bytes apart, two zero bytes before the second.
+    for k in p..(p + 64).min(frame.len().saturating_sub(10)) {
+        if let Some(v) = u16_(k).filter(|&v| server_like(v)) {
+            if u16_(k + 8) == Some(v) && frame.get(k + 6..k + 8) == Some(&[0, 0]) {
+                return Some((name.to_string(), v));
+            }
+        }
+    }
+    // The entry run.
+    let mut k = p;
+    if frame.get(k..k + 4) == Some(&[1, 0, 0, 0]) {
+        k += 4;
+    }
+    for _ in 0..8 {
+        if !matches!(frame.get(k)?, 0..=2) {
+            return None;
+        }
+        if let Some(v) = u16_(k + 1).filter(|&v| server_like(v)) {
+            return Some((name.to_string(), v));
+        }
+        k += 4;
+    }
+    None
 }
 
 fn u16_at(b: &[u8], at: usize) -> Option<u16> {
@@ -139,6 +221,14 @@ mod tests {
             ("Randronirk", 2318), ("Blackdevil", 2304), ("Dewy", 1321), ("Atticus", 2302), ("MOLDDRED", 1303)]);
         assert!(r.iter().all(|p| p.level == 45));
         assert_eq!(r.iter().map(|p| p.team).collect::<Vec<_>>(), [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
+    }
+
+    /// Spawns of 2026-10-27: an Elyos in the Abyss with a legion (Kochi), and the 5v5's Deepstrike (no legion).
+    #[test]
+    fn a_spawn_says_the_players_server() {
+        assert_eq!(spawn_server(&hex(include_str!("spawn_kochi.hex").trim())), Some(("S1appy".to_string(), 1318)));
+        assert_eq!(spawn_server(&hex(include_str!("spawn_deepstrike.hex").trim())), Some(("Deepstrike".to_string(), 2303)));
+        assert_eq!(spawn_server(&hex("0f0d90016104000001000000")), None);
     }
 
     #[test]
