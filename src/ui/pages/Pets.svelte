@@ -3,7 +3,7 @@
   // with the soul points gained since, and where each pet's soul points drop (the Map page's spots, by pet number).
   import { setPetName } from "../../app/map.ts";
   import { dropMap, MAPS, petOf, soulOf, worldMap, type MapKey } from "../../domain/map.ts";
-  import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
+  import { KNOWN_PET_NAMES, PET_TYPE, PET_TYPES, type PetType } from "../../domain/pet-names.ts";
   import { MAX_LEVEL, maxed, needed, petName, type Pet } from "../../domain/pets.ts";
   import { commit } from "../actions.ts";
   import { hm, num } from "../format.ts";
@@ -19,6 +19,10 @@
   type Where = "any" | MapKey | "none";
   const WHERE: [Where, string][] = [["any", "All maps"], ...MAPS.map((m): [Where, string] => [m.key, m.name]), ["none", "Unknown"]];
   let where = $state<Where>("any");
+  // Pet type (feral, intellect, nature...) from the database; a pet it doesn't list has none.
+  let kind = $state<PetType | "any">("any");
+  const KINDS: [PetType | "any", string][] = [["any", "All types"], ...PET_TYPES];
+  const typeName = (id: number) => PET_TYPES.find(([t]) => t === PET_TYPE[id])?.[1] ?? "—";
   const mapsOf = (id: number) => [...new Set((spots.get(id) ?? []).map(dropMap).filter((m): m is MapKey => !!m))];
   const placed = (w: Where, id: number) => w === "any" || (w === "none" ? !mapsOf(id).length : mapsOf(id).includes(w));
 
@@ -42,7 +46,7 @@
     for (const id of ids) if (!out.some((p) => p.id === id)) out.push({ id, level: 0, points: 0 });
     const q = query.trim().toLowerCase();
     return out
-      .filter((p) => shows(filter, p) && placed(where, p.id))
+      .filter((p) => shows(filter, p) && placed(where, p.id) && (kind === "any" || PET_TYPE[p.id] === kind))
       .filter((p) => !q || name(p.id).toLowerCase().includes(q) || String(p.id).includes(q)
         || (spots.get(p.id) ?? []).some((d) => d.mob?.toLowerCase().includes(q)))
       // Closest to the next level first: the cheapest to finish.
@@ -84,16 +88,19 @@
       <button class:on={filter === f} aria-pressed={filter === f} onclick={() => { filter = f; }}>{label}</button>{/each}</div>
     <div class="seg" role="group" aria-label="Where it drops" title="Unknown: no spot on any map yet (chests, dungeons, events, or not found)">{#each WHERE as [w, label]}
       <button class:on={where === w} aria-pressed={where === w} onclick={() => { where = w; }}>{label}</button>{/each}</div>
+    <div class="seg" role="group" aria-label="Type">{#each KINDS as [k, label]}
+      <button class:on={kind === k} aria-pressed={kind === k} onclick={() => { kind = k; }}>{label}</button>{/each}</div>
     <input type="search" placeholder="Search a pet or a number" aria-label="Search a pet" autocomplete="off" bind:value={query}>
   </div>
   <table>
-    <thead><tr><th>Pet</th><th class="num">#</th><th>Level</th><th>Soul points</th><th class="num">Spots</th><th>Maps</th><th></th></tr></thead>
+    <thead><tr><th>Pet</th><th class="num">#</th><th>Type</th><th>Level</th><th>Soul points</th><th class="num">Spots</th><th>Maps</th><th></th></tr></thead>
     <tbody>
       {#each rows as p (p.id)}{@const n = spots.get(p.id)?.length ?? 0}
         <tr class:done={maxed(p)}>
           <td><input class="pet-name" value={map.petNames[String(p.id)] ?? ""} placeholder={name(p.id)} aria-label="Name of pet {p.id}" autocomplete="off"
             onchange={(e) => commit(e, (v) => setPetName(ui.data, p.id, v), () => map.petNames[String(p.id)] ?? "")}></td>
           <td class="num dim">{p.id}</td>
+          <td class="dim">{typeName(p.id)}</td>
           <td>{p.level ? `Level ${p.level}` : "Not owned"}</td>
           <td>{#if maxed(p)}<span class="dim">done</span>{:else}<span class="pet-progress"><span class="bar" style:--p={share(p)}><i></i></span>
             <span class="num">{p.points}/{needed(p)}</span></span>{/if}</td>
@@ -101,7 +108,7 @@
           <td class="dim">{mapsOf(p.id).map((m) => worldMap(m).name).join(", ") || "—"}</td>
           <td>{#if n}<button class="act" title="Open the map on this pet's spots" onclick={() => showOnMap(p.id)}>{@html ICON.map}Show on map</button>{/if}</td>
         </tr>
-      {:else}<tr><td colspan="7" class="hint">{query.trim() ? "No pet matches." : filter === "wanted" ? "Every pet you own is at level 3." : "No pet at this level."}</td></tr>{/each}
+      {:else}<tr><td colspan="8" class="hint">{query.trim() ? "No pet matches." : filter === "wanted" ? "Every pet you own is at level 3." : "No pet at this level."}</td></tr>{/each}
     </tbody>
   </table>
 </section>
