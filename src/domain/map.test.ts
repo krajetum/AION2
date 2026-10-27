@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds } from "./map.ts";
 import { readFileSync } from "node:fs";
 import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
@@ -323,4 +323,23 @@ test("a kill while the map is unknown goes on the map its mob's spots are on", (
   assert.equal(m.pets.at(-1)?.map, "elyos");
   assert.equal(takeSouls(m, [kill(11, "Slink", null), kill(12, "Water Spirit", null, 31000)], "Me"), false, "an unknown map waits, with the kills after it");
   assert.equal(m.soulsSeenMs, 10);
+});
+
+test("kills with no pet number get their mob's: the player's pick, else what its other kills carried most", () => {
+  const m = emptyMap();
+  const k = (id: string, mob: string, kind?: number, item?: number) =>
+    ({ id, pet: mob, mob, ...(kind != null && { kind }), ...(item != null && { item }), mapId: 1110, x: 0, y: 0, z: 0, atMs: 1, by: "" });
+  m.pets.push(k("a", "Withered Branch Spider", 1116), k("b", "Withered Branch Spider", 1116), k("c", "Withered Branch Spider", 1071),
+    k("d", "Withered Branch Spider"), k("e", "Old Agrint"), k("f", "Old Agrint", undefined, 610531002));
+  assert.equal(linkKinds(m), 1);
+  assert.deepEqual([m.pets[3].kind, m.pets[3].linked], [1116, true], "the most carried");
+  assert.equal(m.pets[4].kind, undefined, "Old Agrint: no kill of it ever carried one");
+  m.mobPets["old agrint"] = 1207; // the player's pick (2026-10-27)
+  assert.equal(linkKinds(m), 1);
+  assert.deepEqual([m.pets[4].kind, m.pets[5].kind], [1207, undefined], "a crystal is not its mob's pet's");
+  m.mobPets["withered branch spider"] = 1071;
+  linkKinds(m);
+  assert.deepEqual([m.pets[0].kind, m.pets[3].kind], [1116, 1071], "recorded numbers stay; linked ones follow the pick");
+  const back = cleanMap(JSON.parse(JSON.stringify(m)));
+  assert.deepEqual([back.pets[3].kind, back.pets[3].linked, back.mobPets["old agrint"]], [1071, true, 1207]);
 });
