@@ -515,6 +515,8 @@ details.soul-mobs[open] { gap: 6px; }
 .pets-page tr.done { opacity: .6; }
 .pet-progress { display: flex; align-items: center; gap: 8px; }
 .pet-progress .bar { width: 120px; }
+.drop-pet { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 6px 0; }
+.drop-pet .bar { width: 90px; }
 .map-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; color: var(--muted); cursor: auto; }
 
 /* Hidden cube popup (index.html#cube) */
