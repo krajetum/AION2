@@ -225,6 +225,36 @@ impl Engine {
             capturer, capture_error, game: Mutex::new((i64::MIN, false)) })
     }
 
+    /// An engine with no capture, and the parser that feeds it: for replaying a packet recording
+    /// (`examples/replay.rs`). Frames go to `StreamProcessor::consume_stream`, as the live dispatcher's do.
+    pub fn offline() -> (Arc<Self>, crate::capture::stream_processor::StreamProcessor) {
+        crate::tap::install();
+        let (skills, npcs) = load_names();
+        let storage = new_storage();
+        let ping = Arc::new(PingTracker::new());
+        let calc = DpsCalculator::new(storage.clone(), skills.clone(), npcs.clone(), ping.clone());
+        let mut processor = crate::capture::stream_processor::StreamProcessor::new(storage.clone(), skills, npcs.clone());
+        processor.set_dot_skill_ids(dot_skill_ids());
+        let engine = Arc::new(Self {
+            storage,
+            npcs,
+            calc: Mutex::new(calc),
+            bosses: Mutex::new((0, Vec::new())),
+            arena: Mutex::new(ArenaWatch::default()),
+            kills: Mutex::new((i64::MIN, Vec::new())),
+            ports: Arc::new(CombatPortDetector::new()),
+            ping,
+            paused: Arc::new(AtomicBool::new(false)),
+            party_only: AtomicBool::new(false),
+            view: Mutex::new("damage".into()),
+            watched: Mutex::new(Vec::new()),
+            capturer: None,
+            capture_error: Some("offline replay".into()),
+            game: Mutex::new((i64::MIN, false)),
+        });
+        (engine, processor)
+    }
+
     fn game_open(&self) -> bool {
         let now = crate::clock::now_ms();
         let mut g = self.game.lock();

@@ -8,6 +8,7 @@ Tauri 2 + TypeScript + Svelte 5 + Vite. Single user, multiple characters, everyt
 - `npx tsc --noEmit` — type-check `.ts`; `npm run check` — svelte-check (also covers `.svelte` files)
 - `cargo test -p aion2-meter` (in `src-tauri/`) — DPS meter parser tests (A2Tools' own, with byte samples from live captures)
 - `cargo run -p aion2-meter --example smoke` — starts the live capture and prints updates (Linux needs libpcap)
+- `cargo run -p aion2-meter --example replay -- <recording.txt>` — feeds a packet recording (Settings > Diagnostics) through the meter offline (`Engine::offline`) and prints the arena match, kills and deaths as the app would have logged them
 - `npm run tauri dev` — real desktop app (needs Rust + MSVC; first build ~2 min)
 - CI: one workflow, `.github/workflows/release.yml`, on every merge into `main` (except `.md`-only changes); nothing runs on branches or PRs,
   so run `npm test` / `npm run check` locally before merging. Jobs: `check` (ubuntu: npm test, tsc for app and `server/`, svelte-check, then what changed) →
