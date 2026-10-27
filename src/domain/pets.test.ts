@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addSoulPoints, cleanCollections, finishFromCrystals, needed, petName, takeCollection, wanted, type PetCollection } from "./pets.ts";
+import { addSoulPoints, cleanCollections, needed, petName, takeCollection, wanted, type PetCollection } from "./pets.ts";
 
 // From the collection read on 2026-10-26 12:05: Unstable Spider 1117 (2, 55/75), Armadon 1046 (2, 39/75), 1005 at level 3.
 const read = (): PetCollection => ({ atMs: 100, pets: [{ id: 1117, level: 2, points: 55 }, { id: 1046, level: 2, points: 39 }, { id: 1005, level: 3, points: 0 }] });
@@ -43,20 +43,3 @@ test("names and what is still wanted", () => {
   assert.equal(wanted(undefined, 1005), true, "no collection read: everything");
 });
 
-test("a crystal from a pet's mob finishes a level 2 pet whose last soul points were lost", () => {
-  const all: Record<string, PetCollection> = {};
-  takeCollection(all, "Me", read()); // read at 100
-  const c = all.Me;
-  c.pets.push({ id: 1186, level: 2, points: 72 }, { id: 1300, level: 1, points: 20 });
-  const pets: Record<string, number> = { "Poison Blood Mob": 1186, "Unstable Spider": 1117, "Low Mob": 1300 };
-  const finish = (item: number, mob: string, atMs: number) =>
-    finishFromCrystals(c, [{ item, mob, atMs }], (i) => i >= 610_530_000 && i < 610_540_000, (m) => pets[m] ?? null);
-  assert.equal(finish(610531002, "Poison Blood Mob", 50), false, "looted before the read: the read already knows");
-  assert.equal(finish(534660061, "Poison Blood Mob", 200), false, "its usual loot is no crystal");
-  assert.equal(finish(610531002, "Poison Blood Mob", 200), true);
-  assert.deepEqual(c.pets.find((p) => p.id === 1186), { id: 1186, level: 3, points: 0 });
-  assert.equal(finish(610531002, "Low Mob", 200), false, "a level 1 pet is too far from done");
-  assert.equal(finish(610531002, "Nobody knows", 200), false);
-  assert.equal(finish(610531002, "Poison Blood Mob", 300), false, "done already");
-  assert.equal(cleanCollections(JSON.parse(JSON.stringify(all))).Me.readMs, 100, "the read time is kept");
-});

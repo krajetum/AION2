@@ -1,8 +1,8 @@
 // Arena log and field-boss use cases: what the meter sends, merged into the save file.
 import { logKills, logMatch } from "../domain/arena.ts";
 import { mergeBosses } from "../domain/bosses.ts";
-import { isCrystal, petOfMob, takeCubes, takeLoots, takeSouls } from "../domain/map.ts";
-import { addSoulPoints, finishFromCrystals, takeCollection } from "../domain/pets.ts";
+import { takeCubes, takeLoots, takeSouls } from "../domain/map.ts";
+import { addSoulPoints, takeCollection } from "../domain/pets.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
 
@@ -25,10 +25,7 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   // Every soul point counts, placed on the map or not (an older meter sends only the placed ones).
   const gains = u.soulGains ?? u.souls ?? [];
   const gained = !!data.pets[me] && gains.length > 0 && addSoulPoints(data.pets[me], gains);
-  // A crystal from a mob means its pet is done, even if a soul point on the way was lost.
-  const finished = !!data.pets[me] && !!u.loots?.length
-    && finishFromCrystals(data.pets[me], u.loots, (item) => isCrystal(data.map, item), (mob) => petOfMob(data.map, mob));
-  return !!bosses || match || cubes || kills || souls || loots || read || gained || finished;
+  return !!bosses || match || cubes || kills || souls || loots || read || gained;
 }
 
 /** Names an arena map ("Arena of Solitude"); empty = unnamed. */

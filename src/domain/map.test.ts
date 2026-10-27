@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, petOfMob, isCrystal, mapOfMob } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob } from "./map.ts";
 import { readFileSync } from "node:fs";
 import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
@@ -304,19 +304,6 @@ test("the bundled drops: no player names, every spot on its map, merged once, no
   assert.equal(takeBundledDrops(m, raw), -1, "merged once: deleted spots stay deleted");
   assert.equal(m.pets.length, 2848);
   assert.equal(cleanMap(JSON.parse(JSON.stringify(m))).bundledDrops, BUNDLED_DROPS, "kept in the save");
-});
-
-test("a mob's pet: the kind its kills carried most, else the first seen with it; crystals by name or code", () => {
-  const m = emptyMap();
-  const k = (id: string, mob: string, kind?: number) => ({ id, pet: mob, mob, ...(kind != null && { kind }), mapId: 1110, x: 0, y: 0, z: 0, atMs: 1, by: "" });
-  m.pets.push(k("a", "Slink", 1016), k("b", "Slink", 1016), k("c", "Slink", 1121), k("d", "Karnif"));
-  assert.equal(petOfMob(m, "Slink"), 1016);
-  m.kinds["1097"] = "Karnif";
-  assert.equal(petOfMob(m, "Karnif"), 1097);
-  assert.equal(petOfMob(m, "Nobody"), null);
-  assert.ok(isCrystal(m, 610530014) && !isCrystal(m, 534660061));
-  m.items["123"] = "Something Soul";
-  assert.ok(isCrystal(m, 123), "named by the player");
 });
 
 test("a kill while the map is unknown goes on the map its mob's spots are on", () => {
