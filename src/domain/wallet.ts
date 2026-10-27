@@ -66,3 +66,17 @@ export function walletRows(w: Wallet, sumKina: boolean): { name: string; value: 
 /** A character's wallet, by name as the game writes it (any case). */
 export const walletOf = (all: Record<string, Wallet>, name: string | undefined) =>
   name ? Object.entries(all).find(([n]) => n.trim().toLowerCase() === name.trim().toLowerCase())?.[1] : undefined;
+
+/**
+ * The wallet the sidebar shows: the selected character's (by its name in the app), else the one of the character
+ * played in game (the app's character may be named otherwise, "Main"), else the only one kept.
+ */
+export function pickWallet(all: Record<string, Wallet>, selected: string | undefined, playing: string | undefined):
+  { name: string; wallet: Wallet } | undefined {
+  for (const n of [selected, playing]) {
+    const name = n && Object.keys(all).find((k) => k.trim().toLowerCase() === n.trim().toLowerCase());
+    if (name) return { name, wallet: all[name] };
+  }
+  const names = Object.keys(all);
+  return names.length === 1 ? { name: names[0], wallet: all[names[0]] } : undefined;
+}

@@ -510,6 +510,8 @@ details.soul-mobs[open] { gap: 6px; }
 .toggle-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
 .toggle-line input { width: auto; height: auto; }
 .wallet-sum { padding: 6px 6px 2px; font-size: 12px; }
+.wallet-of { text-transform: none; font-weight: 400; }
+.wallet-hint { padding: 4px 6px; margin: 0; font-size: 12px; }
 .pets-page .map-tools { margin-bottom: 10px; }
 .pets-page input.pet-name { width: 100%; max-width: 260px; height: 28px; background: transparent; border-color: transparent; }
 .pets-page input.pet-name:hover, .pets-page input.pet-name:focus { border-color: var(--border); background: var(--ground); }
