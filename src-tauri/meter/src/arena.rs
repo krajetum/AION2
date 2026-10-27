@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use crate::combat::data_storage::{PartyMember, PvpHits};
 use crate::entity::job_class::JobClass;
+use crate::roster::RosterPlayer;
 use crate::snapshot::english_job;
 
 /// Deaths this long after the last hit still count for the match (the killing blow's own
@@ -47,7 +48,10 @@ pub struct ArenaMatch {
 }
 
 /// The match in `hits`, or None when no hit crossed from your side to theirs. `party` is the
-/// roster by name (its members are your side, with their gear); `deaths` the death log.
+/// roster by name (its members are your side, with their gear); `deaths` the death log; `me_name` your
+/// name (you are "you" by it too: your entity id changes with each arena map load); `line_up` the arena's
+/// line-up (`roster.rs`): every player in it gets the server and level it says; when it is this match's
+/// (`teams`), your team is your side and the players who never fought are listed too.
 pub fn build_match(
     map_id: i32,
     hits: &HashMap<(i32, i32), PvpHits>,
@@ -55,9 +59,17 @@ pub fn build_match(
     names: &HashMap<i32, String>,
     party: &HashMap<String, PartyMember>,
     deaths: &[(i32, i64, Option<i64>)],
+    me_name: Option<&str>,
+    line_up: &[RosterPlayer],
+    teams: bool,
 ) -> Option<ArenaMatch> {
     let name = |id: i32| names.get(&id).cloned().unwrap_or_default();
-    let ours = |id: i32| Some(id) == me || names.get(&id).is_some_and(|n| party.contains_key(n.trim()));
+    let is_me = |id: i32| Some(id) == me || me_name.is_some_and(|m| !m.is_empty() && names.get(&id).is_some_and(|n| n.trim() == m));
+    let my_team = me_name.filter(|_| teams).and_then(|m| line_up.iter().find(|p| p.name == m)).map(|p| p.team);
+    let team_of = |n: &str| line_up.iter().find(|p| p.name == n.trim()).map(|p| p.team);
+    let ours = |id: i32| {
+        is_me(id) || names.get(&id).is_some_and(|n| party.contains_key(n.trim()) || (my_team.is_some() && team_of(n) == my_team))
+    };
     let mut players: HashMap<i32, ArenaPlayer> = HashMap::new();
     let (mut start, mut end) = (i64::MAX, i64::MIN);
     for (&(actor, target), h) in hits {
@@ -73,7 +85,7 @@ pub fn build_match(
                 let roster = party.get(n.trim());
                 ArenaPlayer {
                     id,
-                    side: if Some(id) == me { "you" } else if ours(id) { "ally" } else { "opponent" },
+                    side: if is_me(id) { "you" } else if ours(id) { "ally" } else { "opponent" },
                     job: String::new(),
                     server_id: roster.map_or(0, |m| m.server_id),
                     dealt: 0,
@@ -104,6 +116,25 @@ pub fn build_match(
         if (start..=end + DEATH_GRACE_MS).contains(&at) {
             if let Some(p) = players.get_mut(&id) {
                 p.deaths += 1;
+            }
+        }
+    }
+    // The line-up: servers and levels the game sends nowhere else, and who never fought.
+    for p in players.values_mut() {
+        if let Some(r) = line_up.iter().find(|r| r.name == p.name.trim() && !p.name.is_empty()) {
+            if p.server_id == 0 {
+                p.server_id = r.server_id;
+            }
+            p.level = p.level.or(Some(r.level));
+        }
+    }
+    if my_team.is_some() {
+        for r in line_up {
+            if !players.values().any(|p| p.name.trim() == r.name) {
+                let id = -(players.len() as i32) - 1; // no entity id: never seen fighting
+                let side = if me_name == Some(r.name.as_str()) { "you" } else if Some(r.team) == my_team { "ally" } else { "opponent" };
+                players.insert(id, ArenaPlayer { id, name: r.name.clone(), side, job: String::new(), server_id: r.server_id, dealt: 0, taken: 0,
+                    hits: 0, deaths: 0, level: Some(r.level), gear_score: None, combat_power: None });
             }
         }
     }
@@ -140,7 +171,7 @@ mod tests {
         .into_iter()
         .collect();
         let deaths = [(3, 9_500, None), (3, 20_000, None)];
-        let m = build_match(600_001, &hits, Some(1), &names, &party, &deaths).unwrap();
+        let m = build_match(600_001, &hits, Some(1), &names, &party, &deaths, None, &[], false).unwrap();
         assert_eq!((m.start_ms, m.end_ms), (1_000, 9_000));
         let row = |id: i32| m.players.iter().find(|p| p.id == id).unwrap();
         assert_eq!(m.players.iter().map(|p| p.side).collect::<Vec<_>>(), ["you", "ally", "opponent"]);
@@ -155,6 +186,33 @@ mod tests {
         let hits: HashMap<(i32, i32), PvpHits> = [((1, 2), hit(100, 0, 0, 0))].into_iter().collect();
         let party: HashMap<String, PartyMember> = [("B".to_string(), PartyMember::default())].into_iter().collect();
         let names: HashMap<i32, String> = [(2, "B".to_string())].into_iter().collect();
-        assert_eq!(build_match(1, &hits, Some(1), &names, &party, &[]), None);
+        assert_eq!(build_match(1, &hits, Some(1), &names, &party, &[], None, &[], false), None);
+    }
+
+    /// The 5v5 of 2026-10-27 18:34: random teammates are not your party, but the line-up says who is on your
+    /// team; you are "you" by name though your entity id changed with the map load; who never fought is listed.
+    #[test]
+    fn the_line_up_makes_sides_servers_and_levels() {
+        let names: HashMap<i32, String> =
+            [(7, "Randronirk"), (8, "Atticus"), (9, "Deepstrike")].into_iter().map(|(i, n)| (i, n.to_string())).collect();
+        let hits: HashMap<(i32, i32), PvpHits> = [
+            ((7, 9), hit(400, 1_000, 5_000, 0)),
+            ((9, 7), hit(600, 1_000, 5_000, 0)),
+            ((8, 9), hit(300, 2_000, 3_000, 0)),
+        ]
+        .into_iter()
+        .collect();
+        let line_up = [
+            RosterPlayer { name: "Deepstrike".into(), server_id: 2303, level: 45, team: 0 },
+            RosterPlayer { name: "Oxsi".into(), server_id: 2321, level: 45, team: 0 },
+            RosterPlayer { name: "Randronirk".into(), server_id: 2318, level: 45, team: 1 },
+            RosterPlayer { name: "Atticus".into(), server_id: 2302, level: 45, team: 1 },
+        ];
+        let m = build_match(61, &hits, Some(1), &names, &HashMap::new(), &[], Some("Randronirk"), &line_up, true).unwrap();
+        let row = |n: &str| m.players.iter().find(|p| p.name == n).unwrap();
+        assert_eq!(row("Randronirk").side, "you", "by name: id 1 was the old one");
+        assert_eq!((row("Atticus").side, row("Atticus").dealt), ("ally", 300));
+        assert_eq!((row("Deepstrike").side, row("Deepstrike").server_id, row("Deepstrike").level, row("Deepstrike").taken), ("opponent", 2303, Some(45), 700));
+        assert_eq!((row("Oxsi").side, row("Oxsi").dealt, row("Oxsi").server_id), ("opponent", 0, 2321), "never fought, still listed");
     }
 }

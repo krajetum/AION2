@@ -37,6 +37,8 @@ pub mod abyss_bosses;
 pub mod pets;
 /// Your currencies (Kina, Abyss Points, Nightmare and Shugo Coins).
 pub mod currencies;
+/// The arena's line-up (servers and levels of every player of the match).
+pub mod roster;
 /// The companion's readers on the parser's frame tap.
 pub mod tap;
 

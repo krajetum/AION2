@@ -14,6 +14,7 @@ pub fn install() {
             crate::souls::observe(frame, crate::position::me(), crate::clock::now_ms());
             crate::pets::observe(frame, crate::clock::now_ms());
             crate::currencies::observe(frame, crate::clock::now_ms());
+            crate::roster::observe(frame, crate::clock::now_ms());
             crate::recorder::frame(frame);
         })));
     });

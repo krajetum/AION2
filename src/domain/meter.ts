@@ -44,8 +44,9 @@ export interface ArenaPlayer {
   dealt: number; taken: number; hits: number; deaths: number;
   level: number | null; gearScore: number | null; combatPower: number | null;
 }
-/** PvP on an instance map, logged on the map load after it. */
-export interface ArenaMatch { mapId: number; startMs: number; endMs: number; players: ArenaPlayer[] }
+/** PvP on an instance map, logged on the map load after it. The app merges an arena's rounds (each a map load)
+ *  into one match: `rounds` = their start times, `playMs` = their time without the pauses between (src/domain/arena.ts). */
+export interface ArenaMatch { mapId: number; startMs: number; endMs: number; players: ArenaPlayer[]; rounds?: number[]; playMs?: number }
 /** Where you are, from the last record that said (map loads, teleports, your own buffs): a few seconds old
  *  while you play, older when nothing is applied. Game units; mapId of the last map load, if seen. */
 export interface SelfPosition { x: number; y: number; z: number; mapId: number | null; atMs: number }
