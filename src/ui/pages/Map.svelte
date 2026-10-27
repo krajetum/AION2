@@ -9,7 +9,7 @@
   import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, mapOf, onMap, petHome, petList,
-    lootKind, petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
+    lootKind, petOf, petOfMob, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
   } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import { downloadJson } from "../../infra/storage.ts";
@@ -17,7 +17,7 @@
   import { num } from "../format.ts";
   import { ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
-  import { wanted } from "../../domain/pets.ts";
+  import { MAX_LEVEL, needed, petName as petNameOf, wanted } from "../../domain/pets.ts";
   import { ui } from "../state.svelte.ts";
 
   type Layer = "cubes" | "pets";
@@ -120,6 +120,14 @@
     ? onThisMap.filter((d) => !active || isPet(d)).map((d) => ({ d, s: shown(d.x, d.y) })).filter((v) => v.s)
     : []);
   const selDrop = $derived(drops.find((d) => d.id === selectedDrop));
+  // The clicked spot's pet and your progress on it (the Pets page's numbers); a crystal's pet by its mob.
+  const selPet = $derived.by(() => {
+    if (!selDrop) return null;
+    const id = petOf(selDrop, ui.data.map.kinds) ?? (selDrop.mob ? petOfMob(ui.data.map, selDrop.mob) : null);
+    if (id == null) return null;
+    const p = collection?.pets.find((p) => p.id === id) ?? { id, level: 0, points: 0 };
+    return { ...p, name: petNameOf(id, ui.data.map.petNames, ui.data.map.kinds), need: needed(p) };
+  });
   function choosePet(name: string) {
     pet = pet.toLowerCase() === name.toLowerCase() ? "" : name;
     selectedDrop = "";
@@ -413,6 +421,12 @@
     {#if selDrop}<div class="map-panel" role="dialog" aria-label="Soul points" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
       <h2>{soul(selDrop)} <span class="count">{selDrop.mob ? `from ${selDrop.mob}` : "soul points"}</span>
         <button class="ghost" aria-label="Close" title="Close" onclick={() => { selectedDrop = ""; }}>{@html ICON.close}</button></h2>
+      {#if selPet}<div class="drop-pet"><b>{selPet.name}</b> <span class="dim num">#{selPet.id}</span>
+        {#if !collection}<span class="hint">· no collection read yet: log in or change character in game</span>
+        {:else if selPet.level >= MAX_LEVEL}<span class="pet-progress">Level {MAX_LEVEL} · done</span>
+        {:else}<span class="pet-progress">{selPet.level ? `Level ${selPet.level}` : "Not owned"}<span class="bar" style:--p={selPet.points / selPet.need}><i></i></span>
+          <span class="num">{selPet.points}/{selPet.need}</span></span>{/if}</div>
+      {:else}<p class="hint">Which pet this is is not known yet: kills recorded from now on carry its number.</p>{/if}
       <p class="hint">{when(selDrop.atMs)}{selDrop.by ? ` · recorded by ${selDrop.by}` : ""} · game x {selDrop.x}, y {selDrop.y}{selDrop.mapId != null ? ` · map ${selDrop.mapId}` : ""}</p>
       <div class="btns"><button onclick={() => { const id = selDrop.id; selectedDrop = ""; act(() => deleteDrop(ui.data, id)); }}>Delete drop</button></div>
     </div>{/if}

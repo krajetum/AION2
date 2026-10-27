@@ -10,7 +10,8 @@ import type { SoulNames } from "./map.ts";
 import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 export interface Pet { id: number; level: number; points: number }
-export interface PetCollection { pets: Pet[]; atMs: number }
+/** atMs: the last change taken (the read, then each gain); readMs: when the game sent it (older saves: none). */
+export interface PetCollection { pets: Pet[]; atMs: number; readMs?: number }
 /** A kill's soul points, as far as the collection needs them. */
 export interface SoulGain { kind?: number; points: number; atMs: number }
 
@@ -27,7 +28,7 @@ export function cleanCollection(raw: any): PetCollection | null {
   const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
   if (!raw || !Array.isArray(raw.pets) || !ok(raw.atMs)) return null;
   const pets = raw.pets.filter((p: any) => p && ok(p.id) && ok(p.level) && ok(p.points)).map((p: any): Pet => ({ id: p.id, level: p.level, points: p.points }));
-  return { pets, atMs: raw.atMs };
+  return { pets, atMs: raw.atMs, ...(ok(raw.readMs) && { readMs: raw.readMs }) };
 }
 
 /** Collections by character name, cleaned. */
@@ -66,8 +67,33 @@ export function addSoulPoints(c: PetCollection, gains: SoulGain[]): boolean {
 /** The collection a new read replaces, unless it is older than the one kept. Returns true if it was taken. */
 export function takeCollection(all: Record<string, PetCollection>, name: string, c: PetCollection): boolean {
   if (!name.trim() || (all[name] && all[name].atMs >= c.atMs)) return false;
-  all[name] = { pets: c.pets.map((p) => ({ ...p })), atMs: c.atMs };
+  all[name] = { pets: c.pets.map((p) => ({ ...p })), atMs: c.atMs, readMs: c.atMs };
   return true;
+}
+
+/** A loot of yours, as far as the collection needs it. */
+export interface CrystalLoot { item: number; mob: string; atMs: number }
+
+/**
+ * Crystals looted after the collection was read finish their pet: a mob whose pet's collection is done drops
+ * a crystal instead of soul points (seen 2026-10-25/26: a friend's maxed pets' mobs), so a soul point the
+ * capture lost never comes again and the count would stay one short. Only a pet at level 2 is finished this
+ * way: one at level 1 or not owned is too far from it for a lost point or two. `petOfMob` gives the pet a mob's
+ * soul points go to (null: not known). Returns true if anything changed.
+ */
+export function finishFromCrystals(c: PetCollection, loots: CrystalLoot[], isCrystal: (item: number) => boolean,
+  petOfMob: (mob: string) => number | null): boolean {
+  let changed = false;
+  for (const l of loots) {
+    if (l.atMs <= (c.readMs ?? c.atMs) || !l.mob || !isCrystal(l.item)) continue;
+    const id = petOfMob(l.mob);
+    const p = id == null ? undefined : c.pets.find((p) => p.id === id);
+    if (!p || p.level !== MAX_LEVEL - 1) continue;
+    p.level = MAX_LEVEL;
+    p.points = 0;
+    changed = true;
+  }
+  return changed;
 }
 
 /** A pet's name: the player's, else the database's (pet-names.ts), else the mob its soul points were seen with, else its number. */
