@@ -445,6 +445,10 @@ export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean 
     map.soulsSeenMs = k.atMs;
     changed = true;
     let mob = k.mob.trim();
+    // Points paired with the wrong kill (the meter gives them to the oldest kill waiting: a Forest Guardian's to
+    // a Thin Agrint, 2026-10-27 23:22): a mob whose kills always gave one pet, getting another's, places nothing.
+    const usual = mob ? mobKind(map, mob) : null;
+    if (usual != null && k.kind != null && k.kind !== usual) continue;
     if (mob && k.kind != null && map.kinds[String(k.kind)] !== mob) {
       map.kinds[String(k.kind)] = mob;
       const placeholder = unknownMob(k.kind);
@@ -465,6 +469,22 @@ export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean 
   }
   if (map.pets.length > MAX_DROPS) map.pets.splice(0, map.pets.length - MAX_DROPS);
   return changed;
+}
+
+/**
+ * The pet a mob's kills give, when the recorded ones agree: at least 3 kills carried a number (not linked) and all
+ * the same. Null when fewer, or when they disagree (the meter pairs points with kills by order, so a few are off).
+ */
+export function mobKind(map: Pick<MapData, "pets">, mob: string): number | null {
+  const m = mob.trim().toLowerCase();
+  let kind: number | null = null, n = 0;
+  for (const d of map.pets) {
+    if (d.kind == null || d.linked || d.item != null || d.mob?.toLowerCase() !== m) continue;
+    if (kind != null && d.kind !== kind) return null;
+    kind = d.kind;
+    n++;
+  }
+  return n >= 3 ? kind : null;
 }
 
 /** A known spot of the same mob this close (game units) or closer says which map a kill is on. */

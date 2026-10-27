@@ -1,8 +1,8 @@
 // Arena log and field-boss use cases: what the meter sends, merged into the save file.
 import { logKills, logMatch } from "../domain/arena.ts";
 import { mergeBosses } from "../domain/bosses.ts";
-import { takeCubes, takeLoots, takeSouls } from "../domain/map.ts";
-import { addSoulPoints, takeCollection } from "../domain/pets.ts";
+import { mobKind, takeCubes, takeLoots, takeSouls } from "../domain/map.ts";
+import { addSoulPoints, finishFromSilentKills, takeCollection } from "../domain/pets.ts";
 import { takeOdyle, takeWallet } from "../domain/wallet.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
@@ -26,10 +26,13 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   // Every soul point counts, placed on the map or not (an older meter sends only the placed ones).
   const gains = u.soulGains ?? u.souls ?? [];
   const gained = !!data.pets[me] && gains.length > 0 && addSoulPoints(data.pets[me], gains);
+  // A pet a few points short whose mob's kills stopped giving points: done in game, its last points lost.
+  const finished = !!data.pets[me] && !!u.loots?.length
+    && finishFromSilentKills(data.pets[me], u.loots, gains, (mob) => mobKind(data.map, mob));
   // Currencies and Odyle energy, kept per character for the sidebar.
   const wallet = takeWallet(data.wallets, u.wallet);
   const odyle = takeOdyle(data.wallets, u.odyle, Date.now());
-  return !!bosses || match || cubes || kills || souls || loots || read || gained || wallet || odyle;
+  return !!bosses || match || cubes || kills || souls || loots || read || gained || finished || wallet || odyle;
 }
 
 /** Names an arena map ("Arena of Solitude"); empty = unnamed. */

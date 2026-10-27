@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addSoulPoints, cleanCollections, needed, petName, takeCollection, wanted, type PetCollection } from "./pets.ts";
+import { addSoulPoints, cleanCollections, finishFromSilentKills, needed, petName, takeCollection, wanted, type PetCollection } from "./pets.ts";
 
 // From the collection read on 2026-10-26 12:05: Unstable Spider 1117 (2, 55/75), Armadon 1046 (2, 39/75), 1005 at level 3.
 const read = (): PetCollection => ({ atMs: 100, pets: [{ id: 1117, level: 2, points: 55 }, { id: 1046, level: 2, points: 39 }, { id: 1005, level: 3, points: 0 }] });
@@ -43,3 +43,18 @@ test("names and what is still wanted", () => {
   assert.equal(wanted(undefined, 1005), true, "no collection read: everything");
 });
 
+
+test("a pet a few points short whose mob's kills give no more points is done (Forest Guardian 74/75, 2026-10-27)", () => {
+  const all: Record<string, PetCollection> = {};
+  takeCollection(all, "Me", { atMs: 100, pets: [{ id: 1101, level: 2, points: 74 }, { id: 1207, level: 2, points: 40 }] });
+  const c = all.Me;
+  const pet = (mob: string) => (({ "Forest Guardian": 1101, "Old Agrint": 1207 }) as Record<string, number>)[mob] ?? null;
+  const loot = (entity: number, mob: string, atMs: number) => ({ entity, mob, atMs });
+  assert.equal(finishFromSilentKills(c, [loot(1, "Forest Guardian", 1_000)], [], pet), false, "one silent kill: maybe its points were lost");
+  assert.equal(finishFromSilentKills(c, [loot(1, "Forest Guardian", 1_000), loot(2, "Forest Guardian", 5_000)], [{ kind: 1101, points: 1, atMs: 5_400 }], pet), false,
+    "the second gave points: not done");
+  assert.equal(finishFromSilentKills(c, [loot(1, "Old Agrint", 1_000), loot(2, "Old Agrint", 5_000)], [], pet), false, "40/75 is not nearly done");
+  assert.equal(finishFromSilentKills(c, [loot(1, "Forest Guardian", 50), loot(2, "Forest Guardian", 60)], [], pet), false, "before the read");
+  assert.equal(finishFromSilentKills(c, [loot(1, "Forest Guardian", 1_000), loot(1, "Forest Guardian", 1_001), loot(3, "Forest Guardian", 9_000)], [], pet), true);
+  assert.deepEqual(c.pets[0], { id: 1101, level: 3, points: 0 });
+});
