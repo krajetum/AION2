@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, type Wallet } from "./wallet.ts";
+import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, pickWallet, type Wallet } from "./wallet.ts";
 
 test("the meter's currencies go on their character; older news does not replace newer", () => {
   const all: Record<string, Wallet> = {};
@@ -28,4 +28,14 @@ test("Kina and bound Kina apart, or as one total", () => {
   const w: Wallet = { values: { "930100031": 5_061_092, "930100001": 19_000, "930100003": 225_824 }, atMs: 1 };
   assert.deepEqual(walletRows(w, false), [{ name: "Kina", value: 5_061_092 }, { name: "Bound Kina", value: 19_000 }, { name: "Abyss Points", value: 225_824 }]);
   assert.deepEqual(walletRows(w, true), [{ name: "Kina (all)", value: 5_080_092 }, { name: "Abyss Points", value: 225_824 }]);
+});
+
+test("the sidebar's wallet: the selected character's, else the one played in game, else the only one", () => {
+  const w = (n: number): Wallet => ({ values: { "930100031": n }, atMs: 1 });
+  const all = { Randronirk: w(1), Kiizu: w(2) };
+  assert.equal(pickWallet(all, "Kiizu", "Randronirk")?.name, "Kiizu");
+  assert.equal(pickWallet(all, "Main", "randronirk")?.name, "Randronirk", "the app's character named otherwise");
+  assert.equal(pickWallet(all, "Main", undefined), undefined, "two kept, none chosen: none");
+  assert.equal(pickWallet({ Randronirk: w(1) }, "Main", undefined)?.name, "Randronirk");
+  assert.equal(pickWallet({}, "Main", "Randronirk"), undefined);
 });
