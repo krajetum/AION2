@@ -6,7 +6,7 @@
   import { unmute } from "../app/settings.ts";
   import { bossBoard, bossLabel } from "../domain/bosses.ts";
   import { sameName } from "../domain/meter.ts";
-  import { CURRENCIES, walletOf } from "../domain/wallet.ts";
+  import { walletOf, walletRows } from "../domain/wallet.ts";
   import { isImportant } from "../domain/news.ts";
   import { emptySeason, seasonSummary } from "../domain/season.ts";
   import { isDone } from "../domain/tasks.ts";
@@ -137,8 +137,10 @@
     {#if s.mutedUntil > ui.now}<span class="chip">Muted until {hm(s.mutedUntil)}<button onclick={() => act(() => unmute(ui.data))}>Unmute</button></span>{/if}
     {#if meter}<div class="meter-dot {meter}"><span class="dot"></span>Meter {meter === "connected" ? "connected" : meter === "searching" ? "searching" : meter === "waiting-game" ? "waiting for the game" : "no capture"}</div>{/if}
     {#if wallet}<details open title="As the game last sent them{wallet.atMs ? ` (${hm(wallet.atMs)})` : ""}: currencies when you enter the world and whenever one changes, Odyle energy when the game sends it"><summary class="label">{@html ICON.chevron}Wallet</summary>
-      {#each CURRENCIES as c (c.code)}{#if wallet.values[c.code] != null}<div class="timer event"><small>{c.name}</small><span>{num(wallet.values[c.code])}</span></div>{/if}{/each}
+      {#each walletRows(wallet, s.sumKina) as r (r.name)}<div class="timer event"><small>{r.name}</small><span>{num(r.value)}</span></div>{/each}
       {#if wallet.odyle}<div class="timer event" title="Basic · charged"><small>Odyle energy</small><span>{num(wallet.odyle.basic)} · {num(wallet.odyle.charged)}</span></div>{/if}
+      {#if wallet.values[930_100_001] != null}<label class="toggle-line wallet-sum"><input type="checkbox" checked={s.sumKina}
+        onchange={(e) => { const on = e.currentTarget.checked; act(() => { ui.data.settings.sumKina = on; }); }}> Kina and bound Kina together</label>{/if}
     </details>{/if}
     <details open><summary class="label">{@html ICON.chevron}Resets</summary>
       {#each CADENCES as c}{@const cy = cycle(c)}<div class="timer" class:soon={cy.left < 3600_000} style:--p={String(cy.p)}><small>{LABEL[c]}</small><span>{formatCountdown(cy.left)}</span></div>{/each}

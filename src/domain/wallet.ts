@@ -53,6 +53,16 @@ export function takeOdyle(all: Record<string, Wallet>, o: { basic: number; charg
   return true;
 }
 
+/** The Wallet's rows: each currency the game sent, or with `sumKina` Kina and bound Kina as one "Kina" total. */
+export function walletRows(w: Wallet, sumKina: boolean): { name: string; value: number }[] {
+  const rows = CURRENCIES.filter((c) => w.values[c.code] != null).map((c) => ({ code: c.code, name: c.name, value: w.values[c.code] }));
+  if (!sumKina) return rows.map(({ name, value }) => ({ name, value }));
+  const kina = rows.filter((r) => r.code === 930_100_031 || r.code === 930_100_001);
+  const out = rows.filter((r) => !kina.includes(r)).map(({ name, value }) => ({ name, value }));
+  if (kina.length) out.unshift({ name: "Kina (all)", value: kina.reduce((n, r) => n + r.value, 0) });
+  return out;
+}
+
 /** A character's wallet, by name as the game writes it (any case). */
 export const walletOf = (all: Record<string, Wallet>, name: string | undefined) =>
   name ? Object.entries(all).find(([n]) => n.trim().toLowerCase() === name.trim().toLowerCase())?.[1] : undefined;

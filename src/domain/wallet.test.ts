@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanWallets, takeOdyle, takeWallet, walletOf, type Wallet } from "./wallet.ts";
+import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, type Wallet } from "./wallet.ts";
 
 test("the meter's currencies go on their character; older news does not replace newer", () => {
   const all: Record<string, Wallet> = {};
@@ -22,4 +22,10 @@ test("Odyle energy is kept per character; wallets survive a save", () => {
   assert.equal(takeOdyle(all, { basic: 120, charged: 30, owner: null }, 2), false);
   assert.deepEqual(cleanWallets(JSON.parse(JSON.stringify(all))), all);
   assert.deepEqual(cleanWallets({ "": { values: {}, atMs: 1 }, Bad: { values: { a: "x" }, atMs: 1 } }), { Bad: { values: {}, atMs: 1 } });
+});
+
+test("Kina and bound Kina apart, or as one total", () => {
+  const w: Wallet = { values: { "930100031": 5_061_092, "930100001": 19_000, "930100003": 225_824 }, atMs: 1 };
+  assert.deepEqual(walletRows(w, false), [{ name: "Kina", value: 5_061_092 }, { name: "Bound Kina", value: 19_000 }, { name: "Abyss Points", value: 225_824 }]);
+  assert.deepEqual(walletRows(w, true), [{ name: "Kina (all)", value: 5_080_092 }, { name: "Abyss Points", value: 225_824 }]);
 });

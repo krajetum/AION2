@@ -51,6 +51,7 @@ export function defaultData(): AppData {
       radar: false,
       radarRange: 100,
       radarMap: true,
+      sumKina: false,
       radarRound: true,
       crowdShare: true,
     },
