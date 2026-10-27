@@ -255,6 +255,11 @@ impl Engine {
         (engine, processor)
     }
 
+    /// A map load the replay did not see (a recording started on that map, or ended before leaving it).
+    pub fn note_map_load(&self, map_id: i32) {
+        self.storage.note_map_load(map_id);
+    }
+
     fn game_open(&self) -> bool {
         let now = crate::clock::now_ms();
         let mut g = self.game.lock();
