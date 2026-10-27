@@ -35,6 +35,8 @@ pub mod souls;
 pub mod abyss_bosses;
 /// Your pet collection (levels and soul points), when the Pets menu opens.
 pub mod pets;
+/// Your currencies (Kina, Abyss Points, Nightmare and Shugo Coins).
+pub mod currencies;
 /// The companion's readers on the parser's frame tap.
 pub mod tap;
 

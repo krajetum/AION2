@@ -509,6 +509,7 @@ details.soul-mobs[open] { gap: 6px; }
 .likely-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: var(--r-pill); background: var(--gold-bg); color: var(--gold-ink); font-size: 11px; }
 .toggle-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
 .toggle-line input { width: auto; height: auto; }
+.wallet-sum { padding: 6px 6px 2px; font-size: 12px; }
 .pets-page .map-tools { margin-bottom: 10px; }
 .pets-page input.pet-name { width: 100%; max-width: 260px; height: 28px; background: transparent; border-color: transparent; }
 .pets-page input.pet-name:hover, .pets-page input.pet-name:focus { border-color: var(--border); background: var(--ground); }

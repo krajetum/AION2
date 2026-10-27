@@ -76,6 +76,8 @@ pub struct Update {
     pub souls: Vec<SoulDrop>,
     /// Your pet collection, from the last time the game's Pets menu opened since the meter started.
     pub pets: Option<crate::pets::Collection>,
+    /// Your currencies, on the character they are of.
+    pub wallet: Option<crate::currencies::Wallet>,
     /// Every soul point gain since the meter started (the collection counts these; `souls` only the placed ones).
     pub soul_gains: Vec<crate::souls::Gain>,
     /// Your loots since the meter started (the item and where the mob died), with the mob's name.
@@ -303,6 +305,7 @@ impl Engine {
             (None, None) if self.game_open() => ("searching", "Looking for the game connection. Fight something or change zone.".into()),
             (None, None) => ("waiting-game", "Waiting for AION 2 to start".into()),
         };
+        let profile = self.profile();
         Update {
             status,
             message,
@@ -315,7 +318,8 @@ impl Engine {
             fight,
             bosses: self.boss_timers(),
             odyle: self.storage.odyle_energy().map(|(basic, charged)| Odyle { basic, charged, owner: self.storage.odyle_owner() }),
-            profile: self.profile(),
+            wallet: crate::currencies::latest(profile.as_ref().map(|p| p.name.as_str())),
+            profile,
             arena: self.arena_match(),
             position: {
                 crate::position::set_me(self.storage.local_player_id().map(|id| id as i32));
