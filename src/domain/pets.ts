@@ -71,31 +71,6 @@ export function takeCollection(all: Record<string, PetCollection>, name: string,
   return true;
 }
 
-/** A loot of yours, as far as the collection needs it. */
-export interface CrystalLoot { item: number; mob: string; atMs: number }
-
-/**
- * Crystals looted after the collection was read finish their pet: a mob whose pet's collection is done drops
- * a crystal instead of soul points (seen 2026-10-25/26: a friend's maxed pets' mobs), so a soul point the
- * capture lost never comes again and the count would stay one short. Only a pet at level 2 is finished this
- * way: one at level 1 or not owned is too far from it for a lost point or two. `petOfMob` gives the pet a mob's
- * soul points go to (null: not known). Returns true if anything changed.
- */
-export function finishFromCrystals(c: PetCollection, loots: CrystalLoot[], isCrystal: (item: number) => boolean,
-  petOfMob: (mob: string) => number | null): boolean {
-  let changed = false;
-  for (const l of loots) {
-    if (l.atMs <= (c.readMs ?? c.atMs) || !l.mob || !isCrystal(l.item)) continue;
-    const id = petOfMob(l.mob);
-    const p = id == null ? undefined : c.pets.find((p) => p.id === id);
-    if (!p || p.level !== MAX_LEVEL - 1) continue;
-    p.level = MAX_LEVEL;
-    p.points = 0;
-    changed = true;
-  }
-  return changed;
-}
-
 /** A pet's name: the player's, else the database's (pet-names.ts), else the mob its soul points were seen with, else its number. */
 export const petName = (id: number, petNames: SoulNames, kinds: SoulNames) =>
   petNames[String(id)] || KNOWN_PET_NAMES[id] || kinds[String(id)] || `Pet #${id}`;

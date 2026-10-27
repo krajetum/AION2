@@ -374,22 +374,6 @@ export function readDropsFile(raw: any): { drops: PetDrop[] } & FileNames {
  * Starturtle); the crystals named by players are 610531002 (Agrint), 610530014 and 610530011 (a maxed
  * Starturtle's). A guess from few codes: the player's naming decides, and "Show every loot" shows all.
  */
-/** Whether a looted item is a pet's crystal: named one by the player (`items`), or coded like the crystals seen. */
-export const isCrystal = (map: Pick<MapData, "items">, item: number) => !!map.items[String(item)] || lootKind(item) === "crystal";
-
-/**
- * The pet a mob's soul points go to: the kind its recorded kills carried most often (yours, friends', the
- * bundled ones), else the pet whose kills were first seen with that mob (`kinds`). Null if neither knows it.
- */
-export function petOfMob(map: Pick<MapData, "pets" | "kinds">, mob: string): number | null {
-  const n = new Map<number, number>();
-  for (const d of map.pets) if (d.kind != null && d.mob === mob) n.set(d.kind, (n.get(d.kind) ?? 0) + 1);
-  const best = [...n].sort((a, b) => b[1] - a[1])[0];
-  if (best) return best[0];
-  const k = Object.keys(map.kinds).find((k) => map.kinds[k] === mob);
-  return k ? Number(k) : null;
-}
-
 export function lootKind(item: number): "common" | "crystal" | "other" {
   if (item >= 534_660_000 && item < 534_670_000) return "common";
   if (item >= 610_530_000 && item < 610_540_000) return "crystal";
