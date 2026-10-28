@@ -9,7 +9,7 @@ import { BUNDLED_DROPS, takeBundledDrops } from "./domain/map.ts";
 import petDropsUrl from "./assets/pet-drops.json?url";
 import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
-import { findUpdate, getAutostart, isDesktop, onTrayMute } from "./infra/system.ts";
+import { findUpdate, getAutostart, isDesktop, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
 import { act, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
@@ -28,6 +28,7 @@ async function main() {
   const data = await loadData();
   ui.charId = data.characters[0].id;
   if (isDesktop()) ui.autostart = await getAutostart().catch(() => false);
+  if (isDesktop()) openLinksInBrowser();
   // The pet drops shared with the app (src/assets/pet-drops.json), once per bundle: a separate file, fetched only then.
   if (data.map.bundledDrops !== BUNDLED_DROPS)
     await fetch(petDropsUrl).then((r) => r.json()).then((f) => takeBundledDrops(data.map, f)).catch((e) => console.warn("Bundled pet drops not loaded", e));
