@@ -9,7 +9,20 @@ import { saveData } from "../infra/storage.ts";
 import { showStatus } from "./overlays.ts";
 import { doneHere, snapshot, ui } from "./state.svelte.ts";
 
-export const save = () => saveData(snapshot()).catch((e) => console.error("Save failed", e));
+// One save at a time: changes made while one runs are saved once after it, not once each (a save writes the
+// whole file, ~1 MB with the map's spots).
+let saving: Promise<void> | null = null, again = false;
+export function save(): Promise<void> {
+  if (saving) { again = true; return saving; }
+  saving = (async () => {
+    do {
+      again = false;
+      await saveData(snapshot()).catch((e) => console.error("Save failed", e));
+    } while (again);
+    saving = null;
+  })();
+  return saving;
+}
 
 /** Runs a change, then saves. A change returning false changed nothing: no save. */
 export async function act(change: () => unknown) {

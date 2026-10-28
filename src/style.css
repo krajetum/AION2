@@ -497,7 +497,9 @@ body.overlay .status { display: none; }
   transform: rotate(-45deg); background: #3fd6a0; border: 2px solid #0d1a14; box-shadow: 0 0 0 1px rgba(255, 255, 255, .6), 0 0 10px #3fd6a0; cursor: pointer; }
 .pet-drop.dim { opacity: .65; box-shadow: 0 0 0 1px rgba(255, 255, 255, .4); }
 .pet-drop.sel { box-shadow: 0 0 0 3px var(--accent), 0 0 12px #3fd6a0; }
-.map-view.gliding .pet-drop { transition: left .6s linear, top .6s linear; }
+.drop-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.map-view.gliding .drop-layer { transition: transform .6s linear; }
+@media (prefers-reduced-motion: reduce) { .map-view.gliding .drop-layer { transition: none; } }
 .soul-mobs { display: flex; flex-direction: column; gap: 4px; }
 .soul-mobs .setting { display: flex; align-items: center; gap: 8px; margin: 0; }
 .soul-mobs .setting span { flex: 1; font-size: 13px; }

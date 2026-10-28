@@ -80,6 +80,8 @@ const NEARLY_DONE = 3;
  */
 export function finishFromSilentKills(c: PetCollection, loots: KillLoot[], gains: SoulGain[], petOfMob: (mob: string) => number | null): boolean {
   const silent = new Map<number, Set<number>>();
+  // Only pets nearly done matter: without one, no mob is looked up (the meter resends its last loots 5 times a second).
+  if (!c.pets.some((p) => p.level === MAX_LEVEL - 1 && needed(p) - p.points <= NEARLY_DONE)) return false;
   for (const l of loots) {
     if (l.atMs <= (c.readMs ?? c.atMs) || !l.mob) continue;
     const id = petOfMob(l.mob);
