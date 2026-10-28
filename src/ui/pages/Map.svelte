@@ -72,13 +72,22 @@
     const p = applyAffine(fit, x, y);
     return toScreen(view, p.x, p.y);
   }
+  /** Where a spot sits in the spots' layer, which moves with the map (panning and following you move only the
+   *  layer, not ~1,400 spots one by one): the image pixel at the current zoom. */
+  function placed(x: number, y: number) {
+    if (!fit) return null;
+    const p = applyAffine(fit, x, y);
+    return { x: p.x * view.scale, y: p.y * view.scale };
+  }
   // Hidden cubes from the meter: opened ones (saved, game units) and the ones in view now.
   const found = $derived(size.w && layer === "cubes" ? ui.data.map.found.filter((f) => foundOn(f, current)).map((f) => ({ f, s: shown(f.x, f.y) })).filter((v) => v.s) : []);
   // Spots other players reported (src/app/crowd.ts), on this page map.
   const sharedHere = $derived(ui.data.map.shared.filter((c) => mapOf(c.mapId) === current));
   const shared = $derived(size.w && layer === "cubes" ? sharedHere.map((c) => ({ c, s: shown(c.x, c.y) })).filter((v) => v.s) : []);
   const live = $derived(size.w && layer === "cubes" && here ? (ui.meter?.cubes?.live ?? []).map((c) => ({ c, s: shown(c.x, c.y) })).filter((v) => v.s) : []);
-  const when = (t: number) => new Date(t).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  // One formatter for every spot's title: a toLocaleString per spot and update cost most of the page's time.
+  const WHEN = new Intl.DateTimeFormat([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const when = (t: number) => WHEN.format(t);
 
   // ---------- pets ----------
   let query = $state(""), pet = $state(remembered("pet"));
@@ -119,7 +128,7 @@
   const onThisMap = $derived(drops.filter((d) => dropMap(d) === current));
   // A pet chosen: its drops, bright; none: every drop on this map, dimmer.
   const petDrops = $derived(size.w && layer === "pets"
-    ? onThisMap.filter((d) => !active || isPet(d)).map((d) => ({ d, s: shown(d.x, d.y) })).filter((v) => v.s)
+    ? onThisMap.filter((d) => !active || isPet(d)).map((d) => ({ d, s: placed(d.x, d.y) })).filter((v) => v.s)
     : []);
   const selDrop = $derived(drops.find((d) => d.id === selectedDrop));
   // The clicked spot's pet and your progress on it (the Pets page's numbers). A crystal's pet is not its mob's:
@@ -344,9 +353,10 @@
     {#each shared as { c, s: at } (c.mapId + ":" + c.x + ":" + c.y)}<div class="found shared" style:left="{at!.x}px" style:top="{at!.y}px"
       title="Hidden cube · reported by {c.n} players"></div>{/each}
     {#each live as { c, s: at } (c.entity)}<div class="live-cube" style:left="{at!.x}px" style:top="{at!.y}px" title="Hidden cube in view"></div>{/each}
+    {#if petDrops.length}<div class="drop-layer" style:transform="translate({view.x}px, {view.y}px)">
     {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!active} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
       aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
-      onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}
+      onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}</div>{/if}
     {#if you}<div class="me" class:stale={age > 30} style:left="{you.x}px" style:top="{you.y}px" title="You · {ago(age)}"></div>{/if}
 
     <!-- Corner menu: which map, which layer, and for pets the search, the list and the drop tools. -->
