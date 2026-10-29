@@ -60,3 +60,9 @@ test("an arena's rounds, a map load each, are one match (the 1v1 of 2026-10-27: 
   assert.equal(logMatch(log, other), true);
   assert.equal(log.matches.length, 2);
 });
+
+test("Abyss PvP is no arena match (2026-10-29: 106 opponents in 6 'rounds')", () => {
+  const log: ArenaLog = { matches: [], maps: {}, kills: [] };
+  assert.equal(logMatch(log, { mapId: 20, startMs: 1, endMs: 2, players: [] }), false);
+  assert.equal(log.matches.length, 0);
+});
