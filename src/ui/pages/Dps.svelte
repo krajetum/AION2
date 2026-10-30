@@ -39,7 +39,7 @@
   });
 </script>
 
-<p class="hint dps-note">Reads a copy of the game's network traffic through Npcap. Never touches the game's memory or files.
+<p class="hint intro">Reads a copy of the game's network traffic through Npcap. Never touches the game's memory or files.
   Third-party tools may be against the game's terms of service: use at your own risk.
   {#if idle}The fight resets after {idle} s without damage, healing or damage taken (Settings).{/if}</p>
 
@@ -61,7 +61,7 @@
     · boss maps read: {maps.size} ({u.bosses.length} bosses: {u.bosses.filter((b) => b.up).length} up, {u.bosses.filter((b) => !b.up && b.timeMs > Date.now()).length} respawning, {u.bosses.filter((b) => !b.timeMs).length} no time)
     · saved boss timers: {ui.data.bosses.length}</p>
 
-  <div class="toolbar dps-tools">
+  <div class="toolbar start dps-tools">
     <label>Target <select aria-label="Target mode" value={f.targetMode} onchange={(e) => run(() => meterTargetMode(e.currentTarget.value))}>
       {#each TARGET_MODES as [id, label]}<option value={id}>{label}</option>{/each}</select></label>
     <div class="seg" role="group" aria-label="Who to show">
@@ -102,5 +102,5 @@
             {:else}<tr><td colspan="5" class="dim">No skill data yet.</td></tr>{/each}</tbody></table></td></tr>{/if}
       {/each}</tbody></table></div><p class="hint">{view === "taken" ? "Damage taken from the fight's monsters." : "Click a player for the skill breakdown."}{#if unnamed}&nbsp;Players shown as #number: the game sends
         names on loading screens (teleport, zone change, dungeon), so start the companion before you enter.{/if}</p></section>
-  {:else}<section class="empty-fight"><p class="hint">{view === "healing" ? "No healing yet." : view === "taken" ? "No damage taken yet." : u.partyOnly ? "No damage from your party yet." : "No fight yet. Hit something."}</p></section>{/if}
+  {:else}<p class="empty">{view === "healing" ? "No healing yet." : view === "taken" ? "No damage taken yet." : u.partyOnly ? "No damage from your party yet." : "No fight yet. Hit something."}</p>{/if}
 {/if}

@@ -315,7 +315,7 @@
   const mapName = (k: MapKey) => worldMap(k).name;
 </script>
 
-<p class="hint dps-note">Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
+<p class="hint intro">Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
   of yours that gives soul points is put where the mob died (desktop app with the meter running). Each map can use your own image
   instead of the bundled one: it stays only on this PC. The gold dot is you: the game says where you are on teleports and whenever a
   buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running).</p>

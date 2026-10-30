@@ -72,18 +72,18 @@
   }
 </script>
 
-<p class="hint dps-note">Your pets as the game sent them when you last entered the world (login or character select) with the companion
+<p class="hint intro">Your pets as the game sent them when you last entered the world (login or character select) with the companion
   running, plus the soul points your kills gave since. Changing character in game reads the whole collection again. The game sends numbers, not names:
   names come from the gamers4.life database, else from the mob its soul points came from, and you can rename any. Level {MAX_LEVEL} is the last.</p>
 
-{#if !collection}<section class="empty-fight"><p class="hint">No collection read yet{me ? ` for ${me}` : ""}. Log in or change character in game with the companion running (desktop app).</p></section>
+{#if !collection}<p class="empty">No collection read yet{me ? ` for ${me}` : ""}. Log in or change character in game with the companion running (desktop app).</p>
 {:else}
 {#if unlinked}<p class="hint">{num(unlinked)} spot{unlinked === 1 ? "" : "s"} on the map {unlinked === 1 ? "has" : "have"} no pet number
   (recorded with an app older than this page, in a friend's file or in the spots shared with the app): {unlinked === 1 ? "it shows" : "they show"} on the map but not here.
   A mob's name alone does not tell its pet (Young Slink and Slink are two); kills recorded from now on carry the number.</p>{/if}
 <section class="dps-table pets-page">
   <h2>{me} <span class="count">{num(owned)} owned · {num(full)} at level {MAX_LEVEL} · read {hm(collection.atMs)}</span></h2>
-  <div class="map-tools">
+  <div class="toolbar start">
     <div class="seg" role="group" aria-label="Show">{#each FILTERS as [f, label]}
       <button class:on={filter === f} aria-pressed={filter === f} onclick={() => { filter = f; }}>{label}</button>{/each}</div>
     <div class="seg" role="group" aria-label="Where it drops" title="Unknown: no spot on any map yet (chests, dungeons, events, or not found)">{#each WHERE as [w, label]}

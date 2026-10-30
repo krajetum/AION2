@@ -48,7 +48,7 @@
   }
 </script>
 
-<div class="toolbar plan-bar">
+<div class="toolbar start plan-bar">
   {#each [20, 40, 60, 90] as m}<button class={!view.pl && view.s.planMinutes === m ? "primary" : ""} disabled={!!view.pl}
       onclick={() => act(() => { ui.data.settings.planMinutes = m; })}>{m} min</button>{/each}
   <label>Custom <input type="number" inputmode="numeric" min="5" max="600" step="5" value={view.s.planMinutes} disabled={!!view.pl} aria-label="Session minutes"

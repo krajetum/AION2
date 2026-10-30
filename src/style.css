@@ -172,12 +172,15 @@ details[open] > summary.label svg { transform: rotate(90deg); }
 .status.err::before { background: var(--negative); }
 
 /* ---------- cards ---------- */
-.toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 12px; }
+/* Two kinds: actions on the right (.toolbar), controls and filters from the left (.toolbar.start). */
+.toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 12px; }
+.toolbar.start { justify-content: flex-start; }
+.toolbar label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
 .toolbar .note { margin-right: auto; color: var(--warn-ink); }
 section { background: var(--surface); border-radius: var(--r-card); padding: 14px var(--pad) 16px; margin-bottom: var(--gap); scroll-margin-top: 16px; }
 section h2 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 6px; font-size: 14px; font-weight: 600; }
 section h2 .count { margin-left: auto; }
-.empty { color: var(--muted); text-align: center; padding: 28px 12px; background: var(--surface); border-radius: var(--r-card); }
+.empty { margin: 0 0 var(--gap); color: var(--muted); text-align: center; padding: 28px 12px; background: var(--surface); border-radius: var(--r-card); }
 .win { display: flex; align-items: center; gap: 16px; background: var(--teal-bg); }
 .win h2 { margin: 0 0 2px; font-size: 15px; color: var(--teal-ink); }
 .win p { margin: 0; color: var(--text); opacity: .8; }
@@ -194,8 +197,6 @@ section h2 .count { margin-left: auto; }
 .goals { display: flex; gap: 12px; flex-wrap: wrap; }
 
 /* Planner: time column + the normal task row */
-.plan-bar { flex-wrap: wrap; justify-content: flex-start; }
-.plan-bar label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
 .plan-bar input { width: 72px; }
 .plan-bar button:last-child { margin-left: auto; }
 .step { display: grid; grid-template-columns: 52px 1fr; align-items: start; column-gap: 12px; }
@@ -336,7 +337,7 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 }
 
 /* ---------- DPS meter ---------- */
-.dps-note { margin: 0 0 12px; }
+.intro { margin: 0 0 12px; } /* a page's one-line explanation, right under its title */
 .dps-status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 16px; margin-bottom: 12px; border-radius: var(--r-md); background: var(--surface); }
 .dps-status span { color: var(--muted); }
 .dps-status.connected .dot { background: var(--teal); }
@@ -344,8 +345,7 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 .dps-status.no-capture { background: var(--neg-bg); }
 .dps-status.no-capture .dot { background: var(--negative); }
 .dps-status .ping { margin-left: auto; }
-.dps-tools { flex-wrap: wrap; justify-content: flex-start; }
-.dps-tools label { display: flex; align-items: center; gap: 8px; color: var(--muted); margin-right: auto; }
+.dps-tools label { margin-right: auto; }
 .dps-target .tname { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; font-size: 15px; }
 .dps-target .time { margin-left: auto; font-size: 18px; font-weight: 600; }
 .dps-target small { color: var(--faint); font-size: 12px; }
@@ -519,7 +519,6 @@ details.soul-mobs[open] { gap: 6px; }
 .wallet-sum { padding: 6px 6px 2px; font-size: 12px; }
 .wallet-of { text-transform: none; font-weight: 400; }
 .wallet-hint { padding: 4px 6px; margin: 0; font-size: 12px; }
-.pets-page .map-tools { margin-bottom: 10px; }
 .pets-page input.pet-name { width: 100%; max-width: 260px; height: 28px; background: transparent; border-color: transparent; }
 .pets-page input.pet-name:hover, .pets-page input.pet-name:focus { border-color: var(--border); background: var(--ground); }
 .pets-page tr.done { opacity: .6; }
