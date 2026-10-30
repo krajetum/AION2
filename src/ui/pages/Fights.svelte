@@ -38,12 +38,12 @@
   const copy = (f: FightRecord) => navigator.clipboard.writeText(fightText(f)).then(() => showStatus("Fight copied"), () => showStatus("Copy failed"));
 </script>
 
-<p class="hint dps-note">Every boss fight of at least 10 s is kept when the meter resets it (idle, Reset, or a new target).
+<p class="hint intro">Every boss fight of at least 10 s is kept when the meter resets it (idle, Reset, or a new target).
   Skill breakdowns are kept for you only. Tick two fights to compare them.</p>
 
-{#if !ui.fights.length}<section class="empty-fight"><p class="hint">No fight yet. Keep the companion open while you fight a boss.</p></section>
+{#if !ui.fights.length}<p class="empty">No fight yet. Keep the companion open while you fight a boss.</p>
 {:else}
-  <div class="toolbar">
+  <div class="toolbar start">
     <label>Boss <select bind:value={boss}><option value="">All bosses</option>{#each bossNames as b}<option>{b}</option>{/each}</select></label>
     {#if chars.length > 1}<label>Character <select bind:value={char}><option value="">All</option>{#each chars as c}<option>{c}</option>{/each}</select></label>{/if}
   </div>
@@ -84,7 +84,7 @@
         <td><span class="name">{f.boss}</span><small>{[f.killed ? "killed" : "not killed", where(f), f.char].filter(Boolean).join(" · ")}</small></td>
         <td class="n">{clock(f.battleTimeMs)}</td><td class="n">{me ? `${short(me.dps)}/s` : "—"}</td><td class="n">{f.rows.length}</td></tr>
       {#if open === f.id}<tr class="skills"><td colspan="6">
-        <div class="toolbar"><button onclick={() => copy(f)}>Copy as text</button><button class="ghost" onclick={() => remove(f.id)}>Delete</button></div>
+        <div class="toolbar start"><button onclick={() => copy(f)}>Copy as text</button><button class="ghost" onclick={() => remove(f.id)}>Delete</button></div>
         <table class="sheet">
           <thead><tr><th>Player</th><th class="n">DPS</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Healing</th></tr></thead>
           <tbody>{#each [...f.rows].sort((p, q) => q.damage - p.damage) as r (r.id)}<tr class:you={r.isYou} style:--cls={classColor(r.job) || null}>
@@ -99,7 +99,6 @@
 {/if}
 
 <style>
-  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
   .delta { color: var(--negative); }
   .delta.up { color: var(--positive); }
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }

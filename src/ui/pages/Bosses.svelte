@@ -19,13 +19,13 @@
   const ago = (t: number) => { const m = Math.max(0, Math.round((ui.now - t) / 60_000)); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; };
 </script>
 
-<p class="hint dps-note">The game sends the field bosses when you open the world map (your side's map and the Abyss).
+<p class="hint intro">The game sends the field bosses when you open the world map (your side's map and the Abyss).
   Open it again to refresh: a boss can be killed after the map was read. Ring the bell on a boss to get an alert before it respawns.
   Bosses the game data doesn't name (the Abyss's, so far) can be named by you: the list suggests the Abyss bosses A2Tools knows,
   but which one is which isn't in the data, so match them by their respawn times in game.</p>
 {#if Object.keys(alerts).length && !channelOn}<p class="hint">Boss alerts are off in <a href="#settings">Settings</a> (Notifications).</p>{/if}
 
-{#if !maps.length}<section class="empty-fight"><p class="hint">No map read yet. Open the world map in game with the companion running.</p></section>
+{#if !maps.length}<p class="empty">No map read yet. Open the world map in game with the companion running.</p>
 {:else}{#each maps as m (m.mapId)}<section class="dps-table"><h2><input class="map-title" value={ui.data.arena.maps[m.mapId] ?? ""} placeholder={mapLabel(ui.data.arena.maps, m.mapId)} aria-label="Name for map {m.mapId}" autocomplete="off"
     title="Name this map (map {m.mapId})" onchange={(e) => commit(e, (v) => labelMap(ui.data, m.mapId, v), () => ui.data.arena.maps[m.mapId] ?? "")}> <span class="count">read {hm(m.seenMs)} · {ago(m.seenMs)} ago</span></h2>
   <div class="scroll"><table class="sheet">

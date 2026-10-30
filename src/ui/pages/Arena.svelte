@@ -28,11 +28,11 @@
   const gear = (v: number | null, f: (n: number) => string = String) => (v == null ? "—" : f(v));
 </script>
 
-<p class="hint dps-note">PvP on an instance map is logged when you leave it. Name a map once (e.g. “Arena of Solitude”) and its matches get that name.
+<p class="hint intro">PvP on an instance map is logged when you leave it. Name a map once (e.g. “Arena of Solitude”) and its matches get that name.
   Opponents' gear is not in any packet the meter reads yet, so it shows “—”; yours and your party's come from the game.
   Click a player for their gear and stats on shugo.gg (a third-party armory that reads the official character data).</p>
 
-{#if !log.matches.length}<section class="empty-fight"><p class="hint">No match yet. Keep the companion open while you play an arena match.</p></section>
+{#if !log.matches.length}<p class="empty">No match yet. Keep the companion open while you play an arena match.</p>
 {:else}<section class="dps-table"><div class="scroll"><table class="sheet">
   <thead><tr><th>When</th><th>Map</th><th class="n">Time</th><th class="n">Dealt</th><th class="n">Taken</th><th class="n">Deaths</th></tr></thead>
   <tbody>{#each log.matches as m (key(m))}{@const t = matchTotals(m)}{@const k = key(m)}
