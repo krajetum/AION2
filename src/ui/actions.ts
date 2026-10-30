@@ -1,5 +1,8 @@
 // Glue between UI events and the app/ use cases: save after each change, undo, progress tracking, news refresh.
 import { trackProgress } from "../app/progress.ts";
+import { findTask } from "../app/tasks.ts";
+import { leftShare } from "../domain/planner.ts";
+import { suggest } from "../domain/triggers.ts";
 import { markNewsRead } from "../app/settings.ts";
 import { mergeNews } from "../domain/news.ts";
 import { popUndo } from "../domain/undo.ts";
@@ -41,8 +44,12 @@ export function commit(e: Event, change: (v: string) => void, stored: () => unkn
 
 /** A progress change of the current character (undoable, timed during a Planner session). */
 export function track(id: string, change: () => void) {
+  const t = findTask(ui.data, id), before = leftShare(t, ui.data.progress[ui.charId]?.[id]);
   const after = trackProgress(ui.data, ui.charId, id, Date.now(), change);
   if (ui.tab === "plan" && !after) doneHere.add(id);
+  // Ticked by hand just after something in game: offer it as the task's trigger (src/domain/triggers.ts).
+  const offer = after < before ? suggest(ui.recent, t, Date.now()).slice(0, 3) : [];
+  if (offer.length) ui.suggest = { taskId: id, triggers: offer };
 }
 
 export async function undo() {

@@ -218,6 +218,9 @@ section h2 .count { margin-left: auto; }
 /* ---------- edit mode ---------- */
 .task.edit { display: grid; grid-template-columns: auto minmax(90px, 1fr) minmax(140px, 2fr) minmax(120px, 1.5fr) minmax(100px, 1.2fr) auto; gap: 8px; }
 .task.edit.off { opacity: .5; }
+.task.edit .triggers { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.task.edit .triggers .pill button { height: 18px; margin-left: 4px; padding: 0 4px; font-size: 12px; line-height: 1; }
+.task.edit .triggers select { width: auto; }
 .move { display: flex; gap: 2px; }
 .move button { width: 30px; padding: 0; }
 .add { background: transparent; border: 1px dashed var(--border); }

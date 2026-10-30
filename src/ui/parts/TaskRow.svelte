@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { triggerLabel } from "../../domain/triggers.ts";
   import { setCount, setDone, stepCount } from "../../app/progress.ts";
   import { odyleFor } from "../../domain/meter.ts";
   import { isDone } from "../../domain/tasks.ts";
@@ -28,7 +29,7 @@
 
 <div class="task {done ? 'done' : ''}">
   <label><input type="checkbox" checked={done} onchange={toggle}>
-    <span class="text"><span class="name">{t.name}</span>{#if t.note}<small>{t.note}</small>{/if}{#if hint}<small class="plan-hint">{hint}</small>{/if}{#if odyle}<small class="plan-hint">In game: {odyle.basic} basic · {odyle.charged} charged</small>{/if}</span></label>
+    <span class="text"><span class="name">{t.name}</span>{#if t.note}<small>{t.note}</small>{/if}{#if t.triggers?.length}<small class="plan-hint">Auto: {t.triggers.map((x) => triggerLabel(x, ui.data.arena.maps)).join(" · ")}</small>{/if}{#if hint}<small class="plan-hint">{hint}</small>{/if}{#if odyle}<small class="plan-hint">In game: {odyle.basic} basic · {odyle.charged} charged</small>{/if}</span></label>
   {#if t.goals?.length}<div class="goals">{#each t.goals as g, i}{@const v = count(i)}{@const name = g.label ?? t.name}<div class="goal {v >= g.target ? 'ok' : ''}">
       <div class="stepper">{#if g.label}<span class="of">{g.label}</span>{/if}
         <button aria-label="Decrease {name}" onclick={() => step(i, -1)}>−</button>

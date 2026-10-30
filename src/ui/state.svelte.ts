@@ -2,6 +2,7 @@
 import { SvelteSet } from "svelte/reactivity";
 import type { FightRecord } from "../domain/fights.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
+import type { MeterEvent, Trigger } from "../domain/triggers.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
 export type Tab = "home" | Cadence | "plan" | "season" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "expeditions" | "transcendence" | "mechanics" | "news" | "settings";
@@ -21,6 +22,8 @@ export const ui = $state({
   now: Date.now(), // 1 s clock (main.ts) for countdowns and live times
   overlay: false, // DPS overlay window open (main.ts follows the "meter-overlay" event)
   meter: undefined as MeterUpdate | undefined, // last meter update (the capture runs from app start, main.ts)
+  recent: [] as MeterEvent[], // what the meter saw in the last minutes (main.ts): offered as tasks' triggers
+  suggest: null as { taskId: string; triggers: Trigger[] } | null, // after a manual tick: tick it by itself next time?
   fights: [] as FightRecord[], // the Fight Log, newest first (its own file: src/infra/fights.ts)
 });
 

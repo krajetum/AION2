@@ -1,6 +1,7 @@
 // Task list editing use cases.
 import { DEFAULT_MINUTES, DEFAULT_PRIORITY } from "../domain/planner.ts";
 import { parseGoals } from "../domain/tasks.ts";
+import { sameTrigger, type Trigger } from "../domain/triggers.ts";
 import type { AppData, Cadence } from "../domain/types.ts";
 
 export const findTask = (data: AppData, id: string) => data.tasks.find((t) => t.id === id)!;
@@ -40,4 +41,15 @@ export function setTaskMinutes(data: AppData, id: string, v: string) {
 /** Planner priority: 1 low · 2 normal · 3 high. */
 export function setTaskPriority(data: AppData, id: string, v: string) {
   findTask(data, id).priority = Math.max(1, Math.min(3, +v || DEFAULT_PRIORITY));
+}
+
+/** A trigger that ticks the task when the meter sees it (once each). */
+export function addTrigger(data: AppData, id: string, tr: Trigger) {
+  const t = findTask(data, id);
+  if (!(t.triggers ??= []).some((x) => sameTrigger(x, tr))) t.triggers.push(tr);
+}
+export function removeTrigger(data: AppData, id: string, i: number) {
+  const t = findTask(data, id);
+  t.triggers?.splice(i, 1);
+  if (!t.triggers?.length) delete t.triggers;
 }
