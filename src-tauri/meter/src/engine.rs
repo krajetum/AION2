@@ -15,6 +15,9 @@ use crate::capture::field_bosses::FIELD_BOSSES;
 use crate::capture::pcap_capturer::PcapCapturer;
 use crate::combat::capture_dispatcher::CaptureDispatcher;
 use crate::combat::data_storage::{DataStorage, is_open_world_map};
+
+/// The Abyss's map id (the field-boss map `01 91` that lists its bosses; `src/domain/arena.ts` KNOWN_MAPS).
+const ABYSS_MAP: i32 = 20;
 use crate::combat::dps_calculator::DpsCalculator;
 use crate::combat::ping_tracker::PingTracker;
 use crate::i18n::lookup::{NpcLookup, SkillLookup};
@@ -446,7 +449,10 @@ impl Engine {
         a.zone = zone;
         let since = std::mem::replace(&mut a.zone_since_ms, crate::clock::now_ms());
         let names = std::mem::take(&mut a.names);
-        if let Some(map_id) = map.filter(|&m| !is_open_world_map(m)) {
+        // The Abyss (map 20) is open world too, though the game data's overworld list leaves it out: its PvP
+        // went into the arena log as one "match" per map load (106 opponents, 2026-10-29). Its kills and deaths
+        // are in the kill history.
+        if let Some(map_id) = map.filter(|&m| !is_open_world_map(m) && m != ABYSS_MAP) {
             let me = self.storage.local_player_id().map(|id| id as i32);
             let deaths = self.storage.deaths_between(i64::MIN, i64::MAX);
             let me_name = self.storage.local_profile().name;

@@ -16,6 +16,9 @@ export const PAGE: Record<Tab, [string, string]> = {
   dps: ["DPS Meter", "Live damage, healing and damage taken."],
   fights: ["Fight Log", "Every boss fight: personal bests and runs side by side."],
   arena: ["Arena Log", "Every arena match and opponent."],
+  expeditions: ["Expeditions", "Exploration, Conquest and Hard: requirements, drops, bosses."],
+  transcendence: ["Transcendence", "Stages, Arcana and boss mechanics."],
+  mechanics: ["Dungeon Rules", "Odyle Energy, weekly limits, guaranteed rewards, stagger."],
   news: ["News", "Official announcements from Steam."],
   settings: ["Settings", "Characters, notifications and data."],
 };
