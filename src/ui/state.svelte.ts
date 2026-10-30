@@ -3,11 +3,11 @@ import { SvelteSet } from "svelte/reactivity";
 import type { MeterUpdate } from "../domain/meter.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
-export type Tab = "home" | Cadence | "plan" | "season" | "bosses" | "map" | "pets" | "dps" | "arena" | "news" | "settings";
-export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "bosses", "map", "pets", "dps", "arena", "news", "settings"];
+export type Tab = "home" | Cadence | "plan" | "season" | "bosses" | "map" | "pets" | "dps" | "arena" | "expeditions" | "transcendence" | "mechanics" | "news" | "settings";
+export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "bosses", "map", "pets", "dps", "arena", "expeditions", "transcendence", "mechanics", "news", "settings"];
 /** Sidebar groups. */
 export const GROUPS: [string, Tab[]][] = [["Overview", ["home"]], ["Tasks", [...CADENCES]], ["Progress", ["plan", "season"]],
-  ["World", ["bosses", "map", "pets"]], ["Combat", ["dps", "arena"]], ["Info", ["news", "settings"]]];
+  ["World", ["bosses", "map", "pets"]], ["Combat", ["dps", "arena"]], ["Wiki", ["expeditions", "transcendence", "mechanics"]], ["Info", ["news", "settings"]]];
 export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "home"; };
 
 export const ui = $state({
