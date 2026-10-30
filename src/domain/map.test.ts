@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind } from "./map.ts";
 import { readFileSync } from "node:fs";
 import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
@@ -304,4 +304,58 @@ test("the bundled drops: no player names, every spot on its map, merged once, no
   assert.equal(takeBundledDrops(m, raw), -1, "merged once: deleted spots stay deleted");
   assert.equal(m.pets.length, 2848);
   assert.equal(cleanMap(JSON.parse(JSON.stringify(m))).bundledDrops, BUNDLED_DROPS, "kept in the save");
+});
+
+test("a kill while the map is unknown goes on the map its mob's spots are on", () => {
+  const m = emptyMap();
+  // The bundled Water Spirit spot (Elyos), and a mob seen on two maps.
+  const spot = (id: string, mob: string, mapId: number, x: number, y: number) => ({ id, pet: mob, mob, mapId, x, y, z: 0, atMs: 1, by: "" });
+  m.pets.push(spot("w", "Water Spirit", 1010, 32709, -109354), spot("s1", "Slink", 1110, 0, 0), spot("s2", "Slink", 1010, 0, 0));
+  assert.equal(mapOfMob(m, "Water Spirit", 29459, -105816), 1010);
+  assert.equal(mapOfMob(m, "Water Spirit", 29459 + 60_000, -105816), null, "too far from its spots");
+  assert.equal(mapOfMob(m, "Slink", 0, 0), null, "on two maps");
+  assert.equal(mapOfMob(m, "Nobody", 0, 0), null);
+  // The recording of 2026-10-27 11:49: the app started in game, so the meter had no map; kind 1168 = Water Spirit.
+  m.kinds["1168"] = "Water Spirit";
+  const kill = (atMs: number, mob: string, mapId: number | null, x = 29459) => ({ entity: atMs, x, y: -105816, z: 1395, mapId, kind: 1168, points: 1, atMs, mob });
+  assert.equal(takeSouls(m, [kill(10, "Water Spirit", null)], "Me"), true);
+  assert.equal(m.pets.at(-1)?.mapId, 1010);
+  assert.equal(m.pets.at(-1)?.map, "elyos");
+  assert.equal(takeSouls(m, [kill(11, "Slink", null), kill(12, "Water Spirit", null, 31000)], "Me"), false, "an unknown map waits, with the kills after it");
+  assert.equal(m.soulsSeenMs, 10);
+});
+
+test("kills with no pet number get their mob's: the player's pick, else what its other kills carried most", () => {
+  const m = emptyMap();
+  const k = (id: string, mob: string, kind?: number, item?: number) =>
+    ({ id, pet: mob, mob, ...(kind != null && { kind }), ...(item != null && { item }), mapId: 1110, x: 0, y: 0, z: 0, atMs: 1, by: "" });
+  m.pets.push(k("a", "Withered Branch Spider", 1116), k("b", "Withered Branch Spider", 1116), k("c", "Withered Branch Spider", 1071),
+    k("d", "Withered Branch Spider"), k("e", "Old Agrint"), k("f", "Old Agrint", undefined, 610531002));
+  assert.equal(linkKinds(m), 1);
+  assert.deepEqual([m.pets[3].kind, m.pets[3].linked], [1116, true], "the most carried");
+  assert.equal(m.pets[4].kind, undefined, "Old Agrint: no kill of it ever carried one");
+  m.mobPets["old agrint"] = 1207; // the player's pick (2026-10-27)
+  assert.equal(linkKinds(m), 1);
+  assert.deepEqual([m.pets[4].kind, m.pets[5].kind], [1207, undefined], "a crystal is not its mob's pet's");
+  m.mobPets["withered branch spider"] = 1071;
+  linkKinds(m);
+  assert.deepEqual([m.pets[0].kind, m.pets[3].kind], [1116, 1071], "recorded numbers stay; linked ones follow the pick");
+  const back = cleanMap(JSON.parse(JSON.stringify(m)));
+  assert.deepEqual([back.pets[3].kind, back.pets[3].linked, back.mobPets["old agrint"]], [1071, true, 1207]);
+});
+
+test("points paired with the wrong kill place no spot (a Forest Guardian's on a Thin Agrint, 2026-10-27 23:22)", () => {
+  const m = emptyMap();
+  const d = (id: string, mob: string, kind: number) => ({ id, pet: mob, mob, kind, mapId: 1010, map: "elyos" as const, x: 0, y: 0, z: 0, atMs: 1, by: "" });
+  m.pets.push(d("a", "Thin Agrint", 1209), d("b", "Thin Agrint", 1209), d("c", "Thin Agrint", 1209));
+  assert.equal(mobKind(m, "thin agrint"), 1209);
+  const kill = (atMs: number, kind: number) => ({ entity: atMs, x: 89375, y: 146525, z: 0, mapId: 1010, kind, points: 1, atMs, mob: "Thin Agrint" });
+  takeSouls(m, [kill(10, 1101)], "Me");
+  assert.equal(m.pets.length, 3, "not placed");
+  assert.equal(m.kinds["1101"], undefined, "and 1101 is not named Thin Agrint");
+  assert.equal(m.soulsSeenMs, 10, "but taken");
+  takeSouls(m, [kill(20, 1209)], "Me");
+  assert.equal(m.pets.length, 4, "its own pet's points place it");
+  m.pets.push(d("e", "Thin Agrint", 1101));
+  assert.equal(mobKind(m, "Thin Agrint"), null, "kills that disagree say nothing");
 });

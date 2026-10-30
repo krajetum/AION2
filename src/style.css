@@ -497,7 +497,9 @@ body.overlay .status { display: none; }
   transform: rotate(-45deg); background: #3fd6a0; border: 2px solid #0d1a14; box-shadow: 0 0 0 1px rgba(255, 255, 255, .6), 0 0 10px #3fd6a0; cursor: pointer; }
 .pet-drop.dim { opacity: .65; box-shadow: 0 0 0 1px rgba(255, 255, 255, .4); }
 .pet-drop.sel { box-shadow: 0 0 0 3px var(--accent), 0 0 12px #3fd6a0; }
-.map-view.gliding .pet-drop { transition: left .6s linear, top .6s linear; }
+.drop-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.map-view.gliding .drop-layer { transition: transform .6s linear; }
+@media (prefers-reduced-motion: reduce) { .map-view.gliding .drop-layer { transition: none; } }
 .soul-mobs { display: flex; flex-direction: column; gap: 4px; }
 .soul-mobs .setting { display: flex; align-items: center; gap: 8px; margin: 0; }
 .soul-mobs .setting span { flex: 1; font-size: 13px; }
@@ -509,12 +511,19 @@ details.soul-mobs[open] { gap: 6px; }
 .likely-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: var(--r-pill); background: var(--gold-bg); color: var(--gold-ink); font-size: 11px; }
 .toggle-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
 .toggle-line input { width: auto; height: auto; }
+.wallet-sum { padding: 6px 6px 2px; font-size: 12px; }
+.wallet-of { text-transform: none; font-weight: 400; }
+.wallet-hint { padding: 4px 6px; margin: 0; font-size: 12px; }
 .pets-page .map-tools { margin-bottom: 10px; }
 .pets-page input.pet-name { width: 100%; max-width: 260px; height: 28px; background: transparent; border-color: transparent; }
 .pets-page input.pet-name:hover, .pets-page input.pet-name:focus { border-color: var(--border); background: var(--ground); }
 .pets-page tr.done { opacity: .6; }
 .pet-progress { display: flex; align-items: center; gap: 8px; }
 .pet-progress .bar { width: 120px; }
+.drop-pet { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 6px 0; }
+.drop-pet .bar { width: 90px; }
+.drop-pet-set { display: grid; gap: 4px; margin: 6px 0; }
+.drop-pet-set select { max-width: 260px; }
 .map-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; color: var(--muted); cursor: auto; }
 
 /* Hidden cube popup (index.html#cube) */

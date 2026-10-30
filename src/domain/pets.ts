@@ -10,7 +10,8 @@ import type { SoulNames } from "./map.ts";
 import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 export interface Pet { id: number; level: number; points: number }
-export interface PetCollection { pets: Pet[]; atMs: number }
+/** atMs: the last change taken (the read, then each gain); readMs: when the game sent it (older saves: none). */
+export interface PetCollection { pets: Pet[]; atMs: number; readMs?: number }
 /** A kill's soul points, as far as the collection needs them. */
 export interface SoulGain { kind?: number; points: number; atMs: number }
 
@@ -27,7 +28,7 @@ export function cleanCollection(raw: any): PetCollection | null {
   const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
   if (!raw || !Array.isArray(raw.pets) || !ok(raw.atMs)) return null;
   const pets = raw.pets.filter((p: any) => p && ok(p.id) && ok(p.level) && ok(p.points)).map((p: any): Pet => ({ id: p.id, level: p.level, points: p.points }));
-  return { pets, atMs: raw.atMs };
+  return { pets, atMs: raw.atMs, ...(ok(raw.readMs) && { readMs: raw.readMs }) };
 }
 
 /** Collections by character name, cleaned. */
@@ -63,10 +64,50 @@ export function addSoulPoints(c: PetCollection, gains: SoulGain[]): boolean {
   return changed;
 }
 
+/** A loot of yours (the meter's `loots`): the kill it came from. */
+export interface KillLoot { entity: number; mob: string; atMs: number }
+/** Soul points come this long after a kill's loot at most (seen: 0.2-0.7 s). */
+export const POINTS_AFTER_MS = 3_000;
+/** A pet this close to its last level is done if its mob's kills stop giving points. */
+const NEARLY_DONE = 3;
+
+/**
+ * Pets the game finished while a soul point on the way was lost (packets lost): at its last level a pet's mobs
+ * give no more soul points (the players, 2026-10-26), so the count stays one or two short for good (Forest Guardian
+ * at 74/75, 2026-10-27). Two kills of yours after the read, of a mob that always gave this pet (`petOfMob`), with
+ * no points of it within POINTS_AFTER_MS, finish a pet at level 2 that is at most 3 points short. Returns true if
+ * anything changed.
+ */
+export function finishFromSilentKills(c: PetCollection, loots: KillLoot[], gains: SoulGain[], petOfMob: (mob: string) => number | null): boolean {
+  const silent = new Map<number, Set<number>>();
+  // Only pets nearly done matter: without one, no mob is looked up (the meter resends its last loots 5 times a second).
+  if (!c.pets.some((p) => p.level === MAX_LEVEL - 1 && needed(p) - p.points <= NEARLY_DONE)) return false;
+  for (const l of loots) {
+    if (l.atMs <= (c.readMs ?? c.atMs) || !l.mob) continue;
+    const id = petOfMob(l.mob);
+    const p = id == null ? undefined : c.pets.find((p) => p.id === id);
+    if (!p || p.level !== MAX_LEVEL - 1 || needed(p) - p.points > NEARLY_DONE) continue;
+    if (gains.some((g) => g.kind === id && g.atMs >= l.atMs && g.atMs - l.atMs <= POINTS_AFTER_MS)) continue;
+    if (Date.now() - l.atMs < POINTS_AFTER_MS) continue; // its points may still come
+    const s = silent.get(id!) ?? new Set<number>();
+    s.add(l.entity);
+    silent.set(id!, s);
+  }
+  let changed = false;
+  for (const [id, kills] of silent) {
+    if (kills.size < 2) continue;
+    const p = c.pets.find((p) => p.id === id)!;
+    p.level = MAX_LEVEL;
+    p.points = 0;
+    changed = true;
+  }
+  return changed;
+}
+
 /** The collection a new read replaces, unless it is older than the one kept. Returns true if it was taken. */
 export function takeCollection(all: Record<string, PetCollection>, name: string, c: PetCollection): boolean {
   if (!name.trim() || (all[name] && all[name].atMs >= c.atMs)) return false;
-  all[name] = { pets: c.pets.map((p) => ({ ...p })), atMs: c.atMs };
+  all[name] = { pets: c.pets.map((p) => ({ ...p })), atMs: c.atMs, readMs: c.atMs };
   return true;
 }
 

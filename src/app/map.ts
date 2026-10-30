@@ -1,5 +1,5 @@
 // Map page use cases: points on the map images (cube spots and references), pets' soul point drops.
-import { mergeDrops, type FileNames, type MapKey, type MapPoint, type PetDrop, type PointKind, type SoulNames } from "../domain/map.ts";
+import { linkKinds, mergeDrops, type FileNames, type MapKey, type MapPoint, type PetDrop, type PointKind, type SoulNames } from "../domain/map.ts";
 import type { AppData } from "../domain/types.ts";
 import { seenLoots } from "./arena.ts";
 
@@ -60,4 +60,17 @@ export function setMobSoul(data: AppData, mob: string, soul: string) {
 export function setPetName(data: AppData, id: number, name: string) {
   if (name.trim()) data.map.petNames[String(id)] = name.trim();
   else delete data.map.petNames[String(id)];
+}
+
+/**
+ * The pet a mob's kills give, as the player knows it (a spot recorded with no pet number): every unnumbered kill of
+ * that mob gets it (`linkKinds`); null forgets it, and those kills go back to what their other kills say.
+ */
+export function setMobPet(data: AppData, mob: string, pet: number | null) {
+  const m = mob.trim().toLowerCase();
+  if (!m) return;
+  if (pet == null) delete data.map.mobPets[m];
+  else data.map.mobPets[m] = pet;
+  for (const d of data.map.pets) if (d.linked && d.mob?.toLowerCase() === m) { delete d.kind; delete d.linked; }
+  linkKinds(data.map);
 }

@@ -1,4 +1,5 @@
 mod crash;
+mod links;
 mod meter;
 mod places;
 
@@ -52,6 +53,7 @@ pub fn run() {
             meter::cube_popup,
             meter::radar_overlay,
             crash::crash_log,
+            links::open_url,
             meter::meter_cube_codes,
         ])
         .setup(|app| {

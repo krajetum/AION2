@@ -44,8 +44,9 @@ export interface ArenaPlayer {
   dealt: number; taken: number; hits: number; deaths: number;
   level: number | null; gearScore: number | null; combatPower: number | null;
 }
-/** PvP on an instance map, logged on the map load after it. */
-export interface ArenaMatch { mapId: number; startMs: number; endMs: number; players: ArenaPlayer[] }
+/** PvP on an instance map, logged on the map load after it. The app merges an arena's rounds (each a map load)
+ *  into one match: `rounds` = their start times, `playMs` = their time without the pauses between (src/domain/arena.ts). */
+export interface ArenaMatch { mapId: number; startMs: number; endMs: number; players: ArenaPlayer[]; rounds?: number[]; playMs?: number }
 /** Where you are, from the last record that said (map loads, teleports, your own buffs): a few seconds old
  *  while you play, older when nothing is applied. Game units; mapId of the last map load, if seen. */
 export interface SelfPosition { x: number; y: number; z: number; mapId: number | null; atMs: number }
@@ -62,6 +63,7 @@ export interface SoulDrop { entity: number; x: number; y: number; z: number; map
 /** An item a mob you killed dropped for you (src-tauri/meter/src/souls.rs `Loot`), where the mob died. */
 export interface LootDrop { entity: number; item: number; x: number; y: number; z: number; mapId: number | null; atMs: number; mobCode: number | null; mob: string }
 import type { PetCollection } from "./pets.ts";
+import type { MeterWallet } from "./wallet.ts";
 export interface MeterUpdate {
   status: MeterStatus; message: string; port: number | null; device: string | null;
   pingMs: number | null; paused: boolean;
@@ -79,6 +81,7 @@ export interface MeterUpdate {
   soulGains?: { kind: number; points: number; atMs: number }[]; // every soul point gain: the collection counts these
   loots?: LootDrop[];
   pets?: PetCollection | null; // from the last time you entered the world (login, character select)
+  wallet?: MeterWallet | null; // your currencies, on their character (src/domain/wallet.ts)
   lostPackets?: number; // thrown away since the start: the parser fell behind (crowded fights)
   demo?: boolean; // browser preview only
 }

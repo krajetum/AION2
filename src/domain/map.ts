@@ -35,7 +35,11 @@ export interface FoundCube { x: number; y: number; z: number; code: number | nul
  * or by hand: the "Soul points here" button (your position then) or a click on a fitted map. Shared as a file
  * and merged. `pet` is the soul's name when recorded; for a mob's drops the player's name for its soul wins (`soulOf`).
  */
-export interface PetDrop { id: string; pet: string; mob?: string; item?: number; kind?: number; mapId: number | null; map?: MapKey; x: number; y: number; z: number; atMs: number; by: string }
+export interface PetDrop {
+  id: string; pet: string; mob?: string; item?: number; kind?: number; mapId: number | null; map?: MapKey; x: number; y: number; z: number; atMs: number; by: string;
+  /** The kind was not recorded with the kill but linked from its mob (`linkKinds`). */
+  linked?: true;
+}
 /** The page map a drop is on: the one it was recorded on, else the one its game map id belongs to. */
 export const dropMap = (d: PetDrop): MapKey | null => d.map ?? mapOf(d.mapId);
 /** Mob name (lower case) → the soul its kills give, as the player named it (a mob's name is not always its soul's). */
@@ -69,6 +73,7 @@ export interface MapData {
   items: SoulNames;     // item code → the soul it is a crystal / shard of (looted once a pet's collection is done)
   soulsSeenMs: number;  // the meter's soul kills up to this time are taken
   bundledDrops: string; // the bundled drops (src/assets/pet-drops.json) merged in, by their date: "" = none yet
+  mobPets: Record<string, number>; // mob (lower case) → the pet its kills give, as the player set it (`linkKinds`)
   shared: SharedCube[]; // cube spots from other players, replaced at each download
 }
 
@@ -81,7 +86,7 @@ const MAX_FOUND = 2000;
 /** Spawn-group colors, picked to stay apart on the map's greens, browns and blues. */
 export const GROUP_COLORS = ["#ff5a5f", "#ffb020", "#f5f05a", "#4fe08a", "#3fd6ff", "#5a8bff", "#c46bff", "#ff6bd0"];
 
-export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, kinds: {}, petNames: {}, soulsSeenMs: 0, bundledDrops: "", shared: [] });
+export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, kinds: {}, petNames: {}, soulsSeenMs: 0, bundledDrops: "", shared: [], mobPets: {} });
 
 /** Shared spots, cleaned (saved data and the Worker's answer alike). */
 export function cleanShared(raw: unknown): SharedCube[] {
@@ -109,14 +114,44 @@ export function cleanMap(raw: any): MapData {
   const codes = (Array.isArray(raw?.cubeCodes) ? raw.cubeCodes : []).filter((c: unknown) => Number.isInteger(c) && (c as number) > 0);
   const pets = cleanDrops(raw?.pets), kinds = cleanSoulNames(raw?.kinds);
   learnKinds(kinds, pets); // drops imported before files named pets still name them
+  const mobPets: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw?.mobPets ?? {})) if (k.trim() && Number.isInteger(v) && (v as number) > 0) mobPets[k.trim().toLowerCase()] = v as number;
+  linkKinds({ pets, mobPets });
   return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets,
     souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds, petNames: cleanSoulNames(raw?.petNames), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0,
-    bundledDrops: typeof raw?.bundledDrops === "string" ? raw.bundledDrops : "", shared: cleanShared(raw?.shared) };
+    bundledDrops: typeof raw?.bundledDrops === "string" ? raw.bundledDrops : "", shared: cleanShared(raw?.shared), mobPets };
 }
 
 /** Pet number → mob, from drops that carry both (a kill's own; "Unknown mob #…" names nothing). Names already known stay. */
 export function learnKinds(kinds: SoulNames, drops: PetDrop[]) {
-  for (const d of drops) if (d.kind != null && d.mob && !d.mob.startsWith("Unknown mob #")) kinds[String(d.kind)] ??= d.mob;
+  for (const d of drops) if (d.kind != null && !d.linked && d.mob && !d.mob.startsWith("Unknown mob #")) kinds[String(d.kind)] ??= d.mob;
+}
+
+/**
+ * Kills recorded with no pet number (an app older than the numbers, friends' files, the bundled spots: 524 of
+ * its 2,849) get their mob's: the pet the player set for that mob (`mobPets`), else the kind its other kills carried
+ * most often (Withered Branch Spider: 1116 24 times, 1071 once). A crystal is not its mob's pet's: left alone.
+ * Without a number a spot's pet is unknown, and "Only pets still to collect" kept showing finished ones (Old
+ * Agrint, 2026-10-27). Returns how many drops changed.
+ */
+export function linkKinds(map: Pick<MapData, "pets" | "mobPets">): number {
+  const counts = new Map<string, Map<number, number>>();
+  for (const d of map.pets) if (d.kind != null && !d.linked && d.item == null && d.mob) {
+    const m = d.mob.toLowerCase(), c = counts.get(m) ?? new Map<number, number>();
+    c.set(d.kind, (c.get(d.kind) ?? 0) + 1);
+    counts.set(m, c);
+  }
+  const most = (m: string) => [...(counts.get(m) ?? [])].sort((a, b) => b[1] - a[1])[0]?.[0];
+  let changed = 0;
+  for (const d of map.pets) {
+    if (d.item != null || !d.mob || (d.kind != null && !d.linked)) continue;
+    const m = d.mob.toLowerCase(), kind = map.mobPets[m] ?? most(m);
+    if (kind == null || (d.kind === kind && d.linked)) continue;
+    d.kind = kind;
+    d.linked = true;
+    changed++;
+  }
+  return changed;
 }
 
 export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss";
@@ -311,7 +346,7 @@ export function cleanDrops(raw: unknown): PetDrop[] {
   for (const d of Array.isArray(raw) ? raw : []) {
     if (!d || typeof d.id !== "string" || typeof d.pet !== "string" || !d.pet.trim() || !ok(d.x) || !ok(d.y) || !ok(d.atMs) || seen.has(d.id)) continue;
     seen.add(d.id);
-    out.push({ id: d.id, pet: d.pet.trim(), ...(typeof d.mob === "string" && d.mob.trim() && { mob: d.mob.trim() }), ...(ok(d.item) && { item: d.item }), ...(ok(d.kind) && { kind: d.kind }), mapId: ok(d.mapId) ? d.mapId : null, ...(isMapKey(d.map) && { map: d.map }), x: d.x, y: d.y, z: ok(d.z) ? d.z : 0, atMs: d.atMs, by: typeof d.by === "string" ? d.by : "" });
+    out.push({ id: d.id, pet: d.pet.trim(), ...(typeof d.mob === "string" && d.mob.trim() && { mob: d.mob.trim() }), ...(ok(d.item) && { item: d.item }), ...(ok(d.kind) && { kind: d.kind }), ...(ok(d.kind) && d.linked === true && { linked: true as const }), mapId: ok(d.mapId) ? d.mapId : null, ...(isMapKey(d.map) && { map: d.map }), x: d.x, y: d.y, z: ok(d.z) ? d.z : 0, atMs: d.atMs, by: typeof d.by === "string" ? d.by : "" });
   }
   return out.slice(-MAX_DROPS);
 }
@@ -335,6 +370,7 @@ export function mergeDrops(map: MapData, drops: PetDrop[], names: Partial<FileNa
   const have = new Set(map.pets.flatMap((d) => [d.id, sameDrop(d)]));
   const fresh = cleanDrops(drops).filter((d) => !have.has(d.id) && !have.has(sameDrop(d)));
   learnKinds(map.kinds, fresh); // a kill's pet number and mob name a pet (Pets page) as the meter's own kills do
+  if (fresh.length) linkKinds(map);
   map.pets.push(...fresh);
   if (map.pets.length > MAX_DROPS) map.pets.splice(0, map.pets.length - MAX_DROPS);
   return fresh.length;
@@ -399,12 +435,20 @@ export const NEAR_DROP = 1500;
  */
 export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean {
   let changed = false;
-  for (const k of kills) {
-    if (k.atMs <= map.soulsSeenMs) continue;
-    if (k.mapId == null) break; // the meter fills it in once it learns the map: these and later ones wait
+  for (const raw of kills) {
+    if (raw.atMs <= map.soulsSeenMs) continue;
+    // The map not known yet (the app started in game, no map load since): the one the mob's spots are on, else
+    // these and later kills wait for the meter to learn it (a teleport, or the game's map opened).
+    const mapId = raw.mapId ?? mapOfMob(map, raw.mob || (raw.kind != null ? map.kinds[String(raw.kind)] ?? "" : ""), raw.x, raw.y);
+    if (mapId == null) break;
+    const k = { ...raw, mapId };
     map.soulsSeenMs = k.atMs;
     changed = true;
     let mob = k.mob.trim();
+    // Points paired with the wrong kill (the meter gives them to the oldest kill waiting: a Forest Guardian's to
+    // a Thin Agrint, 2026-10-27 23:22): a mob whose kills always gave one pet, getting another's, places nothing.
+    const usual = mob ? mobKind(map, mob) : null;
+    if (usual != null && k.kind != null && k.kind !== usual) continue;
     if (mob && k.kind != null && map.kinds[String(k.kind)] !== mob) {
       map.kinds[String(k.kind)] = mob;
       const placeholder = unknownMob(k.kind);
@@ -425,6 +469,38 @@ export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean 
   }
   if (map.pets.length > MAX_DROPS) map.pets.splice(0, map.pets.length - MAX_DROPS);
   return changed;
+}
+
+/**
+ * The pet a mob's kills give, when the recorded ones agree: at least 3 kills carried a number (not linked) and all
+ * the same. Null when fewer, or when they disagree (the meter pairs points with kills by order, so a few are off).
+ */
+export function mobKind(map: Pick<MapData, "pets">, mob: string): number | null {
+  const m = mob.trim().toLowerCase();
+  let kind: number | null = null, n = 0;
+  for (const d of map.pets) {
+    if (d.kind == null || d.linked || d.item != null || d.mob?.toLowerCase() !== m) continue;
+    if (kind != null && d.kind !== kind) return null;
+    kind = d.kind;
+    n++;
+  }
+  return n >= 3 ? kind : null;
+}
+
+/** A known spot of the same mob this close (game units) or closer says which map a kill is on. */
+export const SAME_MOB_NEAR = 30_000;
+/**
+ * The map a kill of `mob` at (x, y) is on, while the meter does not know it: the map id every recorded spot of
+ * that mob has (yours, friends', the bundled ones), if one of them is within SAME_MOB_NEAR. A mob whose spots are
+ * on two maps, or none near, says nothing (null).
+ */
+export function mapOfMob(map: Pick<MapData, "pets">, mob: string, x: number, y: number): number | null {
+  const name = mob.trim().toLowerCase();
+  if (!name) return null;
+  const same = map.pets.filter((d) => d.mapId != null && d.item == null && d.mob?.toLowerCase() === name);
+  const ids = new Set(same.map((d) => d.mapId));
+  if (ids.size !== 1 || !same.some((d) => Math.hypot(d.x - x, d.y - y) <= SAME_MOB_NEAR)) return null;
+  return same[0].mapId;
 }
 
 /** An item a mob you killed dropped for you, as the meter sends it (src/domain/meter.ts `LootDrop`). */

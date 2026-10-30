@@ -17,3 +17,16 @@ test("every soul point counts for the collection, placed on the map or not", () 
   takeMeterData(data, u({ soulGains: [{ kind: 1097, points: 1, atMs: 101 }, { kind: 1097, points: 1, atMs: 102 }] }));
   assert.equal(data.pets.Randronirk.pets[0].points, 23, "the meter resends them: counted once");
 });
+
+// Gains are not tagged with a character: after a character change, the previous one's must not count for the new one.
+test("soul points before a character change are not the new character's", () => {
+  const data = defaultData();
+  const u = (name: string, extra: Partial<MeterUpdate>) => ({ profile: { name }, ...extra }) as unknown as MeterUpdate;
+  const now = Date.now();
+  data.pets.Kiizu = { atMs: now - 86_400_000, pets: [{ id: 1016, level: 1, points: 3 }] }; // read yesterday
+  takeMeterData(data, u("Randronirk", { soulGains: [{ kind: 1016, points: 1, atMs: now - 5_000 }] }));
+  takeMeterData(data, u("Kiizu", { soulGains: [{ kind: 1016, points: 1, atMs: now - 5_000 }] }));
+  assert.equal(data.pets.Kiizu.pets[0].points, 3, "Randronirk's kill is not Kiizu's");
+  takeMeterData(data, u("Kiizu", { soulGains: [{ kind: 1016, points: 1, atMs: now - 5_000 }, { kind: 1016, points: 1, atMs: Date.now() + 10 }] }));
+  assert.equal(data.pets.Kiizu.pets[0].points, 4, "Kiizu's own kill counts");
+});

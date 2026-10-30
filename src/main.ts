@@ -1,5 +1,6 @@
 // Startup: load the save file, apply resets, mount the UI, then a 1 s clock for countdowns, resets and notifications.
 import { mount } from "svelte";
+import type { MeterUpdate } from "./domain/meter.ts";
 import { RESET_CONFIG as C } from "./config.ts";
 import { checkNotifications } from "./app/notifications.ts";
 import { muteForAnHour } from "./app/settings.ts";
@@ -8,7 +9,7 @@ import { BUNDLED_DROPS, takeBundledDrops } from "./domain/map.ts";
 import petDropsUrl from "./assets/pet-drops.json?url";
 import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
-import { findUpdate, getAutostart, isDesktop, onTrayMute } from "./infra/system.ts";
+import { findUpdate, getAutostart, isDesktop, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
 import { act, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
@@ -27,6 +28,7 @@ async function main() {
   const data = await loadData();
   ui.charId = data.characters[0].id;
   if (isDesktop()) ui.autostart = await getAutostart().catch(() => false);
+  if (isDesktop()) openLinksInBrowser();
   // The pet drops shared with the app (src/assets/pet-drops.json), once per bundle: a separate file, fetched only then.
   if (data.map.bundledDrops !== BUNDLED_DROPS)
     await fetch(petDropsUrl).then((r) => r.json()).then((f) => takeBundledDrops(data.map, f)).catch((e) => console.warn("Bundled pet drops not loaded", e));
@@ -51,10 +53,21 @@ async function main() {
     if (data.settings.radar) await radarOverlay(true).catch(() => {});
   }
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
+  // Only the latest update is taken: each carries the meter's whole state (kills, gains, loots, position...), and
+  // a page slower than the meter's 5 updates a second (the Map with its ~1,400 spots) otherwise fell behind for
+  // good: the map still moved minutes after the game was closed (2026-10-28).
+  let pending: MeterUpdate | null = null;
   onMeter((u) => {
-    ui.meter = u;
-    const shared = shareFromMeter(ui.data, u); // before takeMeterData: it compares with the saved data
-    if (takeMeterData(ui.data, u) || shared) save();
+    const first = !pending;
+    pending = u;
+    if (!first) return;
+    setTimeout(() => {
+      const latest = pending!;
+      pending = null;
+      ui.meter = latest;
+      const shared = shareFromMeter(ui.data, latest); // before takeMeterData: it compares with the saved data
+      if (takeMeterData(ui.data, latest) || shared) save();
+    });
   });
   if (isDesktop()) await onTrayMute(() => act(() => muteForAnHour(ui.data, Date.now())));
 

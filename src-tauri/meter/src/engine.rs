@@ -76,6 +76,8 @@ pub struct Update {
     pub souls: Vec<SoulDrop>,
     /// Your pet collection, from the last time the game's Pets menu opened since the meter started.
     pub pets: Option<crate::pets::Collection>,
+    /// Your currencies, on the character they are of.
+    pub wallet: Option<crate::currencies::Wallet>,
     /// Every soul point gain since the meter started (the collection counts these; `souls` only the placed ones).
     pub soul_gains: Vec<crate::souls::Gain>,
     /// Your loots since the meter started (the item and where the mob died), with the mob's name.
@@ -147,6 +149,8 @@ struct ArenaWatch {
     map: Option<i32>,
     names: HashMap<i32, String>,
     last: Option<ArenaMatch>,
+    /// When the zone of the match being watched began (its line-up comes after).
+    zone_since_ms: i64,
 }
 
 pub struct Engine {
@@ -223,6 +227,41 @@ impl Engine {
             capturer, capture_error, game: Mutex::new((i64::MIN, false)) })
     }
 
+    /// An engine with no capture, and the parser that feeds it: for replaying a packet recording
+    /// (`examples/replay.rs`). Frames go to `StreamProcessor::consume_stream`, as the live dispatcher's do.
+    pub fn offline() -> (Arc<Self>, crate::capture::stream_processor::StreamProcessor) {
+        crate::tap::install();
+        let (skills, npcs) = load_names();
+        let storage = new_storage();
+        let ping = Arc::new(PingTracker::new());
+        let calc = DpsCalculator::new(storage.clone(), skills.clone(), npcs.clone(), ping.clone());
+        let mut processor = crate::capture::stream_processor::StreamProcessor::new(storage.clone(), skills, npcs.clone());
+        processor.set_dot_skill_ids(dot_skill_ids());
+        let engine = Arc::new(Self {
+            storage,
+            npcs,
+            calc: Mutex::new(calc),
+            bosses: Mutex::new((0, Vec::new())),
+            arena: Mutex::new(ArenaWatch::default()),
+            kills: Mutex::new((i64::MIN, Vec::new())),
+            ports: Arc::new(CombatPortDetector::new()),
+            ping,
+            paused: Arc::new(AtomicBool::new(false)),
+            party_only: AtomicBool::new(false),
+            view: Mutex::new("damage".into()),
+            watched: Mutex::new(Vec::new()),
+            capturer: None,
+            capture_error: Some("offline replay".into()),
+            game: Mutex::new((i64::MIN, false)),
+        });
+        (engine, processor)
+    }
+
+    /// A map load the replay did not see (a recording started on that map, or ended before leaving it).
+    pub fn note_map_load(&self, map_id: i32) {
+        self.storage.note_map_load(map_id);
+    }
+
     fn game_open(&self) -> bool {
         let now = crate::clock::now_ms();
         let mut g = self.game.lock();
@@ -246,7 +285,7 @@ impl Engine {
             let hits = self.storage.pvp_ledger();
             let s = &self.storage;
             let found = crate::kills::find(me, &deaths, k.0, &hits, &|id| s.get_nickname(id).unwrap_or_default(),
-                &|n| s.player_server(n), &s.fight_roster(), s.current_map_id());
+                &|n| match s.player_server(n) { 0 => crate::roster::server_of(n), id => id }, &s.fight_roster(), s.current_map_id());
             k.1.extend(found);
             let extra = k.1.len().saturating_sub(50);
             k.1.drain(..extra);
@@ -303,6 +342,7 @@ impl Engine {
             (None, None) if self.game_open() => ("searching", "Looking for the game connection. Fight something or change zone.".into()),
             (None, None) => ("waiting-game", "Waiting for AION 2 to start".into()),
         };
+        let profile = self.profile();
         Update {
             status,
             message,
@@ -315,7 +355,8 @@ impl Engine {
             fight,
             bosses: self.boss_timers(),
             odyle: self.storage.odyle_energy().map(|(basic, charged)| Odyle { basic, charged, owner: self.storage.odyle_owner() }),
-            profile: self.profile(),
+            wallet: crate::currencies::latest(profile.as_ref().map(|p| p.name.as_str())),
+            profile,
             arena: self.arena_match(),
             position: {
                 crate::position::set_me(self.storage.local_player_id().map(|id| id as i32));
@@ -400,15 +441,21 @@ impl Engine {
         let hits = self.storage.take_pvp_ledger();
         let map = std::mem::replace(&mut a.map, self.storage.current_map_id());
         a.zone = zone;
+        let since = std::mem::replace(&mut a.zone_since_ms, crate::clock::now_ms());
         let names = std::mem::take(&mut a.names);
         if let Some(map_id) = map.filter(|&m| !is_open_world_map(m)) {
             let me = self.storage.local_player_id().map(|id| id as i32);
             let deaths = self.storage.deaths_between(i64::MIN, i64::MAX);
-            if let Some(mut m) = build_match(map_id, &hits, me, &names, &self.storage.fight_roster(), &deaths) {
+            let me_name = self.storage.local_profile().name;
+            let (line_up, teams) = crate::roster::latest(since);
+            if let Some(mut m) = build_match(map_id, &hits, me, &names, &self.storage.fight_roster(), &deaths, me_name.as_deref(), &line_up, teams) {
                 let profile = self.storage.local_profile();
                 for p in &mut m.players {
                     if p.server_id == 0 && !p.name.is_empty() {
                         p.server_id = self.storage.player_server(&p.name);
+                    }
+                    if p.server_id == 0 && !p.name.is_empty() {
+                        p.server_id = crate::roster::server_of(&p.name);
                     }
                     if p.side == "you" {
                         p.level = p.level.or(profile.level.map(|l| l as i32));

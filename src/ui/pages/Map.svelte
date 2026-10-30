@@ -6,7 +6,7 @@
   // recorded here or merged from friends' files). Close markers merge into a numbered one when zoomed out.
   // You are drawn from the meter's position (src-tauri/meter/src/position.rs) through the map's game → pixel fit:
   // the bundled image's own, or the player's references (3+ with game coordinates).
-  import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
+  import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobPet, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, mapOf, onMap, petHome, petList,
     lootKind, petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
@@ -17,7 +17,9 @@
   import { num } from "../format.ts";
   import { ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
-  import { wanted } from "../../domain/pets.ts";
+  import { MAX_LEVEL, needed, petName as petNameOf, wanted } from "../../domain/pets.ts";
+  import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
+  const PET_CHOICES = Object.entries(KNOWN_PET_NAMES).sort((a, b) => a[1].localeCompare(b[1]));
   import { ui } from "../state.svelte.ts";
 
   type Layer = "cubes" | "pets";
@@ -70,13 +72,22 @@
     const p = applyAffine(fit, x, y);
     return toScreen(view, p.x, p.y);
   }
+  /** Where a spot sits in the spots' layer, which moves with the map (panning and following you move only the
+   *  layer, not ~1,400 spots one by one): the image pixel at the current zoom. */
+  function placed(x: number, y: number) {
+    if (!fit) return null;
+    const p = applyAffine(fit, x, y);
+    return { x: p.x * view.scale, y: p.y * view.scale };
+  }
   // Hidden cubes from the meter: opened ones (saved, game units) and the ones in view now.
   const found = $derived(size.w && layer === "cubes" ? ui.data.map.found.filter((f) => foundOn(f, current)).map((f) => ({ f, s: shown(f.x, f.y) })).filter((v) => v.s) : []);
   // Spots other players reported (src/app/crowd.ts), on this page map.
   const sharedHere = $derived(ui.data.map.shared.filter((c) => mapOf(c.mapId) === current));
   const shared = $derived(size.w && layer === "cubes" ? sharedHere.map((c) => ({ c, s: shown(c.x, c.y) })).filter((v) => v.s) : []);
   const live = $derived(size.w && layer === "cubes" && here ? (ui.meter?.cubes?.live ?? []).map((c) => ({ c, s: shown(c.x, c.y) })).filter((v) => v.s) : []);
-  const when = (t: number) => new Date(t).toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  // One formatter for every spot's title: a toLocaleString per spot and update cost most of the page's time.
+  const WHEN = new Intl.DateTimeFormat([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const when = (t: number) => WHEN.format(t);
 
   // ---------- pets ----------
   let query = $state(""), pet = $state(remembered("pet"));
@@ -117,9 +128,18 @@
   const onThisMap = $derived(drops.filter((d) => dropMap(d) === current));
   // A pet chosen: its drops, bright; none: every drop on this map, dimmer.
   const petDrops = $derived(size.w && layer === "pets"
-    ? onThisMap.filter((d) => !active || isPet(d)).map((d) => ({ d, s: shown(d.x, d.y) })).filter((v) => v.s)
+    ? onThisMap.filter((d) => !active || isPet(d)).map((d) => ({ d, s: placed(d.x, d.y) })).filter((v) => v.s)
     : []);
   const selDrop = $derived(drops.find((d) => d.id === selectedDrop));
+  // The clicked spot's pet and your progress on it (the Pets page's numbers). A crystal's pet is not its mob's:
+  // Agrint's crystal dropped from a Mutated Forest Guardian (2026-10-25).
+  const selPet = $derived.by(() => {
+    if (!selDrop) return null;
+    const id = petOf(selDrop, ui.data.map.kinds);
+    if (id == null) return null;
+    const p = collection?.pets.find((p) => p.id === id) ?? { id, level: 0, points: 0 };
+    return { ...p, name: petNameOf(id, ui.data.map.petNames, ui.data.map.kinds), need: needed(p) };
+  });
   function choosePet(name: string) {
     pet = pet.toLowerCase() === name.toLowerCase() ? "" : name;
     selectedDrop = "";
@@ -333,9 +353,10 @@
     {#each shared as { c, s: at } (c.mapId + ":" + c.x + ":" + c.y)}<div class="found shared" style:left="{at!.x}px" style:top="{at!.y}px"
       title="Hidden cube · reported by {c.n} players"></div>{/each}
     {#each live as { c, s: at } (c.entity)}<div class="live-cube" style:left="{at!.x}px" style:top="{at!.y}px" title="Hidden cube in view"></div>{/each}
+    {#if petDrops.length}<div class="drop-layer" style:transform="translate({view.x}px, {view.y}px)">
     {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!active} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
       aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
-      onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}
+      onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}</div>{/if}
     {#if you}<div class="me" class:stale={age > 30} style:left="{you.x}px" style:top="{you.y}px" title="You · {ago(age)}"></div>{/if}
 
     <!-- Corner menu: which map, which layer, and for pets the search, the list and the drop tools. -->
@@ -413,6 +434,18 @@
     {#if selDrop}<div class="map-panel" role="dialog" aria-label="Soul points" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
       <h2>{soul(selDrop)} <span class="count">{selDrop.mob ? `from ${selDrop.mob}` : "soul points"}</span>
         <button class="ghost" aria-label="Close" title="Close" onclick={() => { selectedDrop = ""; }}>{@html ICON.close}</button></h2>
+      {#if selPet}<div class="drop-pet"><b>{selPet.name}</b> <span class="dim num">#{selPet.id}</span>
+        {#if !collection}<span class="hint">· no collection read yet: log in or change character in game</span>
+        {:else if selPet.level >= MAX_LEVEL}<span class="pet-progress">Level {MAX_LEVEL} · done</span>
+        {:else}<span class="pet-progress">{selPet.level ? `Level ${selPet.level}` : "Not owned"}<span class="bar" style:--p={selPet.points / selPet.need}><i></i></span>
+          <span class="num">{selPet.points}/{selPet.need}</span></span>{/if}</div>
+      {/if}
+      {#if selDrop.item == null && selDrop.mob && (selDrop.kind == null || selDrop.linked)}{@const mob = selDrop.mob}
+        <label class="drop-pet-set"><span class="hint">{ui.data.map.mobPets[mob.toLowerCase()] != null ? `Pet of every ${mob}, as you set it:` : selPet ? `Pet of every ${mob}, from its other kills. Wrong? Pick it:` : `Which pet do ${mob}'s soul points go to? Kills recorded before pet numbers don't say.`}</span>
+          <select value={String(ui.data.map.mobPets[mob.toLowerCase()] ?? "")} aria-label="Pet of {mob}"
+            onchange={(e) => { const v = e.currentTarget.value; act(() => setMobPet(ui.data, mob, v ? Number(v) : null)); }}>
+            <option value="">{selPet && ui.data.map.mobPets[mob.toLowerCase()] == null ? `${selPet.name} (from its other kills)` : "From its other kills / not known"}</option>
+            {#each PET_CHOICES as [id, n] (id)}<option value={id}>{n}</option>{/each}</select></label>{/if}
       <p class="hint">{when(selDrop.atMs)}{selDrop.by ? ` · recorded by ${selDrop.by}` : ""} · game x {selDrop.x}, y {selDrop.y}{selDrop.mapId != null ? ` · map ${selDrop.mapId}` : ""}</p>
       <div class="btns"><button onclick={() => { const id = selDrop.id; selectedDrop = ""; act(() => deleteDrop(ui.data, id)); }}>Delete drop</button></div>
     </div>{/if}

@@ -37,3 +37,26 @@ test("map labels: the player's name, a known one, or Map <id>", () => {
   assert.equal(mapLabel({}, 20), "Abyss");
   assert.equal(mapLabel({}, 1110), "Map 1110");
 });
+
+test("an arena's rounds, a map load each, are one match (the 1v1 of 2026-10-27: died once, Nocturna 3 times)", () => {
+  const log: ArenaLog = { matches: [], maps: {}, kills: [] };
+  const pl = (id: number, name: string, side: ArenaSide, dealt: number, taken: number, deaths: number, serverId = 0): ArenaPlayer =>
+    ({ id, name, side, job: "Templar", serverId, dealt, taken, hits: 1, deaths, level: 45, gearScore: null, combatPower: null });
+  const round1: ArenaMatch = { mapId: 61, startMs: 169_341, endMs: 226_299,
+    players: [pl(13947, "Randronirk", "you", 76_002, 91_641, 1, 2318), pl(445, "Nocturna", "opponent", 91_641, 76_002, 1, 2316)] };
+  const round2: ArenaMatch = { mapId: 61, startMs: 244_549, endMs: 300_624,
+    players: [pl(14010, "Randronirk", "you", 91_058, 45_537, 0), pl(512, "Nocturna", "opponent", 45_537, 91_058, 2)] };
+  assert.equal(logMatch(log, round1), true);
+  assert.equal(logMatch(log, round2), true);
+  assert.equal(logMatch(log, round2), false, "the meter resends the last round");
+  assert.equal(log.matches.length, 1);
+  const t = matchTotals(log.matches[0]);
+  assert.deepEqual([t.ourDeaths, t.theirDeaths, t.dealt, t.taken], [1, 3, 167_060, 137_178]);
+  assert.equal(t.ms, 56_958 + 56_075, "the rounds' time, not the pause between");
+  assert.deepEqual(log.matches[0].rounds, [169_341, 244_549]);
+  assert.equal(log.matches[0].players.find((p) => p.name === "Nocturna")?.serverId, 2316);
+  // Another opponent, or long after: a new match.
+  const other: ArenaMatch = { ...round2, startMs: 320_000, endMs: 380_000, players: [pl(9, "Ezio", "opponent", 1, 1, 0)] };
+  assert.equal(logMatch(log, other), true);
+  assert.equal(log.matches.length, 2);
+});
