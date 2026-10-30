@@ -581,3 +581,15 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
 .home section h2 .count a { color: var(--primary); text-decoration: none; }
 .home section h2 .count a:hover, .home .hint a { text-decoration: underline; }
 .home .hint a { color: var(--primary); }
+
+/* Wiki pages */
+.wiki-pick { display: flex; flex-wrap: wrap; margin-bottom: 12px; }
+.wiki-summary { margin: 0 0 12px; color: var(--muted); }
+.wiki-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--gap); }
+.wiki-cols > section { margin-bottom: 0; }
+.wiki h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; font-size: 13px; font-weight: 600; }
+.wiki h4 { margin: 10px 0 4px; color: var(--faint); font-size: 12px; font-weight: 500; }
+.wiki ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.wiki li + li { margin-top: 4px; }
+.wiki li .pill, .wiki .dim { vertical-align: 1px; }
+.wiki .dim { color: var(--faint); font-size: 12px; }
