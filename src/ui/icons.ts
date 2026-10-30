@@ -14,6 +14,7 @@ export const ICON = {
   map: icon(`<path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z"/><path d="M9 3v15M15 6v15"/>`),
   pets: icon(`<circle cx="6" cy="10" r="2"/><circle cx="10" cy="5.5" r="2"/><circle cx="14" cy="5.5" r="2"/><circle cx="18" cy="10" r="2"/><path d="M12 11c-3 0-6 4.5-6 7a2.5 2.5 0 0 0 3 2.4c1-.2 2-.6 3-.6s2 .4 3 .6a2.5 2.5 0 0 0 3-2.4c0-2.5-3-7-6-7z"/>`),
   dps: icon(`<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>`),
+  fights: icon(`<path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/>`),
   expeditions: icon(`<path d="M3 20h18M5 20V10l7-6 7 6v10"/><path d="M10 20v-5a2 2 0 0 1 4 0v5"/>`),
   transcendence: icon(`<path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2l.9-5.5-4-3.9 5.5-.8L12 3z"/>`),
   mechanics: icon(`<path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5z"/><path d="M4 21a2 2 0 0 1 2-2h12v2H6M8 7h6M8 11h6"/>`),

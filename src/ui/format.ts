@@ -14,6 +14,7 @@ export const PAGE: Record<Tab, [string, string]> = {
   map: ["Map", "Hidden cubes and where pets' soul points drop."],
   pets: ["Pets", "Your pet collection: what is left to collect, and where."],
   dps: ["DPS Meter", "Live damage, healing and damage taken."],
+  fights: ["Fight Log", "Every boss fight: personal bests and runs side by side."],
   arena: ["Arena Log", "Every arena match and opponent."],
   expeditions: ["Expeditions", "Exploration, Conquest and Hard: requirements, drops, bosses."],
   transcendence: ["Transcendence", "Stages, Arcana and boss mechanics."],
