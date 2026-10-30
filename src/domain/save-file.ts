@@ -85,7 +85,8 @@ export function normalize(raw: any): AppData {
     bossNames: Object.fromEntries(Object.entries(raw.bossNames ?? {}).filter(([, v]) => typeof v === "string" && v.trim()) as [string, string][]),
     bossAlerts: Object.fromEntries(Object.entries(raw.bossAlerts ?? {}).map(([id, a]: [string, any]) =>
       [id, { leads: cleanLeads(a?.leads), repeat: !!a?.repeat }])),
-    arena: { matches: Array.isArray(raw.arena?.matches) ? raw.arena.matches : [], maps: raw.arena?.maps ?? {},
+    // Abyss PvP (map 20) logged as arena matches by 0.3.50 and before: not matches, left out (its kills stay in the history).
+    arena: { matches: Array.isArray(raw.arena?.matches) ? raw.arena.matches.filter((m: any) => m?.mapId !== 20) : [], maps: raw.arena?.maps ?? {},
       kills: Array.isArray(raw.arena?.kills) ? raw.arena.kills.filter((k: any) => k?.other && Number.isFinite(k.atMs)) : [] },
     map: cleanMap(raw.map),
     pets: cleanCollections(raw.pets),

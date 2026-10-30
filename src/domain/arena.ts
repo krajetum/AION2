@@ -61,6 +61,7 @@ export function mergeRound(prev: ArenaMatch, m: ArenaMatch): boolean {
 /** Adds a match unless it is logged already (the meter resends the last one), or merges it into the last as
  *  its next round. Returns whether anything changed. */
 export function logMatch(log: ArenaLog, m: ArenaMatch): boolean {
+  if (m.mapId === 20) return false; // the Abyss: open world, not a match (an older meter sends it)
   if (log.matches.some((x) => sameMatch(x, m))) return false;
   if (log.matches[0] && mergeRound(log.matches[0], m)) return true;
   log.matches.unshift(m);
