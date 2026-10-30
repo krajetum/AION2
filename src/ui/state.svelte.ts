@@ -1,13 +1,14 @@
 // UI state. `ui.data` is a deep $state proxy of the save file: app/ use cases mutate it and the page updates.
 import { SvelteSet } from "svelte/reactivity";
+import type { FightRecord } from "../domain/fights.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
-export type Tab = "home" | Cadence | "plan" | "season" | "bosses" | "map" | "pets" | "dps" | "arena" | "news" | "settings";
-export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "bosses", "map", "pets", "dps", "arena", "news", "settings"];
+export type Tab = "home" | Cadence | "plan" | "season" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "news" | "settings";
+export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "bosses", "map", "pets", "dps", "fights", "arena", "news", "settings"];
 /** Sidebar groups. */
 export const GROUPS: [string, Tab[]][] = [["Overview", ["home"]], ["Tasks", [...CADENCES]], ["Progress", ["plan", "season"]],
-  ["World", ["bosses", "map", "pets"]], ["Combat", ["dps", "arena"]], ["Info", ["news", "settings"]]];
+  ["World", ["bosses", "map", "pets"]], ["Combat", ["dps", "fights", "arena"]], ["Info", ["news", "settings"]]];
 export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "home"; };
 
 export const ui = $state({
@@ -20,6 +21,7 @@ export const ui = $state({
   now: Date.now(), // 1 s clock (main.ts) for countdowns and live times
   overlay: false, // DPS overlay window open (main.ts follows the "meter-overlay" event)
   meter: undefined as MeterUpdate | undefined, // last meter update (the capture runs from app start, main.ts)
+  fights: [] as FightRecord[], // the Fight Log, newest first (its own file: src/infra/fights.ts)
 });
 
 /** Tasks finished from the Planner page: kept on screen (ticked) so the tick is visible and can be undone. */
@@ -29,3 +31,5 @@ export const openNews = new Set<string>();
 
 /** Plain copy of the save file for storage (the store plugin can't take a proxy). */
 export const snapshot = () => $state.snapshot(ui.data) as AppData;
+/** Plain copy of the Fight Log for storage. */
+export const fightsSnapshot = () => $state.snapshot(ui.fights) as FightRecord[];

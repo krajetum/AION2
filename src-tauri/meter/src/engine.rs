@@ -321,9 +321,12 @@ impl Engine {
                     }
                 }
             }
-            // Per-skill details for the rows opened in the UI: A2Tools' hover summary for damage;
-            // healing per skill is only in the full details.
-            let watched: Vec<i32> = self.watched.lock().iter().copied().filter(|id| fight.rows.iter().any(|r| r.id == *id)).collect();
+            // Per-skill details for the rows opened in the UI, and always yours (the Fight Log keeps them):
+            // A2Tools' hover summary for damage; healing per skill is only in the full details.
+            let watched: Vec<i32> = {
+                let w = self.watched.lock();
+                fight.rows.iter().filter(|r| r.is_you || w.contains(&r.id)).map(|r| r.id).collect()
+            };
             if !watched.is_empty() {
                 if view == "healing" {
                     let entries: Vec<_> = targets.iter().flat_map(|&t| calc.get_target_details(t, Some(&watched)).heal_skills).collect();

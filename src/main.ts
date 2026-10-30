@@ -1,6 +1,7 @@
 // Startup: load the save file, apply resets, mount the UI, then a 1 s clock for countdowns, resets and notifications.
 import { mount } from "svelte";
-import type { MeterUpdate } from "./domain/meter.ts";
+import type { Fight, MeterUpdate } from "./domain/meter.ts";
+import { addFight, fightEnded, toRecord } from "./domain/fights.ts";
 import { RESET_CONFIG as C } from "./config.ts";
 import { checkNotifications } from "./app/notifications.ts";
 import { muteForAnHour } from "./app/settings.ts";
@@ -9,6 +10,7 @@ import { BUNDLED_DROPS, takeBundledDrops } from "./domain/map.ts";
 import petDropsUrl from "./assets/pet-drops.json?url";
 import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
+import { loadFights, saveFights } from "./infra/fights.ts";
 import { findUpdate, getAutostart, isDesktop, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
 import { act, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
@@ -20,7 +22,7 @@ import { takeMeterData } from "./app/arena.ts";
 import { bossEvery, flushCubes, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, radarOverlay, meterOverlay, onEventsOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
-import { ui } from "./ui/state.svelte.ts";
+import { fightsSnapshot, ui } from "./ui/state.svelte.ts";
 
 const app = document.getElementById("app")!;
 
@@ -35,6 +37,7 @@ async function main() {
   applyResets(data, Date.now(), C);
   checkNotifications(data, Date.now(), toast);
   ui.data = data;
+  ui.fights = await loadFights().catch((e) => { console.warn("Fight Log not loaded", e); return []; });
   await save();
   app.textContent = "";
   mount(App, { target: app });
@@ -57,6 +60,7 @@ async function main() {
   // a page slower than the meter's 5 updates a second (the Map with its ~1,400 spots) otherwise fell behind for
   // good: the map still moved minutes after the game was closed (2026-10-28).
   let pending: MeterUpdate | null = null;
+  let lastFight: Fight | undefined; // the fight of the previous update: kept in the Fight Log when it ends
   onMeter((u) => {
     const first = !pending;
     pending = u;
@@ -65,6 +69,11 @@ async function main() {
       const latest = pending!;
       pending = null;
       ui.meter = latest;
+      if (fightEnded(lastFight, latest.fight)) {
+        ui.fights = addFight(ui.fights, toRecord(lastFight, latest.profile, latest.position?.mapId ?? null, Date.now()));
+        saveFights(fightsSnapshot()).catch((e) => console.warn("Fight Log not saved", e));
+      }
+      lastFight = latest.fight;
       const shared = shareFromMeter(ui.data, latest); // before takeMeterData: it compares with the saved data
       if (takeMeterData(ui.data, latest) || shared) save();
     });
