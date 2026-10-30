@@ -25,6 +25,7 @@ export const ui = $state({
   recent: [] as MeterEvent[], // what the meter saw in the last minutes (main.ts): offered as tasks' triggers
   suggest: null as { taskId: string; triggers: Trigger[] } | null, // after a manual tick: tick it by itself next time?
   fights: [] as FightRecord[], // the Fight Log, newest first (its own file: src/infra/fights.ts)
+  update: undefined as { version: string; install: () => Promise<void> } | undefined, // a newer release (main.ts checkUpdate), offered by a banner
 });
 
 /** Tasks finished from the Planner page: kept on screen (ticked) so the tick is visible and can be undone. */

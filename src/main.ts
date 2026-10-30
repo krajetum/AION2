@@ -92,6 +92,7 @@ async function main() {
   setInterval(async () => {
     ui.now = Date.now();
     if (++ticks % 1800 === 0) refreshNews(); // every 30 min
+    if (ticks % 21600 === 0 && isDesktop()) checkUpdate(); // every 6 h: the app can stay in the tray for days
     // Other players' boss timers every 2 min and cube spots every hour, only while you play.
     if (ticks % bossEvery === 0 && gameActive(ui.now)) crowdBosses();
     if (ticks % 3600 === 0 && gameActive(ui.now)) crowdCubes();
@@ -128,14 +129,11 @@ async function crowdCubes() {
   if (changed) await save();
 }
 
-// Update from GitHub Releases; the Windows installer closes and relaunches the app itself.
+// Update from GitHub Releases: a banner (App.svelte) offers it, the player installs it; the Windows installer closes and relaunches the app itself.
 async function checkUpdate() {
   try {
     const update = await findUpdate();
-    if (update && confirm(`AION 2 Companion ${update.version} is available. Install it now?`)) {
-      showStatus("Downloading update…");
-      await update.downloadAndInstall();
-    }
+    if (update && update.version !== ui.update?.version) ui.update = { version: update.version, install: () => update.downloadAndInstall() };
   } catch (e) { console.warn("Update check failed", e); }
 }
 
