@@ -153,6 +153,8 @@ details[open] > summary.label svg { transform: rotate(90deg); }
 .banner a:hover { text-decoration: underline; }
 .banner .ghost { color: inherit; }
 .banner .grow { flex: 1; min-width: 0; }
+.banner.update { color: var(--gold-ink); background: var(--gold-bg); }
+.banner .whats-new { flex: none; text-decoration: underline; }
 .bday { display: flex; align-items: center; gap: 8px; margin-bottom: var(--gap); padding: 6px 14px; color: #2b0f3a; background: linear-gradient(90deg, #ff5fa2, #ffb347, #ffe066, #6fdc8c, #5ab8ff, #b07cf0); border-radius: var(--r-md); }
 .bday img { width: 40px; height: 40px; }
 .bday .grow { display: flex; flex-direction: column; flex: 1; min-width: 0; text-align: center; }

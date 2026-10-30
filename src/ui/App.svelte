@@ -6,6 +6,7 @@
   import { addTrigger } from "../app/tasks.ts";
   import { triggerLabel, type Trigger } from "../domain/triggers.ts";
   import { unmute } from "../app/settings.ts";
+  import { gameActive } from "../app/crowd.ts";
   import { bossBoard, bossLabel } from "../domain/bosses.ts";
   import { sameName } from "../domain/meter.ts";
   import { pickWallet, walletRows } from "../domain/wallet.ts";
@@ -63,6 +64,13 @@
   function switchTo() {
     if (detected) { ui.charId = detected.id; doneHere.clear(); }
     else act(() => { addCharacter(ui.data, playing); ui.charId = ui.data.characters.at(-1)!.id; doneHere.clear(); });
+  }
+
+  // A newer release (main.ts checks every 6 h): installing closes the app (and the meter), so it waits for the click.
+  let updateHidden = $state(""), updating = $state("");
+  async function install() {
+    updating = "Downloading the update…";
+    try { await ui.update!.install(); } catch (e) { updating = "Update failed: " + e; }
   }
 
   const suggested = $derived(ui.suggest && ui.data.tasks.find((t) => t.id === ui.suggest!.taskId));
@@ -134,6 +142,10 @@
   </nav>
 
   <main>
+    {#if ui.update && ui.update.version !== updateHidden}<div class="banner update"><span class="grow">{#if updating}{updating}{:else}<b>AION 2 Companion {ui.update.version}</b> is ready.{/if}</span>
+      <a class="whats-new" href="https://github.com/krajetum/AION2/releases/tag/v{ui.update.version}" target="_blank" rel="noopener">What's new</a>
+      <button disabled={updating.startsWith("Downloading")} onclick={install}>{gameActive(ui.now) ? "Install & restart (stops the meter)" : "Install & restart"}</button>
+      <button class="ghost" aria-label="Later" title="Later" onclick={() => { updateHidden = ui.update!.version; }}>{@html ICON.close}</button></div>{/if}
     <div class="bday"><img src={balloons} alt="" /><img src={cake} alt="" />
       <div class="grow"><b>Hopex's Birthday</b><span>{bday ? `in ${bday}` : "Happy birthday, Hopex!"}</span></div>
       <img src={gift} alt="" /><img src={confetti} alt="" /></div>
