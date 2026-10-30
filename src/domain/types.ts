@@ -3,6 +3,7 @@ import type { MapData } from "./map.ts";
 import type { PetCollection } from "./pets.ts";
 import type { Wallet } from "./wallet.ts";
 import type { BossTimer } from "./meter.ts";
+import type { Trigger } from "./triggers.ts";
 
 export type Cadence = "daily" | "weekly" | "monthly";
 export const CADENCES: Cadence[] = ["daily", "weekly", "monthly"];
@@ -21,6 +22,7 @@ export interface Task {
   goals?: Goal[];
   minutes?: number;  // Planner estimate for the whole task, learned while a session runs
   priority?: number; // Planner value: 1 low · 2 normal (default) · 3 high
+  triggers?: Trigger[]; // what the meter sees that ticks it (src/domain/triggers.ts)
 }
 
 export interface Character { id: string; name: string }

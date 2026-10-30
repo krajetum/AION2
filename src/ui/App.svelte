@@ -3,6 +3,8 @@
   import { activePlan, planLeft } from "../app/planner.ts";
   import { seasonOf } from "../app/season.ts";
   import { addCharacter } from "../app/characters.ts";
+  import { addTrigger } from "../app/tasks.ts";
+  import { triggerLabel, type Trigger } from "../domain/triggers.ts";
   import { unmute } from "../app/settings.ts";
   import { bossBoard, bossLabel } from "../domain/bosses.ts";
   import { sameName } from "../domain/meter.ts";
@@ -61,6 +63,13 @@
   function switchTo() {
     if (detected) { ui.charId = detected.id; doneHere.clear(); }
     else act(() => { addCharacter(ui.data, playing); ui.charId = ui.data.characters.at(-1)!.id; doneHere.clear(); });
+  }
+
+  const suggested = $derived(ui.suggest && ui.data.tasks.find((t) => t.id === ui.suggest!.taskId));
+  function learn(tr: Trigger) {
+    const id = ui.suggest!.taskId;
+    ui.suggest = null;
+    act(() => addTrigger(ui.data, id, $state.snapshot(tr) as Trigger));
   }
 
   function badge(t: Tab) {
@@ -132,6 +141,9 @@
     {#if offer}<div class="banner"><span class="grow">Playing <b>{offer}</b> in game.</span>
       <button onclick={switchTo}>{detected ? "Switch" : "Add character"}</button>
       <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => { dismissed = offer; }}>{@html ICON.close}</button></div>{/if}
+    {#if ui.suggest && suggested}<div class="banner info"><span class="grow">Tick <b>{suggested.name}</b> by itself next time you:</span>
+      {#each ui.suggest.triggers as tr}<button onclick={() => learn(tr)}>{triggerLabel(tr, ui.data.arena.maps)}</button>{/each}
+      <button class="ghost" aria-label="Not now" title="Not now" onclick={() => { ui.suggest = null; }}>{@html ICON.close}</button></div>{/if}
     {#each ui.data.news.filter((n) => !n.read && isImportant(n)) as n (n.gid)}<div class="banner info"><a href={n.url} target="_blank" rel="noopener" onclick={() => markRead(n.gid)}>{n.title}</a>
       <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => markRead(n.gid)}>{@html ICON.close}</button></div>{/each}
     {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "expeditions"}<WikiDungeons kind="expedition" />{:else if ui.tab === "transcendence"}<WikiDungeons kind="transcendence" />{:else if ui.tab === "mechanics"}<WikiMechanics />{:else}<TaskList cad={ui.tab} />{/if}

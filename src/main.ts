@@ -2,6 +2,8 @@
 import { mount } from "svelte";
 import type { Fight, MeterUpdate } from "./domain/meter.ts";
 import { addFight, fightEnded, toRecord } from "./domain/fights.ts";
+import { charFor, eventsFrom, SUGGEST_MS, type MeterEvent } from "./domain/triggers.ts";
+import { autoTick } from "./app/auto.ts";
 import { RESET_CONFIG as C } from "./config.ts";
 import { checkNotifications } from "./app/notifications.ts";
 import { muteForAnHour } from "./app/settings.ts";
@@ -60,7 +62,7 @@ async function main() {
   // a page slower than the meter's 5 updates a second (the Map with its ~1,400 spots) otherwise fell behind for
   // good: the map still moved minutes after the game was closed (2026-10-28).
   let pending: MeterUpdate | null = null;
-  let lastFight: Fight | undefined; // the fight of the previous update: kept in the Fight Log when it ends
+  let last: MeterUpdate | undefined; // the previous update: a fight that ended (Fight Log), events for auto-tracked tasks
   onMeter((u) => {
     const first = !pending;
     pending = u;
@@ -69,11 +71,13 @@ async function main() {
       const latest = pending!;
       pending = null;
       ui.meter = latest;
+      const lastFight: Fight | undefined = last?.fight;
       if (fightEnded(lastFight, latest.fight)) {
         ui.fights = addFight(ui.fights, toRecord(lastFight, latest.profile, latest.position?.mapId ?? null, Date.now()));
         saveFights(fightsSnapshot()).catch((e) => console.warn("Fight Log not saved", e));
       }
-      lastFight = latest.fight;
+      autoTrack(eventsFrom(last, latest, Date.now()), latest);
+      last = latest;
       const shared = shareFromMeter(ui.data, latest); // before takeMeterData: it compares with the saved data
       if (takeMeterData(ui.data, latest) || shared) save();
     });
@@ -97,6 +101,21 @@ async function main() {
     const reset = applyResets(ui.data, now, C).length > 0;
     if (checkNotifications(ui.data, now, toast) || reset) await save();
   }, 1000);
+}
+
+// Auto-tracked tasks: the events tick the played character's tasks; they stay a few minutes as trigger suggestions.
+const entered = new Map<string, number>(); // task id → the map entry that last ticked it
+function autoTrack(evs: MeterEvent[], u: MeterUpdate) {
+  if (!evs.length) return;
+  const now = Date.now();
+  ui.recent = [...ui.recent, ...evs].filter((e) => now - e.atMs <= SUGGEST_MS);
+  const char = charFor(ui.data.characters, u.profile?.name);
+  const ticked = char ? evs.flatMap((ev) => autoTick(ui.data, char.id, ev, entered)) : [];
+  if (!char || !ticked.length) return;
+  save();
+  const s = ui.data.settings, mine = char.id === ui.charId, names = [...new Set(ticked.map((t) => t.name))].join(" · ");
+  if (s.channels.auto?.on && !(s.mutedUntil > now)) toast(s, mine ? "Ticked by the game" : `Ticked by the game: ${char.name}`, names, ["auto", "check"]);
+  showStatus(`Ticked by the game: ${names}${mine ? " (Ctrl+Z to undo)" : ` (${char.name})`}`);
 }
 
 async function crowdBosses() {

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { moveTask, renameTask, setTaskCategory, setTaskEnabled, setTaskGoals, setTaskNote } from "../../app/tasks.ts";
+  import { addTrigger, moveTask, removeTrigger, renameTask, setTaskCategory, setTaskEnabled, setTaskGoals, setTaskNote } from "../../app/tasks.ts";
+  import { suggest, triggerLabel } from "../../domain/triggers.ts";
   import { formatGoals } from "../../domain/tasks.ts";
   import type { Task } from "../../domain/types.ts";
   import { act, commit } from "../actions.ts";
@@ -7,6 +8,7 @@
   import { ui } from "../state.svelte.ts";
 
   let { t }: { t: Task } = $props();
+  const offer = $derived(suggest(ui.recent, t, ui.now));
 
   function goals(v: string) {
     try { setTaskGoals(ui.data, t.id, v); } catch (err) { showStatus((err as Error).message, true); }
@@ -21,4 +23,9 @@
     onchange={(e) => commit(e, goals, () => formatGoals(t.goals))}>
   <input value={t.note ?? ""} placeholder="Note…" aria-label="Note" onchange={(e) => commit(e, (v) => setTaskNote(ui.data, t.id, v), () => t.note)}>
   <label class="switch"><input type="checkbox" checked={t.enabled} aria-label="Enabled"
-    onchange={(e) => act(() => setTaskEnabled(ui.data, t.id, e.currentTarget.checked))}></label></div>
+    onchange={(e) => act(() => setTaskEnabled(ui.data, t.id, e.currentTarget.checked))}></label>
+  {#if t.triggers?.length}<div class="triggers"><span class="label">Auto</span>
+    {#each t.triggers ?? [] as tr, i}<span class="pill">{triggerLabel(tr, ui.data.arena.maps)}<button aria-label="Remove trigger" title="Remove"
+      onclick={() => act(() => removeTrigger(ui.data, t.id, i))}>×</button></span>{/each}
+    {#if offer.length}<select aria-label="Auto-tick when" onchange={(e) => { const tr = offer[+e.currentTarget.value]; e.currentTarget.value = ""; if (tr) act(() => addTrigger(ui.data, t.id, tr)); }}>
+      <option value="">Auto-tick when…</option>{#each offer as tr, i}<option value={i}>{triggerLabel(tr, ui.data.arena.maps)}</option>{/each}</select>{/if}</div>{/if}</div>
