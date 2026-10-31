@@ -1,7 +1,8 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanCrafting, craftCost, explode, wouldCycle, type CraftData, type CraftItem } from "./crafting.ts";
+import { readFileSync } from "node:fs";
+import { cleanCrafting, craftCost, explode, takeGameRecipes, wouldCycle, type CraftData, type CraftItem, type GameRecipes } from "./crafting.ts";
 
 // aion2hub's Splendent Star Dragon Lord Staff: 11 Enhanced Thick Balaur Scale + 4 Wrathful Mind; a scale from
 // 2 Balaur's Essence + 1 Lesser Dragon Scale Hardener (Bound: no market price).
@@ -90,4 +91,20 @@ test("cleaning a save drops broken items, inputs and targets of items that are g
   assert.deepEqual(c.targets, [{ item: "a", qty: 2 }]);
   assert.deepEqual(c.owned, { Main: { b: 3 } });
   assert.deepEqual(cleanCrafting(undefined), { items: {}, targets: [], owned: {} });
+});
+
+test("the bundled game recipes: one faction's items by code, prices and choices kept, clashing names told apart", () => {
+  const g: GameRecipes = JSON.parse(readFileSync(new URL("../assets/recipes.json", import.meta.url), "utf8"));
+  const d: CraftData = { items: { "610730022": { id: "610730022", name: "old", price: 9, buy: true } }, targets: [], owned: {} };
+  assert.equal(takeGameRecipes(d, g, "Asmodian"), Object.keys(g.recipes.Asmodian).length);
+  assert.deepEqual(d.items["110830100"].recipe, { inputs: [{ item: "610730022", qty: 11 }, { item: "610511013", qty: 4 }], yields: 1, kina: 0 });
+  assert.equal(d.items["110830100"].name, "Splendent Star Dragon Lord Staff");
+  assert.deepEqual({ ...d.items["610730022"], recipe: undefined }, { id: "610730022", name: "Enhanced Thick Balaur Scale", code: 610730022, price: 9, buy: true, recipe: undefined });
+  assert.equal(d.items["630520007"].name, "Lesser Dragon Scale Hardener (Bound)");
+  assert.equal(d.items["110130013"].name, "Artisan's Splendent Orichalcum Greatsword #110130013");
+  assert.deepEqual(d.game, { side: "Asmodian", builtAt: g.builtAt });
+  d.items["610730022"].buy = false;
+  const b = explode({ ...d, targets: [{ item: "110830100", qty: 1 }] });
+  assert.ok(b.lines.some((l) => l.item === "630520007" && l.buy === 11), "the hardener under the scales, to farm");
+  assert.deepEqual(cleanCrafting(d).game, d.game);
 });
