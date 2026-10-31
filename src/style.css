@@ -597,3 +597,22 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
 .wiki li + li { margin-top: 4px; }
 .wiki li .pill, .wiki .dim { vertical-align: 1px; }
 .wiki .dim { color: var(--faint); font-size: 12px; }
+
+/* ---------- crafting ---------- */
+.craft-add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.craft-add input[type="number"] { width: 72px; }
+.craft-add input:not([type]) { flex: 1 1 220px; max-width: 320px; }
+.craft td .seg { margin-left: 8px; vertical-align: middle; }
+.craft td .seg button { height: 22px; padding: 0 8px; font-size: 12px; }
+.craft .craft-tip { display: block; color: var(--accent); font-size: 12px; }
+.craft td input.price { width: 104px; }
+.craft td.num { white-space: nowrap; }
+.craft .dim, .craft-tree .dim, .craft-item .dim { color: var(--faint); font-size: 12px; }
+.craft-tree summary { cursor: pointer; }
+.craft-tree ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.craft-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
+.craft-item summary { cursor: pointer; }
+.craft-fields { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 10px 0; }
+.craft-fields label { display: flex; flex-direction: column; gap: 4px; color: var(--faint); font-size: 12px; }
+.craft-fields input[type="number"] { width: 110px; }
+.craft-share { width: 100%; margin-top: 10px; font: inherit; font-size: 12px; }

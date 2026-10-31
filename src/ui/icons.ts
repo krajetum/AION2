@@ -8,6 +8,7 @@ export const ICON = {
   monthly: icon(`<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h2M11 14h2M15 14h2M7 17h2M11 17h2"/>`),
   plan: icon(`<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M10 2h4"/>`),
   season: icon(`<ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/>`),
+  crafting: icon(`<path d="M14 6l4 4M5 21l9-9M12.5 4.5l2-2 7 7-2 2-2.5-.5-3 3-4-4 3-3-.5-2.5z"/>`),
   bell: icon(`<path d="M6 9a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10.3 21a1.9 1.9 0 0 0 3.4 0"/>`),
   bosses: icon(`<path d="M4 9l3 3 5-7 5 7 3-3-2 10H6L4 9z"/><path d="M6 21h12"/>`),
   arena: icon(`<path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 17.5L21 6V3h-3L6.5 14.5M11 19l-6-6M8 16l-4 4M5 21l-2-2"/>`),
