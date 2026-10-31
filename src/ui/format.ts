@@ -11,6 +11,7 @@ export const PAGE: Record<Tab, [string, string]> = {
   plan: ["Planner", "Best use of the minutes you have."],
   season: ["Season Coins", "Season Oath Coins: claimed, left and projected."],
   crafting: ["Crafting", "Recipes, what to craft, what to buy and the Kina it costs."],
+  enhance: ["Enhancement", "What taking a Unique piece to +15 costs, on average and when unlucky."],
   bosses: ["Field Bosses", "Respawn timers from the world map."],
   map: ["Map", "Hidden cubes and where pets' soul points drop."],
   pets: ["Pets", "Your pet collection: what is left to collect, and where."],
