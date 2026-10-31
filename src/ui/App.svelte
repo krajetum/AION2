@@ -34,6 +34,7 @@
   import Planner from "./pages/Planner.svelte";
   import Season from "./pages/Season.svelte";
   import Crafting from "./pages/Crafting.svelte";
+  import Enhance from "./pages/Enhance.svelte";
   import Settings from "./pages/Settings.svelte";
   import WikiDungeons from "./pages/WikiDungeons.svelte";
   import WikiMechanics from "./pages/WikiMechanics.svelte";
@@ -85,7 +86,7 @@
   }
 
   function badge(t: Tab) {
-    if (t === "home" || t === "settings" || t === "news" || t === "dps" || t === "expeditions" || t === "transcendence" || t === "mechanics") return "";
+    if (t === "home" || t === "settings" || t === "news" || t === "dps" || t === "expeditions" || t === "transcendence" || t === "mechanics" || t === "enhance") return "";
     if (t === "map") return ui.data.map.points.length ? num(ui.data.map.points.length) : "";
     if (t === "pets") {
       // Pets at level 3, of those owned, for the character read last.
@@ -163,7 +164,7 @@
       <button class="ghost" aria-label="Not now" title="Not now" onclick={() => { ui.suggest = null; }}>{@html ICON.close}</button></div>{/if}
     {#each ui.data.news.filter((n) => !n.read && isImportant(n)) as n (n.gid)}<div class="banner info"><a href={n.url} target="_blank" rel="noopener" onclick={() => markRead(n.gid)}>{n.title}</a>
       <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => markRead(n.gid)}>{@html ICON.close}</button></div>{/each}
-    {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "crafting"}<Crafting />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "expeditions"}<WikiDungeons kind="expedition" />{:else if ui.tab === "transcendence"}<WikiDungeons kind="transcendence" />{:else if ui.tab === "mechanics"}<WikiMechanics />{:else}<TaskList cad={ui.tab} />{/if}
+    {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "crafting"}<Crafting />{:else if ui.tab === "enhance"}<Enhance />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "expeditions"}<WikiDungeons kind="expedition" />{:else if ui.tab === "transcendence"}<WikiDungeons kind="transcendence" />{:else if ui.tab === "mechanics"}<WikiMechanics />{:else}<TaskList cad={ui.tab} />{/if}
   </main>
 
   <aside class="inspector" aria-label="Timers">
