@@ -62,7 +62,7 @@
   const picked = $derived(pickWallet(ui.data.wallets, selName, playing));
   const wallet = $derived(picked?.wallet);
   // Abyss Points gained since the daily reset, by where they came from (click the row).
-  const apToday = $derived(wallet?.apGains?.length ? apSince(wallet, lastBoundary("daily", ui.now, C)) : null);
+  const apToday = $derived(wallet && wallet.values[930_100_003] != null ? apSince(wallet, lastBoundary("daily", ui.now, C)) : null);
   let apOpen = $state(false);
   const offer = $derived(playing && playing !== dismissed && detected?.id !== ui.charId ? playing : "");
   function switchTo() {
@@ -181,7 +181,7 @@
             <div class="sub"><small>Player kills / assists</small><span>{num(t.players)}</span></div>
             <div class="sub"><small>Mob kills</small><span>{num(t.mobs)}</span></div>
             <div class="sub"><small>Other</small><span>{num(t.other)}</span></div>{/each}
-          <p class="hint">By timing: points within 5 s of a PvP kill or assist of yours, or of a mob you killed.</p></div>{/if}{/if}
+          <p class="hint">By timing: points within 5 s of a PvP kill or assist of yours, or of a mob you killed. Counted while the companion runs; the first change after it starts in game is "other".</p></div>{/if}{/if}
       {#if wallet.odyle}<div class="timer event" title="Basic · charged"><small>Odyle energy</small><span>{num(wallet.odyle.basic)} · {num(wallet.odyle.charged)}</span></div>{/if}
       {#if wallet.values[930_100_001] != null}<label class="toggle-line wallet-sum"><input type="checkbox" checked={s.sumKina}
         onchange={(e) => { const on = e.currentTarget.checked; act(() => { ui.data.settings.sumKina = on; }); }}> Kina and bound Kina together</label>{/if}

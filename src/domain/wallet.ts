@@ -25,6 +25,8 @@ export interface Wallet {
   apGains?: ApGain[];             // the last AP_KEEP_MS of Abyss Points gained (`takeApGains`)
 }
 
+/** Abyss Points' item code. */
+const ABYSS_POINTS = 930_100_003;
 /** The Abyss's map id (src/domain/arena.ts KNOWN_MAPS). */
 const ABYSS_MAP = 20;
 /** AP gains are kept this long (the sidebar shows today's). */
@@ -61,6 +63,29 @@ export function takeWallet(all: Record<string, Wallet>, w: MeterWallet | null | 
   for (const [code, v] of Object.entries(w.values)) if (ok(v) && kept.values[code] !== v) { kept.values[code] = v; changed = true; }
   if (changed) kept.atMs = w.atMs;
   return changed;
+}
+
+/**
+ * Abyss Points the meter could not see as a gain: it needs the amount before a change, so the first change after the app
+ * starts in game (an update, a restart) gives none. Against the kept amount, when that was sent after `sinceMs` (the daily
+ * reset), the rise not covered by the meter's own gains is one gain, "other" (its source is not known), on `mapId` (where
+ * you are now). Call before
+ * `takeWallet`, which replaces the kept amount. Returns true if anything changed.
+ */
+export function takeApCatchUp(all: Record<string, Wallet>, w: MeterWallet | null | undefined, sinceMs: number, mapId: number | null = null): boolean {
+  const name = w?.owner?.trim();
+  const kept = name ? all[name] : undefined;
+  const code = String(ABYSS_POINTS), before = kept?.values[code], after = w?.values[code];
+  if (!w || !kept || !ok(before) || !ok(after) || after <= before || kept.atMs < sinceMs || w.atMs <= kept.atMs) return false;
+  const seen = (w.apGains ?? []).filter((g) => g.atMs > kept.atMs);
+  const missed = after - before - seen.reduce((n, g) => n + g.amount, 0);
+  if (missed <= 0) return false;
+  // Before the meter's own gains, so `takeApGains` still takes them (it skips any not after the last kept).
+  const atMs = Math.min(w.atMs, ...seen.map((g) => g.atMs - 1));
+  const list = (kept.apGains ??= []);
+  if (list.length && list.at(-1)!.atMs >= atMs) return false;
+  list.push({ amount: missed, atMs, abyss: mapId === ABYSS_MAP, from: "other" });
+  return true;
 }
 
 /**
