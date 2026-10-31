@@ -52,6 +52,11 @@ pub fn me() -> i32 {
     ME.load(Ordering::Relaxed)
 }
 
+/// The map of the last map load (or the field-boss map), if any.
+pub fn map_id() -> Option<i32> {
+    *MAP.lock()
+}
+
 /// The last position read, if any.
 pub fn latest() -> Option<SelfPosition> {
     *LAST.lock()

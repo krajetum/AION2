@@ -143,7 +143,8 @@ function demoUpdate(): MeterUpdate {
     paused: demo.paused, partyOnly: demo.partyOnly, view: demo.view, demo: true,
     bosses: DEMO_BOSSES, odyle: { basic: 30, charged: 840, owner: "Main" },
     // The amounts after the shop of 2026-10-27 12:47.
-    wallet: { owner: "Main", values: { "930100031": 5_061_092, "930100001": 0, "930100003": 225_824, "930100017": 35_085, "930100011": 235 }, atMs: DEMO_SEEN - 5 * 60_000 },
+    wallet: { owner: "Main", values: { "930100031": 5_061_092, "930100001": 0, "930100003": 225_824, "930100017": 35_085, "930100011": 235 }, atMs: DEMO_SEEN - 5 * 60_000,
+      apGains: [{ amount: 1_200, mapId: 20, atMs: DEMO_SEEN - 50 * 60_000 }, { amount: 35, mapId: 20, atMs: DEMO_SEEN - 40 * 60_000 }, { amount: 800, mapId: 1110, atMs: DEMO_SEEN - 30 * 60_000 }] },
     profile: { name: "Demo Alt", serverId: 1304, job: "Gladiator", level: 45, gearScore: 2040, combatPower: 51_000 }, arena: DEMO_MATCH,
     // Near Safe Haven, walking slowly; as if read 2 s ago.
     kills: [
