@@ -67,10 +67,12 @@ export function takeWallet(all: Record<string, Wallet>, w: MeterWallet | null | 
  * The meter's Abyss Points gains into the owner's wallet, each once and only when AP_SETTLE_MS old, tagged with
  * where it came from: a PvP kill or assist of yours within AP_NEAR_MS (`kills`), else a mob kill of yours up to
  * AP_NEAR_MS before it (your loots, `kills.ts` / `souls.rs`), else "other". Older than AP_KEEP_MS are dropped.
- * Returns true if anything changed.
+ * A player your party killed without a hit of yours gives you points too (2026-10-31): any death of a player within
+ * AP_NEAR_MS (`playerDeaths`, the meter's `pvpDeaths`: not you, not your party) counts as players. Returns true if
+ * anything changed.
  */
 export function takeApGains(all: Record<string, Wallet>, w: MeterWallet | null | undefined, pvp: { atMs: number; kind: string }[],
-  loots: { atMs: number }[], now: number): boolean {
+  loots: { atMs: number }[], now: number, playerDeaths: number[] = []): boolean {
   const name = w?.owner?.trim();
   if (!w?.apGains?.length || !name) return false;
   const kept = (all[name] ??= { values: {}, atMs: 0 });
@@ -79,7 +81,8 @@ export function takeApGains(all: Record<string, Wallet>, w: MeterWallet | null |
   let changed = false;
   for (const g of w.apGains) {
     if (g.atMs <= last || now - g.atMs < AP_SETTLE_MS) continue;
-    const from: ApSource = pvp.some((k) => k.kind !== "death" && Math.abs(k.atMs - g.atMs) <= AP_NEAR_MS) ? "players"
+    const from: ApSource = pvp.some((k) => k.kind !== "death" && Math.abs(k.atMs - g.atMs) <= AP_NEAR_MS)
+      || playerDeaths.some((t) => Math.abs(t - g.atMs) <= AP_NEAR_MS) ? "players"
       : loots.some((l) => l.atMs <= g.atMs && g.atMs - l.atMs <= AP_NEAR_MS) ? "mobs" : "other";
     list.push({ amount: g.amount, atMs: g.atMs, abyss: g.mapId === ABYSS_MAP, from });
     changed = true;

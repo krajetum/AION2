@@ -87,6 +87,9 @@ pub struct Update {
     pub loots: Vec<LootDrop>,
     /// Your PvP kills and deaths since the meter started (the last 50).
     pub kills: Vec<crate::kills::Kill>,
+    /// When enemy players died in the last 10 minutes: a kill your party made gives you Abyss Points too, though you
+    /// never hit them (AP today, `src/domain/wallet.ts`).
+    pub pvp_deaths: Vec<i64>,
 }
 
 /// A field boss as the map the player opened shows it (`capture::boss_map`).
@@ -297,8 +300,33 @@ impl Engine {
         k.1.clone()
     }
 
+    /// Deaths of enemy players in the last 10 minutes (`Update::pvp_deaths`): a player (in PvP hits, or named by a
+    /// spawn record: mobs are not), not you, not your party, and not of your faction when their server is known (the
+    /// thousands digit of the server id: 1 Elyos, 2 Asmodian). Your party's hits on them may never reach the meter.
+    fn pvp_deaths(&self) -> Vec<i64> {
+        let now = crate::clock::now_ms();
+        let me = self.storage.local_player_id().map(|id| id as i32);
+        let players = self.storage.pvp_players();
+        let party = self.storage.get_party_members();
+        let my_faction = Some(self.storage.local_profile().server_id / 1000).filter(|&f| f > 0);
+        self.storage
+            .deaths_between(now - 600_000, now)
+            .into_iter()
+            .filter(|&(id, _, _)| {
+                let name = self.storage.get_nickname(id);
+                let server = name.as_deref().map_or(0, crate::roster::server_of);
+                Some(id) != me
+                    && (players.contains(&id) || name.is_some())
+                    && !name.as_deref().is_some_and(|n| party.contains_key(n.trim()))
+                    && !(server > 0 && my_faction == Some(server / 1000))
+            })
+            .map(|(_, at, _)| at)
+            .collect()
+    }
+
     pub fn update(&self) -> Update {
         let kills = self.kills();
+        let pvp_deaths = self.pvp_deaths();
         let party_only = self.party_only.load(Ordering::Relaxed);
         let view = self.view.lock().clone();
         let fight = {
@@ -394,6 +422,7 @@ impl Engine {
                 lost
             },
             kills,
+            pvp_deaths,
         }
     }
 

@@ -42,7 +42,7 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
     && finishFromSilentKills(data.pets[me], u.loots, gains, (mob) => mobKind(data.map, mob));
   // Currencies and Odyle energy, kept per character for the sidebar.
   const wallet = takeWallet(data.wallets, u.wallet);
-  const ap = takeApGains(data.wallets, u.wallet, u.kills ?? [], u.loots ?? [], Date.now());
+  const ap = takeApGains(data.wallets, u.wallet, u.kills ?? [], u.loots ?? [], Date.now(), u.pvpDeaths ?? []);
   const odyle = takeOdyle(data.wallets, u.odyle, Date.now());
   return !!bosses || match || cubes || kills || souls || loots || read || gained || finished || wallet || odyle || ap;
 }
