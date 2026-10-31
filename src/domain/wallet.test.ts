@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, pickWallet, takeApGains, apSince, type Wallet } from "./wallet.ts";
+import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, pickWallet, takeApGains, takeApCatchUp, apSince, type Wallet } from "./wallet.ts";
 
 test("the meter's currencies go on their character; older news does not replace newer", () => {
   const all: Record<string, Wallet> = {};
@@ -67,4 +67,31 @@ test("AP from a player your party killed, without a hit of yours, counts as play
   const w = { owner: "Me", values: {}, atMs: 1, apGains: [{ amount: 60, mapId: 20, atMs: 100_000 }, { amount: 500, mapId: 20, atMs: 200_000 }] };
   takeApGains(all, w, [], [], 300_000, [98_500]);
   assert.deepEqual(all.Me.apGains!.map((g) => g.from), ["players", "other"]);
+});
+
+test("the first AP change after the app starts in game is counted against the kept amount", () => {
+  const reset = 1_000;
+  const all: Record<string, Wallet> = { Me: { values: { "930100003": 100 }, atMs: 2_000 } };
+  // The meter's first change: no gain (it had no amount before), 100 → 150.
+  assert.equal(takeApCatchUp(all, { owner: "Me", values: { "930100003": 150 }, atMs: 3_000 }, reset, 20), true);
+  assert.deepEqual(all.Me.apGains, [{ amount: 50, atMs: 3_000, abyss: true, from: "other" }]);
+  takeWallet(all, { owner: "Me", values: { "930100003": 150 }, atMs: 3_000 });
+  // Then the meter knows the amount: nothing more to catch up.
+  const next = { owner: "Me", values: { "930100003": 170 }, atMs: 4_000, apGains: [{ amount: 20, mapId: 20, atMs: 4_000 }] };
+  assert.equal(takeApCatchUp(all, next, reset), false);
+});
+
+test("AP catch-up leaves out the meter's own gains and amounts kept before the reset", () => {
+  const all: Record<string, Wallet> = { Me: { values: { "930100003": 100 }, atMs: 2_000 } };
+  // Two changes in one update: 100 → 150 unseen, then +20 the meter saw.
+  const w = { owner: "Me", values: { "930100003": 170 }, atMs: 4_000, apGains: [{ amount: 20, mapId: null, atMs: 4_000 }] };
+  assert.equal(takeApCatchUp(all, w, 1_000), true);
+  assert.deepEqual(all.Me.apGains, [{ amount: 50, atMs: 3_999, abyss: false, from: "other" }]);
+  assert.equal(takeApGains(all, w, [], [], 20_000), true);
+  assert.equal(all.Me.apGains!.length, 2);
+  // Kept before today's reset: the rise may be yesterday's.
+  const old: Record<string, Wallet> = { Me: { values: { "930100003": 100 }, atMs: 500 } };
+  assert.equal(takeApCatchUp(old, { owner: "Me", values: { "930100003": 150 }, atMs: 3_000 }, 1_000), false);
+  // Spent: nothing.
+  assert.equal(takeApCatchUp(all, { owner: "Me", values: { "930100003": 10 }, atMs: 30_000 }, 1_000), false);
 });

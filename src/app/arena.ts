@@ -3,7 +3,9 @@ import { logKills, logMatch } from "../domain/arena.ts";
 import { mergeBosses } from "../domain/bosses.ts";
 import { mobKind, takeCubes, takeLoots, takeSouls } from "../domain/map.ts";
 import { addSoulPoints, finishFromSilentKills, takeCollection } from "../domain/pets.ts";
-import { takeApGains, takeOdyle, takeWallet } from "../domain/wallet.ts";
+import { takeApCatchUp, takeApGains, takeOdyle, takeWallet } from "../domain/wallet.ts";
+import { lastBoundary } from "../domain/time.ts";
+import { RESET_CONFIG } from "../config.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
 
@@ -41,10 +43,11 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   const finished = !!data.pets[me] && !!u.loots?.length
     && finishFromSilentKills(data.pets[me], u.loots, gains, (mob) => mobKind(data.map, mob));
   // Currencies and Odyle energy, kept per character for the sidebar.
+  const missed = takeApCatchUp(data.wallets, u.wallet, lastBoundary("daily", Date.now(), RESET_CONFIG), u.position?.mapId ?? null);
   const wallet = takeWallet(data.wallets, u.wallet);
   const ap = takeApGains(data.wallets, u.wallet, u.kills ?? [], u.loots ?? [], Date.now(), u.pvpDeaths ?? []);
   const odyle = takeOdyle(data.wallets, u.odyle, Date.now());
-  return !!bosses || match || cubes || kills || souls || loots || read || gained || finished || wallet || odyle || ap;
+  return !!bosses || match || cubes || kills || souls || loots || read || gained || finished || wallet || odyle || ap || missed;
 }
 
 /** Names an arena map ("Arena of Solitude"); empty = unnamed. */
