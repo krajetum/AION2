@@ -61,3 +61,10 @@ test("AP gains: once each, once settled, by source and map; today's split", () =
   assert.deepEqual([t.total, t.abyss, t.elsewhere], [576, { players: 0, mobs: 29, other: 507 }, { players: 40, mobs: 0, other: 0 }]);
   assert.deepEqual(cleanWallets(JSON.parse(JSON.stringify(all))).Randronirk.apGains, all.Randronirk.apGains);
 });
+
+test("AP from a player your party killed, without a hit of yours, counts as players (2026-10-31)", () => {
+  const all: Record<string, Wallet> = {};
+  const w = { owner: "Me", values: {}, atMs: 1, apGains: [{ amount: 60, mapId: 20, atMs: 100_000 }, { amount: 500, mapId: 20, atMs: 200_000 }] };
+  takeApGains(all, w, [], [], 300_000, [98_500]);
+  assert.deepEqual(all.Me.apGains!.map((g) => g.from), ["players", "other"]);
+});

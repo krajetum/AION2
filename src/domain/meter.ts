@@ -77,6 +77,7 @@ export interface MeterUpdate {
   position?: SelfPosition | null;
   cubes?: Cubes;
   kills?: Kill[];
+  pvpDeaths?: number[]; // deaths of players (not you or your party) in PvP hits, last 10 min: your party's kills give you AP too
   souls?: SoulDrop[];
   soulGains?: { kind: number; points: number; atMs: number }[]; // every soul point gain: the collection counts these
   loots?: LootDrop[];

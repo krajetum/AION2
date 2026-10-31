@@ -17,7 +17,7 @@ fn main() {
     // Recording times count from its start; the file name holds the start in unix seconds.
     let base = path.rsplit("packets-").next().and_then(|s| s.split(|c: char| !c.is_ascii_digit()).next())
         .and_then(|s| s.parse::<i64>().ok()).map_or(1_800_000_000_000, |s| s * 1000);
-    let (mut last_arena, mut last_kills, mut next_update) = (String::new(), String::new(), 0i64);
+    let (mut last_arena, mut last_kills, mut next_update, mut last_deaths) = (String::new(), String::new(), 0i64, 0usize);
     let mut show = |engine: &aion2_meter::engine::Engine, at: i64| {
         aion2_meter::clock::set_override(Some(at));
         let u = engine.update();
@@ -25,6 +25,10 @@ fn main() {
         if arena != last_arena {
             println!("[{:>7.1} s] arena: {arena}", (at - base) as f64 / 1000.0);
             last_arena = arena;
+        }
+        if u.pvp_deaths.len() != last_deaths {
+            println!("[{:>7.1} s] enemy player deaths (last 10 min): {}", (at - base) as f64 / 1000.0, u.pvp_deaths.len());
+            last_deaths = u.pvp_deaths.len();
         }
         let kills = serde_json::to_string(&u.kills).unwrap();
         if kills != last_kills {
