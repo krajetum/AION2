@@ -17,7 +17,13 @@ export interface CraftData {
   items: Record<string, CraftItem>;
   targets: Input[];                               // what to craft, and how many
   owned: Record<string, Record<string, number>>;  // character name → item id → pieces owned
+  game?: { side: Side; builtAt: string };         // the game recipes loaded last
 }
+
+export type Side = "Elyos" | "Asmodian";
+/** The game's recipes bundled with the app (src/assets/recipes.json, built by scripts/recipes.mjs from aion2hub's
+ *  Global client data): item names by code, and per faction product code → [pieces per craft, [input code, qty][]]. */
+export interface GameRecipes { builtAt: string; items: Record<string, string>; recipes: Record<Side, Record<string, [number, [number, number][]]>> }
 
 /** One material of the bill: its total need, what stock covers, and how the rest is got. */
 export interface Line { item: string; level: number; need: number; used: number; craft: number; buy: number; cost: number; fee: number }
@@ -88,6 +94,25 @@ export function craftCost(data: CraftData, id: string, path = new Set<string>())
   return sum / r.yields;
 }
 
+/** Merges a faction's game recipes, each item under its game code (its id): name and recipe from the game replace the
+ *  kept ones, prices, craft/buy choices and stock stay. Two items of one name get their code after it. Returns the recipes read. */
+export function takeGameRecipes(data: CraftData, g: GameRecipes, side: Side): number {
+  const rs = g.recipes[side], codes = new Set<string>();
+  for (const [p, [, inputs]] of Object.entries(rs)) { codes.add(p); for (const [i] of inputs) codes.add(String(i)); }
+  const named = new Map<string, number>();
+  for (const c of codes) named.set(g.items[c], (named.get(g.items[c]) ?? 0) + 1);
+  for (const c of codes) {
+    const name = named.get(g.items[c])! > 1 ? `${g.items[c]} #${c}` : g.items[c];
+    const it = (data.items[c] ??= { id: c, name });
+    it.name = name;
+    it.code = Number(c);
+    const r = rs[c];
+    if (r) it.recipe = { inputs: r[1].map(([i, qty]) => ({ item: String(i), qty })), yields: r[0], kina: it.recipe?.kina ?? 0 };
+  }
+  data.game = { side, builtAt: g.builtAt };
+  return Object.keys(rs).length;
+}
+
 const count = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0;
 
 export function cleanCrafting(raw: any): CraftData {
@@ -113,5 +138,6 @@ export function cleanCrafting(raw: any): CraftData {
   out.targets = Array.isArray(raw.targets) ? raw.targets.filter((t: any) => out.items[t?.item] && count(t.qty) && t.qty > 0) : [];
   for (const [name, o] of Object.entries<any>(raw.owned ?? {}))
     if (name.trim() && o && typeof o === "object") out.owned[name] = Object.fromEntries(Object.entries(o).filter(([, v]) => count(v))) as Record<string, number>;
+  if ((raw.game?.side === "Elyos" || raw.game?.side === "Asmodian") && typeof raw.game.builtAt === "string") out.game = { side: raw.game.side, builtAt: raw.game.builtAt };
   return out;
 }

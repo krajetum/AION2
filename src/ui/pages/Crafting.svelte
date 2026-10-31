@@ -2,7 +2,8 @@
   // Crafting page: a bill of materials for one or more targets (src/domain/crafting.ts): the selected character's stock
   // first, then crafts (nested recipes) and purchases at the market prices you set. Best case: every craft succeeds.
   import { addInput, addItem, exportRecipes, importRecipes, removeItem, renameItem, setBuy, setCode, setFee, setInputQty, setOwned, setPrice, setTarget, setYields } from "../../app/crafting.ts";
-  import { craftCost, crafted, explode, type CraftItem } from "../../domain/crafting.ts";
+  import { craftCost, crafted, explode, takeGameRecipes, type CraftItem, type GameRecipes, type Side } from "../../domain/crafting.ts";
+  import { faction } from "../../domain/servers.ts";
   import { pickWallet } from "../../domain/wallet.ts";
   import { act, commit } from "../actions.ts";
   import { num } from "../format.ts";
@@ -19,6 +20,14 @@
   const bill = $derived(explode(c, owned));
   const items = $derived(Object.values(c.items).sort((a, b) => a.name.localeCompare(b.name)));
   const kina = $derived(pickWallet(ui.data.wallets, char, ui.meter?.profile?.name)?.wallet.values[KINA]);
+  // The game's recipes for your faction (the server's, else as last loaded): loaded on demand, the file is ~70 kB.
+  let side = $state<Side>(ui.data.crafting.game?.side ?? (faction(ui.data.serverId ?? 0) || "Asmodian")), query = $state("");
+  const SHOWN = 60; // items listed at once in Recipes: the game's are ~380
+  const found = $derived(items.filter((it) => it.name.toLowerCase().includes(query.trim().toLowerCase())));
+  async function loadGame() {
+    const g = (await import("../../assets/recipes.json")).default as unknown as GameRecipes;
+    await act(() => showStatus(`${num(takeGameRecipes(ui.data.crafting, g, side))} ${side} recipes loaded`));
+  }
   const day = (t?: number) => (t ? `Price set ${new Date(t).toLocaleDateString()}` : "Market price per piece");
 
   /** A change that may refuse (throws): the reason in the status line, nothing saved. */
@@ -46,6 +55,13 @@
     {#each r.inputs as i (i.item)}{@render tree(i.item, Math.ceil(qty / r.yields) * i.qty, [...path, id])}{/each}</ul>{/if}</li>
 {/snippet}
 
+{#snippet loader()}<div class="toolbar start">
+  <div class="seg" role="group" aria-label="Faction">{#each ["Asmodian", "Elyos"] as const as f}
+    <button class:on={side === f} aria-pressed={side === f} onclick={() => { side = f; }}>{f}</button>{/each}</div>
+  <button onclick={loadGame}>{c.game ? "Reload" : "Load"} the game's recipes</button>
+  <span class="hint">{c.game ? `${c.game.side} recipes loaded, game data of ${c.game.builtAt}.` : "All craftable items with their recipes, from the game client data (aion2hub)."}
+    Your prices, stock and Craft/Buy choices stay.</span></div>{/snippet}
+
 <div class="toolbar start"><div class="seg" role="group" aria-label="View">
   <button class:on={view === "bill"} aria-pressed={view === "bill"} onclick={() => { view = "bill"; }}>Bill of materials</button>
   <button class:on={view === "recipes"} aria-pressed={view === "recipes"} onclick={() => { view = "recipes"; }}>Recipes</button></div></div>
@@ -54,6 +70,7 @@
 {#if view === "bill"}
 <p class="hint intro">What your targets need, level by level: {char || "the selected character"}'s pieces first, then crafts, then purchases at the prices you set.
   Best case: every craft succeeds (a COMBO in game is a bonus on top). A material with no recipe and no price is one to farm (Bound ones).</p>
+{#if !c.game}{@render loader()}{/if}
 <div class="kpis">
   <Kpi label="To buy" value={num(bill.buyKina)} sub={bill.unpriced.length ? `${bill.unpriced.length} without a price` : "Kina at market prices"} />
   <Kpi label="Craft fees" value={num(bill.feeKina)} sub="Kina" />
@@ -99,10 +116,12 @@
 {:else}
 <p class="hint intro">Every item, raw or crafted: a recipe is what one craft takes. An input typed that doesn't exist yet is added as a new item.
   The item code is the game's (aion2hub shows it in the item's link), for reading your inventory in a later version.</p>
+{@render loader()}
 <section class="dps-table"><h2>Items <span class="count">{items.length}</span></h2>
+  <input class="craft-search" type="search" placeholder="Search an item" aria-label="Search an item" autocomplete="off" bind:value={query}>
   <form class="craft-add" onsubmit={(e) => { const v = fields(e); act(() => addItem(ui.data, v.name) ? undefined : false); }}>
     <input name="name" placeholder="New item" aria-label="New item" autocomplete="off" required><button>Add item</button></form>
-  {#each items as it (it.id)}<details class="craft-item"><summary><b>{it.name}</b>
+  {#each found.slice(0, SHOWN) as it (it.id)}<details class="craft-item"><summary><b>{it.name}</b>
     <span class="dim">{it.recipe ? `${it.recipe.inputs.length} input${it.recipe.inputs.length === 1 ? "" : "s"}` : "material"}{it.price != null ? ` · ${num(it.price)} Kina` : ""}</span></summary>
     <div class="craft-fields">
       <label>Name <input value={it.name} autocomplete="off" onchange={(e) => commit(e, (v) => renameItem(ui.data, it.id, v), () => c.items[it.id].name)}></label>
@@ -120,6 +139,7 @@
       <input name="qty" type="number" min="1" value="1" aria-label="How many per craft">
       <input name="name" list="craft-items" placeholder="Input (item or new name)" aria-label="Input" autocomplete="off" required><button>Add input</button></form>
   </details>{/each}
+  {#if found.length > SHOWN}<p class="hint">{num(found.length - SHOWN)} more: search to narrow the list.</p>{/if}
 </section>
 
 <section class="dps-table"><h2>Share recipes</h2>

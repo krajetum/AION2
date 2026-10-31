@@ -615,4 +615,5 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
 .craft-fields { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 10px 0; }
 .craft-fields label { display: flex; flex-direction: column; gap: 4px; color: var(--faint); font-size: 12px; }
 .craft-fields input[type="number"] { width: 110px; }
+.craft-search { width: 100%; max-width: 320px; margin-top: 10px; }
 .craft-share { width: 100%; margin-top: 10px; font: inherit; font-size: 12px; }
