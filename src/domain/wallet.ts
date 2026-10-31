@@ -11,12 +11,29 @@ export const CURRENCIES: { code: number; name: string }[] = [
 ];
 
 /** What the meter sends: the currencies seen, on the character they are of. */
-export interface MeterWallet { owner: string | null; values: Record<string, number>; atMs: number }
+export interface MeterWallet {
+  owner: string | null; values: Record<string, number>; atMs: number;
+  apGains?: { amount: number; mapId: number | null; atMs: number }[]; // Abyss Points gained, on the map you were on
+}
+/** Where Abyss Points came from: a PvP kill or assist of yours, a mob you killed, or anything else (quests, rewards). */
+export type ApSource = "players" | "mobs" | "other";
+export interface ApGain { amount: number; atMs: number; abyss: boolean; from: ApSource }
 export interface Wallet {
   values: Record<string, number>; // item code → amount
   atMs: number;                   // when the game last sent one of them
   odyle?: { basic: number; charged: number; atMs: number };
+  apGains?: ApGain[];             // the last AP_KEEP_MS of Abyss Points gained (`takeApGains`)
 }
+
+/** The Abyss's map id (src/domain/arena.ts KNOWN_MAPS). */
+const ABYSS_MAP = 20;
+/** AP gains are kept this long (the sidebar shows today's). */
+export const AP_KEEP_MS = 8 * 86_400_000;
+/** A gain is classified once this old: the meter reads a PvP death 2.5 s late, so its kill comes after the gain. */
+export const AP_SETTLE_MS = 6_000;
+/** A gain this close to a PvP kill or assist of yours is from it; this close after a mob kill of yours, from the mob.
+ *  A guess from timing: the game sends the points as a plain amount change, with no reason. */
+export const AP_NEAR_MS = 5_000;
 
 const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
 
@@ -26,7 +43,10 @@ export function cleanWallets(raw: any): Record<string, Wallet> {
     if (!name.trim() || !w || !ok(w.atMs)) continue;
     const values = Object.fromEntries(Object.entries(w.values ?? {}).filter(([, v]) => ok(v))) as Record<string, number>;
     const o = w.odyle;
-    out[name] = { values, atMs: w.atMs, ...(o && ok(o.basic) && ok(o.charged) && ok(o.atMs) && { odyle: { basic: o.basic, charged: o.charged, atMs: o.atMs } }) };
+    const ap = (Array.isArray(w.apGains) ? w.apGains : []).filter((g: any) => g && ok(g.amount) && ok(g.atMs) && ["players", "mobs", "other"].includes(g.from))
+      .map((g: any): ApGain => ({ amount: g.amount, atMs: g.atMs, abyss: !!g.abyss, from: g.from }));
+    out[name] = { values, atMs: w.atMs, ...(o && ok(o.basic) && ok(o.charged) && ok(o.atMs) && { odyle: { basic: o.basic, charged: o.charged, atMs: o.atMs } }),
+      ...(ap.length && { apGains: ap }) };
   }
   return out;
 }
@@ -41,6 +61,42 @@ export function takeWallet(all: Record<string, Wallet>, w: MeterWallet | null | 
   for (const [code, v] of Object.entries(w.values)) if (ok(v) && kept.values[code] !== v) { kept.values[code] = v; changed = true; }
   if (changed) kept.atMs = w.atMs;
   return changed;
+}
+
+/**
+ * The meter's Abyss Points gains into the owner's wallet, each once and only when AP_SETTLE_MS old, tagged with
+ * where it came from: a PvP kill or assist of yours within AP_NEAR_MS (`kills`), else a mob kill of yours up to
+ * AP_NEAR_MS before it (your loots, `kills.ts` / `souls.rs`), else "other". Older than AP_KEEP_MS are dropped.
+ * Returns true if anything changed.
+ */
+export function takeApGains(all: Record<string, Wallet>, w: MeterWallet | null | undefined, pvp: { atMs: number; kind: string }[],
+  loots: { atMs: number }[], now: number): boolean {
+  const name = w?.owner?.trim();
+  if (!w?.apGains?.length || !name) return false;
+  const kept = (all[name] ??= { values: {}, atMs: 0 });
+  const list = (kept.apGains ??= []);
+  const last = list.at(-1)?.atMs ?? 0;
+  let changed = false;
+  for (const g of w.apGains) {
+    if (g.atMs <= last || now - g.atMs < AP_SETTLE_MS) continue;
+    const from: ApSource = pvp.some((k) => k.kind !== "death" && Math.abs(k.atMs - g.atMs) <= AP_NEAR_MS) ? "players"
+      : loots.some((l) => l.atMs <= g.atMs && g.atMs - l.atMs <= AP_NEAR_MS) ? "mobs" : "other";
+    list.push({ amount: g.amount, atMs: g.atMs, abyss: g.mapId === ABYSS_MAP, from });
+    changed = true;
+  }
+  const old = list.findIndex((g) => now - g.atMs <= AP_KEEP_MS);
+  if (old > 0) { list.splice(0, old); changed = true; }
+  return changed;
+}
+
+/** Abyss Points gained since `sinceMs` (the daily reset): in all, and in the Abyss / elsewhere by source. */
+export function apSince(w: Wallet, sinceMs: number) {
+  const t = { total: 0, abyss: { players: 0, mobs: 0, other: 0 }, elsewhere: { players: 0, mobs: 0, other: 0 } };
+  for (const g of w.apGains ?? []) if (g.atMs >= sinceMs) {
+    t.total += g.amount;
+    (g.abyss ? t.abyss : t.elsewhere)[g.from] += g.amount;
+  }
+  return t;
 }
 
 /** The Odyle energy the game sent, on its owner's wallet. Returns true if it changed. */

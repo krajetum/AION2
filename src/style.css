@@ -518,6 +518,12 @@ details.soul-mobs[open] { gap: 6px; }
 .toggle-line input { width: auto; height: auto; }
 .wallet-sum { padding: 6px 6px 2px; font-size: 12px; }
 .wallet-of { text-transform: none; font-weight: 400; }
+button.timer.ap-today { width: 100%; background: none; border: 0; border-radius: 0; color: inherit; cursor: pointer; text-align: left; height: auto; }
+button.timer.ap-today:hover small { color: var(--text); }
+.ap-split { display: grid; gap: 2px; padding: 4px 6px 8px; font-size: 12px; }
+.ap-split > div { display: flex; justify-content: space-between; gap: 8px; }
+.ap-split .sub { padding-left: 10px; color: var(--muted); }
+.ap-split .hint { margin: 4px 0 0; font-size: 11px; }
 .wallet-hint { padding: 4px 6px; margin: 0; font-size: 12px; }
 .pets-page input.pet-name { width: 100%; max-width: 260px; height: 28px; background: transparent; border-color: transparent; }
 .pets-page input.pet-name:hover, .pets-page input.pet-name:focus { border-color: var(--border); background: var(--ground); }

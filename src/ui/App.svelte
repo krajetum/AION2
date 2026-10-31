@@ -9,7 +9,7 @@
   import { gameActive } from "../app/crowd.ts";
   import { bossBoard, bossLabel } from "../domain/bosses.ts";
   import { sameName } from "../domain/meter.ts";
-  import { pickWallet, walletRows } from "../domain/wallet.ts";
+  import { apSince, pickWallet, walletRows } from "../domain/wallet.ts";
   import { isImportant } from "../domain/news.ts";
   import { emptySeason, seasonSummary } from "../domain/season.ts";
   import { isDone } from "../domain/tasks.ts";
@@ -61,6 +61,9 @@
   const selName = $derived(ui.data.characters.find((c) => c.id === ui.charId)?.name ?? "");
   const picked = $derived(pickWallet(ui.data.wallets, selName, playing));
   const wallet = $derived(picked?.wallet);
+  // Abyss Points gained since the daily reset, by where they came from (click the row).
+  const apToday = $derived(wallet?.apGains?.length ? apSince(wallet, lastBoundary("daily", ui.now, C)) : null);
+  let apOpen = $state(false);
   const offer = $derived(playing && playing !== dismissed && detected?.id !== ui.charId ? playing : "");
   function switchTo() {
     if (detected) { ui.charId = detected.id; doneHere.clear(); }
@@ -170,6 +173,15 @@
     {#if meter}<div class="meter-dot {meter}"><span class="dot"></span>Meter {meter === "connected" ? "connected" : meter === "searching" ? "searching" : meter === "waiting-game" ? "waiting for the game" : "no capture"}</div>{/if}
     {#if wallet}<details open title="As the game last sent them{wallet.atMs ? ` (${hm(wallet.atMs)})` : ""}: currencies when you enter the world and whenever one changes, Odyle energy when the game sends it"><summary class="label">{@html ICON.chevron}Wallet{#if picked && !sameName(picked.name, selName)}<span class="wallet-of"> · {picked.name}</span>{/if}</summary>
       {#each walletRows(wallet, s.sumKina) as r (r.name)}<div class="timer event"><small>{r.name}</small><span>{num(r.value)}</span></div>{/each}
+      {#if apToday}<button class="timer event ap-today" aria-expanded={apOpen} title="Abyss Points gained since the daily reset: click for where they came from"
+        onclick={() => { apOpen = !apOpen; }}><small>AP today</small><span>{num(apToday.total)}</span></button>
+        {#if apOpen}<div class="ap-split">
+          {#each [["In the Abyss", apToday.abyss], ["Elsewhere", apToday.elsewhere]] as [label, s] (label)}{@const t = (s as typeof apToday.abyss)}
+            <div><b>{label}</b> <span>{num(t.players + t.mobs + t.other)}</span></div>
+            <div class="sub"><small>Player kills / assists</small><span>{num(t.players)}</span></div>
+            <div class="sub"><small>Mob kills</small><span>{num(t.mobs)}</span></div>
+            <div class="sub"><small>Other</small><span>{num(t.other)}</span></div>{/each}
+          <p class="hint">By timing: points within 5 s of a PvP kill or assist of yours, or of a mob you killed.</p></div>{/if}{/if}
       {#if wallet.odyle}<div class="timer event" title="Basic · charged"><small>Odyle energy</small><span>{num(wallet.odyle.basic)} · {num(wallet.odyle.charged)}</span></div>{/if}
       {#if wallet.values[930_100_001] != null}<label class="toggle-line wallet-sum"><input type="checkbox" checked={s.sumKina}
         onchange={(e) => { const on = e.currentTarget.checked; act(() => { ui.data.settings.sumKina = on; }); }}> Kina and bound Kina together</label>{/if}

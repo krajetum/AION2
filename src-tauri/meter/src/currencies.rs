@@ -43,7 +43,19 @@ pub struct Wallet {
     pub owner: Option<String>,
     pub values: BTreeMap<u32, u64>,
     pub at_ms: i64,
+    /// Abyss Points gained since the inventory was read, each with the map it came on (the last MAX_AP_GAINS).
+    pub ap_gains: Vec<ApGain>,
 }
+
+/// Abyss Points gained in one change (spending is not counted), on the map you were on (`position::map_id`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApGain {
+    pub amount: u64,
+    pub map_id: Option<i32>,
+    pub at_ms: i64,
+}
+const MAX_AP_GAINS: usize = 500;
 
 #[derive(Default)]
 struct State {
@@ -88,7 +100,7 @@ fn read(s: &mut State, frame: &[u8], now_ms: i64) {
         [0x11, 0x56] => {
             let values = amounts(&frame[body..]);
             if !values.is_empty() {
-                s.wallet = Wallet { owner: None, values, at_ms: now_ms };
+                s.wallet = Wallet { owner: None, values, at_ms: now_ms, ap_gains: Vec::new() };
                 s.waiting_self = true;
                 s.self_seen = false;
             }
@@ -96,6 +108,15 @@ fn read(s: &mut State, frame: &[u8], now_ms: i64) {
         [0x1B, 0x56] => {
             let values = amounts(&frame[body..]);
             if !values.is_empty() {
+                // A gain: the amount before is known (inventory or an earlier change) and the new one is higher.
+                if let (Some(&before), Some(&after)) = (s.wallet.values.get(&ABYSS_POINTS), values.get(&ABYSS_POINTS)) {
+                    if after > before {
+                        if s.wallet.ap_gains.len() >= MAX_AP_GAINS {
+                            s.wallet.ap_gains.remove(0);
+                        }
+                        s.wallet.ap_gains.push(ApGain { amount: after - before, map_id: crate::position::map_id(), at_ms: now_ms });
+                    }
+                }
                 s.wallet.values.extend(values);
                 s.wallet.at_ms = now_ms;
             }
@@ -143,7 +164,7 @@ mod tests {
     #[test]
     fn an_inventory_waits_for_its_character() {
         let mut s = State::default();
-        s.wallet = Wallet { owner: Some("Old".into()), values: BTreeMap::from([(KINA, 1)]), at_ms: 1 };
+        s.wallet = Wallet { owner: Some("Old".into()), values: BTreeMap::from([(KINA, 1)]), at_ms: 1, ap_gains: Vec::new() };
         let mut inv = vec![0u8, 0x11, 0x56, 0x10, 0x02, 0x01, 0x00, 0, 0, 0, 0, 0, 0, 0, 0];
         inv.extend(ABYSS_POINTS.to_le_bytes());
         inv.extend(300_795u64.to_le_bytes());
@@ -171,5 +192,24 @@ mod tests {
     fn other_items_are_no_currency() {
         // Your loot of the day's common item, 2026-10-27 11:49.
         assert!(amounts(&hex("0100009c710c0000a300001a44de1f0100000000000000040000000000000000000000000000050000")).is_empty());
+    }
+
+    /// 2026-10-27 12:47: kills gave 300,795 then 300,824 Abyss Points (+29), and the shop took 75,000: one gain.
+    #[test]
+    fn abyss_points_gained_are_kept_spending_is_not() {
+        let mut s = State::default();
+        s.wallet.values.insert(ABYSS_POINTS, 300_795);
+        let change = |s: &mut State, ap: u64, at: i64| {
+            let mut f = vec![0u8, 0x1b, 0x56, 0x01, 0x01, 0x00, 1, 2, 3, 4, 0, 5, 0, 0];
+            f.extend(ABYSS_POINTS.to_le_bytes());
+            f.extend(ap.to_le_bytes());
+            f.extend([0u8; 18]);
+            f[0] = (f.len() + 1) as u8;
+            read(s, &f, at);
+        };
+        change(&mut s, 300_824, 10);
+        change(&mut s, 225_824, 20);
+        assert_eq!(s.wallet.ap_gains.iter().map(|g| (g.amount, g.at_ms)).collect::<Vec<_>>(), [(29, 10)]);
+        assert_eq!(s.wallet.values[&ABYSS_POINTS], 225_824);
     }
 }

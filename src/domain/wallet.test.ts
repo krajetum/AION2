@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, pickWallet, type Wallet } from "./wallet.ts";
+import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, pickWallet, takeApGains, apSince, type Wallet } from "./wallet.ts";
 
 test("the meter's currencies go on their character; older news does not replace newer", () => {
   const all: Record<string, Wallet> = {};
@@ -38,4 +38,26 @@ test("the sidebar's wallet: the selected character's, else the one played in gam
   assert.equal(pickWallet(all, "Main", undefined), undefined, "two kept, none chosen: none");
   assert.equal(pickWallet({ Randronirk: w(1) }, "Main", undefined)?.name, "Randronirk");
   assert.equal(pickWallet({}, "Main", "Randronirk"), undefined);
+});
+
+test("AP gains: once each, once settled, by source and map; today's split", () => {
+  const all: Record<string, Wallet> = {};
+  const w = { owner: "Randronirk", values: {}, atMs: 1, apGains: [
+    { amount: 120, mapId: 20, atMs: 100_000 },   // a PvP kill at 102 s, read late
+    { amount: 29, mapId: 20, atMs: 200_000 },    // 1 s after a mob kill of yours
+    { amount: 500, mapId: 20, atMs: 300_000 },   // nothing near: a quest
+    { amount: 40, mapId: 1110, atMs: 400_000 },  // an assist at home
+    { amount: 7, mapId: 20, atMs: 405_000 },     // too new: waits
+  ] };
+  const pvp = [{ atMs: 102_000, kind: "kill" }, { atMs: 399_000, kind: "assist" }, { atMs: 300_500, kind: "death" }];
+  const loots = [{ atMs: 199_000 }];
+  assert.equal(takeApGains(all, w, pvp, loots, 410_000), true);
+  assert.deepEqual(all.Randronirk.apGains!.map((g) => [g.amount, g.abyss, g.from]),
+    [[120, true, "players"], [29, true, "mobs"], [500, true, "other"], [40, false, "players"]]);
+  assert.equal(takeApGains(all, w, pvp, loots, 410_000), false, "the meter resends them: once");
+  takeApGains(all, w, pvp, loots, 420_000);
+  assert.equal(all.Randronirk.apGains!.length, 5, "settled now");
+  const t = apSince(all.Randronirk, 150_000);
+  assert.deepEqual([t.total, t.abyss, t.elsewhere], [576, { players: 0, mobs: 29, other: 507 }, { players: 40, mobs: 0, other: 0 }]);
+  assert.deepEqual(cleanWallets(JSON.parse(JSON.stringify(all))).Randronirk.apGains, all.Randronirk.apGains);
 });
