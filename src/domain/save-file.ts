@@ -1,4 +1,5 @@
 // Save-file rules: the default data and the migration of old or imported saves. Pure.
+import { cleanCrafting, emptyCrafting } from "./crafting.ts";
 import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
 import { cleanMap, emptyMap } from "./map.ts";
 import { cleanCollections } from "./pets.ts";
@@ -26,6 +27,7 @@ export function defaultData(): AppData {
     map: emptyMap(),
     pets: {},
     wallets: {},
+    crafting: emptyCrafting(),
     undo: [],
     install: crypto.randomUUID(),
     serverId: null,
@@ -91,6 +93,7 @@ export function normalize(raw: any): AppData {
     map: cleanMap(raw.map),
     pets: cleanCollections(raw.pets),
     wallets: cleanWallets(raw.wallets),
+    crafting: cleanCrafting(raw.crafting),
     undo: Array.isArray(raw.undo) ? raw.undo : [],
     install: typeof raw.install === "string" && raw.install ? raw.install : d.install,
     serverId: Number.isInteger(raw.serverId) ? raw.serverId : null,
