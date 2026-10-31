@@ -31,6 +31,22 @@ for (const r of [...data.recipes].sort((a, b) => a.y - b.y)) {
   const side = recipes[r.race === "Light" ? "Elyos" : "Asmodian"], p = code(r.p);
   side[p] ??= [r.y, r.c.map((c) => [code(c.i), c.q])];
 }
+// Splendent (COMBO) items. One with its own recipe is an upgrade of its base, which the client data leaves out
+// (the in-game Splendent Ebony Dragon Lord Dagger takes an Ebony Dragon Lord Dagger, 2026-10-31): the base goes in.
+// One with none comes only from the 25% proc on crafting its base: best case, the base's recipe always procs.
+// Some Splendent upgrade recipes (the first draconic tier's "Combo_005a") have no combo entry: they take the base of the
+// Splendent of the same name (inferred, like the dagger above; not checked in game).
+const combos = { ...data.combos }, baseByName = Object.fromEntries(Object.entries(data.combos).map(([k, c]) => [data.items[k]?.n, c.base]));
+for (const r of data.recipes) if (/Combo/.test(r.p) && !combos[r.p] && baseByName[data.items[r.p].n]) combos[r.p] = { base: baseByName[data.items[r.p].n], direct: true };
+for (const [key, combo] of Object.entries(combos)) {
+  if (!data.items[key] || !data.items[combo.base]) continue;
+  const p = code(key), base = code(combo.base);
+  if (p === base) continue; // a COMBO that only gives more of the same item (potions)
+  for (const side of Object.values(recipes)) {
+    if (side[p] && combo.direct && !side[p][1].some(([i]) => i === base)) side[p][1].unshift([base, 1]);
+    else if (!side[p] && side[base]) side[p] = [side[base][0], [...side[base][1]]];
+  }
+}
 const items = Object.fromEntries(Object.values(data.items).map((it) => [it.i, it.n]));
 writeFileSync(new URL("../src/assets/recipes.json", import.meta.url),
   JSON.stringify({ source: "aion2hub.com crafting calculator (Global client data)", builtAt: data.builtAt, items, recipes }) + "\n");
