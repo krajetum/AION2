@@ -45,6 +45,20 @@
     if (open === c) loading = false;
   }
   if (asked) { ui.lookup = null; void search(); }
+
+  // The character you play in game opens by itself when nothing else was asked: now, or once the meter says who you are.
+  let touched = !!asked;
+  const me = $derived(ui.meter?.profile?.name && ui.meter.profile.serverId && regionOf(ui.meter.profile.serverId)
+    ? { name: ui.meter.profile.name, serverId: ui.meter.profile.serverId } : null);
+  function openMe() {
+    if (!me) return;
+    touched = true;
+    region = regionOf(me.serverId);
+    serverId = me.serverId;
+    name = me.name;
+    void search();
+  }
+  $effect(() => { if (me && !touched) openMe(); });
 </script>
 
 <form class="toolbar start" onsubmit={(e) => { e.preventDefault(); void search(); }}>
@@ -53,7 +67,9 @@
   <label>Server <select bind:value={serverId}>
     {#each ["Elyos", "Asmodian"] as side, k}<optgroup label={side}>{#each servers.filter((s) => Math.floor(s.id / 1000) === k + 1) as s (s.id)}<option value={s.id}>{s.name}</option>{/each}</optgroup>{/each}
   </select></label>
-  <button disabled={searching}>{searching ? "Searching…" : "Search"}</button>
+  <button disabled={searching} onclick={() => { touched = true; }}>{searching ? "Searching…" : "Search"}</button>
+  {#if me && !(open && open.serverId === me.serverId && open.name.toLowerCase() === me.name.toLowerCase())}
+    <button type="button" class="ghost" title="Back to the character you play in game" onclick={openMe}>← My character ({me.name})</button>{/if}
 </form>
 <p class="hint">From the official character search: names containing what you type, on one server. Only Europe has been checked.</p>
 {#if error}<p class="hint">The search could not be read ({error}).</p>{/if}

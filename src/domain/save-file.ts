@@ -24,6 +24,7 @@ export function defaultData(): AppData {
     bosses: [],
     bossAlerts: {},
     bis: {},
+    bossDefaulted: [],
     bossNames: {},
     arena: { matches: [], maps: {}, kills: [] },
     map: emptyMap(),
@@ -88,6 +89,7 @@ export function normalize(raw: any): AppData {
     season: raw.season ?? {},
     bosses: Array.isArray(raw.bosses) ? raw.bosses : [],
     bis: cleanBis(raw.bis),
+    bossDefaulted: Array.isArray(raw.bossDefaulted) ? raw.bossDefaulted.filter((n: unknown) => Number.isInteger(n)) : [],
     bossNames: Object.fromEntries(Object.entries(raw.bossNames ?? {}).filter(([, v]) => typeof v === "string" && v.trim()) as [string, string][]),
     bossAlerts: Object.fromEntries(Object.entries(raw.bossAlerts ?? {}).map(([id, a]: [string, any]) =>
       [id, { leads: cleanLeads(a?.leads), repeat: !!a?.repeat }])),

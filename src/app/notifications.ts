@@ -1,8 +1,9 @@
 // Decides which notifications are due: Cloud Merchant reminder, event alerts and warnings before resets.
 // The toast itself is passed in (infra/notifier.ts), so this stays free of Tauri.
 import { EVENTS, RESET_CONFIG as C } from "../config.ts";
-import { dueLeads, inQuietHours } from "../domain/alerts.ts";
+import { bossChannel, dueLeads, inQuietHours } from "../domain/alerts.ts";
 import { bossKey, bossLabel, dueBossAlerts } from "../domain/bosses.ts";
+import { armDefaultBosses } from "./bosses.ts";
 import { CLOUD_MERCHANT_ID } from "../domain/seed.ts";
 import { remaining } from "../domain/tasks.ts";
 import { nextBoundary, nextEvent } from "../domain/time.ts";
@@ -16,7 +17,7 @@ const H = 3600_000;
 export function checkNotifications(data: AppData, now: number, toast: Toast): boolean {
   const s = data.settings;
   const silent = s.mutedUntil > now || inQuietHours(s, now);
-  let changed = false;
+  let changed = armDefaultBosses(data);
 
   // Cloud Merchant: once per hourly restock, only if recent (no stale toasts at startup).
   // ponytail: assumes a whole-hour zone offset (true for UTC).
@@ -43,11 +44,14 @@ export function checkNotifications(data: AppData, now: number, toast: Toast): bo
 
   // Field-boss respawns the user armed (Field Bosses tab), from the maps last opened in game: like the events.
   // A one-time alert is done after its shortest lead; a recurrent one waits for the next respawn the map reports.
-  for (const d of s.channels.boss?.on ? dueBossAlerts(data.bosses, data.bossAlerts, data.warnedEvent, now) : []) {
+  // A boss with its own channel (BOSS_CHANNELS: Immortal Gartua) uses its switch, sound and volume.
+  for (const d of dueBossAlerts(data.bosses, data.bossAlerts, data.warnedEvent, now)) {
+    const label = bossLabel(d.boss, data.bossNames), ch = bossChannel(label);
+    if (!s.channels[ch]?.on) continue;
     for (const l of d.leads) data.warnedEvent[`${bossKey(d.boss)}@${l}`] = d.boss.timeMs;
     if (d.last && !d.alert.repeat) delete data.bossAlerts[d.boss.bossId];
     changed = true;
-    if (!silent) toast(s, bossLabel(d.boss, data.bossNames), `Respawns in ${d.minutes} min.`, ["boss", "event"]);
+    if (!silent) toast(s, label, `Respawns in ${d.minutes} min.`, ch === "boss" ? ["boss", "event"] : [ch, "boss", "event"]);
   }
 
   // Warning X hours before each reset, once per reset. While silent it is not marked as sent,
