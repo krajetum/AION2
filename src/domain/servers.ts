@@ -87,14 +87,17 @@ export const faction = (id: number): "Elyos" | "Asmodian" | "" => (Math.floor(id
 
 /** Region codes by the hundreds digit: 2 (NA West), 3 (Europe) and 4 (Latin America) match ShuGo's profile URLs
  *  (naw-vaizel = 1203, eu-munin = 2313, la-siel = 1401); 1 (NA East) and 5 (Asia) follow the same rule, unverified. */
-const REGIONS: Record<number, string> = { 1: "nae", 2: "naw", 3: "eu", 4: "la", 5: "as" };
+export const REGIONS: Record<number, string> = { 1: "nae", 2: "naw", 3: "eu", 4: "la", 5: "as" };
 
 /**
  * A player's profile (gear, stats) on shugo.gg, a third-party armory that reads the official character data:
  * https://shugo.gg/character/global/{region}-{server}/{name}. Null when the server is unknown.
  */
 export function gearUrl(name: string, serverId: number): string | null {
-  const server = serverName(serverId), region = REGIONS[Math.floor(serverId / 100) % 10];
+  const server = serverName(serverId), region = regionOf(serverId);
   if (!name.trim() || !server || !region) return null;
   return `https://shugo.gg/character/global/${region}-${server.toLowerCase()}/${encodeURIComponent(name.trim())}`;
 }
+
+/** The region code of a server id (REGIONS), "" if not known. */
+export const regionOf = (serverId: number): string => REGIONS[Math.floor(serverId / 100) % 10] ?? "";

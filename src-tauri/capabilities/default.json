@@ -25,6 +25,12 @@
         },
         {
           "url": "https://aion2-companion.*.workers.dev/v1/*"
+        },
+        {
+          "url": "https://api-search.plaync.com/aion2global/search/*"
+        },
+        {
+          "url": "https://aion2.plaync.com/api/character/*"
         }
       ]
     }
