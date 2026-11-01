@@ -10,7 +10,7 @@
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { clearCubePicture, loadCubePicture, saveCubePicture, type Opener } from "../../infra/map-image.ts";
   import { isDesktop, setAutostart } from "../../infra/system.ts";
-  import { cubePopup, eventsOverlay, meterIdle, meterOverlay, overlayStyle, radarOverlay } from "../../infra/meter.ts";
+  import { cubePopup, eventsOverlay, meterIdle, meterOverlay, netOverlay, overlayStyle, radarOverlay } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
   import { LABEL, pad, WEEKDAYS } from "../format.ts";
   import { ICON } from "../icons.ts";
@@ -90,6 +90,7 @@
   </section>
   <section><h2>Overlays</h2>
     {@render toggle("Event countdown overlay", s.eventsOverlay, (e) => { s.eventsOverlay = check(e); eventsOverlay(s.eventsOverlay); }, !isDesktop())}
+    {@render toggle("Ping and packet loss overlay", s.netOverlay, (e) => { s.netOverlay = check(e); netOverlay(s.netOverlay); }, !isDesktop())}
     {@render toggle("Hidden cube popup", s.cubePopup, (e) => { s.cubePopup = check(e); cubePopup(s.cubePopup, s.cubePopupSize); }, !isDesktop())}
     <label class="setting"><span>Cube popup size</span><select value={String(s.cubePopupSize)} disabled={!isDesktop() || !s.cubePopup}
       onchange={(e) => act(() => { s.cubePopupSize = +e.currentTarget.value; cubePopup(s.cubePopup, s.cubePopupSize); })}>

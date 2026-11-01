@@ -41,6 +41,8 @@ pub mod currencies;
 pub mod roster;
 /// The companion's readers on the parser's frame tap.
 pub mod tap;
+/// Companion: packet loss on the game connection (TCP resends).
+pub mod netstats;
 
 #[cfg(feature = "live")]
 pub mod engine;

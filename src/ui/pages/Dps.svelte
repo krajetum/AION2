@@ -1,7 +1,7 @@
 <script lang="ts">
   import { SvelteSet } from "svelte/reactivity";
   import { clock, displayName, hpLeft, short, STATUS_TEXT, TARGET_MODES, viewRows, VIEWS, type MeterUpdate, classColor, skillIconUrl } from "../../domain/meter.ts";
-  import { meterOverlay, meterPartyOnly, meterPause, meterReconnect, meterReset, meterTargetMode, meterView, meterWatch, onMeter } from "../../infra/meter.ts";
+  import { meterOverlay, netOverlay, meterPartyOnly, meterPause, meterReconnect, meterReset, meterTargetMode, meterView, meterWatch, onMeter } from "../../infra/meter.ts";
   import { isDesktop } from "../../infra/system.ts";
   import { act } from "../actions.ts";
   import { classIcon } from "../classes.ts";
@@ -45,7 +45,7 @@
 
 {#if !u || !f}<section><p class="hint">Starting the meter…</p></section>{:else}
   <div class="dps-status {u.status}"><span class="dot"></span><b>{STATUS_TEXT[u.status]}</b><span>{u.message}</span>
-    {#if u.pingMs != null}<span class="ping num">{u.pingMs} ms</span>{/if}</div>
+    {#if u.pingMs != null}<span class="ping num">{u.pingMs} ms{#if u.lossPct != null} · <span title="Packets resent on the game connection in the last minute: at most the real loss">{u.lossPct.toFixed(1)}% loss</span>{/if}</span>{/if}</div>
   {#if lostRecently}<p class="hint warn-line">The meter fell behind the game's traffic and lost {lostRecently.toLocaleString("en-US")} packets in the
     last minute: the numbers above miss some hits. It happens in very crowded fights (sieges).</p>{/if}
 
@@ -76,6 +76,8 @@
     <button class="ghost" onclick={() => run(async () => { await meterReconnect(); showStatus("Looking for the game connection again…"); })}>Reconnect</button>
     <button class:primary={ui.overlay} disabled={!isDesktop()} title={isDesktop() ? "Shows during fights, hides after " + idleText : "Desktop app only"}
       onclick={() => run(async () => { const on = !ui.overlay; await act(() => { ui.data.settings.dpsOverlay = on; }); await meterOverlay(on); })}>{ui.overlay ? "Overlay on" : "Overlay"}</button>
+    <button class:primary={ui.data.settings.netOverlay} disabled={!isDesktop()} title={isDesktop() ? "A small always-on-top line with the ping and packet loss" : "Desktop app only"}
+      onclick={() => run(async () => { const on = !ui.data.settings.netOverlay; await act(() => { ui.data.settings.netOverlay = on; }); await netOverlay(on); })}>{ui.data.settings.netOverlay ? "Ping overlay on" : "Ping overlay"}</button>
   </div>
 
   {#if f.target}{@const t = f.target}<section class="dps-target">

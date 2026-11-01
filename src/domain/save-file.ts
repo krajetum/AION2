@@ -50,6 +50,7 @@ export function defaultData(): AppData {
       eventsOverlay: false,
       cubePopup: false,
       cubePopupSize: 1,
+      netOverlay: false,
       radar: false,
       radarRange: 100,
       radarMap: true,

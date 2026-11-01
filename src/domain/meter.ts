@@ -67,6 +67,7 @@ import type { MeterWallet } from "./wallet.ts";
 export interface MeterUpdate {
   status: MeterStatus; message: string; port: number | null; device: string | null;
   pingMs: number | null; paused: boolean;
+  lossPct?: number | null; // segments resent on the game connection over the last minute, %: the loss at most (netstats.rs)
   partyOnly: boolean; // only you and your party, else everyone who hit the target
   view: MeterView; // what the rows are ranked by (the overlay follows it)
   fight: Fight;
