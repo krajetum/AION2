@@ -1,5 +1,5 @@
 // Best in slot: the ideal bonus lines of each piece for each class (src/assets/bis.json, transcribed by hand from the
-// screenshots of a best-in-slot site the player sent on 2026-11-01), what a piece has of them, and the player's own
+// screenshots of kisk.app's best-in-slot cards the player sent on 2026-11-01), what a piece has of them, and the player's own
 // lists (`AppData.bis`, edited on the Players page), which replace the bundled ones. Pure.
 // The site's % per line is kept as it showed it (its weight for that line); its score is not reproduced.
 import type { ItemDetail } from "./armory.ts";
