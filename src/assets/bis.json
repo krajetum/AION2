@@ -1,0 +1,4164 @@
+{
+ "source": "Screenshots of a best-in-slot site sent by the player, 2026-11-01 (transcribed by hand)",
+ "classes": {
+  "Assassin": {
+   "Weapon": [
+    {
+     "stat": "Combat Speed",
+     "value": "13.0%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "9.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "32",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "7.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "9.6%",
+     "pct": 97
+    },
+    {
+     "stat": "Precision",
+     "value": "32",
+     "pct": 93
+    }
+   ],
+   "Off-hand": [
+    {
+     "stat": "Combat Speed",
+     "value": "10.1%",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "5.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "7.7%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "27",
+     "pct": 100
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "7.7%",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "27",
+     "pct": 94
+    }
+   ],
+   "Torso": [
+    {
+     "stat": "Damage Boost",
+     "value": "6.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 98
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.8%",
+     "pct": 94
+    },
+    {
+     "stat": "Rear Smite",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Assault Stance",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Exploit Weakness",
+     "value": "+1",
+     "pct": 73
+    }
+   ],
+   "Pants": [
+    {
+     "stat": "Attack increase",
+     "value": "2.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Tolerance",
+     "value": "11.6%",
+     "pct": 95
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.3%",
+     "pct": 93
+    },
+    {
+     "stat": "Attack",
+     "value": "31",
+     "pct": 89
+    },
+    {
+     "stat": "Rear Smite",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Assault Stance",
+     "value": "+1",
+     "pct": 74
+    }
+   ],
+   "Helmet": [
+    {
+     "stat": "Attack increase",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 93
+    },
+    {
+     "stat": "Rear Smite",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Assault Stance",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Exploit Weakness",
+     "value": "+1",
+     "pct": 69
+    }
+   ],
+   "Shoulders": [
+    {
+     "stat": "Critical Damage Boost",
+     "value": "12.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 98
+    },
+    {
+     "stat": "Rear Smite",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Assault Stance",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Exploit Weakness",
+     "value": "+1",
+     "pct": 74
+    }
+   ],
+   "Gloves": [
+    {
+     "stat": "Combat Speed",
+     "value": "7.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "22",
+     "pct": 96
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "3.4%",
+     "pct": 93
+    },
+    {
+     "stat": "Rear Smite",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Assault Stance",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Exploit Weakness",
+     "value": "+1",
+     "pct": 70
+    }
+   ],
+   "Boots": [
+    {
+     "stat": "Move Speed",
+     "value": "10.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "27",
+     "pct": 96
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "4.4%",
+     "pct": 95
+    },
+    {
+     "stat": "Rear Smite",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Assault Stance",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Exploit Weakness",
+     "value": "+1",
+     "pct": 67
+    }
+   ],
+   "Cape": [
+    {
+     "stat": "Attack increase",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Rear Smite",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 75
+    },
+    {
+     "stat": "Assault Stance",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Exploit Weakness",
+     "value": "+1",
+     "pct": 56
+    }
+   ],
+   "Necklace": [
+    {
+     "stat": "Combat Speed",
+     "value": "4.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "20",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "38",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "20",
+     "pct": 93
+    },
+    {
+     "stat": "Assault Stance",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Rear Smite",
+     "value": "+1",
+     "pct": 77
+    }
+   ],
+   "Earring": [
+    {
+     "stat": "Move Speed",
+     "value": "6.5%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "16",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "16",
+     "pct": 93
+    },
+    {
+     "stat": "Assault Stance",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Exploit Weakness",
+     "value": "+1",
+     "pct": 77
+    }
+   ],
+   "Ring": [
+    {
+     "stat": "Might",
+     "value": "14",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "14",
+     "pct": 93
+    },
+    {
+     "stat": "Quick Slice",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Insignia Explosion",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Heart Gore",
+     "value": "+1",
+     "pct": 77
+    }
+   ],
+   "Bracelet": [
+    {
+     "stat": "Illusion [Kaisinel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Time [Siel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Destruction [Zikel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Wisdom [Lumiel]",
+     "value": "17",
+     "pct": 99
+    },
+    {
+     "stat": "Justice [Nezekan]",
+     "value": "17",
+     "pct": 84
+    }
+   ],
+   "Arcana1": [
+    {
+     "stat": "Assault Stance",
+     "value": "+4",
+     "pct": 77
+    },
+    {
+     "stat": "Rear Smite",
+     "value": "+3",
+     "pct": 77
+    },
+    {
+     "stat": "Quick Slice",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Exploit Weakness",
+     "value": "+1",
+     "pct": 77
+    }
+   ],
+   "Arcana2": [
+    {
+     "stat": "Quick Slice",
+     "value": "+4",
+     "pct": 77
+    },
+    {
+     "stat": "Insignia Explosion",
+     "value": "+3",
+     "pct": 77
+    },
+    {
+     "stat": "Heart Gore",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Shadowstrike",
+     "value": "+1",
+     "pct": 27
+    }
+   ],
+   "Arcana3": [
+    {
+     "stat": "Savage Roar",
+     "value": "+4",
+     "pct": 76
+    },
+    {
+     "stat": "Ambush",
+     "value": "+3",
+     "pct": 52
+    },
+    {
+     "stat": "Storm Rampage",
+     "value": "+1",
+     "pct": 43
+    }
+   ],
+   "Arcana4": [
+    {
+     "stat": "Assault Stance",
+     "value": "+4",
+     "pct": 77
+    },
+    {
+     "stat": "Ambush Stance",
+     "value": "+3",
+     "pct": 38
+    },
+    {
+     "stat": "Heightened Sixth Sense",
+     "value": "+1",
+     "pct": 5
+    },
+    {
+     "stat": "Revitalization Contract",
+     "value": "+1",
+     "pct": 1
+    }
+   ],
+   "Arcana5": [
+    {
+     "stat": "Rear Smite",
+     "value": "+4",
+     "pct": 77
+    },
+    {
+     "stat": "Exploit Weakness",
+     "value": "+3",
+     "pct": 77
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Determination",
+     "value": "+1",
+     "pct": 40
+    }
+   ]
+  },
+  "Chanter": {
+   "Weapon": [
+    {
+     "stat": "Combat Speed",
+     "value": "13.0%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "9.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "32",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "7.3%",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "32",
+     "pct": 97
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "9.6%",
+     "pct": 93
+    }
+   ],
+   "Off-hand": [
+    {
+     "stat": "Combat Speed",
+     "value": "10.1%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "7.7%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "27",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "5.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "27",
+     "pct": 97
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "7.7%",
+     "pct": 97
+    }
+   ],
+   "Torso": [
+    {
+     "stat": "Damage Boost",
+     "value": "6.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 96
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.8%",
+     "pct": 95
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Wind's Promise",
+     "value": "+1",
+     "pct": 69
+    }
+   ],
+   "Pants": [
+    {
+     "stat": "Attack increase",
+     "value": "2.4%",
+     "pct": 99
+    },
+    {
+     "stat": "Damage Tolerance",
+     "value": "11.6%",
+     "pct": 96
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.3%",
+     "pct": 94
+    },
+    {
+     "stat": "Attack",
+     "value": "31",
+     "pct": 85
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 71
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 68
+    }
+   ],
+   "Helmet": [
+    {
+     "stat": "Double Chance",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack increase",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 88
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 72
+    },
+    {
+     "stat": "Wind's Promise",
+     "value": "+1",
+     "pct": 66
+    }
+   ],
+   "Shoulders": [
+    {
+     "stat": "Critical Damage Boost",
+     "value": "12.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 94
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 79
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Wind's Promise",
+     "value": "+1",
+     "pct": 70
+    }
+   ],
+   "Gloves": [
+    {
+     "stat": "Combat Speed",
+     "value": "7.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "3.4%",
+     "pct": 95
+    },
+    {
+     "stat": "Attack",
+     "value": "22",
+     "pct": 92
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Wind's Promise",
+     "value": "+1",
+     "pct": 68
+    }
+   ],
+   "Boots": [
+    {
+     "stat": "Move Speed",
+     "value": "10.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "4.4%",
+     "pct": 96
+    },
+    {
+     "stat": "Attack",
+     "value": "27",
+     "pct": 92
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Wind's Promise",
+     "value": "+1",
+     "pct": 67
+    }
+   ],
+   "Cape": [
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack increase",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 76
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 70
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 65
+    },
+    {
+     "stat": "Wind's Promise",
+     "value": "+1",
+     "pct": 62
+    }
+   ],
+   "Necklace": [
+    {
+     "stat": "Combat Speed",
+     "value": "4.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "20",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "38",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "20",
+     "pct": 97
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 79
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 79
+    }
+   ],
+   "Earring": [
+    {
+     "stat": "Move Speed",
+     "value": "6.5%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "16",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "16",
+     "pct": 97
+    },
+    {
+     "stat": "Accuracy",
+     "value": "61",
+     "pct": 85
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 80
+    }
+   ],
+   "Ring": [
+    {
+     "stat": "Might",
+     "value": "14",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "14",
+     "pct": 97
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 97
+    },
+    {
+     "stat": "Dark Crush",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Onslaught",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Recuperation",
+     "value": "+1",
+     "pct": 77
+    }
+   ],
+   "Bracelet": [
+    {
+     "stat": "Time [Siel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Destruction [Zikel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Wisdom [Lumiel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Illusion [Kaisinel]",
+     "value": "17",
+     "pct": 99
+    },
+    {
+     "stat": "Justice [Nezekan]",
+     "value": "17",
+     "pct": 85
+    }
+   ],
+   "Arcana1": [
+    {
+     "stat": "Attack Preparation",
+     "value": "+4",
+     "pct": 80
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+3",
+     "pct": 80
+    },
+    {
+     "stat": "Dark Crush",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Onslaught",
+     "value": "+1",
+     "pct": 78
+    }
+   ],
+   "Arcana2": [
+    {
+     "stat": "Dark Crush",
+     "value": "+4",
+     "pct": 78
+    },
+    {
+     "stat": "Onslaught",
+     "value": "+3",
+     "pct": 78
+    },
+    {
+     "stat": "Spinning Strike",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Rushing Smash",
+     "value": "+1",
+     "pct": 42
+    }
+   ],
+   "Arcana3": [
+    {
+     "stat": "Recuperation",
+     "value": "+4",
+     "pct": 77
+    },
+    {
+     "stat": "Incandescent Blow",
+     "value": "+3",
+     "pct": 58
+    },
+    {
+     "stat": "Impactful Crush",
+     "value": "+1",
+     "pct": 30
+    },
+    {
+     "stat": "Gust Rampage",
+     "value": "+1",
+     "pct": 22
+    }
+   ],
+   "Arcana4": [
+    {
+     "stat": "Attack Preparation",
+     "value": "+4",
+     "pct": 80
+    },
+    {
+     "stat": "Blessing of Life",
+     "value": "+3",
+     "pct": 20
+    },
+    {
+     "stat": "Protection Circle",
+     "value": "+1",
+     "pct": 2
+    },
+    {
+     "stat": "Raging Spell",
+     "value": "+1",
+     "pct": 2
+    }
+   ],
+   "Arcana5": [
+    {
+     "stat": "Impact Hit",
+     "value": "+4",
+     "pct": 80
+    },
+    {
+     "stat": "Inspiring Spell",
+     "value": "+3",
+     "pct": 76
+    },
+    {
+     "stat": "Wind's Promise",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Earth's Promise",
+     "value": "+1",
+     "pct": 52
+    }
+   ]
+  },
+  "Cleric": {
+   "Weapon": [
+    {
+     "stat": "Combat Speed",
+     "value": "13.0%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "9.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "32",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "7.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "32",
+     "pct": 98
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "9.6%",
+     "pct": 97
+    }
+   ],
+   "Off-hand": [
+    {
+     "stat": "Combat Speed",
+     "value": "10.1%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "7.7%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "27",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "5.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "7.7%",
+     "pct": 98
+    },
+    {
+     "stat": "Precision",
+     "value": "27",
+     "pct": 98
+    }
+   ],
+   "Torso": [
+    {
+     "stat": "Damage Boost",
+     "value": "6.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 93
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.8%",
+     "pct": 90
+    },
+    {
+     "stat": "Empyrean Lord's Grace",
+     "value": "+1",
+     "pct": 67
+    },
+    {
+     "stat": "Earth's Grace",
+     "value": "+1",
+     "pct": 66
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "47",
+     "pct": 57
+    }
+   ],
+   "Pants": [
+    {
+     "stat": "Damage Tolerance",
+     "value": "11.6%",
+     "pct": 98
+    },
+    {
+     "stat": "Attack increase",
+     "value": "2.4%",
+     "pct": 98
+    },
+    {
+     "stat": "Attack",
+     "value": "31",
+     "pct": 90
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.3%",
+     "pct": 89
+    },
+    {
+     "stat": "Empyrean Lord's Grace",
+     "value": "+1",
+     "pct": 66
+    },
+    {
+     "stat": "Earth's Grace",
+     "value": "+1",
+     "pct": 64
+    }
+   ],
+   "Helmet": [
+    {
+     "stat": "Double Chance",
+     "value": "2.2%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack increase",
+     "value": "2.2%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 93
+    },
+    {
+     "stat": "Incoming Heal",
+     "value": "19.2%",
+     "pct": 76
+    },
+    {
+     "stat": "Empyrean Lord's Grace",
+     "value": "+1",
+     "pct": 67
+    },
+    {
+     "stat": "Earth's Grace",
+     "value": "+1",
+     "pct": 66
+    }
+   ],
+   "Shoulders": [
+    {
+     "stat": "Critical Damage Boost",
+     "value": "12.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 95
+    },
+    {
+     "stat": "Empyrean Lord's Grace",
+     "value": "+1",
+     "pct": 69
+    },
+    {
+     "stat": "Earth's Grace",
+     "value": "+1",
+     "pct": 67
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "33",
+     "pct": 62
+    }
+   ],
+   "Gloves": [
+    {
+     "stat": "Combat Speed",
+     "value": "7.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "22",
+     "pct": 95
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "3.4%",
+     "pct": 89
+    },
+    {
+     "stat": "Earth's Grace",
+     "value": "+1",
+     "pct": 68
+    },
+    {
+     "stat": "Empyrean Lord's Grace",
+     "value": "+1",
+     "pct": 68
+    },
+    {
+     "stat": "Defense increase",
+     "value": "2.3%",
+     "pct": 44
+    }
+   ],
+   "Boots": [
+    {
+     "stat": "Move Speed",
+     "value": "10.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "27",
+     "pct": 93
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "4.4%",
+     "pct": 91
+    },
+    {
+     "stat": "Empyrean Lord's Grace",
+     "value": "+1",
+     "pct": 67
+    },
+    {
+     "stat": "Earth's Grace",
+     "value": "+1",
+     "pct": 66
+    },
+    {
+     "stat": "Defense increase",
+     "value": "2.9%",
+     "pct": 46
+    }
+   ],
+   "Cape": [
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack increase",
+     "value": "1.8%",
+     "pct": 98
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 84
+    },
+    {
+     "stat": "Empyrean Lord's Grace",
+     "value": "+1",
+     "pct": 63
+    },
+    {
+     "stat": "Earth's Grace",
+     "value": "+1",
+     "pct": 62
+    },
+    {
+     "stat": "Critical Damage Tolerance",
+     "value": "12.8%",
+     "pct": 39
+    }
+   ],
+   "Necklace": [
+    {
+     "stat": "Combat Speed",
+     "value": "4.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "20",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "38",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "20",
+     "pct": 98
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "54",
+     "pct": 93
+    },
+    {
+     "stat": "Accuracy",
+     "value": "70",
+     "pct": 91
+    }
+   ],
+   "Earring": [
+    {
+     "stat": "Move Speed",
+     "value": "6.5%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "16",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "16",
+     "pct": 98
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "47",
+     "pct": 96
+    },
+    {
+     "stat": "Accuracy",
+     "value": "61",
+     "pct": 95
+    }
+   ],
+   "Ring": [
+    {
+     "stat": "Might",
+     "value": "14",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "14",
+     "pct": 98
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 81
+    },
+    {
+     "stat": "Condemnation",
+     "value": "+1",
+     "pct": 68
+    },
+    {
+     "stat": "Earth's Retribution",
+     "value": "+1",
+     "pct": 66
+    },
+    {
+     "stat": "Radiant Recovery",
+     "value": "+1",
+     "pct": 65
+    }
+   ],
+   "Bracelet": [
+    {
+     "stat": "Illusion [Kaisinel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Time [Siel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Destruction [Zikel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Wisdom [Lumiel]",
+     "value": "17",
+     "pct": 99
+    },
+    {
+     "stat": "Justice [Nezekan]",
+     "value": "17",
+     "pct": 77
+    }
+   ],
+   "Arcana1": [
+    {
+     "stat": "Empyrean Lord's Grace",
+     "value": "+4",
+     "pct": 71
+    },
+    {
+     "stat": "Earth's Grace",
+     "value": "+3",
+     "pct": 71
+    },
+    {
+     "stat": "Condemnation",
+     "value": "+1",
+     "pct": 68
+    },
+    {
+     "stat": "Earth's Retribution",
+     "value": "+1",
+     "pct": 66
+    }
+   ],
+   "Arcana2": [
+    {
+     "stat": "Condemnation",
+     "value": "+4",
+     "pct": 68
+    },
+    {
+     "stat": "Earth's Retribution",
+     "value": "+3",
+     "pct": 66
+    },
+    {
+     "stat": "Radiant Recovery",
+     "value": "+1",
+     "pct": 65
+    },
+    {
+     "stat": "Bolt",
+     "value": "+1",
+     "pct": 65
+    }
+   ],
+   "Arcana3": [
+    {
+     "stat": "Divine Aura",
+     "value": "+4",
+     "pct": 64
+    },
+    {
+     "stat": "Healing Light",
+     "value": "+3",
+     "pct": 52
+    },
+    {
+     "stat": "Light of Regeneration",
+     "value": "+1",
+     "pct": 48
+    },
+    {
+     "stat": "Judgment Thunder",
+     "value": "+1",
+     "pct": 45
+    }
+   ],
+   "Arcana4": [
+    {
+     "stat": "Empyrean Lord's Grace",
+     "value": "+4",
+     "pct": 71
+    },
+    {
+     "stat": "Immortal Veil",
+     "value": "+3",
+     "pct": 53
+    },
+    {
+     "stat": "Warm Benediction",
+     "value": "+1",
+     "pct": 41
+    },
+    {
+     "stat": "Survival Willpower",
+     "value": "+1",
+     "pct": 4
+    }
+   ],
+   "Arcana5": [
+    {
+     "stat": "Earth's Grace",
+     "value": "+4",
+     "pct": 71
+    },
+    {
+     "stat": "Healing Enhancement",
+     "value": "+3",
+     "pct": 56
+    },
+    {
+     "stat": "Radiant Benediction",
+     "value": "+1",
+     "pct": 8
+    },
+    {
+     "stat": "Empyrean Lords' Benediction",
+     "value": "+1",
+     "pct": 0
+    }
+   ]
+  },
+  "Templar": {
+   "Weapon": [
+    {
+     "stat": "Combat Speed",
+     "value": "13.0%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "9.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "32",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "7.3%",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "32",
+     "pct": 98
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "9.6%",
+     "pct": 92
+    }
+   ],
+   "Off-hand": [
+    {
+     "stat": "Combat Speed",
+     "value": "10.1%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "27",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "7.7%",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "5.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "7.7%",
+     "pct": 98
+    },
+    {
+     "stat": "Precision",
+     "value": "27",
+     "pct": 98
+    }
+   ],
+   "Torso": [
+    {
+     "stat": "Damage Boost",
+     "value": "6.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.8%",
+     "pct": 93
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 93
+    },
+    {
+     "stat": "Fury",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 71
+    },
+    {
+     "stat": "Insulting Roar",
+     "value": "+1",
+     "pct": 68
+    }
+   ],
+   "Pants": [
+    {
+     "stat": "Attack increase",
+     "value": "2.4%",
+     "pct": 99
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.3%",
+     "pct": 93
+    },
+    {
+     "stat": "Damage Tolerance",
+     "value": "11.6%",
+     "pct": 91
+    },
+    {
+     "stat": "Attack",
+     "value": "31",
+     "pct": 84
+    },
+    {
+     "stat": "Fury",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Insulting Roar",
+     "value": "+1",
+     "pct": 60
+    }
+   ],
+   "Helmet": [
+    {
+     "stat": "Double Chance",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack increase",
+     "value": "2.2%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 92
+    },
+    {
+     "stat": "Fury",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 69
+    },
+    {
+     "stat": "Insulting Roar",
+     "value": "+1",
+     "pct": 65
+    }
+   ],
+   "Shoulders": [
+    {
+     "stat": "Critical Damage Boost",
+     "value": "12.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 95
+    },
+    {
+     "stat": "Fury",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 72
+    },
+    {
+     "stat": "Insulting Roar",
+     "value": "+1",
+     "pct": 70
+    }
+   ],
+   "Gloves": [
+    {
+     "stat": "Combat Speed",
+     "value": "7.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "22",
+     "pct": 94
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "3.4%",
+     "pct": 93
+    },
+    {
+     "stat": "Fury",
+     "value": "+1",
+     "pct": 79
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 70
+    },
+    {
+     "stat": "Insulting Roar",
+     "value": "+1",
+     "pct": 69
+    }
+   ],
+   "Boots": [
+    {
+     "stat": "Move Speed",
+     "value": "10.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "27",
+     "pct": 94
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "4.4%",
+     "pct": 94
+    },
+    {
+     "stat": "Fury",
+     "value": "+1",
+     "pct": 79
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 72
+    },
+    {
+     "stat": "Insulting Roar",
+     "value": "+1",
+     "pct": 65
+    }
+   ],
+   "Cape": [
+    {
+     "stat": "Attack increase",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 78
+    },
+    {
+     "stat": "Fury",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 66
+    },
+    {
+     "stat": "Insulting Roar",
+     "value": "+1",
+     "pct": 64
+    }
+   ],
+   "Necklace": [
+    {
+     "stat": "Combat Speed",
+     "value": "4.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "20",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "38",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "20",
+     "pct": 98
+    },
+    {
+     "stat": "Accuracy",
+     "value": "70",
+     "pct": 88
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "54",
+     "pct": 86
+    }
+   ],
+   "Earring": [
+    {
+     "stat": "Move Speed",
+     "value": "6.5%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "16",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "16",
+     "pct": 98
+    },
+    {
+     "stat": "Accuracy",
+     "value": "61",
+     "pct": 93
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "47",
+     "pct": 89
+    }
+   ],
+   "Ring": [
+    {
+     "stat": "Might",
+     "value": "14",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "14",
+     "pct": 98
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 98
+    },
+    {
+     "stat": "Vicious Strike",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Judgment",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Pummel",
+     "value": "+1",
+     "pct": 77
+    }
+   ],
+   "Bracelet": [
+    {
+     "stat": "Time [Siel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Destruction [Zikel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Wisdom [Lumiel]",
+     "value": "17",
+     "pct": 97
+    },
+    {
+     "stat": "Illusion [Kaisinel]",
+     "value": "17",
+     "pct": 94
+    },
+    {
+     "stat": "Justice [Nezekan]",
+     "value": "17",
+     "pct": 83
+    }
+   ],
+   "Arcana1": [
+    {
+     "stat": "Fury",
+     "value": "+4",
+     "pct": 80
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+3",
+     "pct": 80
+    },
+    {
+     "stat": "Vicious Strike",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Judgment",
+     "value": "+1",
+     "pct": 78
+    }
+   ],
+   "Arcana2": [
+    {
+     "stat": "Vicious Strike",
+     "value": "+4",
+     "pct": 78
+    },
+    {
+     "stat": "Judgment",
+     "value": "+3",
+     "pct": 78
+    },
+    {
+     "stat": "Punishment",
+     "value": "+1",
+     "pct": 72
+    },
+    {
+     "stat": "Annihilate",
+     "value": "+1",
+     "pct": 18
+    }
+   ],
+   "Arcana3": [
+    {
+     "stat": "Pummel",
+     "value": "+4",
+     "pct": 77
+    },
+    {
+     "stat": "Warding Strike",
+     "value": "+3",
+     "pct": 43
+    },
+    {
+     "stat": "Flash Rampage",
+     "value": "+1",
+     "pct": 8
+    },
+    {
+     "stat": "Shield Smite",
+     "value": "+1",
+     "pct": 8
+    }
+   ],
+   "Arcana4": [
+    {
+     "stat": "Fury",
+     "value": "+4",
+     "pct": 80
+    },
+    {
+     "stat": "Insulting Roar",
+     "value": "+3",
+     "pct": 76
+    },
+    {
+     "stat": "Punishing Benediction",
+     "value": "+1",
+     "pct": 22
+    },
+    {
+     "stat": "Enhance Health",
+     "value": "+1",
+     "pct": 13
+    }
+   ],
+   "Arcana5": [
+    {
+     "stat": "Impact Hit",
+     "value": "+4",
+     "pct": 80
+    },
+    {
+     "stat": "Ironclad Defense",
+     "value": "+3",
+     "pct": 20
+    },
+    {
+     "stat": "Block Pain",
+     "value": "+1",
+     "pct": 2
+    },
+    {
+     "stat": "Survival Willpower",
+     "value": "+1",
+     "pct": 1
+    }
+   ]
+  },
+  "Gladiator": {
+   "Weapon": [
+    {
+     "stat": "Combat Speed",
+     "value": "13.0%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "9.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "32",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "7.3%",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "32",
+     "pct": 94
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "9.6%",
+     "pct": 94
+    }
+   ],
+   "Off-hand": [
+    {
+     "stat": "Combat Speed",
+     "value": "10.1%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "7.7%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "27",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "5.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "7.7%",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "27",
+     "pct": 94
+    }
+   ],
+   "Torso": [
+    {
+     "stat": "Damage Boost",
+     "value": "6.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.8%",
+     "pct": 95
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 94
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Murderous Burst",
+     "value": "+1",
+     "pct": 69
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 67
+    }
+   ],
+   "Pants": [
+    {
+     "stat": "Attack increase",
+     "value": "2.4%",
+     "pct": 99
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.3%",
+     "pct": 94
+    },
+    {
+     "stat": "Damage Tolerance",
+     "value": "11.6%",
+     "pct": 87
+    },
+    {
+     "stat": "Attack",
+     "value": "31",
+     "pct": 84
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 73
+    },
+    {
+     "stat": "Murderous Burst",
+     "value": "+1",
+     "pct": 62
+    }
+   ],
+   "Helmet": [
+    {
+     "stat": "Double Chance",
+     "value": "2.2%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack increase",
+     "value": "2.2%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 91
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Murderous Burst",
+     "value": "+1",
+     "pct": 69
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 59
+    }
+   ],
+   "Shoulders": [
+    {
+     "stat": "Critical Damage Boost",
+     "value": "12.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 96
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Murderous Burst",
+     "value": "+1",
+     "pct": 72
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 70
+    }
+   ],
+   "Gloves": [
+    {
+     "stat": "Combat Speed",
+     "value": "7.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "3.4%",
+     "pct": 95
+    },
+    {
+     "stat": "Attack",
+     "value": "22",
+     "pct": 91
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Murderous Burst",
+     "value": "+1",
+     "pct": 68
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 60
+    }
+   ],
+   "Boots": [
+    {
+     "stat": "Move Speed",
+     "value": "10.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "4.4%",
+     "pct": 95
+    },
+    {
+     "stat": "Attack",
+     "value": "27",
+     "pct": 91
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Murderous Burst",
+     "value": "+1",
+     "pct": 66
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 58
+    }
+   ],
+   "Cape": [
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack increase",
+     "value": "1.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 73
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 67
+    },
+    {
+     "stat": "Murderous Burst",
+     "value": "+1",
+     "pct": 62
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 43
+    }
+   ],
+   "Necklace": [
+    {
+     "stat": "Combat Speed",
+     "value": "4.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "20",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "38",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "20",
+     "pct": 94
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 75
+    }
+   ],
+   "Earring": [
+    {
+     "stat": "Move Speed",
+     "value": "6.5%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "16",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "16",
+     "pct": 94
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 75
+    }
+   ],
+   "Ring": [
+    {
+     "stat": "Might",
+     "value": "14",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "14",
+     "pct": 94
+    },
+    {
+     "stat": "Overhead Slam",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Ruinous Blow",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Rending Blow",
+     "value": "+1",
+     "pct": 74
+    }
+   ],
+   "Bracelet": [
+    {
+     "stat": "Time [Siel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Destruction [Zikel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Wisdom [Lumiel]",
+     "value": "17",
+     "pct": 99
+    },
+    {
+     "stat": "Illusion [Kaisinel]",
+     "value": "17",
+     "pct": 99
+    },
+    {
+     "stat": "Justice [Nezekan]",
+     "value": "17",
+     "pct": 88
+    }
+   ],
+   "Arcana1": [
+    {
+     "stat": "Overhead Slam",
+     "value": "+4",
+     "pct": 75
+    },
+    {
+     "stat": "Attack Preparation",
+     "value": "+3",
+     "pct": 75
+    },
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+1",
+     "pct": 75
+    }
+   ],
+   "Arcana2": [
+    {
+     "stat": "Overhead Slam",
+     "value": "+4",
+     "pct": 75
+    },
+    {
+     "stat": "Ruinous Blow",
+     "value": "+3",
+     "pct": 75
+    },
+    {
+     "stat": "Keen Strike",
+     "value": "+1",
+     "pct": 39
+    },
+    {
+     "stat": "Leaping Slam",
+     "value": "+1",
+     "pct": 28
+    }
+   ],
+   "Arcana3": [
+    {
+     "stat": "Rending Blow",
+     "value": "+4",
+     "pct": 74
+    },
+    {
+     "stat": "Crushing Wave",
+     "value": "+3",
+     "pct": 55
+    },
+    {
+     "stat": "Sword Aura Rampage",
+     "value": "+1",
+     "pct": 39
+    },
+    {
+     "stat": "Rush Strike",
+     "value": "+1",
+     "pct": 16
+    }
+   ],
+   "Arcana4": [
+    {
+     "stat": "Attack Preparation",
+     "value": "+4",
+     "pct": 75
+    },
+    {
+     "stat": "Survival Stance",
+     "value": "+3",
+     "pct": 7
+    },
+    {
+     "stat": "Blood Absorption",
+     "value": "+1",
+     "pct": 2
+    },
+    {
+     "stat": "Destructive Impulse",
+     "value": "+1",
+     "pct": 1
+    }
+   ],
+   "Arcana5": [
+    {
+     "stat": "Experienced Counterstrike",
+     "value": "+4",
+     "pct": 75
+    },
+    {
+     "stat": "Impact Hit",
+     "value": "+3",
+     "pct": 75
+    },
+    {
+     "stat": "Murderous Burst",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Identify Weakness",
+     "value": "+1",
+     "pct": 64
+    }
+   ]
+  },
+  "Ranger": {
+   "Weapon": [
+    {
+     "stat": "Combat Speed",
+     "value": "13.0%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "9.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "32",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "7.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "32",
+     "pct": 99
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "9.6%",
+     "pct": 98
+    }
+   ],
+   "Off-hand": [
+    {
+     "stat": "Combat Speed",
+     "value": "10.1%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "7.7%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "27",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "5.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "7.7%",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "27",
+     "pct": 98
+    }
+   ],
+   "Torso": [
+    {
+     "stat": "Damage Boost",
+     "value": "6.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 97
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.8%",
+     "pct": 94
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "47",
+     "pct": 86
+    },
+    {
+     "stat": "Focused Eye",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Hunter's Resolve",
+     "value": "+1",
+     "pct": 73
+    }
+   ],
+   "Pants": [
+    {
+     "stat": "Attack increase",
+     "value": "2.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Tolerance",
+     "value": "11.6%",
+     "pct": 97
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.3%",
+     "pct": 94
+    },
+    {
+     "stat": "Attack",
+     "value": "31",
+     "pct": 93
+    },
+    {
+     "stat": "Focused Eye",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Hunter's Resolve",
+     "value": "+1",
+     "pct": 71
+    }
+   ],
+   "Helmet": [
+    {
+     "stat": "Double Chance",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack increase",
+     "value": "2.2%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 96
+    },
+    {
+     "stat": "Focused Eye",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Hunter's Resolve",
+     "value": "+1",
+     "pct": 72
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "40",
+     "pct": 59
+    }
+   ],
+   "Shoulders": [
+    {
+     "stat": "Critical Damage Boost",
+     "value": "12.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 98
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "33",
+     "pct": 87
+    },
+    {
+     "stat": "Focused Eye",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Hunter's Resolve",
+     "value": "+1",
+     "pct": 73
+    }
+   ],
+   "Gloves": [
+    {
+     "stat": "Combat Speed",
+     "value": "7.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "22",
+     "pct": 97
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "3.4%",
+     "pct": 95
+    },
+    {
+     "stat": "Focused Eye",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Hunter's Resolve",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "30",
+     "pct": 70
+    }
+   ],
+   "Boots": [
+    {
+     "stat": "Move Speed",
+     "value": "10.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "27",
+     "pct": 97
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "4.4%",
+     "pct": 94
+    },
+    {
+     "stat": "Focused Eye",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Hunter's Resolve",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "37",
+     "pct": 69
+    }
+   ],
+   "Cape": [
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack increase",
+     "value": "1.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 87
+    },
+    {
+     "stat": "Focused Eye",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Hunter's Resolve",
+     "value": "+1",
+     "pct": 71
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "33",
+     "pct": 28
+    }
+   ],
+   "Necklace": [
+    {
+     "stat": "Combat Speed",
+     "value": "4.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "20",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "38",
+     "pct": 100
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "54",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "20",
+     "pct": 99
+    },
+    {
+     "stat": "Accuracy",
+     "value": "70",
+     "pct": 97
+    }
+   ],
+   "Earring": [
+    {
+     "stat": "Move Speed",
+     "value": "6.5%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "16",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 100
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "47",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "16",
+     "pct": 99
+    },
+    {
+     "stat": "Accuracy",
+     "value": "61",
+     "pct": 99
+    }
+   ],
+   "Ring": [
+    {
+     "stat": "Might",
+     "value": "14",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "14",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 96
+    },
+    {
+     "stat": "Deadshot",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Drill Dart",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Gale Arrow",
+     "value": "+1",
+     "pct": 73
+    }
+   ],
+   "Bracelet": [
+    {
+     "stat": "Time [Siel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Destruction [Zikel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Illusion [Kaisinel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Wisdom [Lumiel]",
+     "value": "17",
+     "pct": 98
+    },
+    {
+     "stat": "Justice [Nezekan]",
+     "value": "17",
+     "pct": 85
+    }
+   ],
+   "Arcana1": [
+    {
+     "stat": "Hunter's Resolve",
+     "value": "+4",
+     "pct": 76
+    },
+    {
+     "stat": "Focused Eye",
+     "value": "+3",
+     "pct": 76
+    },
+    {
+     "stat": "Deadshot",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Drill Dart",
+     "value": "+1",
+     "pct": 74
+    }
+   ],
+   "Arcana2": [
+    {
+     "stat": "Drill Dart",
+     "value": "+4",
+     "pct": 74
+    },
+    {
+     "stat": "Tempest Shot",
+     "value": "+3",
+     "pct": 70
+    },
+    {
+     "stat": "Snipe",
+     "value": "+1",
+     "pct": 70
+    },
+    {
+     "stat": "Burst Arrow",
+     "value": "+1",
+     "pct": 43
+    }
+   ],
+   "Arcana3": [
+    {
+     "stat": "Deadshot",
+     "value": "+4",
+     "pct": 75
+    },
+    {
+     "stat": "Gale Arrow",
+     "value": "+3",
+     "pct": 73
+    },
+    {
+     "stat": "Arrow Scattershot",
+     "value": "+1",
+     "pct": 15
+    }
+   ],
+   "Arcana4": [
+    {
+     "stat": "Hunter's Resolve",
+     "value": "+4",
+     "pct": 76
+    },
+    {
+     "stat": "Rooting Eye",
+     "value": "+3",
+     "pct": 22
+    },
+    {
+     "stat": "Vigilant Eye",
+     "value": "+1",
+     "pct": 11
+    },
+    {
+     "stat": "Wind Vigor",
+     "value": "+1",
+     "pct": 7
+    }
+   ],
+   "Arcana5": [
+    {
+     "stat": "Focused Eye",
+     "value": "+4",
+     "pct": 76
+    },
+    {
+     "stat": "Hunter's Soul",
+     "value": "+3",
+     "pct": 71
+    },
+    {
+     "stat": "Concentrated Fire",
+     "value": "+1",
+     "pct": 46
+    },
+    {
+     "stat": "Melee Fire",
+     "value": "+1",
+     "pct": 13
+    }
+   ]
+  },
+  "Sorcerer": {
+   "Weapon": [
+    {
+     "stat": "Combat Speed",
+     "value": "13.0%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "9.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "32",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "7.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "9.6%",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "32",
+     "pct": 98
+    }
+   ],
+   "Off-hand": [
+    {
+     "stat": "Combat Speed",
+     "value": "10.1%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "7.7%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "27",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "5.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "7.7%",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "27",
+     "pct": 95
+    }
+   ],
+   "Torso": [
+    {
+     "stat": "Damage Boost",
+     "value": "6.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 97
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.8%",
+     "pct": 94
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "47",
+     "pct": 75
+    },
+    {
+     "stat": "Robe of Flame",
+     "value": "+1",
+     "pct": 74
+    },
+    {
+     "stat": "Accuracy",
+     "value": "61",
+     "pct": 72
+    }
+   ],
+   "Pants": [
+    {
+     "stat": "Attack increase",
+     "value": "2.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Tolerance",
+     "value": "11.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "31",
+     "pct": 96
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.3%",
+     "pct": 94
+    },
+    {
+     "stat": "Robe of Flame",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "44",
+     "pct": 46
+    }
+   ],
+   "Helmet": [
+    {
+     "stat": "Double Chance",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack increase",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 98
+    },
+    {
+     "stat": "Robe of Flame",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Incoming Heal",
+     "value": "19.2%",
+     "pct": 72
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "40",
+     "pct": 59
+    }
+   ],
+   "Shoulders": [
+    {
+     "stat": "Critical Damage Boost",
+     "value": "12.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 99
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "33",
+     "pct": 82
+    },
+    {
+     "stat": "Robe of Flame",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Accuracy",
+     "value": "43",
+     "pct": 70
+    }
+   ],
+   "Gloves": [
+    {
+     "stat": "Combat Speed",
+     "value": "7.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "22",
+     "pct": 99
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "3.4%",
+     "pct": 94
+    },
+    {
+     "stat": "Robe of Flame",
+     "value": "+1",
+     "pct": 76
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "30",
+     "pct": 71
+    },
+    {
+     "stat": "Accuracy",
+     "value": "38",
+     "pct": 58
+    }
+   ],
+   "Boots": [
+    {
+     "stat": "Move Speed",
+     "value": "10.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "27",
+     "pct": 98
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "4.4%",
+     "pct": 93
+    },
+    {
+     "stat": "Robe of Flame",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "37",
+     "pct": 70
+    },
+    {
+     "stat": "Accuracy",
+     "value": "47",
+     "pct": 54
+    }
+   ],
+   "Cape": [
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack increase",
+     "value": "1.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 95
+    },
+    {
+     "stat": "Robe of Flame",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Critical Damage Tolerance",
+     "value": "12.8%",
+     "pct": 48
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "33",
+     "pct": 33
+    }
+   ],
+   "Necklace": [
+    {
+     "stat": "Combat Speed",
+     "value": "4.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "20",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "38",
+     "pct": 100
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "54",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "20",
+     "pct": 98
+    },
+    {
+     "stat": "Accuracy",
+     "value": "70",
+     "pct": 98
+    }
+   ],
+   "Earring": [
+    {
+     "stat": "Move Speed",
+     "value": "6.5%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "16",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 100
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "47",
+     "pct": 100
+    },
+    {
+     "stat": "Accuracy",
+     "value": "61",
+     "pct": 99
+    },
+    {
+     "stat": "Precision",
+     "value": "16",
+     "pct": 98
+    }
+   ],
+   "Ring": [
+    {
+     "stat": "Might",
+     "value": "14",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "14",
+     "pct": 98
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 86
+    },
+    {
+     "stat": "Hellfire",
+     "value": "+1",
+     "pct": 73
+    },
+    {
+     "stat": "Blaze",
+     "value": "+1",
+     "pct": 73
+    },
+    {
+     "stat": "Wish of Concentration",
+     "value": "+1",
+     "pct": 73
+    }
+   ],
+   "Bracelet": [
+    {
+     "stat": "Time [Siel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Destruction [Zikel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Illusion [Kaisinel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Wisdom [Lumiel]",
+     "value": "17",
+     "pct": 99
+    },
+    {
+     "stat": "Justice [Nezekan]",
+     "value": "17",
+     "pct": 83
+    }
+   ],
+   "Arcana1": [
+    {
+     "stat": "Robe of Flame",
+     "value": "+4",
+     "pct": 76
+    },
+    {
+     "stat": "Hellfire",
+     "value": "+3",
+     "pct": 73
+    },
+    {
+     "stat": "Blaze",
+     "value": "+1",
+     "pct": 73
+    },
+    {
+     "stat": "Wish of Concentration",
+     "value": "+1",
+     "pct": 73
+    }
+   ],
+   "Arcana2": [
+    {
+     "stat": "Hellfire",
+     "value": "+4",
+     "pct": 73
+    },
+    {
+     "stat": "Blaze",
+     "value": "+3",
+     "pct": 73
+    },
+    {
+     "stat": "Wish of Concentration",
+     "value": "+1",
+     "pct": 73
+    },
+    {
+     "stat": "Flame Arrow",
+     "value": "+1",
+     "pct": 69
+    }
+   ],
+   "Arcana3": [
+    {
+     "stat": "Bittercold Wind",
+     "value": "+4",
+     "pct": 73
+    },
+    {
+     "stat": "Winter's Shackles",
+     "value": "+3",
+     "pct": 44
+    },
+    {
+     "stat": "Ice Chain",
+     "value": "+1",
+     "pct": 16
+    }
+   ],
+   "Arcana4": [
+    {
+     "stat": "Fire Mark",
+     "value": "+4",
+     "pct": 57
+    },
+    {
+     "stat": "Robe of Cold",
+     "value": "+3",
+     "pct": 48
+    },
+    {
+     "stat": "Cold Snap",
+     "value": "+1",
+     "pct": 31
+    },
+    {
+     "stat": "Revitalization Contract",
+     "value": "+1",
+     "pct": 5
+    }
+   ],
+   "Arcana5": [
+    {
+     "stat": "Robe of Flame",
+     "value": "+4",
+     "pct": 76
+    },
+    {
+     "stat": "Vitality Evaporation",
+     "value": "+3",
+     "pct": 43
+    },
+    {
+     "stat": "Grace of Enhancement",
+     "value": "+1",
+     "pct": 38
+    },
+    {
+     "stat": "Robe of Earth",
+     "value": "+1",
+     "pct": 34
+    }
+   ]
+  },
+  "Spiritmaster": {
+   "Weapon": [
+    {
+     "stat": "Combat Speed",
+     "value": "13.0%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "9.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "32",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "7.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "32",
+     "pct": 99
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "9.6%",
+     "pct": 97
+    }
+   ],
+   "Off-hand": [
+    {
+     "stat": "Combat Speed",
+     "value": "10.1%",
+     "pct": 100
+    },
+    {
+     "stat": "Weapon Damage Boost",
+     "value": "7.7%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "27",
+     "pct": 100
+    },
+    {
+     "stat": "Damage Boost",
+     "value": "5.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "27",
+     "pct": 99
+    },
+    {
+     "stat": "Multi-hit Chance",
+     "value": "7.7%",
+     "pct": 97
+    }
+   ],
+   "Torso": [
+    {
+     "stat": "Damage Boost",
+     "value": "6.6%",
+     "pct": 100
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.8%",
+     "pct": 97
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 96
+    },
+    {
+     "stat": "Spirit Strike",
+     "value": "+1",
+     "pct": 81
+    },
+    {
+     "stat": "Mental Focus",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Element Unification",
+     "value": "+1",
+     "pct": 69
+    }
+   ],
+   "Pants": [
+    {
+     "stat": "Attack increase",
+     "value": "2.4%",
+     "pct": 99
+    },
+    {
+     "stat": "Damage Tolerance",
+     "value": "11.6%",
+     "pct": 98
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "5.3%",
+     "pct": 96
+    },
+    {
+     "stat": "Attack",
+     "value": "31",
+     "pct": 85
+    },
+    {
+     "stat": "Spirit Strike",
+     "value": "+1",
+     "pct": 80
+    },
+    {
+     "stat": "Mental Focus",
+     "value": "+1",
+     "pct": 73
+    }
+   ],
+   "Helmet": [
+    {
+     "stat": "Attack increase",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "2.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 90
+    },
+    {
+     "stat": "Spirit Strike",
+     "value": "+1",
+     "pct": 84
+    },
+    {
+     "stat": "Mental Focus",
+     "value": "+1",
+     "pct": 80
+    },
+    {
+     "stat": "Element Unification",
+     "value": "+1",
+     "pct": 61
+    }
+   ],
+   "Shoulders": [
+    {
+     "stat": "Critical Damage Boost",
+     "value": "12.8%",
+     "pct": 100
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 97
+    },
+    {
+     "stat": "Spirit Strike",
+     "value": "+1",
+     "pct": 82
+    },
+    {
+     "stat": "Mental Focus",
+     "value": "+1",
+     "pct": 80
+    },
+    {
+     "stat": "Element Unification",
+     "value": "+1",
+     "pct": 71
+    }
+   ],
+   "Gloves": [
+    {
+     "stat": "Combat Speed",
+     "value": "7.2%",
+     "pct": 100
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "3.4%",
+     "pct": 97
+    },
+    {
+     "stat": "Attack",
+     "value": "22",
+     "pct": 94
+    },
+    {
+     "stat": "Spirit Strike",
+     "value": "+1",
+     "pct": 84
+    },
+    {
+     "stat": "Mental Focus",
+     "value": "+1",
+     "pct": 81
+    },
+    {
+     "stat": "Element Unification",
+     "value": "+1",
+     "pct": 63
+    }
+   ],
+   "Boots": [
+    {
+     "stat": "Move Speed",
+     "value": "10.3%",
+     "pct": 100
+    },
+    {
+     "stat": "Perfect Chance",
+     "value": "4.4%",
+     "pct": 96
+    },
+    {
+     "stat": "Attack",
+     "value": "27",
+     "pct": 93
+    },
+    {
+     "stat": "Spirit Strike",
+     "value": "+1",
+     "pct": 84
+    },
+    {
+     "stat": "Mental Focus",
+     "value": "+1",
+     "pct": 81
+    },
+    {
+     "stat": "Element Unification",
+     "value": "+1",
+     "pct": 62
+    }
+   ],
+   "Cape": [
+    {
+     "stat": "Attack increase",
+     "value": "1.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Double Chance",
+     "value": "1.8%",
+     "pct": 99
+    },
+    {
+     "stat": "Spirit Strike",
+     "value": "+1",
+     "pct": 83
+    },
+    {
+     "stat": "Mental Focus",
+     "value": "+1",
+     "pct": 77
+    },
+    {
+     "stat": "Attack",
+     "value": "24",
+     "pct": 76
+    },
+    {
+     "stat": "Element Unification",
+     "value": "+1",
+     "pct": 50
+    }
+   ],
+   "Necklace": [
+    {
+     "stat": "Combat Speed",
+     "value": "4.4%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "20",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "38",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "20",
+     "pct": 99
+    },
+    {
+     "stat": "Accuracy",
+     "value": "70",
+     "pct": 87
+    },
+    {
+     "stat": "Spirit Strike",
+     "value": "+1",
+     "pct": 85
+    }
+   ],
+   "Earring": [
+    {
+     "stat": "Move Speed",
+     "value": "6.5%",
+     "pct": 100
+    },
+    {
+     "stat": "Might",
+     "value": "16",
+     "pct": 100
+    },
+    {
+     "stat": "Attack",
+     "value": "33",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "16",
+     "pct": 99
+    },
+    {
+     "stat": "Accuracy",
+     "value": "61",
+     "pct": 89
+    },
+    {
+     "stat": "Critical Hit",
+     "value": "47",
+     "pct": 89
+    }
+   ],
+   "Ring": [
+    {
+     "stat": "Might",
+     "value": "14",
+     "pct": 100
+    },
+    {
+     "stat": "Precision",
+     "value": "14",
+     "pct": 99
+    },
+    {
+     "stat": "Attack",
+     "value": "29",
+     "pct": 97
+    },
+    {
+     "stat": "Elemental Fusion",
+     "value": "+1",
+     "pct": 85
+    },
+    {
+     "stat": "Combustion",
+     "value": "+1",
+     "pct": 84
+    },
+    {
+     "stat": "Summon: Fire Spirit",
+     "value": "+1",
+     "pct": 79
+    }
+   ],
+   "Bracelet": [
+    {
+     "stat": "Illusion [Kaisinel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Time [Siel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Destruction [Zikel]",
+     "value": "17",
+     "pct": 100
+    },
+    {
+     "stat": "Wisdom [Lumiel]",
+     "value": "17",
+     "pct": 98
+    },
+    {
+     "stat": "Justice [Nezekan]",
+     "value": "17",
+     "pct": 90
+    }
+   ],
+   "Arcana1": [
+    {
+     "stat": "Spirit Strike",
+     "value": "+4",
+     "pct": 85
+    },
+    {
+     "stat": "Mental Focus",
+     "value": "+3",
+     "pct": 85
+    },
+    {
+     "stat": "Elemental Fusion",
+     "value": "+1",
+     "pct": 85
+    },
+    {
+     "stat": "Combustion",
+     "value": "+1",
+     "pct": 84
+    }
+   ],
+   "Arcana2": [
+    {
+     "stat": "Elemental Fusion",
+     "value": "+4",
+     "pct": 85
+    },
+    {
+     "stat": "Summon: Fire Spirit",
+     "value": "+3",
+     "pct": 79
+    },
+    {
+     "stat": "Cold Shock",
+     "value": "+1",
+     "pct": 75
+    },
+    {
+     "stat": "Jointstrike: Curse",
+     "value": "+1",
+     "pct": 60
+    }
+   ],
+   "Arcana3": [
+    {
+     "stat": "Combustion",
+     "value": "+4",
+     "pct": 84
+    },
+    {
+     "stat": "Summon: Water Spirit",
+     "value": "+3",
+     "pct": 34
+    }
+   ],
+   "Arcana4": [
+    {
+     "stat": "Spirit Strike",
+     "value": "+4",
+     "pct": 85
+    },
+    {
+     "stat": "Element Unification",
+     "value": "+3",
+     "pct": 81
+    },
+    {
+     "stat": "Spirit Revitalization",
+     "value": "+1",
+     "pct": 78
+    },
+    {
+     "stat": "Spirit's Descent",
+     "value": "+1",
+     "pct": 10
+    }
+   ],
+   "Arcana5": [
+    {
+     "stat": "Mental Focus",
+     "value": "+4",
+     "pct": 85
+    },
+    {
+     "stat": "Corrode",
+     "value": "+3",
+     "pct": 33
+    },
+    {
+     "stat": "Spirit Protection",
+     "value": "+1",
+     "pct": 9
+    },
+    {
+     "stat": "Consecutive Countercurrent",
+     "value": "+1",
+     "pct": 6
+    }
+   ]
+  }
+ }
+}

@@ -1,4 +1,5 @@
 // Save-file rules: the default data and the migration of old or imported saves. Pure.
+import { cleanBis } from "./bis.ts";
 import { cleanCrafting, emptyCrafting } from "./crafting.ts";
 import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
 import { cleanMap, emptyMap } from "./map.ts";
@@ -22,6 +23,7 @@ export function defaultData(): AppData {
     season: {},
     bosses: [],
     bossAlerts: {},
+    bis: {},
     bossNames: {},
     arena: { matches: [], maps: {}, kills: [] },
     map: emptyMap(),
@@ -85,6 +87,7 @@ export function normalize(raw: any): AppData {
     news: Array.isArray(raw.news) ? raw.news : [],
     season: raw.season ?? {},
     bosses: Array.isArray(raw.bosses) ? raw.bosses : [],
+    bis: cleanBis(raw.bis),
     bossNames: Object.fromEntries(Object.entries(raw.bossNames ?? {}).filter(([, v]) => typeof v === "string" && v.trim()) as [string, string][]),
     bossAlerts: Object.fromEntries(Object.entries(raw.bossAlerts ?? {}).map(([id, a]: [string, any]) =>
       [id, { leads: cleanLeads(a?.leads), repeat: !!a?.repeat }])),

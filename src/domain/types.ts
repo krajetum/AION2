@@ -99,6 +99,7 @@ export interface AppData {
   season: Record<string, SeasonProgress>; // charId → season progress
   bosses: BossTimer[];                // field bosses from the maps last opened in game (src/domain/bosses.ts)
   bossAlerts: Record<string, BossAlert>; // world-map boss id → its respawn alert
+  bis: import("./bis.ts").BisTable;      // the player's own best-in-slot lists (class → slot → lines), over the bundled ones
   bossNames: Record<string, string>;     // world-map boss id → the player's name for a boss the game data doesn't name
   arena: ArenaLog;                    // arena matchup log (src/domain/arena.ts)
   map: MapData;                       // points on the player's own map image (src/domain/map.ts); the image stays out
