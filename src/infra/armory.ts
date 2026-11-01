@@ -1,8 +1,7 @@
-// Reads the official character search and profiles (domain/armory.ts) through the Tauri HTTP plugin; the browser
-// preview can't (the site sends no CORS headers). Gently: one request at a time, 1 s apart; a search is kept a minute,
+// Reads the official character search and profiles (domain/armory.ts) through the app's Rust side (`armory_get`);
+// the browser preview can't (the site sends no CORS headers). Gently: one request at a time, 1 s apart; a search is kept a minute,
 // a profile 10 minutes, a failure a minute.
-import { isTauri } from "@tauri-apps/api/core";
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   equipmentUrl, infoUrl, itemUrl, parseEquipment, parseInfo, parseItem, parseSearch, pickFound, searchUrl,
   type Equipment, type Found, type ItemDetail, type Piece, type Profile,
@@ -15,10 +14,11 @@ let queue: Promise<unknown> = Promise.resolve();
 async function getJson(url: string): Promise<any> {
   if (!isTauri()) throw new Error("only in the desktop app");
   const run = queue.then(async () => {
-    const res = await tauriFetch(url, { headers: { Accept: "application/json" } });
+    // From the Rust side (src-tauri/src/armory.rs): the HTTP plugin's Origin header gets a 403 from the search.
+    const res = await invoke<{ status: number; json: boolean; body: string }>("armory_get", { url });
     // The site answers errors with an HTML page and status 200: only JSON counts.
-    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    if (res.status < 200 || res.status >= 300 || !res.json) throw new Error(`HTTP ${res.status}`);
+    return JSON.parse(res.body);
   });
   queue = run.catch(() => {}).then(() => new Promise((r) => setTimeout(r, GAP_MS)));
   return run;

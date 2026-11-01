@@ -1,4 +1,5 @@
 mod crash;
+mod armory;
 mod links;
 mod meter;
 mod places;
@@ -54,6 +55,7 @@ pub fn run() {
             meter::radar_overlay,
             crash::crash_log,
             links::open_url,
+            armory::armory_get,
             meter::meter_cube_codes,
         ])
         .setup(|app| {
