@@ -77,7 +77,7 @@
       <Kpi label="Item level" value={profile.itemLevel == null ? "—" : num(profile.itemLevel)} sub={profile.raceName || " "} />
       <Kpi label="Level" value={profile.level == null ? "—" : String(profile.level)} sub="read {hm(profile.atMs)}" />
     </div>
-    <Equipment characterId={open.characterId} serverId={open.serverId} />
+    <Equipment characterId={open.characterId} serverId={open.serverId} className={profile.className} />
     <h3>Stats</h3>
     {#if profile.stats?.length}<div class="scroll"><table class="sheet">
       <thead><tr><th>Stat</th><th class="n">Value</th><th>Gives</th></tr></thead>

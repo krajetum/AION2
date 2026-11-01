@@ -651,3 +651,53 @@ li.eq-row { cursor: default; }
 .net-ov .bad { color: #e5534b; }
 .net-ov button { margin-left: auto; height: 22px; width: 22px; padding: 0; display: inline-grid; place-items: center; background: transparent; color: var(--muted); }
 .net-ov button svg { width: 12px; height: 12px; }
+
+/* Players page: gear cards (GearCard.svelte). The card turns over (BiS) in 3D; both faces share one grid cell,
+   so the card is as tall as its taller face. */
+.gcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.gcard { perspective: 1200px; }
+.gcard-inner { display: grid; height: 100%; transition: transform .5s cubic-bezier(.3, .7, .2, 1); transform-style: preserve-3d; }
+.gcard.flipped .gcard-inner { transform: rotateY(180deg); }
+@media (prefers-reduced-motion: reduce) { .gcard-inner { transition: none; } }
+.gface { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 8px; min-height: 230px; padding: 12px 12px 10px;
+  border-radius: 14px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--edge, #8a8a95) 14%, var(--surface, #232327)) 0%, var(--surface, #232327) 55%);
+  border: 1px solid color-mix(in srgb, var(--edge, #8a8a95) 55%, transparent);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.25), 0 6px 18px -8px color-mix(in srgb, var(--edge, #8a8a95) 60%, transparent); }
+.gface.back { transform: rotateY(180deg); --edge: #e7b84f;
+  background: linear-gradient(160deg, #3a2f4a 0%, #26303f 100%); }
+.grade-edge-Unique { --edge: #f0a33a; }
+.grade-edge-Legend { --edge: #4ea3ff; }
+.grade-edge-Special { --edge: #3cc9a0; }
+.gface header { display: flex; align-items: center; gap: 10px; }
+.gface header img, .gicon { width: 44px; height: 44px; border-radius: 8px; flex: none; background: rgba(0,0,0,.25); }
+.gtitle { display: grid; min-width: 0; flex: 1; }
+.gtitle b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gtitle small { color: var(--muted); }
+.gstar { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 10px; font-size: 20px; color: #ffd76a;
+  background: linear-gradient(135deg, #6b3f5e, #2f4a68); }
+.bis-btn { flex: none; align-self: flex-start; padding: 6px 9px; border-radius: 9px; font-weight: 700; letter-spacing: .02em; color: #ffd76a;
+  background: linear-gradient(135deg, #6b3f5e, #2f4a68); border: 1px solid rgba(255, 215, 106, .45); cursor: pointer; }
+.bis-btn:hover { filter: brightness(1.15); }
+.gedit { flex: none; align-self: flex-start; }
+.glines, .bis-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: .9em; }
+.glines li { display: grid; grid-template-columns: 14px 1fr auto; gap: 6px; align-items: baseline; color: var(--muted); }
+.glines li.ideal { color: inherit; }
+.glines b { font-weight: 600; }
+.tick { color: var(--teal); font-weight: 700; }
+.gstones { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: .78em; }
+.gset { margin: 0; font-size: .82em; }
+.gface footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px;
+  border-radius: 8px; background: rgba(0,0,0,.25); font-size: .82em; color: #c9b3ff; }
+.bis-lines li { display: grid; grid-template-columns: 14px 1fr auto; column-gap: 6px; row-gap: 3px; align-items: baseline; color: var(--muted); }
+.bis-lines li.have { color: inherit; font-weight: 600; }
+.bis-lines .pct { font-variant-numeric: tabular-nums; }
+.bis-lines .bar { grid-column: 2 / 4; height: 4px; border-radius: 2px; background: rgba(255,255,255,.08); position: relative; overflow: hidden; }
+.bis-lines .bar::after { content: ""; position: absolute; inset: 0; width: var(--w); border-radius: 2px; background: rgba(160, 150, 200, .45); }
+.bis-lines li.have .bar::after { background: linear-gradient(90deg, #ff9ec4, #ffd76a, #7fe0ff, #c79bff); }
+.yours-btn { padding: 2px 6px; font-size: 1em; }
+.gedit-rows { display: grid; gap: 5px; }
+.gedit-rows > div { display: grid; grid-template-columns: 1fr 70px 24px; gap: 4px; }
+.gedit-rows input { min-width: 0; padding: 3px 6px; }
+.gedit-rows .val { text-align: right; }
+.gedit-actions { justify-content: flex-start !important; }
