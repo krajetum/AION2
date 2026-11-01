@@ -39,7 +39,8 @@ struct Auto {
     cube_near: bool,
     /// The cube popup's size: 1 = 260 × 96.
     cube_scale: f64,
-    /// The radar (cubes around you, to lay over the game's minimap) is on.
+    /// The radar (cubes around you, to lay over the game's minimap) is on. It shows with the cube popup's news only
+    /// (a cube in view, or one just opened), so it needs no key to hide it (the player's choice, 2026-11-01).
     radar: bool,
     /// Hide the overlays while another window than the game is in front (alt-tab).
     follow_game: bool,
@@ -62,7 +63,7 @@ impl Auto {
             dps: self.overlay && self.wanted && front,
             events: self.events && front,
             cube: self.cube && self.cube_near && front,
-            radar: self.radar && front,
+            radar: self.radar && self.cube_near && front,
         }
     }
     fn any(&self) -> bool {
@@ -400,7 +401,8 @@ pub async fn cube_popup(app: AppHandle, show: bool, scale: Option<f64>) -> Resul
     Ok(())
 }
 
-/// The radar on or off: cubes around you, north up, to lay over the game's minimap.
+/// The radar on or off: cubes around you, north up, to lay over the game's minimap; on screen only while a cube is
+/// in view or was just opened (as the cube popup).
 #[tauri::command]
 pub async fn radar_overlay(app: AppHandle, show: bool) -> Result<(), String> {
     if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
@@ -508,7 +510,7 @@ mod tests {
         let v = |dps, events, cube, radar| Visible { dps, events, cube, radar };
         a.cube = true;
         a.radar = true;
-        assert_eq!(a.visible(), v(true, true, false, true), "the cube popup waits for a cube");
+        assert_eq!(a.visible(), v(true, true, false, false), "the cube popup and the radar wait for a cube");
         a.cube_near = true;
         assert_eq!(a.visible(), v(true, true, true, true));
         a.front = false;
@@ -520,6 +522,7 @@ mod tests {
         a.overlay = false;
         a.wanted = true;
         a.cube = false;
+        assert_eq!(a.visible(), v(false, true, false, true), "the radar shows with a cube even with the popup off");
         a.radar = false;
         assert_eq!(a.visible(), v(false, true, false, false));
     }
