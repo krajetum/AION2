@@ -3,6 +3,7 @@
 import { EVENTS, RESET_CONFIG as C } from "../config.ts";
 import { bossChannel, dueLeads, inQuietHours } from "../domain/alerts.ts";
 import { bossKey, bossLabel, dueBossAlerts } from "../domain/bosses.ts";
+import { armDefaultBosses } from "./bosses.ts";
 import { CLOUD_MERCHANT_ID } from "../domain/seed.ts";
 import { remaining } from "../domain/tasks.ts";
 import { nextBoundary, nextEvent } from "../domain/time.ts";
@@ -16,7 +17,7 @@ const H = 3600_000;
 export function checkNotifications(data: AppData, now: number, toast: Toast): boolean {
   const s = data.settings;
   const silent = s.mutedUntil > now || inQuietHours(s, now);
-  let changed = false;
+  let changed = armDefaultBosses(data);
 
   // Cloud Merchant: once per hourly restock, only if recent (no stale toasts at startup).
   // ponytail: assumes a whole-hour zone offset (true for UTC).

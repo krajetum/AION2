@@ -14,8 +14,9 @@ export const dueLeads = (leads: number[], msLeft: number, warned: (lead: number)
   leads.filter((l) => msLeft <= l * 60_000 && !warned(l));
 
 /** Field bosses with their own sound and volume (public/sounds/<id>.wav), by the name the Field Bosses page shows;
- *  their alerts are armed per boss like the others. Immortal Gartua: the player's own recording (2026-11-01). */
-export const BOSS_CHANNELS = [{ boss: "Immortal Gartua", id: "gartua" }];
+ *  their alerts are armed per boss like the others. Immortal Gartua: the player's own recording (2026-11-01).
+ *  `armed`: its alert is on from the first time the boss is seen (5 min before, every respawn); turned off, it stays off. */
+export const BOSS_CHANNELS = [{ boss: "Immortal Gartua", id: "gartua", armed: true }];
 
 /** The channel a field boss's respawn alert uses: its own if it has one, else "boss". */
 export const bossChannel = (label: string) => BOSS_CHANNELS.find((b) => b.boss.toLowerCase() === label.trim().toLowerCase())?.id ?? "boss";
