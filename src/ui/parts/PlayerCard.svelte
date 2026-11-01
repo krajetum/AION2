@@ -7,6 +7,7 @@
   import { officialProfile } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
   import { hm, num } from "../format.ts";
+  import { ui } from "../state.svelte.ts";
 
   let { p }: { p: ArenaPlayer } = $props();
   const gear = (v: number | null, f: (n: number) => string = String) => (v == null ? "—" : f(v));
@@ -34,6 +35,7 @@
     {#if official.state === "loading"}<span class="hint">Reading the official profile…</span>
     {:else if official.state === "done"}<span class="hint">Not found in the official character search.</span>
     {:else if official.state === "failed"}<span class="hint">Official profile not read ({official.why}).</span>{/if}{/if}
+  {#if p.name && p.serverId}<button class="ghost" onclick={() => { ui.lookup = { name: p.name, serverId: p.serverId }; ui.tab = "players"; history.replaceState(null, "", "#players"); }}>Full profile</button>{/if}
   {#if url}<a href={url} target="_blank" rel="noopener">Gear and stats on shugo.gg ↗</a>
   {:else}<span class="hint">No profile link: {p.name ? "the server is not known" : "the game has not sent this player's name"}.</span>{/if}
 </div>

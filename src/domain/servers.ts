@@ -101,3 +101,8 @@ export function gearUrl(name: string, serverId: number): string | null {
 
 /** The region code of a server id (REGIONS), "" if not known. */
 export const regionOf = (serverId: number): string => REGIONS[Math.floor(serverId / 100) % 10] ?? "";
+
+/** The servers of a region (REGIONS code), Elyos then Asmodian, by name. */
+export const serversIn = (region: string): { id: number; name: string }[] =>
+  Object.entries(NAMES).map(([id, name]) => ({ id: Number(id), name })).filter((x) => regionOf(x.id) === region)
+    .sort((a, b) => Math.floor(a.id / 1000) - Math.floor(b.id / 1000) || a.name.localeCompare(b.name));
