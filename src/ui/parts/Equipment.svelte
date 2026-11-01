@@ -12,7 +12,8 @@
   import GearCard from "./GearCard.svelte";
 
   let { characterId, serverId, className }: { characterId: string; serverId: number; className: string } = $props();
-  const BUNDLED = (bundled as { classes: BisTable }).classes;
+  const BIS = bundled as { classes: BisTable; source: string; sourceUrl: string; captured: string };
+  const BUNDLED = BIS.classes;
 
   let eq = $state<Equipment | null>(null), failed = $state(""), loading = $state(true);
   // Each piece's details by slot: undefined = not read yet.
@@ -54,6 +55,7 @@
   <h3>Gear</h3>{@render cards(eq.gear)}
   <h3>Accessories</h3>{@render cards(eq.accessories)}
   {#if eq.arcana.length}<h3>Arcana</h3>{@render cards(eq.arcana)}{/if}
+  <p class="hint">Best-in-slot lines from <a href={BIS.sourceUrl} target="_blank" rel="noopener">{BIS.source}</a> ({BIS.captured}), with its % per line; Edit on a card's back keeps your own list.</p>
   {#if eq.pet || eq.wing}<h3>Pet / Wings</h3><ul class="eq-list eq-cols">
     {#if eq.pet}<li class="eq-row">{#if eq.pet.icon}<img src={eq.pet.icon} alt="" width="32" height="32" loading="lazy">{/if}{eq.pet.name}{eq.pet.level != null ? ` Lv ${eq.pet.level}` : ""}</li>{/if}
     {#if eq.wing}<li class="eq-row">{#if eq.wing.icon}<img src={eq.wing.icon} alt="" width="32" height="32" loading="lazy">{/if}<span class="grade-{eq.wing.grade}">{eq.wing.name}</span></li>{/if}
