@@ -111,8 +111,8 @@
       its distance and direction, chimes when one appears (sound: Notifications), turns green when you open one (red, with a sad sound, when someone else does) or shows your picture for it instead
       (pictures stay only on this PC).
       It learns cubes as they are opened near you; the first one is built in.
-      The cube radar shows the cubes around you, north up, centred on you: drag it over the game's minimap, size it by its
-      edges and set the range to match. It cannot turn with the camera, so it matches only a north-up minimap. Overlays remember where you put them.
+      The cube radar shows the cubes around you, north up, centred on you, while a cube is in view (as the cube popup):
+      drag it over the game's minimap, size it by its edges and set the range to match. It cannot turn with the camera, so it matches only a north-up minimap. Overlays remember where you put them.
       The overlays never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
   </section>
   <section><h2>Other players</h2>
