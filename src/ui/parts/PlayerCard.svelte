@@ -1,8 +1,9 @@
 <script lang="ts">
   // A player's details (Arena Log, Kill history): class, server and faction, gear when the game sent it
-  // (you and your party), the official profile's level / item level / combat power (infra/armory.ts), and shugo.gg.
+  // (you and your party), the official profile's level / item level / combat power (infra/armory.ts), and a button to
+  // the Players page with their whole profile (gear, arcana, skills).
   import { short, type ArenaPlayer } from "../../domain/meter.ts";
-  import { faction, gearUrl, serverName } from "../../domain/servers.ts";
+  import { faction, serverName } from "../../domain/servers.ts";
   import type { Profile } from "../../domain/armory.ts";
   import { officialProfile } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
@@ -11,7 +12,6 @@
 
   let { p }: { p: ArenaPlayer } = $props();
   const gear = (v: number | null, f: (n: number) => string = String) => (v == null ? "—" : f(v));
-  const url = $derived(gearUrl(p.name, p.serverId));
   // The official profile, read when the card opens.
   let official = $state<{ state: "none" } | { state: "loading" } | { state: "done"; v: Profile | null } | { state: "failed"; why: string }>({ state: "none" });
   $effect(() => {
@@ -35,7 +35,6 @@
     {#if official.state === "loading"}<span class="hint">Reading the official profile…</span>
     {:else if official.state === "done"}<span class="hint">Not found in the official character search.</span>
     {:else if official.state === "failed"}<span class="hint">Official profile not read ({official.why}).</span>{/if}{/if}
-  {#if p.name && p.serverId}<button class="ghost" onclick={() => { ui.lookup = { name: p.name, serverId: p.serverId }; ui.tab = "players"; history.replaceState(null, "", "#players"); }}>Full profile</button>{/if}
-  {#if url}<a href={url} target="_blank" rel="noopener">Gear and stats on shugo.gg ↗</a>
-  {:else}<span class="hint">No profile link: {p.name ? "the server is not known" : "the game has not sent this player's name"}.</span>{/if}
+  {#if p.name && p.serverId}<button onclick={() => { ui.lookup = { name: p.name, serverId: p.serverId }; ui.tab = "players"; history.replaceState(null, "", "#players"); }}>Gear and stats</button>
+  {:else}<span class="hint">No profile: {p.name ? "the server is not known" : "the game has not sent this player's name"}.</span>{/if}
 </div>
