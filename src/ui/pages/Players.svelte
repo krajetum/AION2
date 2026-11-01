@@ -1,10 +1,11 @@
 <script lang="ts">
   // Player search: the official character search and profiles (infra/armory.ts), as on NCSOFT's site.
-  import type { Found, Profile } from "../../domain/armory.ts";
+  import { profilePage, type Found, type Profile } from "../../domain/armory.ts";
   import { gearUrl, REGIONS, regionOf, serversIn } from "../../domain/servers.ts";
   import { profileOf, searchPlayers } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
   import { hm, num } from "../format.ts";
+  import Equipment from "../parts/Equipment.svelte";
   import Kpi from "../parts/Kpi.svelte";
   import { ui } from "../state.svelte.ts";
 
@@ -76,6 +77,8 @@
       <Kpi label="Item level" value={profile.itemLevel == null ? "—" : num(profile.itemLevel)} sub={profile.raceName || " "} />
       <Kpi label="Level" value={profile.level == null ? "—" : String(profile.level)} sub="read {hm(profile.atMs)}" />
     </div>
+    <Equipment characterId={open.characterId} serverId={open.serverId} />
+    <h3>Stats</h3>
     {#if profile.stats?.length}<div class="scroll"><table class="sheet">
       <thead><tr><th>Stat</th><th class="n">Value</th><th>Gives</th></tr></thead>
       <tbody>{#each profile.stats as s (s.name)}<tr><td>{s.name}</td><td class="n">{num(s.value)}</td><td class="dim">{s.effects.join(" · ")}</td></tr>{/each}</tbody>
@@ -84,5 +87,6 @@
       {#each profile.boards as b (b.name)}<div class="kpi"><small>{b.name}</small><b>{b.open} / {b.total}</b>
         <div class="bar"><i style:--p={String(b.total ? b.open / b.total : 0)}></i></div></div>{/each}</div>{/if}
   {/if}
-  {#if gearUrl(open.name, open.serverId)}<p><a href={gearUrl(open.name, open.serverId)} target="_blank" rel="noopener">Gear on shugo.gg ↗</a></p>{/if}
+  <p><a href={profilePage(open.characterId, open.serverId)} target="_blank" rel="noopener">Official profile ↗</a>
+    {#if gearUrl(open.name, open.serverId)} · <a href={gearUrl(open.name, open.serverId)} target="_blank" rel="noopener">shugo.gg ↗</a>{/if}</p>
 </section>{/if}

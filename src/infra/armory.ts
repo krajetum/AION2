@@ -3,7 +3,10 @@
 // a profile 10 minutes, a failure a minute.
 import { isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { infoUrl, parseInfo, parseSearch, pickFound, searchUrl, type Found, type Profile } from "../domain/armory.ts";
+import {
+  equipmentUrl, infoUrl, itemUrl, parseEquipment, parseInfo, parseItem, parseSearch, pickFound, searchUrl,
+  type Equipment, type Found, type ItemDetail, type Piece, type Profile,
+} from "../domain/armory.ts";
 
 const SEARCH_MS = 60_000, PROFILE_MS = 10 * 60_000, FAILED_MS = 60_000, GAP_MS = 1_000;
 const cache = new Map<string, { until: number; p: Promise<any> }>();
@@ -47,4 +50,14 @@ export function profileOf(characterId: string, serverId: number): Promise<Profil
 export async function officialProfile(name: string, serverId: number): Promise<Profile | null> {
   const hit = pickFound(await searchPlayers(name, serverId), name, serverId);
   return hit ? profileOf(hit.characterId, serverId) : null;
+}
+
+/** A character's equipment, arcana, pet, wings and skills, by the id the search gave. */
+export function equipmentOf(characterId: string, serverId: number): Promise<Equipment | null> {
+  return kept(`e|${serverId}|${characterId}`, PROFILE_MS, async () => parseEquipment(await getJson(equipmentUrl(characterId, serverId))));
+}
+
+/** A piece's details (stats, manastones, godstones, an arcana's skills and set). */
+export function itemOf(p: Piece, characterId: string, serverId: number): Promise<ItemDetail | null> {
+  return kept(`i|${serverId}|${characterId}|${p.slot}|${p.id}|${p.enchant + p.exceed}`, PROFILE_MS, async () => parseItem(await getJson(itemUrl(p, characterId, serverId))));
 }
