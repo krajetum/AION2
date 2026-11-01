@@ -47,6 +47,7 @@ export const meterOverlayHide = () => (isTauri() ? invoke<void>("meter_overlay_h
 /** Seconds without damage, healing or damage taken before the fight resets and the overlay hides (0 = never). */
 export const meterIdle = (secs: number) => (isTauri() ? invoke<void>("meter_idle", { secs }) : Promise.resolve());
 /** The event countdown overlay on or off (desktop only). */
+export const netOverlay = (show: boolean) => (isTauri() ? invoke<void>("net_overlay", { show }) : Promise.resolve());
 export const eventsOverlay = (show: boolean) => (isTauri() ? invoke<void>("events_overlay", { show }) : Promise.resolve());
 /** Overlays: hide while another window than the game is in front, and background opacity (20..100 %). */
 export const overlayStyle = (followGame: boolean, opacity: number) =>
@@ -81,6 +82,7 @@ export const cubePopup = (show: boolean, scale = 1) => (isTauri() ? invoke<void>
 /** Hands the engine the cube codes learned in earlier sessions. */
 export const meterCubeCodes = (codes: number[]) => (isTauri() ? invoke<void>("meter_cube_codes", { codes }) : Promise.resolve());
 /** The event overlay was turned on or off (also from the overlay itself). */
+export const onNetOverlay = (fn: (on: boolean) => void) => (isTauri() ? listen<boolean>("net-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 export const onEventsOverlay = (fn: (on: boolean) => void) => (isTauri() ? listen<boolean>("events-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 /** The overlay was opened or closed (also from the overlay itself). */
 export const onOverlay = (fn: (open: boolean) => void) => (isTauri() ? listen<boolean>("meter-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));

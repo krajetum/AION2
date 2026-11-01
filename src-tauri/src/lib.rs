@@ -53,6 +53,7 @@ pub fn run() {
             meter::recorder_status,
             meter::cube_popup,
             meter::radar_overlay,
+            meter::net_overlay,
             crash::crash_log,
             links::open_url,
             armory::armory_get,

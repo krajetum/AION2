@@ -49,6 +49,8 @@ and sends nothing to the game or anywhere else.
    segment goes through `process_segment` with its TCP sequence number, which puts the segments back in
    stream order first (`capture/tcp_order.rs`, companion code): retransmissions read once, out-of-order
    segments wait for the missing one, at most 1 s. Before, they were appended as captured.
+13. `combat/capture_dispatcher.rs` (2026-11-01): once the port is locked, every data segment of the game connection (both
+    directions) also goes to the companion's `netstats::segment` (packet loss from TCP resends); nothing else changes.
 
 ## Written for the companion
 
@@ -60,7 +62,7 @@ teleports and your own buffs), `src/cubes.rs` (hidden cubes in view and opened),
 `src/souls.rs` (your mob kills that gave soul points, and where the mob died),
 `src/abyss_bosses.rs` (the Abyss's open-world bosses, for the Others row),
 `src/pets.rs` (your pet collection, sent on entering the world), `src/currencies.rs` (your currencies from the inventory), `src/roster.rs` (the arena's line-up),
-`src/tap.rs` (all of them on A2Tools' frame tap), `src/capture/tcp_order.rs` (TCP segments in stream order),
+`src/tap.rs` (all of them on A2Tools' frame tap), `src/capture/tcp_order.rs` (TCP segments in stream order), `src/netstats.rs` (packet loss),
 `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 
 ## Game data
