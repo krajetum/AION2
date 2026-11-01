@@ -13,6 +13,13 @@ export function cleanLeads(leads: unknown): number[] {
 export const dueLeads = (leads: number[], msLeft: number, warned: (lead: number) => boolean) =>
   leads.filter((l) => msLeft <= l * 60_000 && !warned(l));
 
+/** Field bosses with their own sound and volume (public/sounds/<id>.wav), by the name the Field Bosses page shows;
+ *  their alerts are armed per boss like the others. Immortal Gartua: the player's own recording (2026-11-01). */
+export const BOSS_CHANNELS = [{ boss: "Immortal Gartua", id: "gartua" }];
+
+/** The channel a field boss's respawn alert uses: its own if it has one, else "boss". */
+export const bossChannel = (label: string) => BOSS_CHANNELS.find((b) => b.boss.toLowerCase() === label.trim().toLowerCase())?.id ?? "boss";
+
 /** Notification sounds: files in public/sounds/<name>.wav (bundled into the app). Replace them with your own,
  *  same names. Each event uses <event id>.wav (see EVENTS in config.ts), else event.wav.
  *  A missing or broken file falls back to the next name, then default.wav.
@@ -21,6 +28,7 @@ export const CHANNELS = [
   { id: "cloud", name: "Hourly Cloud Merchant reminder", sound: ["cloud"], on: true },
   ...EVENTS.map((ev) => ({ id: ev.id, name: `${ev.name}: alert before`, sound: [ev.id, "event"], on: false })),
   { id: "boss", name: "Field boss alerts (set per boss in Field Bosses)", sound: ["boss", "event"], on: true },
+  ...BOSS_CHANNELS.map((b) => ({ id: b.id, name: `${b.boss}: respawn alert (set in Field Bosses)`, sound: [b.id, "boss", "event"], on: true })),
   { id: "reset", name: "Reset warnings", sound: ["reset"], on: true },
   { id: "news", name: "News", sound: ["news"], on: true },
   { id: "check", name: "Task checked (vine boom)", sound: ["check"], on: true },

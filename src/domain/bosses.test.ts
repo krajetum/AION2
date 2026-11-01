@@ -94,3 +94,11 @@ test("Abyss bosses the game doesn't name: known ones, the rest still to name", (
   assert.equal(bossLabel(b(2002)), "Unknown boss #2002");
   assert.equal(bossLabel(b(2007), { 2007: "Argo (after siege)" }), "Argo (after siege)");
 });
+
+test("Immortal Gartua's alert has its own channel (sound, volume, switch); other bosses the shared one", async () => {
+  const { bossChannel, CHANNELS } = await import("./alerts.ts");
+  assert.equal(bossChannel("Immortal Gartua"), "gartua");
+  assert.equal(bossChannel(" immortal gartua "), "gartua");
+  assert.equal(bossChannel("High Commander Lagta"), "boss");
+  assert.deepEqual(CHANNELS.find((c) => c.id === "gartua")?.sound, ["gartua", "boss", "event"]);
+});

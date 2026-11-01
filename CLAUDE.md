@@ -31,7 +31,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
 - `src/domain/` — pure rules, no DOM/Tauri/Svelte, tested with `npm test`
   - `types.ts` — data model (`AppData` = save file = export format); `seed.ts` — initial tasks from the Sheet
   - `time.ts` — time-zone math (Intl only), last/next boundary, event times; `resets.ts` — `applyResets` (`reset.test.ts`: app closed across resets, DST, month ends)
-  - `tasks.ts` — `isDone`, goal text format; `alerts.ts` — notification channels, volume, quiet hours, event lead times
+  - `tasks.ts` — `isDone`, goal text format; `alerts.ts` — notification channels, volume, quiet hours, event lead times; `BOSS_CHANNELS` (field bosses with their own channel: sound `public/sounds/<id>.wav`, volume, switch; Immortal Gartua = `gartua.wav`, the player's recording), `bossChannel`
   - `planner.ts` — knapsack over unfinished tasks for an N-minute session, events pinned, estimates learned from tick timings
   - `season.ts` — Season Oath Coin missions (fixed data from the coin sheet) + Summary math; steps ticked per mission
     (seasonal, and weekly per weekly reset) → claimed / still to claim this week (≈ for partial steps: only mission totals are known); `SEASON` end date lives in `config.ts`
