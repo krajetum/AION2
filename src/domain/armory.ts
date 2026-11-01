@@ -69,3 +69,84 @@ export function parseInfo(json: any, now: number): Profile | null {
       .map((b: any) => ({ name: plain(b.name), open: b.openNodeCount, total: b.totalNodeCount })),
   };
 }
+
+/** The official profile page of a character (the site's own link). */
+export const profilePage = (characterId: string, serverId: number) =>
+  `https://aion2.plaync.com/en-us/characters/${serverId}/${encodeURIComponent(characterId)}`;
+
+export const EQUIPMENT_URL = "https://aion2.plaync.com/api/character/equipment";
+export const equipmentUrl = (characterId: string, serverId: number) =>
+  `${EQUIPMENT_URL}?region=${regionOf(serverId)}&lang=en-US&characterId=${encodeURIComponent(characterId)}&serverId=${serverId}`;
+
+/** An equipped piece: `enchant` (+n) and `exceed` (the site's diamond: levels past the enchant cap). */
+export interface Piece { id: number; name: string; grade: string; icon: string; enchant: number; exceed: number; slot: number; slotName: string }
+/** level 0 = not learned yet (the site shows a lock). */
+export interface Skill { id: number; name: string; icon: string; level: number; equipped: boolean }
+export interface Equipment {
+  gear: Piece[];        // weapons, armour, cloak, belt (the site's first Gear tab)
+  accessories: Piece[]; // necklace, earrings, rings, bracelets, amulet, runes (its second tab)
+  arcana: Piece[];      // Arcana1-5
+  pet: { name: string; level: number | null; icon: string } | null;
+  wing: { name: string; grade: string; icon: string } | null;
+  active: Skill[]; passive: Skill[]; stigma: Skill[]; // stigma = the site's "Dp" skills; `equipped` = its "E"
+}
+
+const ACCESSORY = /^(Necklace|Earring|Ring|Bracelet|Amulet|Rune)/;
+const str = (v: unknown) => (typeof v === "string" ? v : "");
+
+function piece(x: any): Piece | null {
+  if (!x || typeof x.id !== "number" || typeof x.name !== "string") return null;
+  return { id: x.id, name: plain(x.name), grade: str(x.grade), icon: str(x.icon), enchant: num(x.enchantLevel) ?? 0, exceed: num(x.exceedLevel) ?? 0,
+    slot: num(x.slotPos) ?? 0, slotName: str(x.slotPosName) };
+}
+
+/** The equipment answer: pieces by tab (in slot order), arcana, pet and wings, skills by kind. Null when it is not one. */
+export function parseEquipment(json: any): Equipment | null {
+  const list: any[] | undefined = json?.equipment?.equipmentList;
+  if (!Array.isArray(list)) return null;
+  const pieces = list.map(piece).filter((p): p is Piece => !!p).sort((a, b) => a.slot - b.slot);
+  const skills: any[] = Array.isArray(json?.skill?.skillList) ? json.skill.skillList : [];
+  const kind = (c: string) => skills.filter((s) => s?.category === c && typeof s.name === "string")
+    .map((s): Skill => ({ id: num(s.id) ?? 0, name: plain(s.name), icon: str(s.icon), level: num(s.skillLevel) ?? 0, equipped: s.equip === 1 }));
+  const pet = json?.petwing?.pet, wing = json?.petwing?.wing;
+  return {
+    gear: pieces.filter((p) => !p.slotName.startsWith("Arcana") && !ACCESSORY.test(p.slotName)),
+    accessories: pieces.filter((p) => ACCESSORY.test(p.slotName)),
+    arcana: pieces.filter((p) => p.slotName.startsWith("Arcana")),
+    pet: pet && typeof pet.name === "string" ? { name: plain(pet.name), level: num(pet.level), icon: str(pet.icon) } : null,
+    wing: wing && typeof wing.name === "string" ? { name: plain(wing.name), grade: str(wing.grade), icon: str(wing.icon) } : null,
+    active: kind("Active"), passive: kind("Passive"), stigma: kind("Dp"),
+  };
+}
+
+export const ITEM_URL = "https://aion2.plaync.com/api/character/equipment/item";
+/** A piece's details. The site asks with the enchant and exceed levels added up (+15 and 3 → enchantLevel=18). */
+export const itemUrl = (p: Piece, characterId: string, serverId: number) =>
+  `${ITEM_URL}?id=${p.id}&enchantLevel=${p.enchant + p.exceed}&characterId=${encodeURIComponent(characterId)}&serverId=${serverId}&slotPos=${p.slot}&lang=en-US&region=${regionOf(serverId)}`;
+
+export interface ItemDetail {
+  name: string; grade: string; category: string; level: number | null; maxEnchant: number | null;
+  main: { name: string; value: string; extra: string; exceed: boolean }[]; // value + extra (the enchant's); exceed = from the levels past the cap
+  sub: { name: string; value: string }[];
+  manastones: { name: string; value: string; grade: string }[];
+  godstones: { name: string; desc: string; grade: string }[];
+  skills: { name: string; level: number | null }[]; // an arcana's skill levels
+  set: { name: string; equipped: number; bonuses: { pieces: number; text: string[] }[] } | null;
+}
+
+/** A piece's details answer. Null when it is not one. */
+export function parseItem(json: any): ItemDetail | null {
+  if (!json || typeof json.name !== "string") return null;
+  const arr = (v: unknown): any[] => (Array.isArray(v) ? v.filter(Boolean) : []);
+  const set = json.set;
+  return {
+    name: plain(json.name), grade: str(json.grade), category: plain(json.categoryName), level: num(json.level), maxEnchant: num(json.maxEnchantLevel),
+    main: arr(json.mainStats).map((s) => ({ name: plain(s.name), value: str(s.value), extra: str(s.extra), exceed: s.exceed === true })),
+    sub: arr(json.subStats).map((s) => ({ name: plain(s.name), value: str(s.value) })),
+    manastones: arr(json.magicStoneStat).map((s) => ({ name: plain(s.name), value: str(s.value), grade: str(s.grade) })),
+    godstones: arr(json.godStoneStat).map((s) => ({ name: plain(s.name), desc: str(s.desc), grade: str(s.grade) })),
+    skills: arr(json.subSkills).map((s) => ({ name: plain(s.name), level: num(s.level) })),
+    set: set && typeof set.name === "string" ? { name: plain(set.name), equipped: num(set.equippedCount) ?? 0,
+      bonuses: arr(set.bonuses).map((b) => ({ pieces: num(b.degree) ?? 0, text: arr(b.descriptions).map(str) })) } : null,
+  };
+}
