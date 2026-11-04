@@ -5,11 +5,11 @@ import type { MeterUpdate } from "../domain/meter.ts";
 import type { MeterEvent, Trigger } from "../domain/triggers.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
-export type Tab = "home" | Cadence | "plan" | "season" | "crafting" | "enhance" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "players" | "expeditions" | "transcendence" | "mechanics" | "news" | "settings";
-export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "crafting", "enhance", "bosses", "map", "pets", "dps", "fights", "arena", "players", "expeditions", "transcendence", "mechanics", "news", "settings"];
+export type Tab = "home" | Cadence | "plan" | "season" | "crafting" | "enhance" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "players" | "expeditions" | "transcendence" | "sanctuary" | "mechanics" | "news" | "settings";
+export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "crafting", "enhance", "bosses", "map", "pets", "dps", "fights", "arena", "players", "expeditions", "transcendence", "sanctuary", "mechanics", "news", "settings"];
 /** Sidebar groups. */
 export const GROUPS: [string, Tab[]][] = [["Overview", ["home"]], ["Tasks", [...CADENCES]], ["Progress", ["plan", "season", "crafting", "enhance"]],
-  ["World", ["bosses", "map", "pets"]], ["Combat", ["dps", "fights", "arena", "players"]], ["Wiki", ["expeditions", "transcendence", "mechanics"]], ["Info", ["news", "settings"]]];
+  ["World", ["bosses", "map", "pets"]], ["Combat", ["dps", "fights", "arena", "players"]], ["Wiki", ["expeditions", "transcendence", "sanctuary", "mechanics"]], ["Info", ["news", "settings"]]];
 export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "home"; };
 
 export const ui = $state({
