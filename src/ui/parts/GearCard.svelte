@@ -40,7 +40,7 @@
       {:else if detail}
         <ul class="glines">{#each own as s (s.name)}<li class:ideal={isIdeal(names, s.name)}>
           <span class="tick">{isIdeal(names, s.name) ? "✓" : ""}</span><span>{s.name}</span><b>{s.value}</b></li>
-        {:else}<li class="dim">No bonus lines.</li>{/each}</ul>
+        {:else}<li class="dim none">No bonus lines.</li>{/each}</ul>
         {#if detail.manastones.length}<div class="gstones">{#each detail.manastones as m}<span class="grade-{m.grade}" title="Manastone">{m.name} {m.value}</span>{/each}</div>{/if}
         {#if detail.godstones.length}<div class="gstones">{#each detail.godstones as g}<span class="grade-{g.grade}" title={g.desc}>{g.name}</span>{/each}</div>{/if}
         {#if detail.set}<p class="dim gset">{detail.set.name} · {detail.set.equipped} equipped</p>{/if}

@@ -54,7 +54,7 @@
 {:else if eq}
   <h3>Gear</h3>{@render cards(eq.gear)}
   <h3>Accessories</h3>{@render cards(eq.accessories)}
-  {#if eq.arcana.length}<h3>Arcana</h3>{@render cards(eq.arcana)}{/if}
+  <h3>Arcana</h3>{#if eq.arcana.length}{@render cards(eq.arcana)}{:else}<p class="hint">No arcana equipped: the official profile lists none for this character.</p>{/if}
   <p class="hint">Best-in-slot lines from <a href={BIS.sourceUrl} target="_blank" rel="noopener">{BIS.source}</a> ({BIS.captured}), with its % per line; Edit on a card's back keeps your own list.</p>
   {#if eq.pet || eq.wing}<h3>Pet / Wings</h3><ul class="eq-list eq-cols">
     {#if eq.pet}<li class="eq-row">{#if eq.pet.icon}<img src={eq.pet.icon} alt="" width="32" height="32" loading="lazy">{/if}{eq.pet.name}{eq.pet.level != null ? ` Lv ${eq.pet.level}` : ""}</li>{/if}
