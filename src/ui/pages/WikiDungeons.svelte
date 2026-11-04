@@ -20,6 +20,7 @@
   const hard = $derived(d.modes.find((m) => m.frenzy));
   const missions = $derived(seasonMissions(d.name));
   const finalBoss = $derived(d.bosses.find((b) => b.role === "final"));
+  const TYPE: Partial<Record<Kind, string>> = { transcendence: "Transcendence", sanctuary: "Sanctuary" };
   const ROLE = { mini: "Mini-boss", gate: "Required", final: "Final boss" };
 </script>
 
@@ -33,10 +34,10 @@
 <p class="wiki-summary">{d.summary}</p>
 <div class="kpis">
   <Kpi label="Item level" value={itemLevelRange(d)} sub={d.modes.map((m) => `${m.name} ${val(m.itemLevel)}`).join(" · ")} cls="hero" />
-  <Kpi label="Type" value={d.kind === "transcendence" ? "Transcendence" : `Conquest ${"★".repeat(d.tier ?? 0)}`} sub={d.modes.map((m) => m.name).join(" · ")} />
+  <Kpi label="Type" value={TYPE[d.kind] ?? `Conquest ${"★".repeat(d.tier ?? 0)}`} sub={d.modes.map((m) => m.name).join(" · ")} />
   <Kpi label="Character level" value={range(d.modes.map((m) => val(m.level)))} sub="to enter" />
   <Kpi label="Party" value={range(d.modes.map((m) => m.party))} sub="players" />
-  <Kpi label="Odyle Energy" value={range(d.modes.map((m) => String(m.odyle)))} sub="per reward cube" />
+  <Kpi label="Odyle Energy" value={range(d.modes.map((m) => String(m.odyle ?? "–")))} sub="per reward cube" />
   <Kpi label="Bosses" value={String(d.bosses.length)} sub={finalBoss ? `final: ${val(finalBoss.name)}` : ""} />
   {#if d.kind === "transcendence"}<Kpi label="Rewards" value="Arcana" sub={val(d.other[0]).split(": ")[1]} />
   {:else}<Kpi label="Best gear" value={d.gear[0].split(":")[0]} sub={d.gear[0].split(":")[1]?.trim() ?? ""} />{/if}
@@ -48,7 +49,7 @@
 <section><h2>Modes <span class="count">{d.modes.length}</span></h2><div class="scroll"><table class="sheet">
   <thead><tr><th>Mode</th><th class="n">Level</th><th class="n">Item level</th><th class="n">Party</th><th class="n">Odyle</th><th>Kina per cube</th><th>Guaranteed reward</th></tr></thead>
   <tbody>{#each d.modes as m (m.name)}<tr><td class="name">{m.name}</td><td class="n">{@render v(m.level)}</td><td class="n">{@render v(m.itemLevel)}</td>
-    <td class="n">{m.party}</td><td class="n">{m.odyle}</td><td>{@render v(m.kina)}</td><td>{@render v(m.guaranteed)}</td></tr>{/each}</tbody></table></div>
+    <td class="n">{m.party}</td><td class="n">{m.odyle ?? "–"}</td><td>{@render v(m.kina)}</td><td>{@render v(m.guaranteed)}</td></tr>{/each}</tbody></table></div>
   {#if hard}<p class="hint">Hard: Frenzy {val(hard.frenzy!)}, revives {val(hard.revives!)}, time limit {val(hard.timeLimit ?? "–")}{doubt(hard.timeLimit) ? " (unconfirmed)" : ""}.</p>{/if}</section>
 
 <section class="wiki"><h2>Drops by mode</h2><div class="wiki-cols">
