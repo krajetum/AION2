@@ -69,5 +69,21 @@ export function seedTasks(): Task[] {
   return out;
 }
 
+/** Save-file version the seed matches: older saves get `patchTasks`. */
+export const SEED_VERSION = 2;
+
+/** The seed's changes since a save's version, so saves made before them get them too (once: a task the
+ *  player deleted stays deleted). 2: the Sanctuary came out (2026-11-04) and Chaotic Outer Reshanta was added. */
+export function patchTasks(tasks: Task[], version: number): Task[] {
+  if (version >= 2) return tasks;
+  const seed = (name: string) => seedTasks().find((t) => t.cadence === "weekly" && t.name === name)!;
+  const out = tasks.map((t) => t.cadence === "weekly" && t.name === "Sanctuary" && t.note === "Not in the game yet"
+    ? { ...t, enabled: true, note: seed("Sanctuary").note } : t);
+  if (out.some((t) => t.name === "Chaotic Outer Reshanta")) return out;
+  const weekly = out.filter((t) => t.cadence === "weekly");
+  const after = weekly.find((t) => t.name === "Sanctuary")?.order ?? Math.max(-1, ...weekly.map((t) => t.order));
+  return [...out, { ...seed("Chaotic Outer Reshanta"), id: "weekly-outer-reshanta", order: after + 0.5 }];
+}
+
 /** Id of the seeded Cloud Merchant task (used for the hourly reminder). */
 export const CLOUD_MERCHANT_ID = "daily-0";
