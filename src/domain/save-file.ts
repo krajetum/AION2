@@ -5,12 +5,12 @@ import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
 import { cleanMap, emptyMap } from "./map.ts";
 import { cleanCollections } from "./pets.ts";
 import { cleanWallets } from "./wallet.ts";
-import { seedTasks } from "./seed.ts";
+import { patchTasks, SEED_VERSION, seedTasks } from "./seed.ts";
 import type { AppData, Channel } from "./types.ts";
 
 export function defaultData(): AppData {
   return {
-    version: 1,
+    version: SEED_VERSION,
     tasks: seedTasks(),
     characters: [{ id: crypto.randomUUID(), name: "Main" }],
     progress: {},
@@ -81,6 +81,8 @@ export function normalize(raw: any): AppData {
   }
   return {
     ...d, ...raw,
+    version: SEED_VERSION,
+    tasks: patchTasks(raw.tasks, Number.isInteger(raw.version) ? raw.version : 1),
     progress: raw.progress ?? {},
     lastReset: { ...d.lastReset, ...raw.lastReset },
     warned: { ...d.warned, ...raw.warned },

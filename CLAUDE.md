@@ -29,7 +29,7 @@ Tauri 2 + TypeScript + Svelte 5 + Vite. Single user, multiple characters, everyt
 Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `main.ts` wires them.
 - `src/config.ts` — the ONLY place for server reset times; every value is a placeholder marked `TO VERIFY`
 - `src/domain/` — pure rules, no DOM/Tauri/Svelte, tested with `npm test`
-  - `types.ts` — data model (`AppData` = save file = export format); `seed.ts` — initial tasks from the Sheet
+  - `types.ts` — data model (`AppData` = save file = export format); `seed.ts` — initial tasks from the Sheet; `patchTasks`: seed changes for saves older than `SEED_VERSION` (`AppData.version`), applied once in `normalize`
   - `time.ts` — time-zone math (Intl only), last/next boundary, event times; `resets.ts` — `applyResets` (`reset.test.ts`: app closed across resets, DST, month ends)
   - `tasks.ts` — `isDone`, goal text format; `alerts.ts` — notification channels, volume, quiet hours, event lead times; `BOSS_CHANNELS` (field bosses with their own channel: sound `public/sounds/<id>.wav`, volume, switch; Immortal Gartua = `gartua.wav`, the player's recording; `armed` = on by default: `app/bosses.ts` `armDefaultBosses`, run by `checkNotifications`, arms it once (5 min, repeat), `AppData.bossDefaulted` keeps it off once the player turns it off), `bossChannel`
   - `planner.ts` — knapsack over unfinished tasks for an N-minute session, events pinned, estimates learned from tick timings

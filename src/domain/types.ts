@@ -86,7 +86,7 @@ export interface SeasonProgress {
 }
 
 export interface AppData {
-  version: 1;
+  version: number; // seed.ts SEED_VERSION
   tasks: Task[];
   characters: Character[];
   progress: Record<string, Record<string, Progress>>; // charId → taskId → Progress
