@@ -3,6 +3,9 @@
 // The calculator's script holds the data as a JSON.parse('…') string: decoded here, never run.
 import { writeFileSync } from "node:fs";
 
+// Bump when this script changes the recipes it writes: the app reloads loaded game recipes on a new rev.
+const REV = 2;
+
 const SITE = "https://aion2hub.com";
 const get = async (path) => { const r = await fetch(SITE + path); if (!r.ok) throw new Error(`${path}: ${r.status}`); return r.text(); };
 
@@ -49,5 +52,5 @@ for (const [key, combo] of Object.entries(combos)) {
 }
 const items = Object.fromEntries(Object.values(data.items).map((it) => [it.i, it.n]));
 writeFileSync(new URL("../src/assets/recipes.json", import.meta.url),
-  JSON.stringify({ source: "aion2hub.com crafting calculator (Global client data)", builtAt: data.builtAt, items, recipes }) + "\n");
+  JSON.stringify({ source: "aion2hub.com crafting calculator (Global client data)", builtAt: data.builtAt, rev: REV, items, recipes }) + "\n");
 console.log(`${Object.keys(items).length} items, ${Object.keys(recipes.Elyos).length} Elyos and ${Object.keys(recipes.Asmodian).length} Asmodian recipes (${data.builtAt})`);
