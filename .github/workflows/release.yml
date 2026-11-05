@@ -121,8 +121,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Uploads the JS source maps to Sentry during the Vite build (vite.config.ts); without it, no upload.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         with:
           tagName: v__VERSION__
           releaseName: AION 2 Companion v__VERSION__
           releaseDraft: false
           includeUpdaterJson: true
+      # The Rust debug symbols (.pdb), so Sentry can name the functions in a panic's stack trace.
+      - name: Upload Rust debug files to Sentry
+        shell: bash
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: krajetum
+          SENTRY_PROJECT: javascript-svelte
+        run: |
+          if [ -z "$SENTRY_AUTH_TOKEN" ]; then echo "No SENTRY_AUTH_TOKEN secret: skipped"; exit 0; fi
+          # The app's own exe + pdb only (not target/release/deps: thousands of files). `sentry` = @sentry/vite-plugin's CLI.
+          npx sentry debug-files upload --include-sources src-tauri/target/release/*.exe src-tauri/target/release/*.pdb

@@ -17,13 +17,13 @@ export interface CraftData {
   items: Record<string, CraftItem>;
   targets: Input[];                               // what to craft, and how many
   owned: Record<string, Record<string, number>>;  // character name → item id → pieces owned
-  game?: { side: Side; builtAt: string };         // the game recipes loaded last
+  game?: { side: Side; builtAt: string; rev?: number }; // the game recipes loaded last (rev: the bundle's fixes)
 }
 
 export type Side = "Elyos" | "Asmodian";
 /** The game's recipes bundled with the app (src/assets/recipes.json, built by scripts/recipes.mjs from aion2hub's
  *  Global client data): item names by code, and per faction product code → [pieces per craft, [input code, qty][]]. */
-export interface GameRecipes { builtAt: string; items: Record<string, string>; recipes: Record<Side, Record<string, [number, [number, number][]]>> }
+export interface GameRecipes { builtAt: string; rev: number; items: Record<string, string>; recipes: Record<Side, Record<string, [number, [number, number][]]>> }
 
 /** One material of the bill: its total need, what stock covers, and how the rest is got. */
 export interface Line { item: string; level: number; need: number; used: number; craft: number; buy: number; cost: number; fee: number }
@@ -79,6 +79,27 @@ export function explode(data: CraftData, owned: Record<string, number> = {}): Bi
   return { lines, buyKina, feeKina, total: buyKina + feeKina, unpriced };
 }
 
+/** One step of a target's recipe tree. */
+export interface Node { item: string; depth: number; need: number; used: number; craft: number; buy: number }
+
+/** Each target's recipes as a tree, depth first: every input right under the craft that takes it. Stock is taken where it is
+ *  met first, and a craft covered by stock has no inputs under it. (`explode` sums a material over all its uses before
+ *  rounding to its yield, so its crafts can be one fewer than the tree's.) */
+export function tree(data: CraftData, owned: Record<string, number> = {}): Node[] {
+  const left = new Map(Object.entries(owned)), out: Node[] = [];
+  const walk = (id: string, need: number, depth: number, path: string[]) => {
+    const it = data.items[id], used = Math.min(need, Math.max(0, left.get(id) ?? 0)), rest = need - used;
+    left.set(id, (left.get(id) ?? 0) - used);
+    const node: Node = { item: id, depth, need, used, craft: 0, buy: 0 };
+    out.push(node);
+    if (!crafted(it) || path.includes(id)) { node.buy = rest; return; }
+    node.craft = Math.ceil(rest / it.recipe.yields);
+    if (node.craft) for (const i of it.recipe.inputs) walk(i.item, node.craft * i.qty, depth + 1, [...path, id]);
+  };
+  for (const t of data.targets) walk(t.item, t.qty, 0, []);
+  return out;
+}
+
 /** Kina for one piece crafted (its fee and inputs at market price, crafted inputs by their own recipe; no stock),
  *  or undefined when an input has no price. Compared with its price: buy or craft. */
 export function craftCost(data: CraftData, id: string, path = new Set<string>()): number | undefined {
@@ -109,7 +130,7 @@ export function takeGameRecipes(data: CraftData, g: GameRecipes, side: Side): nu
     const r = rs[c];
     if (r) it.recipe = { inputs: r[1].map(([i, qty]) => ({ item: String(i), qty })), yields: r[0], kina: it.recipe?.kina ?? 0 };
   }
-  data.game = { side, builtAt: g.builtAt };
+  data.game = { side, builtAt: g.builtAt, rev: g.rev };
   return Object.keys(rs).length;
 }
 
@@ -138,6 +159,7 @@ export function cleanCrafting(raw: any): CraftData {
   out.targets = Array.isArray(raw.targets) ? raw.targets.filter((t: any) => out.items[t?.item] && count(t.qty) && t.qty > 0) : [];
   for (const [name, o] of Object.entries<any>(raw.owned ?? {}))
     if (name.trim() && o && typeof o === "object") out.owned[name] = Object.fromEntries(Object.entries(o).filter(([, v]) => count(v))) as Record<string, number>;
-  if ((raw.game?.side === "Elyos" || raw.game?.side === "Asmodian") && typeof raw.game.builtAt === "string") out.game = { side: raw.game.side, builtAt: raw.game.builtAt };
+  if ((raw.game?.side === "Elyos" || raw.game?.side === "Asmodian") && typeof raw.game.builtAt === "string")
+    out.game = { side: raw.game.side, builtAt: raw.game.builtAt, ...(Number.isInteger(raw.game.rev) && { rev: raw.game.rev }) };
   return out;
 }

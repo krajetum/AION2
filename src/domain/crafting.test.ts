@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { cleanCrafting, craftCost, explode, takeGameRecipes, wouldCycle, type CraftData, type CraftItem, type GameRecipes } from "./crafting.ts";
+import { cleanCrafting, craftCost, explode, takeGameRecipes, tree, wouldCycle, type CraftData, type CraftItem, type GameRecipes } from "./crafting.ts";
 
 // aion2hub's Splendent Star Dragon Lord Staff: 11 Enhanced Thick Balaur Scale + 4 Wrathful Mind; a scale from
 // 2 Balaur's Essence + 1 Lesser Dragon Scale Hardener (Bound: no market price).
@@ -32,6 +32,19 @@ test("nested recipes: stock first, crafted materials split into their inputs, Bo
   assert.deepEqual(b.unpriced, ["hardener"]);
   assert.equal(b.buyKina, 3 * 20_000 + 16 * 3_000);
   assert.equal(b.total, b.buyKina + 1800);
+});
+
+test("the recipe tree: each input under the craft that takes it, stock where it is met first", () => {
+  const row = (n: ReturnType<typeof tree>[number]) => `${"  ".repeat(n.depth)}${n.item} ${n.need}${n.used ? ` (${n.used} owned)` : ""}${n.used === n.need ? " covered" : n.craft ? ` craft ${n.craft}` : ` get ${n.buy}`}`;
+  assert.deepEqual(tree(staff(), { scale: 3 }).map(row), [
+    "staff 1 craft 1",
+    "  scale 11 (3 owned) craft 8",
+    "    essence 16 get 16",
+    "    hardener 8 get 8",
+    "  mind 4 get 4",
+  ]);
+  const two = { ...staff(), targets: [{ item: "staff", qty: 1 }, { item: "scale", qty: 2 }] };
+  assert.deepEqual(tree(two, { scale: 12 }).map(row), ["staff 1 craft 1", "  scale 11 (11 owned) covered", "  mind 4 get 4", "scale 2 (1 owned) craft 1", "  essence 2 get 2", "  hardener 1 get 1"]);
 });
 
 test("stock covering an intermediate needs none of its inputs; a bought intermediate neither", () => {
@@ -105,7 +118,7 @@ test("the bundled game recipes: one faction's items by code, prices and choices 
   assert.deepEqual({ ...d.items["610730022"], recipe: undefined }, { id: "610730022", name: "Enhanced Thick Balaur Scale", code: 610730022, price: 9, buy: true, recipe: undefined });
   assert.equal(d.items["630520007"].name, "Lesser Dragon Scale Hardener (Bound)");
   assert.equal(d.items["110130013"].name, "Artisan's Splendent Orichalcum Greatsword #110130013");
-  assert.deepEqual(d.game, { side: "Asmodian", builtAt: g.builtAt });
+  assert.deepEqual(d.game, { side: "Asmodian", builtAt: g.builtAt, rev: g.rev });
   d.items["610730022"].buy = false;
   const b = explode({ ...d, targets: [{ item: "110330105", qty: 1 }] });
   // The whole weapon chain: Ebony ← Artisan's Splendent Orichalcum (COMBO only: best case, its base's recipe procs) ← …

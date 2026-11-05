@@ -12,6 +12,7 @@
     "test": "node --test \"src/**/*.test.ts\" \"server/**/*.test.ts\""
   },
   "dependencies": {
+    "@sentry/svelte": "^11.11.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-autostart": "^2",
     "@tauri-apps/plugin-http": "^2.8.3",
@@ -20,6 +21,7 @@
     "@tauri-apps/plugin-updater": "^2.14.0"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^11.11.0",
     "@sveltejs/vite-plugin-svelte": "^5.1.1",
     "@tauri-apps/cli": "^2",
     "svelte": "^5.57.2",
