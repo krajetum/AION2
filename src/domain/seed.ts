@@ -22,7 +22,8 @@ const SEED: Record<Cadence, Row[]> = {
     ["Content", "Arena of Solitude", vp(30, 10)],
     ["Content", "Arena of Cooperation", vp(30, 10)],
     ["Content", "Abyss Siege + Corridors"],
-    ["Content", "Sanctuary", undefined, { enabled: false, note: "Not in the game yet" }],
+    ["Content", "Sanctuary", undefined, { note: "Abyssal Forge: Ludra · Normal 2,800 / Hard 3,000 item level · 1 h" }],
+    ["Content", "Chaotic Outer Reshanta", undefined, { note: "3 h a week, more with Outer Entry Stones · from level 45" }],
     ["Season Quests", "Battlefield", [{ target: 3 }]],
     ["Season Quests", "Ascension Trial", [{ target: 3 }]],
     ["Season Quests", "Arena", vp(5, 10)],
@@ -66,6 +67,22 @@ export function seedTasks(): Task[] {
     });
   }
   return out;
+}
+
+/** Save-file version the seed matches: older saves get `patchTasks`. */
+export const SEED_VERSION = 2;
+
+/** The seed's changes since a save's version, so saves made before them get them too (once: a task the
+ *  player deleted stays deleted). 2: the Sanctuary came out (2026-11-04) and Chaotic Outer Reshanta was added. */
+export function patchTasks(tasks: Task[], version: number): Task[] {
+  if (version >= 2) return tasks;
+  const seed = (name: string) => seedTasks().find((t) => t.cadence === "weekly" && t.name === name)!;
+  const out = tasks.map((t) => t.cadence === "weekly" && t.name === "Sanctuary" && t.note === "Not in the game yet"
+    ? { ...t, enabled: true, note: seed("Sanctuary").note } : t);
+  if (out.some((t) => t.name === "Chaotic Outer Reshanta")) return out;
+  const weekly = out.filter((t) => t.cadence === "weekly");
+  const after = weekly.find((t) => t.name === "Sanctuary")?.order ?? Math.max(-1, ...weekly.map((t) => t.order));
+  return [...out, { ...seed("Chaotic Outer Reshanta"), id: "weekly-outer-reshanta", order: after + 0.5 }];
 }
 
 /** Id of the seeded Cloud Merchant task (used for the hourly reminder). */

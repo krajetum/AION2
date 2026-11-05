@@ -1,11 +1,11 @@
 // Wiki: Expeditions (Exploration, Conquest, Hard) and Transcendence, global/EU build. Pure data: tested with `npm test`.
 // Sources (checked 2026-10-30): aion2.wiki.fextralife.com/Expeditions (2026-10-09), couga54.github.io/aion2-guides (2026-10-10),
-// timesaver.gg (2026-10-17/20/22), expcarry.com Krao Cave Hard (2026-10-27), gamesfuze.com, games.gg (2026-10-05).
+// timesaver.gg (2026-10-17/20/22), expcarry.com Krao Cave Hard (2026-10-27), gamesfuze.com, games.gg (2026-10-05), patch notes of 2026-11-04 (Sanctuary, Exploration rewards).
 // Guides disagree often: a value only one site gives, or given differently, is `unconfirmed` with the alternatives in the note.
 // Drop rates from boosting sites are never used. Update by hand after a patch; KR-only values stay out unless marked.
 import { SEASONAL, WEEKLY } from "./season.ts";
 
-export const VERIFIED = "2026-10-30";
+export const VERIFIED = "2026-11-04";
 
 /** A value; the object form = not confirmed (one source only, or sources disagree), `note` says why. */
 export type Val = string | { v: string; note: string };
@@ -13,14 +13,14 @@ export const val = (x: Val) => (typeof x === "string" ? x : x.v);
 export const doubt = (x: Val | undefined) => (x && typeof x !== "string" ? x.note : "");
 const maybe = (v: string, note: string): Val => ({ v, note });
 
-export type Kind = "expedition" | "transcendence";
+export type Kind = "expedition" | "transcendence" | "sanctuary";
 export interface Source { name: string; url: string; date: string }
 export interface Mode {
   name: string; // "Exploration" / "Conquest" / "Hard" / "Stage 1"…
   level: Val;
   itemLevel: Val;
   party: string;
-  odyle: number; // Odyle Energy to open the reward cube
+  odyle?: number; // Odyle Energy to open the reward cube; unset = not known
   kina?: Val; // per full cube (final + 2 mini-bosses)
   guaranteed?: Val; // pick-one reward after N cube claims
   frenzy?: Val; // boss enrage timer
@@ -54,12 +54,21 @@ const TS_TR: Source = { name: "Timesaver: Transcendence", url: "https://timesave
 const EXP_KRAO: Source = { name: "Expcarry: Krao Cave Hard", url: "https://expcarry.com/aion-2-krao-cave-hard-guide", date: "2026-10-27" };
 const GF_TR: Source = { name: "Gamesfuze: Transcendence dungeons", url: "https://gamesfuze.com/guides/aion-2-full-transcendence-dungeons-guide/", date: "2026-10-01" };
 const GF_DRAUP: Source = { name: "Gamesfuze: Draupnir", url: "https://gamesfuze.com/guides/aion-2-draupnir-cave-dungeon-guide-all-bosses-mechanics-and-rewards/", date: "2026-09-30" };
+const PATCH: Source = { name: "Patch notes (Steam news)", url: "https://store.steampowered.com/news/app/3393110", date: "2026-11-04" };
 const GG_FIRE: Source = { name: "games.gg: Fire Temple", url: "https://games.gg/aion-2/guides/aion-2-fire-temple-expedition/", date: "2026-10-05" };
 
 const P15 = "1–5", P25 = "2–5";
 const COMMON = "Earth (Common) and Vagabond (Rare) gear, Refining Stones, Soul Codex, Amplify Stone Fragment (Unique) by chance";
 const CONQ_MATS = "Balaur's Essence; higher tiers add Wrathful Mind, Wrathful Will, Wrathful Ego";
 const kina = (final: number, mini: number) => `${((final + 2 * mini) / 1000).toFixed(0)}k (final ${final / 1000}k + 2 × ${mini / 1000}k)`;
+// Patch of 2026-11-04: these three Explorations got Conquest's rewards (Bound) and its claim and run counts.
+const buffed = (before: string, claims: number, piece: string): Pick<Mode, "kina" | "guaranteed" | "changes"> => ({
+  kina: maybe(`more than ${before}`, "Patch notes 2026-11-04 say more Kina (Bound), no amount"),
+  guaranteed: maybe(`${claims} claims: ${piece}`, "Patch notes 2026-11-04: claims like Conquest; the pick itself not stated"),
+  changes: ["Since 2026-11-04: Conquest's Refining Stones and crafting materials, as Bound items",
+    "More Kina, Enhance Stones, Silentium and Soul Codex (Bound)", "Amplify Stone Fragment (Unique) (Bound) added",
+    "Guaranteed claims and runs per week like Conquest"],
+});
 // Hard mode, patch of 2026-10-21 (CEST): only these two dungeons on global.
 const hard = (dungeon: string): Mode => ({
   name: "Hard", level: "45", itemLevel: "2,600", party: P15, odyle: 40,
@@ -108,8 +117,7 @@ export const DUNGEONS: Dungeon[] = [
     id: "draupnir", name: "Draupnir", kind: "expedition", tier: 1,
     summary: "Bakarma's lair: Bakarma armor and Guard (Unique). Exploration and Conquest drop the same sets; Hard mode since 2026-10-21.",
     modes: [
-      { name: "Exploration", level: "45", itemLevel: "700", party: P15, odyle: 40, kina: kina(40000, 40000),
-        guaranteed: "3 claims: Bakarma armor piece (Unique)",
+      { name: "Exploration", level: "45", itemLevel: "700", party: P15, odyle: 40, ...buffed(kina(40000, 40000), 14, "Bakarma armor piece (Unique)"),
         drops: ["Bakarma (Unique) Guard and armor", "Anguish (Legend) weapons, armor, Ring", "Lakshmi Necklace, Saraswati Earrings (mini-bosses)"] },
       { name: "Conquest", level: "45", itemLevel: "700", party: P15, odyle: 40, kina: kina(70000, 65000),
         guaranteed: "14 claims: Gear Change Voucher: Draupnir, or a Bakarma armor piece",
@@ -132,7 +140,7 @@ export const DUNGEONS: Dungeon[] = [
     other: [COMMON, CONQ_MATS],
     tips: ["Time the wave jumps slightly early", "Reported as the harder Hard: you reposition into each stagger check"],
     cp: maybe("140k–160k for Hard", "Launch-day player reports, not official"),
-    sources: [FEX, COUGA, GF_DRAUP, TS_HARD],
+    sources: [FEX, COUGA, GF_DRAUP, TS_HARD, PATCH],
   },
   {
     id: "urugugu", name: "Urugugu Canyon", kind: "expedition", tier: 2,
@@ -162,8 +170,7 @@ export const DUNGEONS: Dungeon[] = [
     id: "vakron", name: "Vakron Sky Island", kind: "expedition", tier: 2,
     summary: "Conquest ★2: Vakron armor and Guard (Unique). A root debuff builds while you run: clear it at fountains.",
     modes: [
-      { name: "Exploration", level: "45", itemLevel: "1,400", party: P25, odyle: 40, kina: kina(50000, 50000),
-        guaranteed: "3 claims: Vakron armor piece (Unique)",
+      { name: "Exploration", level: "45", itemLevel: "1,400", party: P25, odyle: 40, ...buffed(kina(50000, 50000), 21, "Vakron armor piece (Unique)"),
         drops: ["Vakron (Unique) Guard and armor", "Unyielding (Legend) weapons, armor, Necklace, Earrings", "Wind Forest Ring (mini-bosses)"] },
       { name: "Conquest", level: "45", itemLevel: "1,400", party: P25, odyle: 40, kina: kina(100000, 100000),
         guaranteed: "21 claims: Gear Change Voucher: Vakron Sky Island, or a Vakron armor piece",
@@ -182,7 +189,7 @@ export const DUNGEONS: Dungeon[] = [
     gear: ["Vakron (Unique): Guard, armor", "Unyielding (Legend): weapons, armor, Necklace, Earrings", "Wind Forest Ring"],
     other: [COMMON, CONQ_MATS, "Debuff on the way: level 3 roots you; supports hit the roots"],
     tips: ["Bring a glider-ready party: two Vakron mechanics need a glide"],
-    sources: [FEX, COUGA, TS_REQ],
+    sources: [FEX, COUGA, TS_REQ, PATCH],
   },
   {
     id: "fire", name: "Fire Temple", kind: "expedition", tier: 3,
@@ -216,8 +223,7 @@ export const DUNGEONS: Dungeon[] = [
     id: "horn", name: "Ferocious Horn Den", kind: "expedition", tier: 3,
     summary: "Conquest ★3: Nuakum armor and Guard (Unique). Exploration needs the same 2,100 item level.",
     modes: [
-      { name: "Exploration", level: "45", itemLevel: "2,100", party: P15, odyle: 40, kina: kina(60000, 60000),
-        guaranteed: "3 claims: Nuakum armor piece (Unique)",
+      { name: "Exploration", level: "45", itemLevel: "2,100", party: P15, odyle: 40, ...buffed(kina(60000, 60000), 28, "Nuakum armor piece (Unique)"),
         drops: ["Nuakum (Unique) Guard and armor", "Black Claw (Legend) weapons, armor, Earrings, Ring", "Fera Necklace (mini-bosses)"] },
       { name: "Conquest", level: "45", itemLevel: "2,100", party: P15, odyle: 40, kina: kina(140000, 130000),
         guaranteed: "28 claims: Gear Change Voucher: Ferocious Horn Den, or a Nuakum armor piece",
@@ -236,7 +242,7 @@ export const DUNGEONS: Dungeon[] = [
     gear: ["Nuakum (Unique): Guard, armor", "Black Claw (Legend): weapons, armor, Earrings, Ring", "Fera Necklace"],
     other: [COMMON, CONQ_MATS],
     tips: ["Assign the orb runner and the illusion blocker before the pull"],
-    sources: [FEX, COUGA, TS_REQ],
+    sources: [FEX, COUGA, TS_REQ, PATCH],
   },
   {
     id: "deus", name: "Deus Research Base", kind: "transcendence",
@@ -284,6 +290,25 @@ export const DUNGEONS: Dungeon[] = [
     tips: ["Safest spot against the rotating walls: the middle, by the pillar", "Agree on droplet colours before the pull"],
     sources: [FEX, COUGA, TS_TR, GF_TR],
   },
+  {
+    id: "ludra", name: "Abyssal Forge: Ludra", kind: "sanctuary",
+    summary: "Sanctuary for a Force (since 2026-11-04): Normal and Hard, 1 hour per run. Both drop the same item types, at different rates.",
+    modes: [
+      { name: "Normal", level: maybe("45", "Not in the patch notes"), itemLevel: "2,800", party: "10", timeLimit: "60 min",
+        guaranteed: "Pick one: Gear Change Voucher (Bound) or Gear Change Voucher: Ludra (Bound)",
+        drops: ["Ludra's Weapon, Guard (Bound)", "Ludra's Bracelet (Bound)", "Abyssal Bracelet (Bound) by chance", "Sealed Abyssal Waves Wings", "Artwork: Abyssal Ludra"] },
+      { name: "Hard", level: maybe("45", "Not in the patch notes"), itemLevel: "3,000", party: "10", timeLimit: "60 min",
+        guaranteed: "Pick one: Gear Change Voucher (Bound) or Gear Change Voucher: Ludra (Hard) (Bound)",
+        drops: ["Same item types as Normal"], changes: ["Different drop rates", "For top Forces: Hall of Fame by region"] },
+    ],
+    bosses: [{ name: "Ludra", role: "final", mechanics: ["No guide yet (2026-11-04)"] }],
+    gear: ["Ludra's (Bound): Weapon, Guard, Bracelet (Amplify up to level 5)", "Abyssal Bracelet (Bound): Amplify up to level 3"],
+    other: ["Substance Morph: Gear Change Voucher: Ludra ×6, or Ludra (Hard) ×3 → Ludra's Bracelet (Bound)",
+      "Substance Morph: Gear Change Voucher: Ludra ×2 → Gear Change Voucher: Ludra (Hard) ×1",
+      "Substance Morph: a Gear Change Voucher → Abyssal Forge: Weapon Selection Chest (Bound)"],
+    tips: ["Normal drops the same item types as Hard: progress there first", "The item level only lets you in: it doesn't mean a clear"],
+    sources: [PATCH],
+  },
 ];
 
 function trStage(n: number, itemLevel: number): Mode {
@@ -298,9 +323,10 @@ function trStage(n: number, itemLevel: number): Mode {
 /** Shared rules, for the Mechanics page. */
 export const MECHANICS: Section[] = [
   { title: "Expedition types", lines: [
-    "Exploration: from level 20, no weekly limit, Legend gear and a few Unique pieces",
+    "Exploration: from level 20, Legend gear and a few Unique pieces; no weekly limit, except Draupnir, Vakron and Horn Den (like Conquest since 2026-11-04)",
     "Conquest: level 45, three tiers (★1 700 · ★2 1,400 · ★3 2,100 item level), Unique gear, Sealed Wings, more Kina",
     "Hard: Krao Cave and Draupnir only (2026-10-21), 2,600 item level, 4-min Frenzy, 3 revives, Ariel Fragments",
+    "Sanctuary: Abyssal Forge: Ludra (2026-11-04), Force of 10, Normal 2,800 / Hard 3,000 item level, 1 hour per run",
     "Transcendence: level 45, 2–5 players, 4 stages (1,600 / 1,900 / 2,200 / 2,500), Arcana instead of gear",
     "Unlock: episode quest at level 10 (Elyos: Wind Breeze Merchants · Asmodians: Daeva in a Dream)"] },
   { title: "Reward cube and Odyle Energy", lines: [
@@ -308,20 +334,21 @@ export const MECHANICS: Section[] = [
     "Odyle Energy: +15 every 3 h (120/day), auto-recharge up to 560 (840 with the Quai Membership); basic energy is spent first",
     "Odyle Energy (Bound) item = 40, Small = 10; item energy stacks up to 2,000",
     maybe("Membership: a second open of the same cube", "One guide only"),
-    "Kina from cubes drops once a server's weekly play count passes some thresholds (not published)"] },
+    "Kina from cubes drops once a server's weekly play count passes some thresholds (not published)",
+    "Exploration Kina by runs so far: 0–40 100% · 41–50 80% · 51–60 60% · 61–70 40% · 71+ 20% (2026-11-04)"] },
   { title: "Weekly limits (Conquest, Hard, Transcendence)", lines: [
     maybe("Remaining Unobtained Cube Count: 10 per week, per server, reset Wednesday", "Fextralife 2026-10-09; Timesaver (2026-10-20) says 1 reward count every 12 h, banked up to 14, and 28 final-boss kills a week"),
     "A clear lowers the count even if you skip the cube: have the Energy before you go in",
-    "At 0 you can't enter Conquest or Transcendence; Exploration has no limit",
+    "At 0 you can't enter Conquest or Transcendence; Exploration has no limit, except Draupnir, Vakron and Horn Den (like Conquest since 2026-11-04)",
     "No re-entry cooldown"] },
   { title: "Guaranteed rewards", lines: [
     "After N cube claims per dungeon and mode you pick one item; collect it before going in again",
-    "Exploration: 1 claim (Krao, Urugugu, Fire Temple: a Legend armor piece) or 3 claims (Draupnir, Vakron, Horn Den: a Unique armor piece)",
+    "Exploration: 1 claim (Krao, Urugugu, Fire Temple: a Legend armor piece); Draupnir, Vakron, Horn Den: like Conquest since 2026-11-04 (3 before)",
     "Conquest: 14 (★1) · 21 (★2) · 28 (★3) claims: a Gear Change Voucher or a Unique piece",
     maybe("Hard: 28 claims", "Client data, one guide"),
     "Transcendence: none"] },
   { title: "Final boss rolls", lines: [
-    "Exploration: Silentium ×4, Enhance Stone 1,000–1,500",
+    "Exploration: Silentium ×4, Enhance Stone 1,000–1,500 (more in Draupnir, Vakron, Horn Den since 2026-11-04)",
     "Conquest: Silentium ×7, Enhance Stone ×2,000",
     "Transcendence: Silentium ×10, Enhance Stone ×2,000",
     "Any boss: Soul Codex, Amplify Stone Fragment (Unique) by chance"] },

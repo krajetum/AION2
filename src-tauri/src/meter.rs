@@ -16,6 +16,7 @@ const OVERLAY: &str = "overlay";
 const EVENTS: &str = "events";
 const CUBE: &str = "cube";
 const RADAR: &str = "radar";
+const NET: &str = "net";
 
 /// Seconds without damage, healing or damage taken before the fight resets (and the overlay hides).
 const DEFAULT_IDLE_SECS: u32 = 15;
@@ -39,8 +40,11 @@ struct Auto {
     cube_near: bool,
     /// The cube popup's size: 1 = 260 × 96.
     cube_scale: f64,
-    /// The radar (cubes around you, to lay over the game's minimap) is on.
+    /// The radar (cubes around you, to lay over the game's minimap) is on. It shows with the cube popup's news only
+    /// (a cube in view, or one just opened), so it needs no key to hide it (the player's choice, 2026-11-01).
     radar: bool,
+    /// The small ping and packet loss overlay is on.
+    net: bool,
     /// Hide the overlays while another window than the game is in front (alt-tab).
     follow_game: bool,
     /// The game window was in front at the last check.
@@ -62,11 +66,12 @@ impl Auto {
             dps: self.overlay && self.wanted && front,
             events: self.events && front,
             cube: self.cube && self.cube_near && front,
-            radar: self.radar && front,
+            radar: self.radar && self.cube_near && front,
+            net: self.net && front,
         }
     }
     fn any(&self) -> bool {
-        self.overlay || self.events || self.cube || self.radar
+        self.overlay || self.events || self.cube || self.radar || self.net
     }
 }
 
@@ -76,6 +81,7 @@ struct Visible {
     events: bool,
     cube: bool,
     radar: bool,
+    net: bool,
 }
 
 impl Default for MeterState {
@@ -91,6 +97,7 @@ impl Default for MeterState {
                 cube_near: false,
                 cube_scale: 1.0,
                 radar: false,
+                net: false,
                 follow_game: true,
                 front: true,
                 opacity: 90,
@@ -219,6 +226,7 @@ fn start(app: AppHandle) -> Update {
                     set_visible(&app, EVENTS, want.events);
                     set_visible(&app, CUBE, want.cube);
                     set_visible(&app, RADAR, want.radar);
+                    set_visible(&app, NET, want.net);
                     shown = Some(want);
                 }
                 crate::places::flush();
@@ -400,7 +408,8 @@ pub async fn cube_popup(app: AppHandle, show: bool, scale: Option<f64>) -> Resul
     Ok(())
 }
 
-/// The radar on or off: cubes around you, north up, to lay over the game's minimap.
+/// The radar on or off: cubes around you, north up, to lay over the game's minimap; on screen only while a cube is
+/// in view or was just opened (as the cube popup).
 #[tauri::command]
 pub async fn radar_overlay(app: AppHandle, show: bool) -> Result<(), String> {
     if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
@@ -408,6 +417,20 @@ pub async fn radar_overlay(app: AppHandle, show: bool) -> Result<(), String> {
     }
     if !show {
         close(&app, RADAR);
+    }
+    Ok(())
+}
+
+/// The small ping and packet loss overlay on or off (it hides with the others while another window is in front).
+#[tauri::command]
+pub async fn net_overlay(app: AppHandle, show: bool) -> Result<(), String> {
+    if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
+        a.net = show;
+    }
+    // The main window saves the switch, also when it is turned off from the overlay itself.
+    let _ = app.emit("net-overlay", show);
+    if !show {
+        close(&app, NET);
     }
     Ok(())
 }
@@ -448,6 +471,8 @@ fn set_visible(app: &AppHandle, label: &str, on: bool) {
 fn build(app: &AppHandle, label: &str) -> Result<(), String> {
     let (title, w, h, min_w, min_h) = if label == EVENTS {
         ("AION 2 Companion – Events", 300.0, 230.0, 200.0, 80.0)
+    } else if label == NET {
+        ("AION 2 Companion – Network", 150.0, 34.0, 110.0, 28.0)
     } else if label == RADAR {
         ("AION 2 Companion – Radar", 220.0, 220.0, 120.0, 120.0)
     } else if label == CUBE {
@@ -491,6 +516,7 @@ mod tests {
             cube_near: false,
             cube_scale: 1.0,
             radar: false,
+            net: false,
             follow_game: true,
             front: true,
             opacity: 90,
@@ -505,10 +531,10 @@ mod tests {
         let mut a = auto(15);
         a.wanted = true;
         a.events = true;
-        let v = |dps, events, cube, radar| Visible { dps, events, cube, radar };
+        let v = |dps, events, cube, radar| Visible { dps, events, cube, radar, net: false };
         a.cube = true;
         a.radar = true;
-        assert_eq!(a.visible(), v(true, true, false, true), "the cube popup waits for a cube");
+        assert_eq!(a.visible(), v(true, true, false, false), "the cube popup and the radar wait for a cube");
         a.cube_near = true;
         assert_eq!(a.visible(), v(true, true, true, true));
         a.front = false;
@@ -520,6 +546,7 @@ mod tests {
         a.overlay = false;
         a.wanted = true;
         a.cube = false;
+        assert_eq!(a.visible(), v(false, true, false, true), "the radar shows with a cube even with the popup off");
         a.radar = false;
         assert_eq!(a.visible(), v(false, true, false, false));
     }

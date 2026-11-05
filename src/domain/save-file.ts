@@ -1,15 +1,16 @@
 // Save-file rules: the default data and the migration of old or imported saves. Pure.
+import { cleanBis } from "./bis.ts";
 import { cleanCrafting, emptyCrafting } from "./crafting.ts";
 import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
 import { cleanMap, emptyMap } from "./map.ts";
 import { cleanCollections } from "./pets.ts";
 import { cleanWallets } from "./wallet.ts";
-import { seedTasks } from "./seed.ts";
+import { patchTasks, SEED_VERSION, seedTasks } from "./seed.ts";
 import type { AppData, Channel } from "./types.ts";
 
 export function defaultData(): AppData {
   return {
-    version: 1,
+    version: SEED_VERSION,
     tasks: seedTasks(),
     characters: [{ id: crypto.randomUUID(), name: "Main" }],
     progress: {},
@@ -22,6 +23,8 @@ export function defaultData(): AppData {
     season: {},
     bosses: [],
     bossAlerts: {},
+    bis: {},
+    bossDefaulted: [],
     bossNames: {},
     arena: { matches: [], maps: {}, kills: [] },
     map: emptyMap(),
@@ -50,6 +53,7 @@ export function defaultData(): AppData {
       eventsOverlay: false,
       cubePopup: false,
       cubePopupSize: 1,
+      netOverlay: false,
       radar: false,
       radarRange: 100,
       radarMap: true,
@@ -78,6 +82,8 @@ export function normalize(raw: any): AppData {
   }
   return {
     ...d, ...raw,
+    version: SEED_VERSION,
+    tasks: patchTasks(raw.tasks, Number.isInteger(raw.version) ? raw.version : 1),
     progress: raw.progress ?? {},
     lastReset: { ...d.lastReset, ...raw.lastReset },
     warned: { ...d.warned, ...raw.warned },
@@ -85,6 +91,8 @@ export function normalize(raw: any): AppData {
     news: Array.isArray(raw.news) ? raw.news : [],
     season: raw.season ?? {},
     bosses: Array.isArray(raw.bosses) ? raw.bosses : [],
+    bis: cleanBis(raw.bis),
+    bossDefaulted: Array.isArray(raw.bossDefaulted) ? raw.bossDefaulted.filter((n: unknown) => Number.isInteger(n)) : [],
     bossNames: Object.fromEntries(Object.entries(raw.bossNames ?? {}).filter(([, v]) => typeof v === "string" && v.trim()) as [string, string][]),
     bossAlerts: Object.fromEntries(Object.entries(raw.bossAlerts ?? {}).map(([id, a]: [string, any]) =>
       [id, { leads: cleanLeads(a?.leads), repeat: !!a?.repeat }])),

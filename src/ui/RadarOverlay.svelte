@@ -1,5 +1,6 @@
 <script lang="ts">
-  // The radar (index.html#radar, shown by src-tauri/src/meter.rs while on in Settings > Overlays): the
+  // The radar (index.html#radar, shown by src-tauri/src/meter.rs while on in Settings > Overlays and a cube is in view
+  // or was just opened, like the cube popup): the
   // cubes around you, north up, centred on you, to lay over the game's minimap. Found cubes of the map you are on (purple),
   // cubes in view now (shining), the map under it if wanted. A normal always-on-top window: it never
   // touches the game's own minimap. Drag it into place and size it by its edges.

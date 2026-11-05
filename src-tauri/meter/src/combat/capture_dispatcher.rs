@@ -412,6 +412,17 @@ impl CaptureDispatcher {
                 }
             }
 
+            // Companion: packet loss from TCP resends, both directions (`netstats.rs`).
+            if let Some(port) = current_port {
+                if let Some(at) = cap.capture_time_ms() {
+                    let to_server = cap.dst_port == port;
+                    if to_server || cap.src_port == port {
+                        let client = if to_server { cap.src_port } else { cap.dst_port };
+                        crate::netstats::segment(port, client, to_server, cap.tcp_seq, cap.data.len(), at);
+                    }
+                }
+            }
+
             // Only parse server->client (src == locked port)
             if let Some(port) = current_port {
                 if cap.src_port != port {

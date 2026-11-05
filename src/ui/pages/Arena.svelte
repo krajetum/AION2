@@ -30,7 +30,7 @@
 
 <p class="hint intro">PvP on an instance map is logged when you leave it. Name a map once (e.g. “Arena of Solitude”) and its matches get that name.
   Opponents' gear is not in any packet the meter reads yet, so it shows “—”; yours and your party's come from the game.
-  Click a player for their gear and stats on shugo.gg (a third-party armory that reads the official character data).</p>
+  Click a player for their class, level, item level and combat power, and "Gear and stats" for their whole official profile.</p>
 
 {#if !log.matches.length}<p class="empty">No match yet. Keep the companion open while you play an arena match.</p>
 {:else}<section class="dps-table"><div class="scroll"><table class="sheet">

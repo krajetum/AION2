@@ -56,6 +56,8 @@ pub struct Update {
     pub port: Option<u16>,
     pub device: Option<String>,
     pub ping_ms: Option<i32>,
+    /// Segments resent on the game connection over the last minute, % (`netstats.rs`): the loss, at most.
+    pub loss_pct: Option<f64>,
     pub paused: bool,
     /// Only you and your party (else everyone who hit the target).
     pub party_only: bool,
@@ -383,6 +385,7 @@ impl Engine {
             port,
             device: self.ports.current_device(),
             ping_ms: port.and(self.ping.current_ping_ms()),
+            loss_pct: port.and(crate::netstats::loss_pct(crate::clock::now_ms())),
             paused: self.paused.load(Ordering::Relaxed),
             party_only,
             view,
@@ -545,6 +548,7 @@ impl Engine {
     pub fn reconnect(&self) {
         self.ports.reset();
         self.ping.reset();
+        crate::netstats::reset();
     }
 
     pub fn capturing(&self) -> bool {
