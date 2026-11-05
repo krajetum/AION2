@@ -37,5 +37,9 @@ export const EVENTS: GameEvent[] = [
  *  `VITE_CROWD_URL=http://localhost:8787 npm run dev` points the browser preview at `wrangler dev`. */
 export const CROWD_URL = "https://aion2-companion.krajetum.workers.dev";
 
+/** Sentry crash reports (infra/sentry.ts), sent only when the player turns them on in Settings.
+ *  Empty = off for everyone. `VITE_SENTRY_DSN` overrides it. A DSN can only send events, so it is safe here. */
+export const SENTRY_DSN = "https://0afd49e981b62ffdc003ce13d30dc2be@o4512380557328384.ingest.de.sentry.io/4512380746661968";
+
 /** Current season: end date (00:00 in RESET_CONFIG.timeZone). Source: the user's Oath Coin sheet (2026-10-20). */
 export const SEASON = { name: "Season 1 Oath Coin", end: "2026-12-16" }; // TO VERIFY in game

@@ -56,6 +56,7 @@ export function defaultData(): AppData {
       sumKina: false,
       radarRound: true,
       crowdShare: true,
+      crashReports: false,
     },
   };
 }

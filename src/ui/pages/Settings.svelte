@@ -10,6 +10,7 @@
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { clearCubePicture, loadCubePicture, saveCubePicture, type Opener } from "../../infra/map-image.ts";
   import { isDesktop, setAutostart } from "../../infra/system.ts";
+  import { crashReports } from "../../infra/sentry.ts";
   import { cubePopup, eventsOverlay, meterIdle, meterOverlay, overlayStyle, radarOverlay } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
   import { LABEL, pad, WEEKDAYS } from "../format.ts";
@@ -123,6 +124,10 @@
   </section>
   <section><h2>System</h2>
     {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}
+    {@render toggle("Send crash reports", s.crashReports, (e) => { s.crashReports = check(e); crashReports(s.crashReports); })}
+    <p class="hint">Sends the app's errors, crashes, warnings and timings to Sentry so they can be fixed: where in the code, the app version
+      and your Windows/WebView version, plus a screen recording of some sessions with every text, input and image hidden.
+      No names, servers, positions or save data. For the app's core the switch applies at the next start.</p>
     <div class="btns"><button onclick={() => exportJson(ui.data)}>Export JSON</button>
       <label class="btn">Import JSON <input type="file" accept=".json,application/json" hidden onchange={importFile}></label></div>
   </section>

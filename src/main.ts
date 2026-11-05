@@ -22,6 +22,7 @@ import CubeOverlay from "./ui/CubeOverlay.svelte";
 import RadarOverlay from "./ui/RadarOverlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
 import { bossEvery, flushCubes, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
+import { crashReports } from "./infra/sentry.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, radarOverlay, meterOverlay, onEventsOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { fightsSnapshot, ui } from "./ui/state.svelte.ts";
@@ -84,6 +85,7 @@ async function main() {
   });
   if (isDesktop()) await onTrayMute(() => act(() => muteForAnHour(ui.data, Date.now())));
 
+  crashReports(data.settings.crashReports).catch((e) => console.warn("Crash reports not started", e));
   if (isDesktop()) checkUpdate();
   refreshNews();
   crowdBosses();

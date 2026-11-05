@@ -60,7 +60,8 @@ export interface Settings {
   radarMap: boolean;          // the map under it (else only the dots)
   sumKina: boolean;           // the sidebar's Wallet shows Kina and bound Kina as one total
   radarRound: boolean;        // round (else square)
-  crowdShare: boolean;        // send the boss timers and cube openings the meter sees to the crowd Worker
+  crashReports: boolean;      // send errors and crashes to Sentry (opt-in)
+  crowdShare: boolean;       // send the boss timers and cube openings the meter sees to the crowd Worker
 }
 
 /** One undo step: the progress of each touched task before the change (null = it had none). */
@@ -107,6 +108,6 @@ export interface AppData {
   plan?: ActivePlan;
   undo: UndoEntry[]; // newest last, max 30 (src/undo.ts)
   install: string;          // random id of this install for the crowd Worker (one report per install counts)
-  serverId: number | null;  // game server of the last character the meter saw (crowd boss timers are per server)
+  serverId: number | null; // game server of the last character the meter saw (crowd boss timers are per server)
   settings: Settings;
 }

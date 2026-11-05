@@ -26,3 +26,5 @@ tauri-plugin-updater = "2"
 tauri-plugin-single-instance = "2"
 # DPS meter core: passive capture + parser, vendored from A2Tools DPS Meter (GPL-3.0), see meter/NOTICE.md
 aion2-meter = { path = "meter" }
+sentry = { version = "0.49.5", features = ["tracing", "logs"] }
+tracing-subscriber = { version = "0.3.23", default-features = false, features = ["registry", "std"] }
