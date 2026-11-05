@@ -63,7 +63,8 @@ export function dueBossAlerts(bosses: BossTimer[], alerts: Record<string, BossAl
     const alert = alerts[boss.bossId];
     if (!alert || bossState(boss, now) !== "due") continue;
     const key = bossKey(boss);
-    const leads = dueLeads(alert.leads, boss.timeMs - now, (l) => warned[`${key}@${l}`] === boss.timeMs);
+    // Same respawn within a minute: shared timers come back shifted by the network delay on each download.
+    const leads = dueLeads(alert.leads, boss.timeMs - now, (l) => Math.abs((warned[`${key}@${l}`] ?? -Infinity) - boss.timeMs) < 60_000);
     if (!leads.length) continue;
     out.push({ boss, alert, leads, last: leads.includes(Math.min(...alert.leads)), minutes: Math.max(1, Math.round((boss.timeMs - now) / 60_000)) });
   }

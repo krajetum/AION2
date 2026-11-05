@@ -15,6 +15,7 @@ test("boss alerts: armed bosses only, each lead once, last lead flagged, no late
   assert.deepEqual(first.map((d) => [d.leads, d.last, d.minutes]), [[[10], false, 9]]);
   warned[`${bossKey(boss)}@10`] = boss.timeMs;
   assert.deepEqual(dueBossAlerts([boss], alerts, warned, 92 * MIN), []);
+  assert.deepEqual(dueBossAlerts([{ ...boss, timeMs: boss.timeMs + 137 }], alerts, warned, 92 * MIN), [], "same respawn, jittered (shared timers)");
   assert.deepEqual(dueBossAlerts([boss], alerts, warned, 96 * MIN).map((d) => [d.leads, d.last]), [[[5], true]]);
   // Opened late: both leads at once, so it is the last one too.
   assert.deepEqual(dueBossAlerts([boss], alerts, {}, 98 * MIN).map((d) => [d.leads, d.last]), [[[10, 5], true]]);
