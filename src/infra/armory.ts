@@ -8,10 +8,12 @@ import {
 } from "../domain/armory.ts";
 
 const SEARCH_MS = 60_000, PROFILE_MS = 10 * 60_000, FAILED_MS = 60_000, GAP_MS = 1_000;
+// A piece's details are small and a profile asks for ~25 of them: 4 a second instead of 1, still one at a time.
+const ITEM_GAP_MS = 250;
 const cache = new Map<string, { until: number; p: Promise<any> }>();
 let queue: Promise<unknown> = Promise.resolve();
 
-async function getJson(url: string): Promise<any> {
+async function getJson(url: string, gapMs = GAP_MS): Promise<any> {
   if (!isTauri()) throw new Error("only in the desktop app");
   const run = queue.then(async () => {
     // From the Rust side (src-tauri/src/armory.rs): the HTTP plugin's Origin header gets a 403 from the search.
@@ -20,7 +22,7 @@ async function getJson(url: string): Promise<any> {
     if (res.status < 200 || res.status >= 300 || !res.json) throw new Error(`HTTP ${res.status}`);
     return JSON.parse(res.body);
   });
-  queue = run.catch(() => {}).then(() => new Promise((r) => setTimeout(r, GAP_MS)));
+  queue = run.catch(() => {}).then(() => new Promise((r) => setTimeout(r, gapMs)));
   return run;
 }
 
@@ -59,5 +61,5 @@ export function equipmentOf(characterId: string, serverId: number): Promise<Equi
 
 /** A piece's details (stats, manastones, godstones, an arcana's skills and set). */
 export function itemOf(p: Piece, characterId: string, serverId: number): Promise<ItemDetail | null> {
-  return kept(`i|${serverId}|${characterId}|${p.slot}|${p.id}|${p.enchant + p.exceed}`, PROFILE_MS, async () => parseItem(await getJson(itemUrl(p, characterId, serverId))));
+  return kept(`i|${serverId}|${characterId}|${p.slot}|${p.id}|${p.enchant + p.exceed}`, PROFILE_MS, async () => parseItem(await getJson(itemUrl(p, characterId, serverId), ITEM_GAP_MS)));
 }

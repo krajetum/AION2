@@ -4,6 +4,8 @@
   import { KNOWN_MAPS, mapLabel, matchTotals } from "../../domain/arena.ts";
   import { serverName } from "../../domain/servers.ts";
   import PlayerCard from "../parts/PlayerCard.svelte";
+  import type { Profile } from "../../domain/armory.ts";
+  import { officialProfile } from "../../infra/armory.ts";
   import { clock, short, type ArenaMatch } from "../../domain/meter.ts";
   import { commit } from "../actions.ts";
   import { hm } from "../format.ts";
@@ -26,11 +28,28 @@
   const killKey = (k: { atMs: number; other: { id: number } }) => `${k.atMs}:${k.other.id}`;
   const when = (t: number) => `${new Date(t).toLocaleDateString([], { day: "2-digit", month: "short" })} ${hm(t)}`;
   const gear = (v: number | null, f: (n: number) => string = String) => (v == null ? "—" : f(v));
+
+  // A match opened: every player whose gear the game didn't send gets their official profile (item level as GS, combat
+  // power), read in turn by the armory queue, so the table fills without clicking each player.
+  let official = $state<Record<string, Profile | null>>({});
+  const okey = (name: string, serverId: number) => `${serverId}|${name}`;
+  $effect(() => {
+    const m = log.matches.find((x) => key(x) === open);
+    if (!m) return;
+    for (const p of m.players) {
+      if (!p.name || !p.serverId || (p.gearScore != null && p.combatPower != null)) continue;
+      const k = okey(p.name, p.serverId);
+      if (k in official) continue;
+      official[k] = null;
+      officialProfile(p.name, p.serverId).then((v) => { if (v) official[k] = v; }, () => { delete official[k]; });
+    }
+  });
+  const offOf = (p: { name: string; serverId: number | null }) => (p.name && p.serverId ? official[okey(p.name, p.serverId)] ?? null : null);
 </script>
 
 <p class="hint intro">PvP on an instance map is logged when you leave it. Name a map once (e.g. “Arena of Solitude”) and its matches get that name.
-  Opponents' gear is not in any packet the meter reads yet, so it shows “—”; yours and your party's come from the game.
-  Click a player for their class, level, item level and combat power, and "Gear and stats" for their whole official profile.</p>
+  Yours and your party's gear come from the game; opponents' GS (item level) and CP come from their official profile when you open the match.
+  Click a player, then "Gear and stats" for their whole official profile.</p>
 
 {#if !log.matches.length}<p class="empty">No match yet. Keep the companion open while you play an arena match.</p>
 {:else}<section class="dps-table"><div class="scroll"><table class="sheet">
@@ -47,12 +66,13 @@
       <table class="sheet">
         <thead><tr><th>Player</th><th>Class</th><th class="n">Server</th><th class="n">Lv</th><th class="n">GS</th><th class="n">CP</th>
           <th class="n">Dealt</th><th class="n">Taken</th><th class="n">Deaths</th></tr></thead>
-        <tbody>{#each m.players as p (p.id)}{@const pk = `${k}:${p.id}`}
+        <tbody>{#each m.players as p (p.id)}{@const pk = `${k}:${p.id}`}{@const o = offOf(p)}
           <tr class="prow {p.side}" class:you={p.side === "you"} style:--p="0" aria-expanded={player === pk} title="Gear and stats"
             onclick={() => { player = player === pk ? "" : pk; }}>
           <td><span class="name">{p.name || (p.side === "you" ? "You" : `#${p.id}`)}</span><small>{p.side}</small></td>
-          <td class="cls">{#if classIcon(p.job)}<img class="cls-icon" src={classIcon(p.job)} alt="" width="22" height="23">{/if}{p.job || "—"}</td><td class="n" title={p.serverId ? `Server ${p.serverId}` : ""}>{serverName(p.serverId) || p.serverId || "—"}</td><td class="n">{gear(p.level)}</td><td class="n">{gear(p.gearScore)}</td>
-          <td class="n">{gear(p.combatPower, short)}</td><td class="n">{short(p.dealt)}</td><td class="n">{short(p.taken)}</td><td class="n">{p.deaths}</td></tr>
+          <td class="cls">{#if classIcon(p.job)}<img class="cls-icon" src={classIcon(p.job)} alt="" width="22" height="23">{/if}{p.job || "—"}</td><td class="n" title={p.serverId ? `Server ${p.serverId}` : ""}>{serverName(p.serverId) || p.serverId || "—"}</td><td class="n">{gear(p.level ?? o?.level ?? null)}</td>
+          <td class="n" title={p.gearScore == null && o ? "Item level, official profile" : ""}>{gear(p.gearScore ?? o?.itemLevel ?? null)}</td>
+          <td class="n" title={p.combatPower == null && o ? "Official profile" : ""}>{gear(p.combatPower ?? o?.combatPower ?? null, short)}</td><td class="n">{short(p.dealt)}</td><td class="n">{short(p.taken)}</td><td class="n">{p.deaths}</td></tr>
           {#if player === pk}<tr class="skills"><td colspan="9"><PlayerCard {p} /></td></tr>{/if}{/each}</tbody>
       </table></td></tr>{/if}
   {/each}</tbody></table></div><p class="hint">Deaths: your side : theirs. Click a match for its players.</p></section>{/if}
