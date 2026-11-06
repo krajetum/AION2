@@ -1,29 +1,41 @@
 // Reads the official character search and profiles (domain/armory.ts) through the app's Rust side (`armory_get`);
-// the browser preview can't (the site sends no CORS headers). Gently: one request at a time, 1 s apart; a search is kept a minute,
-// a profile 10 minutes, a failure a minute.
+// the browser preview can't (the site sends no CORS headers). Gently: at most 4 requests at once, started at least 150 ms
+// apart (about what the official site does when it opens a profile); a search is kept a minute, a profile 10 minutes,
+// a failure a minute.
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   equipmentUrl, infoUrl, itemUrl, parseEquipment, parseInfo, parseItem, parseSearch, pickFound, searchUrl,
   type Equipment, type Found, type ItemDetail, type Piece, type Profile,
 } from "../domain/armory.ts";
 
-const SEARCH_MS = 60_000, PROFILE_MS = 10 * 60_000, FAILED_MS = 60_000, GAP_MS = 1_000;
-// A piece's details are small and a profile asks for ~25 of them: 4 a second instead of 1, still one at a time.
-const ITEM_GAP_MS = 250;
+const SEARCH_MS = 60_000, PROFILE_MS = 10 * 60_000, FAILED_MS = 60_000;
+/** Requests in flight at once, and the least time between two starts. A request takes ~1 s to answer, so one at a time
+ *  made a profile's ~25 pieces take half a minute (the player's video, 2026-11-06). */
+const MAX_AT_ONCE = 4, START_GAP_MS = 150;
 const cache = new Map<string, { until: number; p: Promise<any> }>();
-let queue: Promise<unknown> = Promise.resolve();
+let inFlight = 0, lastStart = 0;
+const waiting: (() => void)[] = [];
 
-async function getJson(url: string, gapMs = GAP_MS): Promise<any> {
+/** A slot to send a request: waits while 4 are in flight, then keeps starts START_GAP_MS apart. */
+async function slot(): Promise<() => void> {
+  while (inFlight >= MAX_AT_ONCE) await new Promise<void>((r) => waiting.push(r));
+  inFlight++;
+  const wait = lastStart + START_GAP_MS - Date.now();
+  lastStart = Math.max(Date.now(), lastStart + START_GAP_MS);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  return () => { inFlight--; waiting.shift()?.(); };
+}
+
+async function getJson(url: string): Promise<any> {
   if (!isTauri()) throw new Error("only in the desktop app");
-  const run = queue.then(async () => {
+  const done = await slot();
+  try {
     // From the Rust side (src-tauri/src/armory.rs): the HTTP plugin's Origin header gets a 403 from the search.
     const res = await invoke<{ status: number; json: boolean; body: string }>("armory_get", { url });
     // The site answers errors with an HTML page and status 200: only JSON counts.
     if (res.status < 200 || res.status >= 300 || !res.json) throw new Error(`HTTP ${res.status}`);
     return JSON.parse(res.body);
-  });
-  queue = run.catch(() => {}).then(() => new Promise((r) => setTimeout(r, gapMs)));
-  return run;
+  } finally { done(); }
 }
 
 function kept<T>(key: string, keepMs: number, make: () => Promise<T>): Promise<T> {
@@ -61,5 +73,5 @@ export function equipmentOf(characterId: string, serverId: number): Promise<Equi
 
 /** A piece's details (stats, manastones, godstones, an arcana's skills and set). */
 export function itemOf(p: Piece, characterId: string, serverId: number): Promise<ItemDetail | null> {
-  return kept(`i|${serverId}|${characterId}|${p.slot}|${p.id}|${p.enchant + p.exceed}`, PROFILE_MS, async () => parseItem(await getJson(itemUrl(p, characterId, serverId), ITEM_GAP_MS)));
+  return kept(`i|${serverId}|${characterId}|${p.slot}|${p.id}|${p.enchant + p.exceed}`, PROFILE_MS, async () => parseItem(await getJson(itemUrl(p, characterId, serverId))));
 }
