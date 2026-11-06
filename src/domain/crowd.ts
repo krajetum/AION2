@@ -7,10 +7,16 @@ import type { BossTimer, OpenedCube } from "./meter.ts";
 /** Seconds between boss reads: never faster than this, slower when the Worker says so. */
 export const MIN_EVERY = 120;
 
-/** The maps the meter read since the saved ones (what mergeBosses will take), grouped by map. */
+/** A map's timers without the read time, to tell a changed map from a re-read one. */
+const timersKey = (list: BossTimer[], mapId: number) =>
+  JSON.stringify(list.filter((b) => b.mapId === mapId).map((b) => [b.bossId, b.up, b.timeMs]).sort());
+
+/** The maps the meter read since the saved ones (what mergeBosses will take), grouped by map, and only when their
+ *  timers changed: the game resends a map's timers often, each a new read (HTTP 429 from the Worker, 2026-11-06). */
 export function bossesToShare(saved: BossTimer[], fresh: BossTimer[]): { mapId: number; timers: BossTimer[] }[] {
-  const newer = newerMaps(saved, fresh);
-  return [...newer].map((mapId) => ({ mapId, timers: fresh.filter((b) => b.mapId === mapId) }));
+  return [...newerMaps(saved, fresh)]
+    .filter((mapId) => timersKey(saved, mapId) !== timersKey(fresh, mapId))
+    .map((mapId) => ({ mapId, timers: fresh.filter((b) => b.mapId === mapId) }));
 }
 
 /** The openings takeCubes will add or refresh, and the codes it will learn. */
