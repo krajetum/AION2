@@ -125,6 +125,7 @@
   </section>
   <section><h2>System</h2>
     {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}
+    {@render toggle("Update by itself when the app opens", s.autoUpdate, (e) => { s.autoUpdate = check(e); }, !isDesktop())}
     {@render toggle("Send crash reports", s.crashReports, (e) => { s.crashReports = check(e); crashReports(s.crashReports); })}
     <p class="hint">Sends the app's errors, crashes, warnings and timings to Sentry so they can be fixed: where in the code, the app version
       and your Windows/WebView version, plus a screen recording of some sessions with every text, input and image hidden.

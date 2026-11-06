@@ -61,6 +61,7 @@ export function defaultData(): AppData {
       radarRound: true,
       crowdShare: true,
       crashReports: false,
+      autoUpdate: true,
     },
   };
 }

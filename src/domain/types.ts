@@ -62,6 +62,7 @@ export interface Settings {
   sumKina: boolean;           // the sidebar's Wallet shows Kina and bound Kina as one total
   radarRound: boolean;        // round (else square)
   crashReports: boolean;      // send errors and crashes to Sentry (opt-in)
+  autoUpdate: boolean;        // install a newer release by itself when the app opens (else the banner offers it)
   crowdShare: boolean;       // send the boss timers and cube openings the meter sees to the crowd Worker
 }
 
