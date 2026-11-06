@@ -3,6 +3,7 @@ import { SvelteSet } from "svelte/reactivity";
 import type { FightRecord } from "../domain/fights.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import type { MeterEvent, Trigger } from "../domain/triggers.ts";
+import type { Cue } from "../domain/mascot.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
 export type Tab = "home" | Cadence | "plan" | "season" | "crafting" | "enhance" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "players" | "expeditions" | "transcendence" | "sanctuary" | "mechanics" | "news" | "settings";
@@ -26,6 +27,7 @@ export const ui = $state({
   suggest: null as { taskId: string; triggers: Trigger[] } | null, // after a manual tick: tick it by itself next time?
   fights: [] as FightRecord[], // the Fight Log, newest first (its own file: src/infra/fights.ts)
   lookup: null as { name: string; serverId: number } | null, // a player card's "Full profile": the Players page searches it
+  mascotCues: [] as Cue[], // the alerts the mascot reacts to (main.ts), latest last
   updating: "", // the update in progress or its error, shown in the update banner
   update: undefined as { version: string; install: () => Promise<void> } | undefined, // a newer release (main.ts checkUpdate), offered by a banner
 });

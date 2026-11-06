@@ -40,6 +40,7 @@
   import WikiDungeons from "./pages/WikiDungeons.svelte";
   import WikiMechanics from "./pages/WikiMechanics.svelte";
   import TaskList from "./pages/TaskList.svelte";
+  import Mascot from "./parts/Mascot.svelte";
   import { sortedTasks } from "../app/tasks.ts";
   import { doneHere, GROUPS, tabFromHash, ui, type Tab } from "./state.svelte.ts";
 
@@ -201,3 +202,4 @@
     </details>{/if}
   </aside>
 </div>
+<Mascot />
