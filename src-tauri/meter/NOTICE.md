@@ -51,6 +51,10 @@ and sends nothing to the game or anywhere else.
    segments wait for the missing one, at most 1 s. Before, they were appended as captured.
 13. `combat/capture_dispatcher.rs` (2026-11-01): once the port is locked, every data segment of the game connection (both
     directions) also goes to the companion's `netstats::segment` (packet loss from TCP resends); nothing else changes.
+14. `capture/pcap_capturer.rs` (2026-11-06): every TCP segment read also goes to the companion's `recorder::segment`,
+    which keeps it only while a recording asks for the game's other connections; meanwhile `capture_filters` is all IPv4 TCP
+    (the recorder keeps the game's own connections, the dispatcher only the game's stream). `platform/*` `window_detector`:
+    `game_connections` (Windows: the game process's TCP connections from Windows' connection table; elsewhere none).
 
 ## Written for the companion
 

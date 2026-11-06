@@ -108,6 +108,7 @@ export interface AppData {
   pets: Record<string, PetCollection>; // character name → its pet collection as last read (src/domain/pets.ts)
   wallets: Record<string, Wallet>;     // character name → its currencies and Odyle energy as last seen (src/domain/wallet.ts)
   crafting: CraftData;                 // recipes, targets, pieces owned per character, market prices (src/domain/crafting.ts)
+  market: import("./market.ts").MarketData; // item code → your market reads per day (src/domain/market.ts)
   plan?: ActivePlan;
   undo: UndoEntry[]; // newest last, max 30 (src/undo.ts)
   install: string;          // random id of this install for the crowd Worker (one report per install counts)

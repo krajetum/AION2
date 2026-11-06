@@ -148,4 +148,37 @@ pub mod window_detector {
         }
         out
     }
+
+    /// The game's process id, from its window (by title, else by program).
+    fn aion2_pid() -> Option<u32> {
+        top_level_windows().into_iter().find_map(|h| {
+            let mut pid: u32 = 0;
+            unsafe { GetWindowThreadProcessId(h, Some(&mut pid)) };
+            (pid != 0 && !ours(h) && (is_game_title(&window_title(h)) || exe_path(h).is_some_and(|p| is_game_exe(&p)))).then_some(pid)
+        })
+    }
+
+    /// The game's open IPv4 TCP connections (companion, for the packet recorder): (local port, remote address, remote port).
+    /// Reads Windows' connection table (what `netstat -ano` shows), nothing of the game itself.
+    pub fn game_connections() -> Vec<(u16, std::net::Ipv4Addr, u16)> {
+        use windows::Win32::NetworkManagement::IpHelper::{GetExtendedTcpTable, MIB_TCPTABLE_OWNER_PID, TCP_TABLE_OWNER_PID_CONNECTIONS};
+        const AF_INET: u32 = 2;
+        let Some(pid) = aion2_pid() else { return Vec::new() };
+        let mut size: u32 = 0;
+        unsafe { GetExtendedTcpTable(None, &mut size, false, AF_INET, TCP_TABLE_OWNER_PID_CONNECTIONS, 0) };
+        let mut buf = vec![0u64; (size as usize).div_ceil(8) + 64]; // u64: aligned for the table
+        size = (buf.len() * 8) as u32;
+        if unsafe { GetExtendedTcpTable(Some(buf.as_mut_ptr().cast()), &mut size, false, AF_INET, TCP_TABLE_OWNER_PID_CONNECTIONS, 0) } != 0 {
+            return Vec::new();
+        }
+        let table = unsafe { &*(buf.as_ptr() as *const MIB_TCPTABLE_OWNER_PID) };
+        let rows = unsafe { std::slice::from_raw_parts(table.table.as_ptr(), table.dwNumEntries as usize) };
+        rows.iter()
+            .filter(|r| r.dwOwningPid == pid)
+            .map(|r| {
+                let port = |p: u32| u16::from_be(p as u16);
+                (port(r.dwLocalPort), std::net::Ipv4Addr::from(u32::from_be(r.dwRemoteAddr)), port(r.dwRemotePort))
+            })
+            .collect()
+    }
 }

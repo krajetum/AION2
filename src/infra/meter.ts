@@ -91,7 +91,8 @@ export const onOverlay = (fn: (open: boolean) => void) => (isTauri() ? listen<bo
 export const crashLog = () => (isTauri() ? invoke<{ path: string | null; text: string }>("crash_log") : Promise.resolve(null));
 /** Packet recorder (desktop only; null in the browser): every frame the meter reads, to a file in Downloads. */
 const rec = (cmd: string, args?: Record<string, unknown>) => (isTauri() ? invoke<RecorderStatus>(cmd, args) : Promise.resolve(null));
-export const recorderStart = () => rec("recorder_start");
+export interface RecordKinds { combat: boolean; items: boolean; other: boolean }
+export const recorderStart = (kinds: RecordKinds, items: Record<number, string>) => rec("recorder_start", { kinds, items });
 export const recorderMark = (label: string) => rec("recorder_mark", { label });
 export const recorderStop = () => rec("recorder_stop");
 export const recorderStatus = () => rec("recorder_status");

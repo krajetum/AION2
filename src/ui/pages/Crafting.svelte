@@ -3,6 +3,8 @@
   // first, then crafts (nested recipes) and purchases at the market prices you set. Best case: every craft succeeds.
   import { addInput, addItem, exportRecipes, importRecipes, removeItem, renameItem, setBuy, setCode, setFee, setInputQty, setOwned, setPrice, setTarget, setYields } from "../../app/crafting.ts";
   import { craftCost, crafted, explode, takeGameRecipes, tree, type CraftItem, type GameRecipes, type Side } from "../../domain/crafting.ts";
+  import { sharedPrices } from "../../app/market.ts";
+  import { dayOf, sparkline, type PricePoint, type SharedPoint } from "../../domain/market.ts";
   import { faction } from "../../domain/servers.ts";
   import { pickWallet } from "../../domain/wallet.ts";
   import { act, commit } from "../actions.ts";
@@ -39,6 +41,12 @@
       if (was.rev !== g.rev || was.builtAt !== g.builtAt) act(() => showStatus(`${num(takeGameRecipes(ui.data.crafting, g, was.side))} ${was.side} recipes updated`));
     });
   });
+  // Market prices over 30 days: the players' daily medians on your server (crowd Worker), else your own reads.
+  let medians = $state<Record<number, SharedPoint[]>>({});
+  const codes = $derived(raws.map((l) => c.items[l.item]?.code ?? 0).filter((x) => x > 0).join(","));
+  $effect(() => { const list = codes.split(",").map(Number).filter(Boolean); if (list.length) sharedPrices(ui.data, list).then((s) => (medians = s)); });
+  const trend = (code?: number): { pts: PricePoint[]; mine: boolean } =>
+    code && medians[code]?.length ? { pts: medians[code], mine: false } : { pts: (code && ui.data.market[code]) || [], mine: true };
   const day = (t?: number) => (t ? `Price set ${new Date(t).toLocaleDateString()}` : "Market price per piece");
 
   /** A change that may refuse (throws): the reason in the status line, nothing saved. */
@@ -117,6 +125,15 @@
     </tr>{/each}</tbody>
   </table></div></section>{/if}
 
+{#snippet priceTrend(it: CraftItem)}{@const t = trend(it.code)}{@const last = t.pts.at(-1)}{@const path = sparkline(t.pts, dayOf(ui.now), 30, 60, 16)}
+  {#if last}<span class="trend">
+    {#if path}<svg width="60" height="16" viewBox="-1 -1 62 18" aria-hidden="true"><path d={path} /></svg>{/if}
+    <button class="ghost" title={t.mine ? "Your lowest read that day" : `Median of ${(last as SharedPoint).n} players on your server`}
+      onclick={() => act(() => setPrice(ui.data, it.id, String(last.price), Date.now()))}>{num(last.price)}</button>
+    <small class="dim">{t.mine ? "you" : "shared"}, {new Date(last.day * 86_400_000).toLocaleDateString()}</small>
+  </span>{/if}
+{/snippet}
+
 {#if crafts.length}<section class="dps-table"><h2>Crafts <span class="count">{num(crafts.reduce((s, l) => s + l.craft, 0))}</span></h2>
   <div class="scroll"><table class="sheet craft">
     <thead><tr><th>Item</th><th class="n">Need</th><th class="n">Owned</th><th class="n">Crafts</th></tr></thead>
@@ -130,7 +147,7 @@
 
 {#if raws.length}<section class="dps-table"><h2>Materials to get <span class="count">{raws.length}</span></h2>
   <div class="scroll"><table class="sheet craft">
-    <thead><tr><th>Material</th><th class="n">Need</th><th class="n">Owned</th><th class="n">To get</th><th class="n">Price</th><th class="n">Kina</th></tr></thead>
+    <thead><tr><th>Material</th><th class="n">Need</th><th class="n">Owned</th><th class="n">To get</th><th class="n">Price</th><th>30 days</th><th class="n">Kina</th></tr></thead>
     <tbody>{#each raws as l (l.item)}{@const it = c.items[l.item]}{@const tip = advice(it)}<tr class:done={l.used === l.need}>
       <td><span class="name">{it.name}</span>{#if it.recipe} {@render craftOrBuy(it)}{/if}{#if tip}<small class="craft-tip">{tip}</small>{/if}</td>
       <td class="n num">{num(l.need)}</td>
@@ -138,6 +155,7 @@
       <td class="n num">{l.buy ? num(l.buy) : ""}{#if l.buy && it.price == null} <small class="dim">{it.recipe ? "no price" : "farm"}</small>{/if}</td>
       <td class="n"><input class="price" type="number" min="0" value={it.price ?? ""} placeholder="—" title={day(it.priceAt)} aria-label="Market price of {it.name}"
         onchange={(e) => commit(e, (v) => setPrice(ui.data, it.id, v, Date.now()), () => c.items[it.id].price ?? "")}></td>
+      <td>{@render priceTrend(it)}</td>
       <td class="n num">{l.cost ? num(l.cost) : ""}</td>
     </tr>{/each}</tbody>
   </table></div></section>{/if}
