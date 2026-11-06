@@ -704,3 +704,17 @@ li.eq-row { cursor: default; }
 .gedit-rows input { min-width: 0; padding: 3px 6px; }
 .gedit-rows .val { text-align: right; }
 .gedit-actions { justify-content: flex-start !important; }
+
+/* The mascot (ui/parts/Mascot.svelte): over the whole window, only the little character takes the pointer. */
+.mascot-stage { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
+.mascot { position: absolute; padding: 0; border: 0; border-radius: 0; background-color: transparent; background-repeat: no-repeat;
+  image-rendering: pixelated; pointer-events: auto; cursor: grab; touch-action: none; box-shadow: none; }
+.mascot:hover, .mascot:focus-visible { background-color: transparent; filter: drop-shadow(0 0 3px rgb(255 255 255 / .35)); }
+.mascot.held { cursor: grabbing; }
+.mascot-vortex { position: absolute; width: 76px; height: 76px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from 0deg, #2a1846, #7b4fd6, #1b1030, #b28cff, #2a1846, #5b33b0, #1b1030);
+  -webkit-mask: radial-gradient(circle, transparent 6px, #000 8px, #000 60%, transparent 71%);
+  mask: radial-gradient(circle, transparent 6px, #000 8px, #000 60%, transparent 71%);
+  box-shadow: 0 0 18px #7b4fd6aa; animation: mascot-vortex 0.9s linear infinite; }
+@keyframes mascot-vortex { to { transform: rotate(-360deg); } }
+@media (prefers-reduced-motion: reduce) { .mascot-vortex { animation: none; } }
