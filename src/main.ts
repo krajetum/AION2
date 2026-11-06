@@ -89,7 +89,7 @@ async function main() {
   if (isDesktop()) await onTrayMute(() => act(() => muteForAnHour(ui.data, Date.now())));
 
   crashReports(data.settings.crashReports).catch((e) => console.warn("Crash reports not started", e));
-  if (isDesktop()) checkUpdate();
+  if (isDesktop()) checkUpdate(true);
   refreshNews();
   crowdBosses();
   crowdCubes();
@@ -134,11 +134,18 @@ async function crowdCubes() {
   if (changed) await save();
 }
 
-// Update from GitHub Releases: a banner (App.svelte) offers it, the player installs it; the Windows installer closes and relaunches the app itself.
-async function checkUpdate() {
+// Update from GitHub Releases. When the app opens (`atStart`) and `settings.autoUpdate` is on (the default), a newer
+// release installs by itself; later checks (every 6 h, the app may be in use) only offer it in the banner (App.svelte).
+// The Windows installer closes and relaunches the app itself. A failed install leaves the banner to try again.
+async function checkUpdate(atStart = false) {
   try {
     const update = await findUpdate();
-    if (update && update.version !== ui.update?.version) ui.update = { version: update.version, install: () => update.downloadAndInstall() };
+    if (!update || update.version === ui.update?.version) return;
+    ui.update = { version: update.version, install: () => update.downloadAndInstall() };
+    if (atStart && ui.data.settings.autoUpdate) {
+      ui.updating = `Updating to ${update.version}…`;
+      await update.downloadAndInstall().catch((e) => { ui.updating = `Update failed: ${e}`; });
+    }
   } catch (e) { console.warn("Update check failed", e); }
 }
 

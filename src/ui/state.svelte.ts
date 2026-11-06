@@ -26,6 +26,7 @@ export const ui = $state({
   suggest: null as { taskId: string; triggers: Trigger[] } | null, // after a manual tick: tick it by itself next time?
   fights: [] as FightRecord[], // the Fight Log, newest first (its own file: src/infra/fights.ts)
   lookup: null as { name: string; serverId: number } | null, // a player card's "Full profile": the Players page searches it
+  updating: "", // the update in progress or its error, shown in the update banner
   update: undefined as { version: string; install: () => Promise<void> } | undefined, // a newer release (main.ts checkUpdate), offered by a banner
 });
 
