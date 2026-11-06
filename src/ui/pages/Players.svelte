@@ -2,7 +2,7 @@
   // Player search: the official character search and profiles (infra/armory.ts), as on NCSOFT's site.
   import { profilePage, type Found, type Profile } from "../../domain/armory.ts";
   import { gearUrl, REGIONS, regionOf, serversIn } from "../../domain/servers.ts";
-  import { profileOf, searchPlayers } from "../../infra/armory.ts";
+  import { equipmentOf, profileOf, searchPlayers } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
   import { hm, num } from "../format.ts";
   import Equipment from "../parts/Equipment.svelte";
@@ -38,6 +38,8 @@
   }
   async function show(c: Found) {
     open = c; profile = null; profileError = ""; loading = true;
+    // The equipment at the same time (cached: the Equipment part takes the same answer when it shows).
+    equipmentOf(c.characterId, c.serverId).catch(() => {});
     try {
       const p = await profileOf(c.characterId, c.serverId);
       if (open === c) { profile = p; if (!p) profileError = "the site sent no profile"; }
