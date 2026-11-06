@@ -1,7 +1,7 @@
-// Cloudflare Worker: players' apps share the field-boss timers and hidden-cube openings they see.
+// Cloudflare Worker: players' apps share the field-boss timers, hidden-cube openings and market prices they see.
 // No player names, only a random install id. The app works the same when this is down.
 // API under /v1, backward-compatible changes only (an incompatible one = /v2 alongside).
-import { cellOf, MAX_BODY, parseBossPost, parseCubePost, parseServerId } from "./validate.ts";
+import { cellOf, MAX_BODY, median, parseBossPost, parseCodes, parseCubePost, parsePricePost, parseServerId } from "./validate.ts";
 
 // Minimal Workers types (no @cloudflare/workers-types).
 interface D1Result<T> { results: T[] }
@@ -24,6 +24,9 @@ const SPOT_INSTALLS = 3;
 const CODE_INSTALLS = 2;
 const BOSS_CACHE_S = 30;
 const CUBE_CACHE_S = 3600;
+const PRICE_INSTALLS = 2;
+const PRICE_CACHE_S = 600;
+const PRICE_DAYS = 90;
 
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type" };
 const json = (body: unknown, status = 200) =>
@@ -113,6 +116,43 @@ async function postCubes(env: Env, req: Request) {
   return json({ ok: true, every: everyOf(env) });
 }
 
+async function getPrices(env: Env, url: URL, serverId: number, codes: number[]) {
+  const key = `${url.origin}/v1/prices/${serverId}?codes=${codes.join(",")}`;
+  const items = await cached(key, PRICE_CACHE_S, async () => {
+    const from = Math.floor(Date.now() / DAY) - PRICE_DAYS;
+    const { results } = await env.DB.prepare(
+      `SELECT code, day, price FROM price_reports WHERE server_id = ? AND day >= ? AND code IN (${codes.map(() => "?").join(",")})`,
+    ).bind(serverId, from, ...codes).all<{ code: number; day: number; price: number }>();
+    const votes = new Map<string, number[]>();
+    for (const r of results) {
+      const k = `${r.code}:${r.day}`;
+      votes.set(k, [...(votes.get(k) ?? []), r.price]);
+    }
+    const out: Record<number, { day: number; price: number; n: number }[]> = {};
+    for (const [k, v] of votes) {
+      if (v.length < PRICE_INSTALLS) continue;
+      const [code, day] = k.split(":").map(Number);
+      (out[code] ??= []).push({ day, price: median(v), n: v.length });
+    }
+    for (const days of Object.values(out)) days.sort((a, b) => a.day - b.day);
+    return out;
+  });
+  return json({ items });
+}
+
+async function postPrices(env: Env, req: Request) {
+  const now = Date.now();
+  const p = parsePricePost(await readBody(req));
+  if (!p) return fail(400, "bad request");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  const day = Math.floor(now / DAY);
+  if (p.prices.length) await env.DB.batch(p.prices.map((x) => env.DB.prepare(
+    `INSERT INTO price_reports (server_id, code, day, install, price) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (server_id, code, day, install) DO UPDATE SET price = MIN(price, excluded.price)`,
+  ).bind(p.serverId, x.code, day, p.install, x.price)));
+  return json({ ok: true });
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -126,6 +166,13 @@ export default {
       if (req.method === "POST" && url.pathname === "/v1/bosses") return await postBosses(env, url, req);
       if (req.method === "GET" && url.pathname === "/v1/cubes") return await getCubes(env, url);
       if (req.method === "POST" && url.pathname === "/v1/cubes") return await postCubes(env, req);
+      const prices = url.pathname.match(/^\/v1\/prices\/([^/]+)$/);
+      if (req.method === "GET" && prices) {
+        const serverId = parseServerId(prices[1]);
+        const codes = parseCodes(url.searchParams.get("codes"));
+        return serverId && codes ? await getPrices(env, url, serverId, codes) : fail(400, "bad server id or codes");
+      }
+      if (req.method === "POST" && url.pathname === "/v1/prices") return await postPrices(env, req);
       return fail(404, "not found");
     } catch (e) {
       console.error(e);
@@ -138,6 +185,7 @@ export default {
     ctx.waitUntil(env.DB.batch([
       env.DB.prepare("DELETE FROM boss_maps WHERE seen_ms < ?").bind(now - 7 * DAY),
       env.DB.prepare("DELETE FROM cube_reports WHERE at_ms < ?").bind(now - 30 * DAY),
+      env.DB.prepare("DELETE FROM price_reports WHERE day < ?").bind(Math.floor(now / DAY) - PRICE_DAYS - 30),
       env.DB.prepare("DELETE FROM writes WHERE hour < ?").bind(Math.floor(now / HOUR) - 2),
     ]));
   },

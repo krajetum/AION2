@@ -24,4 +24,7 @@ pub mod window_detector {
     pub fn describe_candidates() -> Vec<String> {
         Vec::new()
     }
+    pub fn game_connections() -> Vec<(u16, std::net::Ipv4Addr, u16)> {
+        Vec::new()
+    }
 }

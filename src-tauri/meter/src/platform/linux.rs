@@ -61,4 +61,9 @@ pub mod window_detector {
             .map(|(comm, _)| format!("comm={:?}", comm.trim()))
             .collect()
     }
+
+    /// The game's TCP connections, for the packet recorder: not read on Linux (none: other connections aren't recorded).
+    pub fn game_connections() -> Vec<(u16, std::net::Ipv4Addr, u16)> {
+        Vec::new()
+    }
 }

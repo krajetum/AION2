@@ -363,13 +363,18 @@ pub fn overlay_opacity(app: AppHandle) -> u8 {
     app.state::<MeterState>().auto.lock().map(|a| a.opacity).unwrap_or(90)
 }
 
-/// Packet recorder (Settings > Diagnostics): every game frame the meter reads goes to a text file
-/// in Downloads, with the player's marks, to find new records (hidden cubes). Stops by itself
-/// after 15 minutes or 200 MB.
+/// Packet recorder (Settings > Diagnostics): what `kinds` asks for (the game connection's frames, frames with a known
+/// item, the game's other connections) goes to a text file in Downloads, with the player's marks, to find new records.
+/// `items` = item code → name. Stops by itself after 15 minutes or 200 MB.
 #[tauri::command]
-pub fn recorder_start(app: AppHandle) -> Result<aion2_meter::recorder::RecorderStatus, String> {
+pub fn recorder_start(
+    app: AppHandle,
+    kinds: Option<aion2_meter::recorder::Kinds>,
+    items: Option<std::collections::HashMap<u32, String>>,
+) -> Result<aion2_meter::recorder::RecorderStatus, String> {
     let dir = app.path().download_dir().or_else(|_| app.path().app_data_dir()).map_err(|e| e.to_string())?;
-    aion2_meter::recorder::start(&dir).map_err(|e| format!("Could not create the recording file: {e}"))?;
+    aion2_meter::recorder::start_with(&dir, kinds.unwrap_or_default(), items.unwrap_or_default())
+        .map_err(|e| format!("Could not create the recording file: {e}"))?;
     Ok(aion2_meter::recorder::status())
 }
 

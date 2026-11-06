@@ -339,9 +339,12 @@ fn filter_port(detector: &CombatPortDetector, now: i64) -> Option<u16> {
 /// them is HTTPS and HTTP from browsers and launchers). The first form also
 /// matches frames with one or two VLAN tags, which some network cards add
 /// (see `link_header_len`); the second is for link types where libpcap has no
-/// VLAN test.
+/// VLAN test. While the packet recorder keeps the game's other connections
+/// (companion, `recorder::wants_other`), all IPv4 TCP: the recorder keeps only the
+/// game's own connections of it, and the dispatcher only the game's stream.
 fn capture_filters(port: Option<u16>) -> [String; 2] {
     let plain = match port {
+        _ if crate::recorder::wants_other() => "ip and tcp".to_string(),
         Some(port) => format!("ip and tcp port {port}"),
         None => "ip and tcp and not port 80 and not port 443".to_string(),
     };
@@ -606,7 +609,7 @@ fn start_capture_thread(
         // and a reset widens it at once. Where a read on a quiet device would
         // block until a packet comes, reads don't block: a filter for the old
         // port would otherwise wait forever once the game moved to another.
-        let mut filtered_for: Option<Option<u16>> = None;
+        let mut filtered_for: Option<(Option<u16>, bool)> = None;
         let mut filter_failed = false;
         let mut cleared = false;
         let mut net = SafetyNet::default();
@@ -643,12 +646,14 @@ fn start_capture_thread(
                 }
             }
             let port = filter_port(&shared.port_detector, now);
-            if !shared.unfiltered.load(Ordering::Relaxed) && filtered_for != Some(port) && !filter_failed {
-                filtered_for = Some(port);
+            let all = crate::recorder::wants_other();
+            if !shared.unfiltered.load(Ordering::Relaxed) && filtered_for != Some((port, all)) && !filter_failed {
+                filtered_for = Some((port, all));
                 let [full, plain] = capture_filters(port);
                 let result = pcap.set_filter(handle, &full).or_else(|_| pcap.set_filter(handle, &plain));
                 match result {
                     Ok(()) => info!("Capture filter on {}: {}", label, match port {
+                        _ if all => "IPv4 TCP (recording the game's other connections)".to_string(),
                         Some(p) => format!("game port {p} only"),
                         None => "IPv4 TCP, not ports 80/443".to_string(),
                     }),
@@ -686,6 +691,15 @@ fn start_capture_thread(
                     let frame = unsafe { std::slice::from_raw_parts(data, len) };
                     if let Some(mut payload) = parse_tcp_payload(frame, link_type, &label) {
                         payload.captured_at_ms = ts;
+                        crate::recorder::segment(
+                            payload.src_ip,
+                            payload.src_port,
+                            payload.dst_ip,
+                            payload.dst_port,
+                            &payload.data,
+                            shared.port_detector.locked_port_now(),
+                            crate::platform::window_detector::game_connections,
+                        );
                         if sender.try_send(payload).is_err() {
                             shared.dropped.fetch_add(1, Ordering::Relaxed);
                         }
