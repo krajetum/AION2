@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Settings > Diagnostics: the packet recorder, to find new records in the game's traffic (hidden cubes, the market)
+  // Settings > Diagnostics: the packet recorder, to find new records in the game's traffic (hidden cubes, items)
   // (src-tauri/meter/src/recorder.rs). The player picks what to keep, records, sets marks in game moments, and sends
   // the file for analysis.
   import type { GameRecipes } from "../../domain/crafting.ts";
@@ -15,7 +15,7 @@
   let kinds = $state<RecordKinds>({ combat: true, items: false, other: false });
   const KINDS: [keyof RecordKinds, string, string][] = [
     ["combat", "Game connection", "every frame: combat, movement, chat (large)"],
-    ["items", "Known items", "only what holds an item code, with its name: the market (small)"],
+    ["items", "Known items", "only what holds an item code, with its name (small)"],
     ["other", "Other game connections", "the game's other connections, 64 KB each, and whether they are encrypted"],
   ];
 
@@ -55,7 +55,7 @@
     {st.recording ? "Recording" : "Recorded"} {clock(st.ms)} · {st.frames.toLocaleString("en-US")} frames · {fileSize(st.bytes)} · {st.marks} marks{#if st.connections} · {st.connections} other connections{/if}{#if st.ended} · stopped: {st.ended}{/if}<br>
     <code>{st.path}</code></p>{/if}
   {#if error}<p class="hint error">{error}</p>{/if}
-  <p class="hint">Finds new things in the game's traffic (a hidden cube near, a market search). Pick what to keep, start
+  <p class="hint">Finds new things in the game's traffic (a hidden cube near, an item you get). Pick what to keep, start
     recording, do the thing in game and press a mark at each moment (or note the time), then stop and send the file.
     With the game connection it holds everything the game sends you (names and chat included); it stays on your PC.
     Only the game's own connections are read, never other programs'. Stops by itself after 15 minutes or 200 MB.{#if !isDesktop()}{" "}<b>Desktop app only.</b>{/if}</p>

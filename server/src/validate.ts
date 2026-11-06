@@ -79,40 +79,6 @@ export function parseCubePost(body: unknown, serverNow: number): CubePost | null
   return { install: body.install.toLowerCase(), mapId: body.mapId, cubes, codes };
 }
 
-export const MAX_PRICES = 100;
-export const MAX_QUERY_CODES = 200;
-/** Kina per piece above this is a misread, not a price. */
-export const MAX_PRICE = 1e13;
-
-export interface PricePost { install: string; serverId: number; prices: { code: number; price: number }[] }
-
-/** POST /v1/prices. Null = 400. Bad prices are dropped; one code twice keeps the lowest. */
-export function parsePricePost(body: unknown): PricePost | null {
-  if (!isObj(body) || typeof body.install !== "string" || !UUID.test(body.install) || !isId(body.serverId)
-    || !Array.isArray(body.prices) || body.prices.length > MAX_PRICES) return null;
-  const low = new Map<number, number>();
-  for (const p of body.prices) {
-    if (!isObj(p) || !isId(p.code) || !isId(p.price) || p.price > MAX_PRICE) continue;
-    low.set(p.code, Math.min(p.price, low.get(p.code) ?? Infinity));
-  }
-  return { install: body.install.toLowerCase(), serverId: body.serverId, prices: [...low].map(([code, price]) => ({ code, price })) };
-}
-
-/** `?codes=1,2,3` of GET /v1/prices/:serverId, deduplicated and sorted (the cache key), or null. */
-export function parseCodes(s: string | null): number[] | null {
-  if (!s) return null;
-  const parts = s.split(",");
-  if (parts.length > MAX_QUERY_CODES || !parts.every((p) => /^\d{1,10}$/.test(p))) return null;
-  const codes = [...new Set(parts.map(Number))].filter(isId).sort((a, b) => a - b);
-  return codes.length ? codes : null;
-}
-
-/** Median of a day's votes (lower middle for an even count: a real price someone saw). */
-export function median(xs: number[]): number {
-  const s = [...xs].sort((a, b) => a - b);
-  return s[Math.floor((s.length - 1) / 2)];
-}
-
 /** The spot a cube belongs to: one install counts once per cell. */
 // ponytail: fixed grid, two openings of one cube can straddle a cell edge; cluster by distance if spots come out split.
 export function cellOf(x: number, y: number): string {

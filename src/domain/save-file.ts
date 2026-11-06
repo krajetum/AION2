@@ -5,7 +5,6 @@ import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
 import { cleanMap, emptyMap } from "./map.ts";
 import { cleanCollections } from "./pets.ts";
 import { cleanWallets } from "./wallet.ts";
-import { cleanMarket } from "./market.ts";
 import { patchTasks, SEED_VERSION, seedTasks } from "./seed.ts";
 import type { AppData, Channel } from "./types.ts";
 
@@ -32,7 +31,6 @@ export function defaultData(): AppData {
     pets: {},
     wallets: {},
     crafting: emptyCrafting(),
-    market: {},
     undo: [],
     install: crypto.randomUUID(),
     serverId: null,
@@ -105,7 +103,6 @@ export function normalize(raw: any): AppData {
     pets: cleanCollections(raw.pets),
     wallets: cleanWallets(raw.wallets),
     crafting: cleanCrafting(raw.crafting),
-    market: cleanMarket(raw.market),
     undo: Array.isArray(raw.undo) ? raw.undo : [],
     install: typeof raw.install === "string" && raw.install ? raw.install : d.install,
     serverId: Number.isInteger(raw.serverId) ? raw.serverId : null,
