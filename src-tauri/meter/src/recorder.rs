@@ -5,7 +5,7 @@
 //! of the traffic. Nothing is sent anywhere; the file stays on the player's disk.
 //!
 //! What goes in is the player's choice (`Kinds`): every frame of the game connection (`combat`), only frames
-//! holding a known item code (`items`, for the market: a small file), and the game's other connections
+//! holding a known item code (`items`: a small file), and the game's other connections
 //! (`other`: its own TCP connections only, by Windows' connection table; the bytes as they come, at most
 //! `MAX_PER_CONNECTION` each, and at the end whether each looked like plain data or TLS/encrypted).
 //!

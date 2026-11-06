@@ -611,9 +611,6 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
 .craft td .seg { margin-left: 8px; vertical-align: middle; }
 .craft td .seg button { height: 22px; padding: 0 8px; font-size: 12px; }
 .craft .craft-tip { display: block; color: var(--accent); font-size: 12px; }
-.craft .trend { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.craft .trend svg path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
-.craft .trend .ghost { padding: 0 4px; }
 .craft td input.price { width: 104px; }
 .craft td.num { white-space: nowrap; }
 .craft .dim, .craft-tree .dim, .craft-item .dim { color: var(--faint); font-size: 12px; }

@@ -1,7 +1,7 @@
 // Run with: node --test "server/**/*.test.ts"
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cellOf, MAX_CUBES, MAX_PRICE, MAX_PRICES, MAX_TIMERS, median, parseBossPost, parseCodes, parseCubePost, parsePricePost, parseServerId, TIME_RANGE } from "./validate.ts";
+import { cellOf, MAX_CUBES, MAX_TIMERS, parseBossPost, parseCubePost, parseServerId, TIME_RANGE } from "./validate.ts";
 
 const NOW = 1_800_000_000_000;
 const MIN = 60_000;
@@ -59,24 +59,4 @@ test("cells and server ids", () => {
   assert.equal(cellOf(300, 650), "1,2");
   assert.equal(parseServerId("2001"), 2001);
   for (const s of ["0", "-1", "1.5", "abc", "", "1e3", "9999999999"]) assert.equal(parseServerId(s), null, s);
-});
-
-test("price post: bad prices dropped, one code twice keeps the lowest", () => {
-  const p = parsePricePost({ install: ID, serverId: 2001, prices: [
-    { code: 5, price: 900 }, { code: 5, price: 700 }, { code: 6, price: 0 }, { code: 7, price: 1.5 },
-    { code: -1, price: 10 }, { code: 8, price: MAX_PRICE + 1 }, { code: 9, price: 42 }, "x",
-  ] });
-  assert.deepEqual(p, { install: ID.toLowerCase(), serverId: 2001, prices: [{ code: 5, price: 700 }, { code: 9, price: 42 }] });
-  const ok = { install: ID, serverId: 1, prices: [] };
-  for (const bad of [null, { ...ok, install: "x" }, { ...ok, serverId: 0 }, { ...ok, prices: {} },
-    { ...ok, prices: Array.from({ length: MAX_PRICES + 1 }, (_, i) => ({ code: i + 1, price: 1 })) }])
-    assert.equal(parsePricePost(bad), null);
-});
-
-test("price query codes and median", () => {
-  assert.deepEqual(parseCodes("3,1,3,2"), [1, 2, 3]);
-  for (const bad of [null, "", "1,x", "0", "1,,2", Array.from({ length: 201 }, (_, i) => i + 1).join(",")]) assert.equal(parseCodes(bad), null);
-  assert.equal(median([5]), 5);
-  assert.equal(median([9, 1, 5]), 5);
-  assert.equal(median([10, 1, 2, 100]), 2);
 });

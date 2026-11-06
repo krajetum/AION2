@@ -23,7 +23,6 @@ import CubeOverlay from "./ui/CubeOverlay.svelte";
 import RadarOverlay from "./ui/RadarOverlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
 import { bossEvery, flushCubes, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
-import { flushPrices, takeMarket } from "./app/market.ts";
 import { crashReports } from "./infra/sentry.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, radarOverlay, meterOverlay, netOverlay, onEventsOverlay, onNetOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
@@ -84,8 +83,7 @@ async function main() {
       autoTrack(eventsFrom(last, latest, Date.now()), latest);
       last = latest;
       const shared = shareFromMeter(ui.data, latest); // before takeMeterData: it compares with the saved data
-      const priced = takeMarket(ui.data, latest);
-      if (takeMeterData(ui.data, latest) || shared || priced) save();
+      if (takeMeterData(ui.data, latest) || shared) save();
     });
   });
   if (isDesktop()) await onTrayMute(() => act(() => muteForAnHour(ui.data, Date.now())));
@@ -104,7 +102,6 @@ async function main() {
     if (ticks % bossEvery === 0 && gameActive(ui.now)) crowdBosses();
     if (ticks % 3600 === 0 && gameActive(ui.now)) crowdCubes();
     if (ticks % 600 === 0) flushCubes(ui.data);
-    if (ticks % 60 === 0) flushPrices(ui.data);
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(ui.data, now, C).length > 0;
