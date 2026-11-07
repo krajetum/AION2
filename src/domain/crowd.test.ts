@@ -14,6 +14,8 @@ test("bosses to share: only maps read since the saved ones, all their bosses", (
   assert.deepEqual(bossesToShare(saved, fresh), [{ mapId: 1, timers: [fresh[0], fresh[1]] }]);
   // A map downloaded later than the meter's own read is not shared back (no echo).
   assert.deepEqual(bossesToShare([b(1, 10, 900, 400)], [b(1, 10, 900, 300)]), []);
+  // A re-read with the same timers is not shared again (the game resends maps often).
+  assert.deepEqual(bossesToShare([b(1, 10, 900, 100)], [b(1, 10, 900, 300)]), []);
 });
 
 test("cubes to share: new spots and later openings of a spot, new codes", () => {
