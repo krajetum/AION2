@@ -1,7 +1,7 @@
 {
   "name": "aion2-companion",
   "private": true,
-  "version": "0.3.85",
+  "version": "0.3.86",
   "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
