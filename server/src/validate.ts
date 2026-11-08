@@ -212,10 +212,10 @@ export const alertKey = (t: BossTimer) => `${t.mapId}:${t.bossId}`;
  * One Discord message per guild with the bosses respawning within its lead time, skipping the ones in `posted`
  * (`guildId|key`, alerted within POSTED_FOR). At most MAX_POSTS messages; the rest go out on the next run.
  */
-export function dueAlerts(maps: DueMap[], guilds: AlertGuild[], posted: Set<string>, now: number): Alert[] {
+export function dueAlerts(maps: DueMap[], guilds: AlertGuild[], posted: Set<string>, now: number, max = MAX_POSTS): Alert[] {
   const out: Alert[] = [];
   for (const g of guilds) {
-    if (out.length >= MAX_POSTS) break;
+    if (out.length >= max) break;
     const due = maps.filter((m) => m.serverId === g.serverId).flatMap((m) => m.timers)
       .filter((t) => !t.up && t.timeMs > now && t.timeMs - now <= g.leadMin * 60_000 && !posted.has(`${g.id}|${alertKey(t)}`))
       .sort((a, b) => a.timeMs - b.timeMs);
@@ -227,6 +227,58 @@ export function dueAlerts(maps: DueMap[], guilds: AlertGuild[], posted: Set<stri
     out.push({ guildId: g.id, webhook: g.webhook, keys: due.map(alertKey), content: lines.join("\n").slice(0, 2000) });
   }
   return out;
+}
+
+// ---- Guild call-ups: an officer's planned raid, reminded at chosen times before it ----
+
+export const CALLUP_TITLE = "Guild reminder";
+export const MAX_MESSAGE = 500;
+export const MAX_LEADS = 5;
+export const MAX_LEAD_MIN = 14 * 24 * 60; // 14 days
+export const CALLUP_AHEAD = 60 * 24 * 3600_000; // a call-up at most 60 days ahead
+export const MAX_CALLUPS = 20; // upcoming per guild
+export type Ping = "none" | "here" | "everyone";
+export interface CallupNew { officerKey: string; atMs: number; message: string; ping: Ping; leads: number[] }
+
+/** Mentions typed in the message are removed: a ping only comes from `ping`. */
+const unmention = (s: string) => s.replace(/@(everyone|here)/gi, "$1").replace(/<@[!&]?\d+>/g, "");
+
+/** POST /v1/guilds/:id/callups. Null = 400. */
+export function parseCallup(body: unknown, serverNow: number): CallupNew | null {
+  if (!isObj(body)) return null;
+  const officerKey = normCode(body.officerKey);
+  const offset = offsetOf(body.sentMs, serverNow);
+  if (!officerKey || offset === null || !isNum(body.atMs)) return null;
+  const atMs = Math.round(body.atMs + offset);
+  if (atMs <= serverNow || atMs > serverNow + CALLUP_AHEAD) return null;
+  const message = typeof body.message === "string" ? unmention(body.message).trim().slice(0, MAX_MESSAGE) : "";
+  const ping = body.ping ?? "none";
+  if (!message || (ping !== "none" && ping !== "here" && ping !== "everyone")) return null;
+  if (!Array.isArray(body.leads) || !body.leads.length || body.leads.length > MAX_LEADS
+    || !body.leads.every((l) => isInt(l) && l >= 0 && l <= MAX_LEAD_MIN)) return null;
+  const leads = [...new Set(body.leads as number[])].sort((a, b) => b - a);
+  return { officerKey, atMs, message, ping, leads };
+}
+
+/** The next reminder time after `after` (atMs - lead), or null when none is left. */
+export function nextSend(atMs: number, leads: number[], after: number): number | null {
+  let best: number | null = null;
+  for (const l of leads) {
+    const t = atMs - l * 60_000;
+    if (t > after && (best === null || t < best)) best = t;
+  }
+  return best;
+}
+
+/** The Discord webhook body for a call-up: a fixed title, the officer's message, the time in each reader's zone. */
+export function callupPost(c: { atMs: number; message: string; ping: Ping }) {
+  const s = Math.round(c.atMs / 1000);
+  return {
+    username: "AION 2 Companion",
+    content: c.ping === "none" ? "" : `@${c.ping}`,
+    allowed_mentions: { parse: c.ping === "none" ? [] : ["everyone"] },
+    embeds: [{ title: CALLUP_TITLE, description: c.message, color: 0xd8b45a, fields: [{ name: "When", value: `<t:${s}:F> (<t:${s}:R>)` }] }],
+  };
 }
 
 /** The serverId of GET /v1/bosses/:serverId, or null. */

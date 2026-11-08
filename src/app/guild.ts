@@ -1,6 +1,6 @@
 // Guild use cases: create / join / leave, consent, your card, shared fights, officer actions (the Worker's /v1/guilds).
 // Network calls throw (CrowdError) for the page to show; the background ones (sync, fight upload) only log.
-import { DEFAULT_SHARE, guildFight, meCard, parseFightBosses, parseGuild, parseGuildFights, type GuildMe, type GuildShare, type GuildView } from "../domain/guild.ts";
+import { DEFAULT_SHARE, guildFight, meCard, parseFightBosses, parseGuild, parseGuildFights, type GuildMe, type GuildShare, type GuildView, type Ping } from "../domain/guild.ts";
 import type { FightRecord } from "../domain/fights.ts";
 import type { Profile } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
@@ -86,6 +86,19 @@ export async function adminGuild(data: AppData, a: AdminAction): Promise<{ teste
   const r = await crowd(path(data, "/admin"), { officerKey: g.officerKey, ...a });
   if (typeof r.memberCode === "string") g.memberCode = r.memberCode;
   return { tested: r.tested };
+}
+
+/** A call-up (officers): the Worker reminds the guild's Discord at each lead, the members' apps too. */
+export async function createCallup(data: AppData, c: { atMs: number; message: string; ping: Ping; leads: number[] }): Promise<void> {
+  const g = data.guild;
+  if (!g?.officerKey) throw new Error("Not an officer of this guild");
+  await crowd(path(data, "/callups"), { officerKey: g.officerKey, sentMs: Date.now(), ...c });
+}
+
+export async function cancelCallup(data: AppData, id: string): Promise<void> {
+  const g = data.guild;
+  if (!g?.officerKey) throw new Error("Not an officer of this guild");
+  await crowd(path(data, `/callups/${id}/delete`), { officerKey: g.officerKey });
 }
 
 /** Officer key typed in by an officer on another install (it was shown once, at creation). */

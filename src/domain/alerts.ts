@@ -30,6 +30,7 @@ export const CHANNELS = [
   ...EVENTS.map((ev) => ({ id: ev.id, name: `${ev.name}: alert before`, sound: [ev.id, "event"], on: false })),
   { id: "boss", name: "Field boss alerts (set per boss in Field Bosses)", sound: ["boss", "event"], on: true },
   ...BOSS_CHANNELS.map((b) => ({ id: b.id, name: `${b.boss}: respawn alert (set in Field Bosses)`, sound: [b.id, "boss", "event"], on: true })),
+  { id: "guild", name: "Guild reminders (call-ups from your guild's officers)", sound: ["guild", "event"], on: true },
   { id: "reset", name: "Reset warnings", sound: ["reset"], on: true },
   { id: "news", name: "News", sound: ["news"], on: true },
   { id: "check", name: "Task checked (vine boom)", sound: ["check"], on: true },

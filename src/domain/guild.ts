@@ -1,5 +1,6 @@
 // Guilds (the crowd Worker's /v1/guilds): which guild this install is in, the members' cards, shared boss fights.
 // Pure. The member code and officer key stay in the save file only; the Worker keeps their hashes.
+import { dueLeads } from "./alerts.ts";
 import { personalBests, yourDps, type Best, type FightRecord } from "./fights.ts";
 import type { PlayerRow, Profile, SkillRow } from "./meter.ts";
 
@@ -10,7 +11,10 @@ export interface GuildMember {
   name: string; className: string; itemLevel: number | null; combatPower: number | null;
   shareGear: boolean; shareFights: boolean; seenMs: number;
 }
-export interface GuildView { id: string; name: string; serverId: number; leadMin: number; hasWebhook: boolean; members: GuildMember[] }
+export type Ping = "none" | "here" | "everyone";
+/** An officer's planned raid: reminded `leads` minutes before `atMs` (Discord + members' apps), title "Guild reminder". */
+export interface Callup { id: string; atMs: number; message: string; ping: Ping; leads: number[] }
+export interface GuildView { id: string; name: string; serverId: number; leadMin: number; hasWebhook: boolean; members: GuildMember[]; callups: Callup[] }
 /** A member's card as the Worker takes it. */
 export interface GuildMe { name: string; className: string; itemLevel: number | null; combatPower: number | null }
 
@@ -47,10 +51,32 @@ export function parseGuild(j: any, localNow: number): GuildView {
     name: str(m.name), className: str(m.className), itemLevel: num(m.itemLevel), combatPower: num(m.combatPower),
     shareGear: m.shareGear === true, shareFights: m.shareFights === true, seenMs: (num(m.seenMs) ?? 0) + shift,
   })).filter((m: GuildMember) => m.name);
+  const callups = (Array.isArray(j?.callups) ? j.callups : []).filter((c: any) => isObj(c) && typeof c.id === "string" && num(c.atMs)
+    && typeof c.message === "string" && Array.isArray(c.leads)).map((c: any): Callup => ({
+    id: c.id, atMs: c.atMs + shift, message: c.message, ping: c.ping === "here" || c.ping === "everyone" ? c.ping : "none",
+    leads: c.leads.filter((l: unknown) => Number.isInteger(l) && (l as number) >= 0),
+  }));
   return {
     id: str(j?.id), name: str(j?.name), serverId: num(j?.serverId) ?? 0, leadMin: num(j?.leadMin) ?? 5,
-    hasWebhook: j?.hasWebhook === true, members,
+    hasWebhook: j?.hasWebhook === true, members, callups,
   };
+}
+
+/** Call-up keys in AppData.warnedEvent: `callup:<id>@<lead>` → the call-up's time. */
+export const callupKey = (c: Callup, lead: number) => `callup:${c.id}@${lead}`;
+
+/** Call-ups with reminders due now and not yet shown here; several due at once (app closed) give one reminder. */
+export function dueCallups(callups: Callup[], warned: Record<string, number>, now: number): { callup: Callup; leads: number[] }[] {
+  return callups.filter((c) => c.atMs > now - 60_000)
+    .map((c) => ({ callup: c, leads: dueLeads(c.leads, c.atMs - now, (l) => warned[callupKey(c, l)] === c.atMs) }))
+    .filter((d) => d.leads.length > 0);
+}
+
+/** "2 days", "1 day 6 h", "3 h", "45 min", "at the time". */
+export function leadText(min: number): string {
+  if (min <= 0) return "at the time";
+  const d = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
+  return [d && `${d} day${d > 1 ? "s" : ""}`, h && `${h} h`, m && `${m} min`].filter(Boolean).join(" ");
 }
 
 /** Members by item level (highest first), the official profile's numbers where the member shared none. */
