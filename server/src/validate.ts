@@ -85,6 +85,150 @@ export function cellOf(x: number, y: number): string {
   return `${Math.floor(x / CELL)},${Math.floor(y / CELL)}`;
 }
 
+/** The earliest respawn still to come on a map (a boss not up, time known and after `now`), or null. */
+export function nextDue(timers: BossTimer[], now: number): number | null {
+  let best: number | null = null;
+  for (const t of timers) if (!t.up && t.timeMs > now && (best === null || t.timeMs < best)) best = t.timeMs;
+  return best;
+}
+
+// ---- Guilds ----
+
+export const MAX_GUILD_NAME = 32;
+export const MAX_FIGHT = 8 * 1024; // one fight record, JSON
+export const MAX_ROWS = 24;
+export const MAX_LEAD = 15; // minutes; the cron reads the maps due within this
+/** A guild code / officer key: 16 characters of base32 (A-Z, 2-7), dashes and spaces ignored. */
+export const CODE_LEN = 16;
+/** Discord posts per cron run: the free plan allows 50 subrequests per invocation. */
+export const MAX_POSTS = 40;
+/** A boss alerted once isn't alerted again for this long (its next respawn is hours away). */
+export const POSTED_FOR = 30 * 60_000;
+
+export interface Me { name: string; className: string; itemLevel: number | null; combatPower: number | null }
+export interface Share { gear: boolean; fights: boolean }
+export interface GuildCreate { install: string; name: string; serverId: number; me: Me }
+export interface GuildJoin { install: string; code: string; me: Me; share: Share }
+export interface MePost { install: string; leave: boolean; me: Me | null; share: Share }
+export interface GuildFight { install: string; id: string; boss: string; endMs: number; battleMs: number; killed: boolean; record: string }
+export interface GuildAdmin {
+  officerKey: string; webhook?: string | null; leadMin?: number; remove?: string; rotateCode: boolean; test: boolean;
+}
+
+const isInstall = (v: unknown): v is string => typeof v === "string" && UUID.test(v);
+const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+const count = (v: unknown) => (isNum(v) && v >= 0 && v < 1e12 ? Math.round(v) : null);
+
+/** A code as typed (any case, dashes, spaces) → its canonical form, or null. */
+export function normCode(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.toUpperCase().replace(/[\s-]/g, "");
+  return s.length === CODE_LEN && /^[A-Z2-7]+$/.test(s) ? s : null;
+}
+
+/** Discord webhooks only: the Worker must not post to any URL a player sends. */
+export function isWebhook(v: unknown): v is string {
+  return typeof v === "string" && /^https:\/\/(discord|discordapp)\.com\/api\/webhooks\/\d{1,25}\/[\w-]{1,100}$/.test(v);
+}
+
+export function parseMe(v: unknown): Me | null {
+  if (!isObj(v)) return null;
+  const name = text(v.name, MAX_NAME);
+  if (!name) return null;
+  return { name, className: text(v.className, MAX_NAME), itemLevel: count(v.itemLevel), combatPower: count(v.combatPower) };
+}
+
+/** Consent: gear on unless turned off (it's public on the official site anyway), fights only when turned on. */
+export function parseShare(v: unknown): Share {
+  return { gear: !(isObj(v) && v.gear === false), fights: isObj(v) && v.fights === true };
+}
+
+export function parseGuildCreate(body: unknown): GuildCreate | null {
+  if (!isObj(body) || !isInstall(body.install) || !isId(body.serverId)) return null;
+  const name = text(body.name, MAX_GUILD_NAME);
+  const me = parseMe(body.me);
+  return name && me ? { install: body.install.toLowerCase(), name, serverId: body.serverId, me } : null;
+}
+
+export function parseJoin(body: unknown): GuildJoin | null {
+  if (!isObj(body) || !isInstall(body.install)) return null;
+  const code = normCode(body.code);
+  const me = parseMe(body.me);
+  return code && me ? { install: body.install.toLowerCase(), code, me, share: parseShare(body.share) } : null;
+}
+
+export function parseMePost(body: unknown): MePost | null {
+  if (!isObj(body) || !isInstall(body.install)) return null;
+  const leave = body.leave === true;
+  const me = body.me === undefined ? null : parseMe(body.me);
+  if (!leave && body.me !== undefined && !me) return null;
+  return { install: body.install.toLowerCase(), leave, me, share: parseShare(body.share) };
+}
+
+/** One fight (the app's FightRecord, trimmed): kept as the JSON sent once its fields check out. */
+export function parseGuildFight(body: unknown): GuildFight | null {
+  if (!isObj(body) || !isInstall(body.install) || !isObj(body.fight)) return null;
+  const f = body.fight;
+  const id = text(f.id, MAX_NAME);
+  const boss = text(f.boss, MAX_NAME);
+  if (!id || !boss || !isNum(f.endMs) || f.endMs <= 0 || !isNum(f.battleTimeMs) || f.battleTimeMs <= 0
+    || typeof f.killed !== "boolean" || !Array.isArray(f.rows) || f.rows.length > MAX_ROWS || !f.rows.every(isObj)) return null;
+  const record = JSON.stringify(f);
+  if (record.length > MAX_FIGHT) return null;
+  return { install: body.install.toLowerCase(), id, boss, endMs: f.endMs, battleMs: f.battleTimeMs, killed: f.killed, record };
+}
+
+/** Officer actions. `webhook: ""` or null removes it; anything else must be a Discord webhook. */
+export function parseAdmin(body: unknown): GuildAdmin | null {
+  if (!isObj(body)) return null;
+  const officerKey = normCode(body.officerKey);
+  if (!officerKey) return null;
+  const a: GuildAdmin = { officerKey, rotateCode: body.rotateCode === true, test: body.test === true };
+  if (body.webhook !== undefined) {
+    if (body.webhook === null || body.webhook === "") a.webhook = null;
+    else if (isWebhook(body.webhook)) a.webhook = body.webhook;
+    else return null;
+  }
+  if (body.leadMin !== undefined) {
+    if (!isInt(body.leadMin) || body.leadMin < 1 || body.leadMin > MAX_LEAD) return null;
+    a.leadMin = body.leadMin;
+  }
+  if (body.remove !== undefined) {
+    const name = text(body.remove, MAX_NAME);
+    if (!name) return null;
+    a.remove = name;
+  }
+  return a;
+}
+
+export interface DueMap { serverId: number; mapId: number; timers: BossTimer[] }
+export interface AlertGuild { id: string; serverId: number; webhook: string; leadMin: number }
+export interface Alert { guildId: string; webhook: string; keys: string[]; content: string }
+
+/** The key of a boss in `guild_posts`. */
+export const alertKey = (t: BossTimer) => `${t.mapId}:${t.bossId}`;
+
+/**
+ * One Discord message per guild with the bosses respawning within its lead time, skipping the ones in `posted`
+ * (`guildId|key`, alerted within POSTED_FOR). At most MAX_POSTS messages; the rest go out on the next run.
+ */
+export function dueAlerts(maps: DueMap[], guilds: AlertGuild[], posted: Set<string>, now: number): Alert[] {
+  const out: Alert[] = [];
+  for (const g of guilds) {
+    if (out.length >= MAX_POSTS) break;
+    const due = maps.filter((m) => m.serverId === g.serverId).flatMap((m) => m.timers)
+      .filter((t) => !t.up && t.timeMs > now && t.timeMs - now <= g.leadMin * 60_000 && !posted.has(`${g.id}|${alertKey(t)}`))
+      .sort((a, b) => a.timeMs - b.timeMs);
+    if (!due.length) continue;
+    const lines = due.map((t) => {
+      const s = Math.round(t.timeMs / 1000);
+      return `**${(t.name || `Boss ${t.bossId}`).replace(/[*_`~|<>@]/g, "")}** respawns <t:${s}:R> (<t:${s}:t>)`;
+    });
+    out.push({ guildId: g.id, webhook: g.webhook, keys: due.map(alertKey), content: lines.join("\n").slice(0, 2000) });
+  }
+  return out;
+}
+
 /** The serverId of GET /v1/bosses/:serverId, or null. */
 export function parseServerId(s: string): number | null {
   if (!/^\d{1,9}$/.test(s)) return null;

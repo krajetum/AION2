@@ -20,6 +20,7 @@ export const ICON = {
   transcendence: icon(`<path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2l.9-5.5-4-3.9 5.5-.8L12 3z"/>`),
   enhance: icon(`<path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"/><path d="M12 21v-3"/>`),
   players: icon(`<circle cx="10" cy="8" r="4"/><path d="M3 20c0-3.5 3-6 7-6 1.5 0 2.8.3 3.9.9M17.5 17.5m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M19.3 19.3L21 21"/>`),
+  guild: icon(`<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.2c.6-.1 1.3-.2 2-.2 2.8 0 4 2 4 5"/>`),
   sanctuary: icon(`<path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"/>`),
   mechanics: icon(`<path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5z"/><path d="M4 21a2 2 0 0 1 2-2h12v2H6M8 7h6M8 11h6"/>`),
   news: icon(`<path d="M5 4h12v16H6a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1zM17 8h3v10a2 2 0 0 1-2 2"/><path d="M8 8h6M8 12h6M8 16h4"/>`),

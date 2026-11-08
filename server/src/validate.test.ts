@@ -1,7 +1,10 @@
 // Run with: node --test "server/**/*.test.ts"
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cellOf, MAX_CUBES, MAX_TIMERS, parseBossPost, parseCubePost, parseServerId, TIME_RANGE } from "./validate.ts";
+import {
+  cellOf, dueAlerts, isWebhook, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
+  parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, parseShare, TIME_RANGE,
+} from "./validate.ts";
 
 const NOW = 1_800_000_000_000;
 const MIN = 60_000;
@@ -59,4 +62,86 @@ test("cells and server ids", () => {
   assert.equal(cellOf(300, 650), "1,2");
   assert.equal(parseServerId("2001"), 2001);
   for (const s of ["0", "-1", "1.5", "abc", "", "1e3", "9999999999"]) assert.equal(parseServerId(s), null, s);
+});
+
+// ---- Guilds ----
+
+const ME = { name: " Krajetum ", className: "Gladiator", itemLevel: 3012.6, combatPower: 120000 };
+const CODE = "ABCD-EFGH-2345-6767";
+
+test("codes: case, dashes and spaces ignored; wrong length or letters refused", () => {
+  assert.equal(normCode(" abcd efgh 2345 6767 "), "ABCDEFGH23456767");
+  assert.equal(normCode(CODE), "ABCDEFGH23456767");
+  for (const bad of ["ABCD", "ABCDEFGH23456781", "ABCDEFGH234567670", 42, null]) assert.equal(normCode(bad), null);
+});
+
+test("webhook: only Discord webhooks", () => {
+  assert.ok(isWebhook("https://discord.com/api/webhooks/123456/abc_DEF-9"));
+  assert.ok(isWebhook("https://discordapp.com/api/webhooks/1/x"));
+  for (const bad of ["http://discord.com/api/webhooks/1/x", "https://evil.com/api/webhooks/1/x", "https://discord.com.evil.com/api/webhooks/1/x",
+    "https://discord.com/api/webhooks/1/x?wait=true", "https://discord.com/api/webhooks/x/y", 7]) assert.equal(isWebhook(bad), false, String(bad));
+});
+
+test("create / join: name trimmed, numbers rounded, consent defaults gear on and fights off", () => {
+  assert.deepEqual(parseGuildCreate({ install: ID, name: "  Static  ", serverId: 1301, me: ME }), {
+    install: ID.toLowerCase(), name: "Static", serverId: 1301, me: { name: "Krajetum", className: "Gladiator", itemLevel: 3013, combatPower: 120000 },
+  });
+  assert.equal(parseGuildCreate({ install: ID, name: " ", serverId: 1301, me: ME }), null);
+  assert.equal(parseGuildCreate({ install: "x", name: "S", serverId: 1301, me: ME }), null);
+  assert.equal(parseGuildCreate({ install: ID, name: "S", serverId: 1301, me: { name: "" } }), null);
+  const j = parseJoin({ install: ID, code: CODE, me: { name: "A", itemLevel: -3 } });
+  assert.deepEqual(j?.share, { gear: true, fights: false });
+  assert.equal(j?.me.itemLevel, null);
+  assert.deepEqual(parseShare({ gear: false, fights: true }), { gear: false, fights: true });
+  assert.equal(parseJoin({ install: ID, code: "nope", me: ME }), null);
+});
+
+test("me post: leave, share only, or a new card; a bad card refused", () => {
+  assert.equal(parseMePost({ install: ID, leave: true })?.leave, true);
+  assert.equal(parseMePost({ install: ID, share: { fights: true } })?.me, null);
+  assert.equal(parseMePost({ install: ID, me: ME })?.me?.name, "Krajetum");
+  assert.equal(parseMePost({ install: ID, me: { name: 3 } }), null);
+});
+
+test("fight: fields checked, size capped", () => {
+  const fight = { id: "f1", boss: "Gartua", endMs: NOW, battleTimeMs: 90_000, killed: true, rows: [{ name: "A", dps: 1 }] };
+  const f = parseGuildFight({ install: ID, fight });
+  assert.equal(f?.battleMs, 90_000);
+  assert.deepEqual(JSON.parse(f!.record), fight);
+  assert.equal(parseGuildFight({ install: ID, fight: { ...fight, killed: "yes" } }), null);
+  assert.equal(parseGuildFight({ install: ID, fight: { ...fight, rows: [1] } }), null);
+  assert.equal(parseGuildFight({ install: ID, fight: { ...fight, rows: Array(MAX_ROWS + 1).fill({}) } }), null);
+  assert.equal(parseGuildFight({ install: ID, fight: { ...fight, pad: "x".repeat(MAX_FIGHT) } }), null);
+});
+
+test("admin: webhook set or removed, lead in range, anything else refused", () => {
+  assert.deepEqual(parseAdmin({ officerKey: CODE, webhook: "", leadMin: 10, test: true }),
+    { officerKey: "ABCDEFGH23456767", webhook: null, leadMin: 10, rotateCode: false, test: true });
+  assert.equal(parseAdmin({ officerKey: CODE, webhook: "https://example.com/hook" }), null);
+  assert.equal(parseAdmin({ officerKey: CODE, leadMin: MAX_LEAD + 1 }), null);
+  assert.equal(parseAdmin({ officerKey: CODE, remove: " " }), null);
+  assert.equal(parseAdmin({ webhook: "" }), null);
+});
+
+test("next due: earliest boss not up, in the future", () => {
+  assert.equal(nextDue([t(1, NOW + 20 * MIN), t(2, NOW + 5 * MIN), t(3, NOW + MIN, { up: true }), t(4, NOW - MIN), t(5, 0)], NOW), NOW + 5 * MIN);
+  assert.equal(nextDue([t(1, NOW - MIN)], NOW), null);
+});
+
+test("due alerts: within each guild's lead, its server only, posted ones skipped, one message per guild", () => {
+  const maps = [
+    { serverId: 1, mapId: 10, timers: [t(1, NOW + 3 * MIN, { mapId: 10, name: "**Gartua**" }), t(2, NOW + 12 * MIN, { mapId: 10 })] },
+    { serverId: 2, mapId: 10, timers: [t(1, NOW + 2 * MIN, { mapId: 10 })] },
+  ];
+  const guilds = [
+    { id: "a", serverId: 1, webhook: "w1", leadMin: 5 },
+    { id: "b", serverId: 1, webhook: "w2", leadMin: 15 },
+    { id: "c", serverId: 2, webhook: "w3", leadMin: 5 },
+  ];
+  const out = dueAlerts(maps, guilds, new Set(["c|10:1"]), NOW);
+  assert.deepEqual(out.map((a) => [a.guildId, a.keys]), [["a", ["10:1"]], ["b", ["10:1", "10:2"]]]);
+  const s = Math.round((NOW + 3 * MIN) / 1000);
+  assert.equal(out[0].content, `**Gartua** respawns <t:${s}:R> (<t:${s}:t>)`);
+  const many = Array.from({ length: MAX_POSTS + 5 }, (_, i) => ({ id: `g${i}`, serverId: 1, webhook: "w", leadMin: 5 }));
+  assert.equal(dueAlerts(maps, many, new Set(), NOW).length, MAX_POSTS);
 });

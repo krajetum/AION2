@@ -17,4 +17,4 @@ invocation_logs = true
 persist = true
 
 [triggers]
-crons = ["17 4 * * *"] # daily cleanup
+crons = ["17 4 * * *", "* * * * *"] # daily cleanup; guild boss alerts to Discord (free plan: 5 crons per account)
