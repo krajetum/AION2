@@ -14,7 +14,7 @@ export interface GuildMember {
 export type Ping = "none" | "here" | "everyone";
 /** An officer's planned raid: reminded `leads` minutes before `atMs` (Discord + members' apps), title "Guild reminder". */
 export interface Callup { id: string; atMs: number; message: string; ping: Ping; leads: number[] }
-export interface GuildView { id: string; name: string; serverId: number; leadMin: number; hasWebhook: boolean; members: GuildMember[]; callups: Callup[] }
+export interface GuildView { id: string; name: string; serverId: number; leadMin: number; bossAlerts: boolean; hasWebhook: boolean; members: GuildMember[]; callups: Callup[] }
 /** A member's card as the Worker takes it. */
 export interface GuildMe { name: string; className: string; itemLevel: number | null; combatPower: number | null }
 
@@ -58,7 +58,7 @@ export function parseGuild(j: any, localNow: number): GuildView {
   }));
   return {
     id: str(j?.id), name: str(j?.name), serverId: num(j?.serverId) ?? 0, leadMin: num(j?.leadMin) ?? 5,
-    hasWebhook: j?.hasWebhook === true, members, callups,
+    bossAlerts: j?.bossAlerts === true, hasWebhook: j?.hasWebhook === true, members, callups,
   };
 }
 

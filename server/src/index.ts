@@ -190,8 +190,8 @@ async function getGuild(env: Env, url: URL, id: string) {
     await env.DB.prepare("UPDATE guild_members SET seen_ms = ? WHERE guild_id = ? AND install = ? AND seen_ms < ?")
       .bind(now, id, install!.toLowerCase(), now - 60_000).run();
   }
-  const g = await env.DB.prepare("SELECT name, server_id, lead_min, webhook IS NOT NULL AS hook FROM guilds WHERE id = ?")
-    .bind(id).first<{ name: string; server_id: number; lead_min: number; hook: number }>();
+  const g = await env.DB.prepare("SELECT name, server_id, lead_min, boss_alerts, webhook IS NOT NULL AS hook FROM guilds WHERE id = ?")
+    .bind(id).first<{ name: string; server_id: number; lead_min: number; boss_alerts: number; hook: number }>();
   if (!g) return fail(403, "not a member");
   const { results } = await env.DB.prepare(
     `SELECT name, class_name, CASE WHEN share_gear THEN item_level END AS item_level,
@@ -202,7 +202,7 @@ async function getGuild(env: Env, url: URL, id: string) {
     .bind(id, now - 3600_000).all<{ id: string; at_ms: number; message: string; ping: string; leads: string }>()).results
     .map((c) => ({ id: c.id, atMs: c.at_ms, message: c.message, ping: c.ping, leads: JSON.parse(c.leads) }));
   return json({
-    serverNow: Date.now(), id, name: g.name, serverId: g.server_id, leadMin: g.lead_min, hasWebhook: !!g.hook, callups,
+    serverNow: Date.now(), id, name: g.name, serverId: g.server_id, leadMin: g.lead_min, bossAlerts: !!g.boss_alerts, hasWebhook: !!g.hook, callups,
     members: results.map((m) => ({
       name: m.name, className: m.class_name, itemLevel: m.item_level, combatPower: m.combat_power,
       shareGear: !!m.share_gear, shareFights: !!m.share_fights, seenMs: m.seen_ms,
@@ -272,6 +272,7 @@ async function postAdmin(env: Env, req: Request, id: string) {
   let memberCode: string | undefined;
   if (p.webhook !== undefined) stmts.push(env.DB.prepare("UPDATE guilds SET webhook = ? WHERE id = ?").bind(p.webhook, id));
   if (p.leadMin !== undefined) stmts.push(env.DB.prepare("UPDATE guilds SET lead_min = ? WHERE id = ?").bind(p.leadMin, id));
+  if (p.bossAlerts !== undefined) stmts.push(env.DB.prepare("UPDATE guilds SET boss_alerts = ? WHERE id = ?").bind(+p.bossAlerts, id));
   if (p.rotateCode) {
     memberCode = randomCode();
     stmts.push(env.DB.prepare("UPDATE guilds SET member_hash = ? WHERE id = ?").bind(await hashOf(memberCode), id));
@@ -341,7 +342,7 @@ async function callupAlerts(env: Env, now: number, max: number): Promise<number>
 async function guildAlerts(env: Env, now: number): Promise<void> {
   const left = MAX_POSTS - await callupAlerts(env, now, MAX_POSTS);
   if (left <= 0) return;
-  const guilds = (await env.DB.prepare("SELECT id, server_id, webhook, lead_min FROM guilds WHERE webhook IS NOT NULL")
+  const guilds = (await env.DB.prepare("SELECT id, server_id, webhook, lead_min FROM guilds WHERE webhook IS NOT NULL AND boss_alerts = 1")
     .all<{ id: string; server_id: number; webhook: string; lead_min: number }>()).results;
   if (!guilds.length) return;
   const servers = [...new Set(guilds.map((g) => g.server_id))];

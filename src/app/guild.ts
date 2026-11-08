@@ -77,7 +77,7 @@ export async function bossFights(data: AppData, boss: string): Promise<FightReco
   return parseGuildFights(await crowd(`${path(data, "/fights")}?install=${data.install}&boss=${encodeURIComponent(boss)}`));
 }
 
-export interface AdminAction { webhook?: string | null; leadMin?: number; remove?: string; rotateCode?: boolean; test?: boolean }
+export interface AdminAction { webhook?: string | null; leadMin?: number; bossAlerts?: boolean; remove?: string; rotateCode?: boolean; test?: boolean }
 
 /** An officer action. A rotated code replaces the one kept here; `tested` = the test post went through. */
 export async function adminGuild(data: AppData, a: AdminAction): Promise<{ tested?: boolean }> {
