@@ -3,6 +3,7 @@
 import { EVENTS, RESET_CONFIG as C } from "../config.ts";
 import { bossChannel, dueLeads, inQuietHours } from "../domain/alerts.ts";
 import { bossKey, bossLabel, dueBossAlerts } from "../domain/bosses.ts";
+import { callupKey, dueCallups, type Callup } from "../domain/guild.ts";
 import { armDefaultBosses } from "./bosses.ts";
 import { CLOUD_MERCHANT_ID } from "../domain/seed.ts";
 import { remaining } from "../domain/tasks.ts";
@@ -13,8 +14,8 @@ export type Toast = (s: Settings, title: string, body: string, sound: string[]) 
 
 const H = 3600_000;
 
-/** Returns true if it changed data (needs saving). */
-export function checkNotifications(data: AppData, now: number, toast: Toast): boolean {
+/** Returns true if it changed data (needs saving). `callups`: the guild's, as last synced (not in the save file). */
+export function checkNotifications(data: AppData, now: number, toast: Toast, callups: Callup[] = []): boolean {
   const s = data.settings;
   const silent = s.mutedUntil > now || inQuietHours(s, now);
   let changed = armDefaultBosses(data);
@@ -52,6 +53,20 @@ export function checkNotifications(data: AppData, now: number, toast: Toast): bo
     if (d.last && !d.alert.repeat) delete data.bossAlerts[d.boss.bossId];
     changed = true;
     if (!silent) toast(s, label, `Respawns in ${d.minutes} min.`, ch === "boss" ? ["boss", "event"] : [ch, "boss", "event"]);
+  }
+
+  // Guild call-ups: "Guild reminder" at each lead the officer set; missed while silent = skipped, as events.
+  for (const d of dueCallups(callups, data.warnedEvent, now)) {
+    for (const l of d.leads) data.warnedEvent[callupKey(d.callup, l)] = d.callup.atMs;
+    changed = true;
+    if (!silent && s.channels.guild?.on) {
+      const at = new Date(d.callup.atMs).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      toast(s, "Guild reminder", `${d.callup.message} · ${at}`, ["guild", "event"]);
+    }
+  }
+  // Call-up marks a day past their time aren't needed any more.
+  for (const [k, at] of Object.entries(data.warnedEvent)) {
+    if (k.startsWith("callup:") && at < now - 24 * H) { delete data.warnedEvent[k]; changed = true; }
   }
 
   // Warning X hours before each reset, once per reset. While silent it is not marked as sent,

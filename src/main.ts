@@ -104,12 +104,14 @@ async function main() {
     if (ticks % 21600 === 0 && isDesktop()) checkUpdate(); // every 6 h: the app can stay in the tray for days
     // Other players' boss timers every 2 min and cube spots every hour, only while you play.
     if (ticks % bossEvery === 0 && gameActive(ui.now)) { crowdBosses(); refreshGuild(true); }
+    // Out of game the guild every 15 min: an officer's call-up reminder reaches you with the app in the tray.
+    else if (ticks % 900 === 0 && ui.data.guild) refreshGuild(false);
     if (ticks % 3600 === 0 && gameActive(ui.now)) crowdCubes();
     if (ticks % 600 === 0) flushCubes(ui.data);
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(ui.data, now, C).length > 0;
-    if (checkNotifications(ui.data, now, toast) || reset) await save();
+    if (checkNotifications(ui.data, now, toast, ui.guild?.callups) || reset) await save();
   }, 1000);
 }
 

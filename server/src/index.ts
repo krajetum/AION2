@@ -3,8 +3,8 @@
 // shared fights, by consent). The app works the same when this is down.
 // API under /v1, backward-compatible changes only (an incompatible one = /v2 alongside).
 import {
-  alertKey, type BossTimer, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_LEAD, nextDue, parseAdmin, parseBossPost, parseCubePost,
-  parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, POSTED_FOR,
+  alertKey, type BossTimer, callupPost, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_CALLUPS, MAX_LEAD, MAX_POSTS, nextDue, nextSend, normCode,
+  parseAdmin, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Ping, POSTED_FOR,
 } from "./validate.ts";
 
 // Minimal Workers types (no @cloudflare/workers-types).
@@ -144,12 +144,11 @@ const upsertMember = (env: Env, guildId: string, install: string, me: { name: st
        share_gear = excluded.share_gear, share_fights = excluded.share_fights, seen_ms = excluded.seen_ms`,
   ).bind(guildId, install, me.name, me.className, me.itemLevel, me.combatPower, +share.gear, +share.fights, now, now);
 
-async function postDiscord(webhook: string, content: string): Promise<boolean> {
+/** A plain message (no mentions), or a whole webhook body (call-ups: embed and ping). */
+async function postDiscord(webhook: string, message: string | object): Promise<boolean> {
+  const body = typeof message === "string" ? { content: message, username: "AION 2 Companion", allowed_mentions: { parse: [] } } : message;
   try {
-    const r = await fetch(webhook, {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ content, username: "AION 2 Companion", allowed_mentions: { parse: [] } }),
-    });
+    const r = await fetch(webhook, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     return r.ok;
   } catch { return false; }
 }
@@ -199,8 +198,11 @@ async function getGuild(env: Env, url: URL, id: string) {
        CASE WHEN share_gear THEN combat_power END AS combat_power, share_gear, share_fights, seen_ms
      FROM guild_members WHERE guild_id = ? ORDER BY name`,
   ).bind(id).all<{ name: string; class_name: string; item_level: number | null; combat_power: number | null; share_gear: number; share_fights: number; seen_ms: number }>();
+  const callups = (await env.DB.prepare("SELECT id, at_ms, message, ping, leads FROM guild_callups WHERE guild_id = ? AND at_ms > ? ORDER BY at_ms")
+    .bind(id, now - 3600_000).all<{ id: string; at_ms: number; message: string; ping: string; leads: string }>()).results
+    .map((c) => ({ id: c.id, atMs: c.at_ms, message: c.message, ping: c.ping, leads: JSON.parse(c.leads) }));
   return json({
-    serverNow: Date.now(), id, name: g.name, serverId: g.server_id, leadMin: g.lead_min, hasWebhook: !!g.hook,
+    serverNow: Date.now(), id, name: g.name, serverId: g.server_id, leadMin: g.lead_min, hasWebhook: !!g.hook, callups,
     members: results.map((m) => ({
       name: m.name, className: m.class_name, itemLevel: m.item_level, combatPower: m.combat_power,
       shareGear: !!m.share_gear, shareFights: !!m.share_fights, seenMs: m.seen_ms,
@@ -287,8 +289,58 @@ async function postAdmin(env: Env, req: Request, id: string) {
   return json({ ok: true, memberCode, tested });
 }
 
-/** Every minute: Discord posts for the bosses due within each alerting guild's lead time. */
+/** Officer key → the guild row, or null. */
+const officerGuild = async (env: Env, id: string, key: string) =>
+  env.DB.prepare("SELECT id FROM guilds WHERE id = ? AND officer_hash = ?").bind(id, await hashOf(key)).first<{ id: string }>();
+
+async function createCallup(env: Env, req: Request, id: string) {
+  const now = Date.now();
+  const p = parseCallup(await readBody(req), now);
+  if (!p) return fail(400, "bad request");
+  if (!(await officerGuild(env, id, p.officerKey))) return fail(403, "wrong officer key");
+  if (!(await allowWrite(env, `officer:${id}`, now))) return fail(429, "too many writes");
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM guild_callups WHERE guild_id = ? AND at_ms > ?").bind(id, now).first<{ n: number }>();
+  if ((n?.n ?? 0) >= MAX_CALLUPS) return fail(409, "too many call-ups");
+  const cid = randomCode(12).toLowerCase();
+  await env.DB.prepare("INSERT INTO guild_callups (id, guild_id, at_ms, message, ping, leads, next_ms, created_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    // The earliest reminder, even if already past: a call-up planned late gets one post at once (as members' apps do).
+    .bind(cid, id, p.atMs, p.message, p.ping, JSON.stringify(p.leads), nextSend(p.atMs, p.leads, 0), now).run();
+  return json({ id: cid });
+}
+
+async function cancelCallup(env: Env, req: Request, id: string, cid: string) {
+  const b = await readBody(req) as { officerKey?: unknown } | undefined;
+  const key = normCode(b?.officerKey);
+  if (!key) return fail(400, "bad request");
+  if (!(await officerGuild(env, id, key))) return fail(403, "wrong officer key");
+  await env.DB.prepare("DELETE FROM guild_callups WHERE id = ? AND guild_id = ?").bind(cid, id).run();
+  return json({ ok: true });
+}
+
+/** Call-ups with a reminder due: one post each (several reminders missed at once = one post), up to `max`. Returns posts used. */
+async function callupAlerts(env: Env, now: number, max: number): Promise<number> {
+  const { results } = await env.DB.prepare(
+    `SELECT c.id, c.at_ms, c.message, c.ping, c.leads, g.webhook FROM guild_callups c JOIN guilds g ON g.id = c.guild_id
+     WHERE c.next_ms IS NOT NULL AND c.next_ms <= ? AND g.webhook IS NOT NULL ORDER BY c.next_ms LIMIT ?`,
+  ).bind(now, max).all<{ id: string; at_ms: number; message: string; ping: Ping; leads: string; webhook: string }>();
+  const stmts: D1PreparedStatement[] = [];
+  for (const c of results) {
+    // ponytail: a call-up whose time has passed with reminders left (cron down) still posts once, saying "x min ago".
+    if (!(await postDiscord(c.webhook, callupPost({ atMs: c.at_ms, message: c.message, ping: c.ping })))) {
+      // Retried every minute until its time; after that (webhook deleted?) it stops.
+      if (c.at_ms < now) stmts.push(env.DB.prepare("UPDATE guild_callups SET next_ms = NULL WHERE id = ?").bind(c.id));
+      continue;
+    }
+    stmts.push(env.DB.prepare("UPDATE guild_callups SET next_ms = ? WHERE id = ?").bind(nextSend(c.at_ms, JSON.parse(c.leads), now), c.id));
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+  return results.length;
+}
+
+/** Every minute: call-up reminders, then Discord posts for the bosses due within each alerting guild's lead time. */
 async function guildAlerts(env: Env, now: number): Promise<void> {
+  const left = MAX_POSTS - await callupAlerts(env, now, MAX_POSTS);
+  if (left <= 0) return;
   const guilds = (await env.DB.prepare("SELECT id, server_id, webhook, lead_min FROM guilds WHERE webhook IS NOT NULL")
     .all<{ id: string; server_id: number; webhook: string; lead_min: number }>()).results;
   if (!guilds.length) return;
@@ -304,7 +356,7 @@ async function guildAlerts(env: Env, now: number): Promise<void> {
     "SELECT guild_id, alert_key FROM guild_posts WHERE guild_id IN (SELECT value FROM json_each(?)) AND at_ms > ?",
   ).bind(JSON.stringify(guilds.map((g) => g.id)), now - POSTED_FOR).all<{ guild_id: string; alert_key: string }>()).results
     .map((p) => `${p.guild_id}|${p.alert_key}`));
-  const alerts = dueAlerts(maps, guilds.map((g) => ({ id: g.id, serverId: g.server_id, webhook: g.webhook, leadMin: g.lead_min })), posted, now);
+  const alerts = dueAlerts(maps, guilds.map((g) => ({ id: g.id, serverId: g.server_id, webhook: g.webhook, leadMin: g.lead_min })), posted, now, left);
   const stmts: D1PreparedStatement[] = [];
   for (const a of alerts) {
     // ponytail: posted one after another; a Discord 429 just retries next minute (dedup row only after a success).
@@ -336,9 +388,12 @@ export default {
       if (req.method === "POST" && url.pathname === "/v1/cubes") return await postCubes(env, req);
       if (req.method === "POST" && url.pathname === "/v1/guilds") return await createGuild(env, req);
       if (req.method === "POST" && url.pathname === "/v1/guilds/join") return await joinGuild(env, req);
-      const guild = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})(?:\/(me|fights|admin))?$/);
+      const cancel = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})\/callups\/([a-z2-7]{12})\/delete$/);
+      if (req.method === "POST" && cancel) return await cancelCallup(env, req, cancel[1], cancel[2]);
+      const guild = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})(?:\/(me|fights|admin|callups))?$/);
       if (guild) {
         const [, id, part] = guild;
+        if (req.method === "POST" && part === "callups") return await createCallup(env, req, id);
         if (req.method === "GET" && !part) return await getGuild(env, url, id);
         if (req.method === "GET" && part === "fights") return await getFights(env, url, id);
         if (req.method === "POST" && part === "me") return await postMe(env, req, id);
@@ -366,6 +421,7 @@ export default {
       env.DB.prepare("DELETE FROM guild_fights WHERE end_ms < ?").bind(now - 90 * DAY),
       env.DB.prepare("DELETE FROM guild_members WHERE seen_ms < ?").bind(now - 60 * DAY),
       env.DB.prepare("DELETE FROM guilds WHERE id NOT IN (SELECT DISTINCT guild_id FROM guild_members)"),
+      env.DB.prepare("DELETE FROM guild_callups WHERE at_ms < ? OR guild_id NOT IN (SELECT id FROM guilds)").bind(now - DAY),
     ]));
   },
 };

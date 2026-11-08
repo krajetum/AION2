@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanGuild, guildFight, MAX_FIGHT, MAX_ROWS, memberBests, parseGuild, parseGuildFights, rosterRows } from "./guild.ts";
+import { callupKey, cleanGuild, dueCallups, guildFight, leadText, MAX_FIGHT, MAX_ROWS, memberBests, parseGuild, parseGuildFights, rosterRows } from "./guild.ts";
 import type { FightRecord } from "./fights.ts";
 import type { PlayerRow, SkillRow } from "./meter.ts";
 
@@ -59,4 +59,20 @@ test("memberBests: per member, best DPS first; fastest kill only from kills", ()
   const b = memberBests([fight("A", 100, 90_000), fight("A", 150, 120_000, false), fight("B", 200, 60_000)]);
   assert.deepEqual(b.map((x) => [x.char, x.fights, x.dps?.battleTimeMs, x.fastest?.battleTimeMs]),
     [["B", 1, 60_000, 60_000], ["A", 2, 120_000, 90_000]]);
+});
+
+test("call-ups: parsed onto the local clock; due reminders once, several at once together, past ones skipped", () => {
+  const D = 24 * 60, MIN = 60_000, now = 10_000_000_000;
+  const g = parseGuild({ serverNow: 1000, callups: [{ id: "c", atMs: 1000 + 3 * D * MIN, message: "Raid", ping: "loud", leads: [2 * D, D, 1.5] }, { id: 2 }] }, 2000);
+  assert.deepEqual(g.callups, [{ id: "c", atMs: 2000 + 3 * D * MIN, message: "Raid", ping: "none", leads: [2 * D, D] }]);
+  const c = { id: "c", atMs: now + 3 * D * MIN, message: "Raid", ping: "none" as const, leads: [2 * D, D] };
+  assert.deepEqual(dueCallups([c], {}, now), []);
+  assert.deepEqual(dueCallups([c], {}, now + D * MIN).map((d) => d.leads), [[2 * D]]);
+  assert.deepEqual(dueCallups([c], { [callupKey(c, 2 * D)]: c.atMs }, now + D * MIN), []);
+  assert.deepEqual(dueCallups([c], {}, now + 2.5 * D * MIN).map((d) => d.leads), [[2 * D, D]]); // app was closed: one reminder
+  assert.deepEqual(dueCallups([c], {}, c.atMs + 2 * MIN), []);
+});
+
+test("leadText", () => {
+  assert.deepEqual([0, 45, 60, 1440, 2880, 1800].map(leadText), ["at the time", "45 min", "1 h", "1 day", "2 days", "1 day 6 h"]);
 });

@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  cellOf, dueAlerts, isWebhook, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
+  CALLUP_TITLE, callupPost, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
   parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, parseShare, TIME_RANGE,
 } from "./validate.ts";
 
@@ -144,4 +144,47 @@ test("due alerts: within each guild's lead, its server only, posted ones skipped
   assert.equal(out[0].content, `**Gartua** respawns <t:${s}:R> (<t:${s}:t>)`);
   const many = Array.from({ length: MAX_POSTS + 5 }, (_, i) => ({ id: `g${i}`, serverId: 1, webhook: "w", leadMin: 5 }));
   assert.equal(dueAlerts(maps, many, new Set(), NOW).length, MAX_POSTS);
+});
+
+// ---- Call-ups ----
+
+const DAY_MIN = 24 * 60;
+const callup = (extra = {}) => ({ officerKey: CODE, sentMs: NOW, atMs: NOW + 3 * 24 * 60 * MIN, message: "Raid Gartua, bring pots", ping: "none", leads: [DAY_MIN, 2 * DAY_MIN], ...extra });
+
+test("call-up: clock shifted, leads sorted and deduplicated, mentions stripped", () => {
+  const c = parseCallup(callup({ sentMs: NOW + 10 * MIN, leads: [60, DAY_MIN, 60, 0], message: " @everyone go <@123> <@&456> @here " }), NOW);
+  assert.equal(c?.atMs, NOW + 3 * 24 * 60 * MIN - 10 * MIN);
+  assert.deepEqual(c?.leads, [DAY_MIN, 60, 0]);
+  assert.equal(c?.message, "everyone go   here");
+});
+
+test("call-up: refused when past, too far, empty, bad ping or bad leads", () => {
+  for (const bad of [
+    callup({ atMs: NOW - MIN }), callup({ atMs: NOW + 61 * 24 * 60 * MIN }), callup({ message: "  " }),
+    callup({ ping: "role" }), callup({ leads: [] }), callup({ leads: [1, 2, 3, 4, 5, 6] }), callup({ leads: [-1] }), callup({ leads: [15 * DAY_MIN] }),
+    callup({ leads: [1.5] }), callup({ officerKey: "x" }), callup({ sentMs: undefined }),
+  ]) assert.equal(parseCallup(bad, NOW), null, JSON.stringify(bad));
+  assert.equal(parseCallup(callup({ ping: "everyone" }), NOW)?.ping, "everyone");
+  assert.equal(parseCallup(callup({ message: "x".repeat(MAX_MESSAGE + 50) }), NOW)?.message.length, MAX_MESSAGE);
+});
+
+test("next send: the earliest reminder still to come", () => {
+  const at = NOW + 3 * 24 * 60 * MIN;
+  assert.equal(nextSend(at, [2 * DAY_MIN, DAY_MIN, 0], NOW), at - 2 * DAY_MIN * MIN);
+  assert.equal(nextSend(at, [2 * DAY_MIN, DAY_MIN, 0], at - 2 * DAY_MIN * MIN), at - DAY_MIN * MIN);
+  assert.equal(nextSend(at, [5 * DAY_MIN, DAY_MIN], NOW), at - DAY_MIN * MIN); // 5 days before is already past
+  assert.equal(nextSend(at, [0], at), null);
+});
+
+test("call-up post: fixed title, the message, the ping only when asked", () => {
+  const at = NOW + 60 * MIN, s = Math.round(at / 1000);
+  const quiet = callupPost({ atMs: at, message: "Raid", ping: "none" });
+  assert.equal(quiet.embeds[0].title, CALLUP_TITLE);
+  assert.equal(quiet.embeds[0].description, "Raid");
+  assert.equal(quiet.embeds[0].fields[0].value, `<t:${s}:F> (<t:${s}:R>)`);
+  assert.equal(quiet.content, "");
+  assert.deepEqual(quiet.allowed_mentions.parse, []);
+  const loud = callupPost({ atMs: at, message: "Raid", ping: "here" });
+  assert.equal(loud.content, "@here");
+  assert.deepEqual(loud.allowed_mentions.parse, ["everyone"]);
 });

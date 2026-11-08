@@ -1,10 +1,10 @@
 <script lang="ts">
   // Guild page: create or join with a code, the next field bosses on the guild's server, the members' gear,
   // their shared boss fights, and the officer panel (Discord alerts, invite code, members).
-  import { adminGuild, bossFights, createGuild, fightBosses, joinGuild, leaveGuild, setOfficerKey, setShare } from "../../app/guild.ts";
+  import { adminGuild, bossFights, cancelCallup, createCallup, createGuild, fightBosses, joinGuild, leaveGuild, setOfficerKey, setShare } from "../../app/guild.ts";
   import { bossesByMap, bossLabel, bossState } from "../../domain/bosses.ts";
   import { yourDps, type FightRecord } from "../../domain/fights.ts";
-  import { meCard, memberBests, ONLINE_MS, rosterRows, type GuildMe } from "../../domain/guild.ts";
+  import { leadText, meCard, memberBests, ONLINE_MS, rosterRows, type GuildMe, type Ping } from "../../domain/guild.ts";
   import { classColor, clock, short } from "../../domain/meter.ts";
   import { REGIONS, regionOf, serverName, serversIn } from "../../domain/servers.ts";
   import { formatCountdown } from "../../domain/time.ts";
@@ -83,6 +83,25 @@
   const pair = $derived(picked.map((id) => fights.find((f) => f.id === id)).filter((f): f is FightRecord => !!f));
   const pick = (id: string) => { picked = picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id].slice(-2); };
 
+  // ---- Call-ups ----
+  const when = (t: number) => new Date(t).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const localInput = (t: number) => { const d = new Date(t - new Date(t).getTimezoneOffset() * 60_000); return d.toISOString().slice(0, 16); };
+  const minWhen = localInput(Date.now());
+  let cuWhen = $state(""), cuMessage = $state(""), cuPing = $state<Ping>("none"), cuLeads = $state<number[]>([1440, 60]);
+  let leadAmount = $state(2), leadUnit = $state<"minutes" | "hours" | "days">("days");
+  function addLead() {
+    const min = Math.round(leadAmount * (leadUnit === "days" ? 1440 : leadUnit === "hours" ? 60 : 1));
+    if (!(min >= 0 && min <= 14 * 1440) || cuLeads.includes(min)) return;
+    cuLeads = [...cuLeads, min].sort((a, b) => b - a);
+  }
+  const addCallup = () => run(async () => {
+    const atMs = new Date(cuWhen).getTime();
+    if (!(atMs > Date.now())) throw new Error("Pick a time in the future.");
+    await createCallup(ui.data, { atMs, message: cuMessage.trim(), ping: cuPing, leads: cuLeads });
+    cuWhen = ""; cuMessage = ""; cuPing = "none";
+    await refreshGuild(false);
+  }, "Call-up planned");
+
   // ---- Officer ----
   let webhook = $state(""), keyInput = $state("");
   const admin = (a: Parameters<typeof adminGuild>[1], done: string) =>
@@ -132,7 +151,37 @@
       Your own alerts: <a href="#bosses">Field Bosses</a>.</p>
   </section>
 
-  {#if view}<section class="dps-table"><h2>Members <span class="count">{view.members.length}</span></h2>
+  {#if view}<section class="dps-table"><h2>Call-ups <span class="count">{view.callups.length}</span></h2>
+    {#each view.callups as c (c.id)}<div class="callup" class:past={c.atMs <= ui.now}>
+      <div><b>{when(c.atMs)}</b> <span class="dim">{c.atMs > ui.now ? `in ${formatCountdown(c.atMs - ui.now)}` : "now"}</span>
+        {#if c.ping !== "none"}<span class="tag">@{c.ping}</span>{/if}</div>
+      <p>{c.message}</p>
+      <small class="dim">Reminders: {c.leads.map((l) => leadText(l) + (l ? " before" : "")).join(" · ")}</small>
+      {#if g.officerKey}<button class="ghost" disabled={busy} onclick={() => { if (confirm("Cancel this call-up? No more reminders are sent.")) run(() => cancelCallup(ui.data, c.id).then(() => refreshGuild(false)), "Call-up cancelled"); }}>Cancel</button>{/if}
+    </div>{:else}<p class="hint">No raid planned.{g.officerKey ? " Plan one below." : " Officers plan them; you get a \"Guild reminder\" here and in Discord."}</p>{/each}
+
+    {#if g.officerKey}<form class="new-callup" onsubmit={(e) => { e.preventDefault(); void addCallup(); }}>
+      <h3>New call-up</h3>
+      <label>When <input type="datetime-local" bind:value={cuWhen} min={minWhen} required></label>
+      <label>Message <textarea bind:value={cuMessage} maxlength="500" rows="3" placeholder="Raid Gartua: meet at the portal, bring potions" required></textarea></label>
+      <div class="seg" role="group" aria-label="Ping in Discord">
+        {#each [["none", "No ping"], ["here", "@here"], ["everyone", "@everyone"]] as [v, label]}
+          <button type="button" class:on={cuPing === v} aria-pressed={cuPing === v} onclick={() => { cuPing = v as Ping; }}>{label}</button>{/each}
+      </div>
+      <div class="leads">Reminders:
+        {#each cuLeads as l, i (l)}<span class="chip">{leadText(l)}{l ? " before" : ""}
+          <button type="button" class="ghost" aria-label="Remove reminder {leadText(l)}" onclick={() => { cuLeads = cuLeads.filter((_, k) => k !== i); }}>×</button></span>{/each}
+        {#if cuLeads.length < 5}<span class="add">
+          <input type="number" min="0" max={leadUnit === "days" ? 14 : leadUnit === "hours" ? 336 : 20160} bind:value={leadAmount} aria-label="Reminder amount">
+          <select bind:value={leadUnit} aria-label="Reminder unit"><option value="minutes">minutes</option><option value="hours">hours</option><option value="days">days</option></select>
+          <button type="button" class="ghost" onclick={addLead}>Add reminder</button></span>{/if}
+      </div>
+      <p class="hint">Members get a "Guild reminder" at each time: in the app, and in Discord {view.hasWebhook ? "(the guild's webhook)" : "once a webhook is set (Officer, below). Until then, only members' apps"}. 0 = at the time.</p>
+      <button disabled={busy || !cuLeads.length}>Plan call-up</button>
+    </form>{/if}
+  </section>
+
+  <section class="dps-table"><h2>Members <span class="count">{view.members.length}</span></h2>
     <div class="toolbar start">
       <label><input type="checkbox" checked={g.share.gear} disabled={busy} onchange={(e) => share("gear", e.currentTarget.checked)}> Share my item level and CP</label>
       <label><input type="checkbox" checked={g.share.fights} disabled={busy} onchange={(e) => share("fights", e.currentTarget.checked)}> Share my boss fights (DPS and skills)</label>
@@ -193,5 +242,17 @@
 <style>
   .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
   .guild-name { margin: 0; }
+  .callup { border-top: 1px solid var(--rule); padding: 8px 0; display: grid; gap: 4px; }
+  .callup.past { opacity: 0.6; }
+  .callup p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .callup button { justify-self: start; }
+  .tag { font-size: 12px; padding: 0 6px; border-radius: 8px; background: var(--gold-bg); color: var(--gold-ink); }
+  .new-callup { display: grid; gap: 8px; margin-top: 12px; max-width: 560px; }
+  .new-callup h3 { margin: 0; }
+  .new-callup label { display: grid; gap: 4px; }
+  .leads { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px 2px 8px; border-radius: 12px; border: 1px solid var(--border); }
+  .add { display: inline-flex; gap: 4px; align-items: center; }
+  .add input { width: 64px; }
   input[type="url"], form input:not([type]) { min-width: 0; flex: 1 1 260px; }
 </style>
