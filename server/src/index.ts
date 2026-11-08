@@ -1,7 +1,11 @@
 // Cloudflare Worker: players' apps share the field-boss timers and hidden-cube openings they see.
-// No player names, only a random install id. The app works the same when this is down.
+// No player names, only a random install id, except in guilds (the members' character names, item level and CP,
+// shared fights, by consent). The app works the same when this is down.
 // API under /v1, backward-compatible changes only (an incompatible one = /v2 alongside).
-import { cellOf, MAX_BODY, parseBossPost, parseCubePost, parseServerId } from "./validate.ts";
+import {
+  alertKey, type BossTimer, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_LEAD, nextDue, parseAdmin, parseBossPost, parseCubePost,
+  parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, POSTED_FOR,
+} from "./validate.ts";
 
 // Minimal Workers types (no @cloudflare/workers-types).
 interface D1Result<T> { results: T[] }
@@ -74,10 +78,11 @@ async function postBosses(env: Env, url: URL, req: Request) {
   if (p.maps.length) {
     // Every timer is stamped seenMs = now, so the newest reading always wins.
     await env.DB.batch(p.maps.map((m) => env.DB.prepare(
-      `INSERT INTO boss_maps (server_id, map_id, seen_ms, timers, install) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT (server_id, map_id) DO UPDATE SET seen_ms = excluded.seen_ms, timers = excluded.timers, install = excluded.install
+      `INSERT INTO boss_maps (server_id, map_id, seen_ms, timers, install, next_due_ms) VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (server_id, map_id) DO UPDATE SET seen_ms = excluded.seen_ms, timers = excluded.timers, install = excluded.install,
+         next_due_ms = excluded.next_due_ms
        WHERE excluded.seen_ms > boss_maps.seen_ms`,
-    ).bind(p.serverId, m.mapId, now, JSON.stringify(m.timers), p.install)));
+    ).bind(p.serverId, m.mapId, now, JSON.stringify(m.timers), p.install, nextDue(m.timers, now))));
     await caches.default.delete(bossKey(url, p.serverId));
   }
   return json({ ok: true, every: everyOf(env) });
@@ -113,6 +118,209 @@ async function postCubes(env: Env, req: Request) {
   return json({ ok: true, every: everyOf(env) });
 }
 
+// ---- Guilds ----
+// A member is an install in guild_members (the install id is never shown); officer actions need the officer key.
+
+const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const MAX_FIGHTS_SHOWN = 100;
+function randomCode(n = CODE_LEN): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(n));
+  return [...bytes].map((b) => BASE32[b & 31]).join("");
+}
+async function hashOf(code: string): Promise<string> {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+const isMember = (env: Env, guildId: string, install: string | null) =>
+  install ? env.DB.prepare("SELECT 1 AS ok FROM guild_members WHERE guild_id = ? AND install = ?").bind(guildId, install.toLowerCase()).first()
+    : Promise.resolve(null);
+const upsertMember = (env: Env, guildId: string, install: string, me: { name: string; className: string; itemLevel: number | null; combatPower: number | null },
+  share: { gear: boolean; fights: boolean }, now: number) =>
+  env.DB.prepare(
+    `INSERT INTO guild_members (guild_id, install, name, class_name, item_level, combat_power, share_gear, share_fights, joined_ms, seen_ms)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (guild_id, install) DO UPDATE SET name = excluded.name, class_name = excluded.class_name,
+       item_level = excluded.item_level, combat_power = excluded.combat_power,
+       share_gear = excluded.share_gear, share_fights = excluded.share_fights, seen_ms = excluded.seen_ms`,
+  ).bind(guildId, install, me.name, me.className, me.itemLevel, me.combatPower, +share.gear, +share.fights, now, now);
+
+async function postDiscord(webhook: string, content: string): Promise<boolean> {
+  try {
+    const r = await fetch(webhook, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content, username: "AION 2 Companion", allowed_mentions: { parse: [] } }),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+async function createGuild(env: Env, req: Request) {
+  const now = Date.now();
+  const p = parseGuildCreate(await readBody(req));
+  if (!p) return fail(400, "bad request");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  const id = randomCode(12).toLowerCase();
+  const memberCode = randomCode();
+  const officerKey = randomCode();
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO guilds (id, name, server_id, member_hash, officer_hash, created_ms) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(id, p.name, p.serverId, await hashOf(memberCode), await hashOf(officerKey), now),
+    upsertMember(env, id, p.install, p.me, { gear: true, fights: false }, now),
+  ]);
+  return json({ id, name: p.name, serverId: p.serverId, memberCode, officerKey });
+}
+
+async function joinGuild(env: Env, req: Request) {
+  const now = Date.now();
+  const p = parseJoin(await readBody(req));
+  if (!p) return fail(400, "bad request");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  const g = await env.DB.prepare("SELECT id, name, server_id FROM guilds WHERE member_hash = ?")
+    .bind(await hashOf(p.code)).first<{ id: string; name: string; server_id: number }>();
+  if (!g) return fail(404, "unknown code");
+  await upsertMember(env, g.id, p.install, p.me, p.share, now).run();
+  return json({ id: g.id, name: g.name, serverId: g.server_id });
+}
+
+async function getGuild(env: Env, url: URL, id: string) {
+  const install = url.searchParams.get("install");
+  if (!(await isMember(env, id, install))) return fail(403, "not a member");
+  // The app asks with playing=1 while you play: that's what "online" is (one write per minute at most).
+  const now = Date.now();
+  if (url.searchParams.get("playing") === "1") {
+    await env.DB.prepare("UPDATE guild_members SET seen_ms = ? WHERE guild_id = ? AND install = ? AND seen_ms < ?")
+      .bind(now, id, install!.toLowerCase(), now - 60_000).run();
+  }
+  const g = await env.DB.prepare("SELECT name, server_id, lead_min, webhook IS NOT NULL AS hook FROM guilds WHERE id = ?")
+    .bind(id).first<{ name: string; server_id: number; lead_min: number; hook: number }>();
+  if (!g) return fail(403, "not a member");
+  const { results } = await env.DB.prepare(
+    `SELECT name, class_name, CASE WHEN share_gear THEN item_level END AS item_level,
+       CASE WHEN share_gear THEN combat_power END AS combat_power, share_gear, share_fights, seen_ms
+     FROM guild_members WHERE guild_id = ? ORDER BY name`,
+  ).bind(id).all<{ name: string; class_name: string; item_level: number | null; combat_power: number | null; share_gear: number; share_fights: number; seen_ms: number }>();
+  return json({
+    serverNow: Date.now(), id, name: g.name, serverId: g.server_id, leadMin: g.lead_min, hasWebhook: !!g.hook,
+    members: results.map((m) => ({
+      name: m.name, className: m.class_name, itemLevel: m.item_level, combatPower: m.combat_power,
+      shareGear: !!m.share_gear, shareFights: !!m.share_fights, seenMs: m.seen_ms,
+    })),
+  });
+}
+
+async function postMe(env: Env, req: Request, id: string) {
+  const now = Date.now();
+  const p = parseMePost(await readBody(req));
+  if (!p) return fail(400, "bad request");
+  if (!(await isMember(env, id, p.install))) return fail(403, "not a member");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  if (p.leave) {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM guild_members WHERE guild_id = ? AND install = ?").bind(id, p.install),
+      env.DB.prepare("DELETE FROM guild_fights WHERE guild_id = ? AND install = ?").bind(id, p.install),
+    ]);
+  } else if (p.me) {
+    await upsertMember(env, id, p.install, p.me, p.share, now).run();
+  } else {
+    await env.DB.prepare("UPDATE guild_members SET share_gear = ?, share_fights = ?, seen_ms = ? WHERE guild_id = ? AND install = ?")
+      .bind(+p.share.gear, +p.share.fights, now, id, p.install).run();
+  }
+  return json({ ok: true });
+}
+
+async function postFight(env: Env, req: Request, id: string) {
+  const now = Date.now();
+  const p = parseGuildFight(await readBody(req));
+  if (!p) return fail(400, "bad request");
+  const m = await env.DB.prepare("SELECT share_fights FROM guild_members WHERE guild_id = ? AND install = ?")
+    .bind(id, p.install).first<{ share_fights: number }>();
+  if (!m) return fail(403, "not a member");
+  if (!m.share_fights) return fail(403, "fights not shared");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  await env.DB.prepare(
+    `INSERT OR REPLACE INTO guild_fights (guild_id, id, install, boss, end_ms, battle_ms, killed, record) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).bind(id, p.id, p.install, p.boss, p.endMs, p.battleMs, +p.killed, p.record).run();
+  return json({ ok: true });
+}
+
+/** No `boss`: the bosses with shared fights and how many. With `boss`: its last fights, from members still sharing fights. */
+async function getFights(env: Env, url: URL, id: string) {
+  if (!(await isMember(env, id, url.searchParams.get("install")))) return fail(403, "not a member");
+  const boss = url.searchParams.get("boss");
+  const shared = "JOIN guild_members m ON m.guild_id = f.guild_id AND m.install = f.install AND m.share_fights = 1";
+  if (!boss) {
+    const { results } = await env.DB.prepare(`SELECT f.boss AS boss, COUNT(*) AS n FROM guild_fights f ${shared} WHERE f.guild_id = ? GROUP BY f.boss ORDER BY n DESC`)
+      .bind(id).all<{ boss: string; n: number }>();
+    return json({ bosses: results });
+  }
+  const { results } = await env.DB.prepare(`SELECT f.record AS record FROM guild_fights f ${shared} WHERE f.guild_id = ? AND f.boss = ? ORDER BY f.end_ms DESC LIMIT ?`)
+    .bind(id, boss.slice(0, 64), MAX_FIGHTS_SHOWN).all<{ record: string }>();
+  return json({ fights: results.map((r) => JSON.parse(r.record)) });
+}
+
+async function postAdmin(env: Env, req: Request, id: string) {
+  const now = Date.now();
+  const p = parseAdmin(await readBody(req));
+  if (!p) return fail(400, "bad request");
+  const g = await env.DB.prepare("SELECT webhook FROM guilds WHERE id = ? AND officer_hash = ?")
+    .bind(id, await hashOf(p.officerKey)).first<{ webhook: string | null }>();
+  if (!g) return fail(403, "wrong officer key");
+  if (!(await allowWrite(env, `officer:${id}`, now))) return fail(429, "too many writes");
+  const stmts: D1PreparedStatement[] = [];
+  let memberCode: string | undefined;
+  if (p.webhook !== undefined) stmts.push(env.DB.prepare("UPDATE guilds SET webhook = ? WHERE id = ?").bind(p.webhook, id));
+  if (p.leadMin !== undefined) stmts.push(env.DB.prepare("UPDATE guilds SET lead_min = ? WHERE id = ?").bind(p.leadMin, id));
+  if (p.rotateCode) {
+    memberCode = randomCode();
+    stmts.push(env.DB.prepare("UPDATE guilds SET member_hash = ? WHERE id = ?").bind(await hashOf(memberCode), id));
+  }
+  if (p.remove) {
+    stmts.push(
+      env.DB.prepare("DELETE FROM guild_fights WHERE guild_id = ? AND install IN (SELECT install FROM guild_members WHERE guild_id = ? AND name = ?)")
+        .bind(id, id, p.remove),
+      env.DB.prepare("DELETE FROM guild_members WHERE guild_id = ? AND name = ?").bind(id, p.remove),
+    );
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+  const hook = p.webhook !== undefined ? p.webhook : g.webhook;
+  const tested = p.test ? (hook ? await postDiscord(hook, "Test from AION 2 Companion: boss alerts will be posted here.") : false) : undefined;
+  return json({ ok: true, memberCode, tested });
+}
+
+/** Every minute: Discord posts for the bosses due within each alerting guild's lead time. */
+async function guildAlerts(env: Env, now: number): Promise<void> {
+  const guilds = (await env.DB.prepare("SELECT id, server_id, webhook, lead_min FROM guilds WHERE webhook IS NOT NULL")
+    .all<{ id: string; server_id: number; webhook: string; lead_min: number }>()).results;
+  if (!guilds.length) return;
+  const servers = [...new Set(guilds.map((g) => g.server_id))];
+  // Maps whose next respawn is due within MAX_LEAD, or passed (bumped to their next respawn below).
+  const rows = (await env.DB.prepare(
+    `SELECT server_id, map_id, timers, next_due_ms FROM boss_maps
+     WHERE server_id IN (SELECT value FROM json_each(?)) AND next_due_ms IS NOT NULL AND next_due_ms <= ?`,
+  ).bind(JSON.stringify(servers), now + MAX_LEAD * 60_000).all<{ server_id: number; map_id: number; timers: string; next_due_ms: number }>()).results;
+  if (!rows.length) return;
+  const maps = rows.map((r) => ({ serverId: r.server_id, mapId: r.map_id, timers: JSON.parse(r.timers) as BossTimer[], due: r.next_due_ms }));
+  const posted = new Set((await env.DB.prepare(
+    "SELECT guild_id, alert_key FROM guild_posts WHERE guild_id IN (SELECT value FROM json_each(?)) AND at_ms > ?",
+  ).bind(JSON.stringify(guilds.map((g) => g.id)), now - POSTED_FOR).all<{ guild_id: string; alert_key: string }>()).results
+    .map((p) => `${p.guild_id}|${p.alert_key}`));
+  const alerts = dueAlerts(maps, guilds.map((g) => ({ id: g.id, serverId: g.server_id, webhook: g.webhook, leadMin: g.lead_min })), posted, now);
+  const stmts: D1PreparedStatement[] = [];
+  for (const a of alerts) {
+    // ponytail: posted one after another; a Discord 429 just retries next minute (dedup row only after a success).
+    if (!(await postDiscord(a.webhook, a.content))) continue;
+    for (const k of a.keys) {
+      stmts.push(env.DB.prepare("INSERT OR REPLACE INTO guild_posts (guild_id, alert_key, at_ms) VALUES (?, ?, ?)").bind(a.guildId, k, now));
+    }
+  }
+  // A map whose earliest respawn passed: move it to its next one, so later bosses on it still alert.
+  for (const m of maps) {
+    if (m.due > now) continue;
+    stmts.push(env.DB.prepare("UPDATE boss_maps SET next_due_ms = ? WHERE server_id = ? AND map_id = ?").bind(nextDue(m.timers, now), m.serverId, m.mapId));
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -126,6 +334,17 @@ export default {
       if (req.method === "POST" && url.pathname === "/v1/bosses") return await postBosses(env, url, req);
       if (req.method === "GET" && url.pathname === "/v1/cubes") return await getCubes(env, url);
       if (req.method === "POST" && url.pathname === "/v1/cubes") return await postCubes(env, req);
+      if (req.method === "POST" && url.pathname === "/v1/guilds") return await createGuild(env, req);
+      if (req.method === "POST" && url.pathname === "/v1/guilds/join") return await joinGuild(env, req);
+      const guild = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})(?:\/(me|fights|admin))?$/);
+      if (guild) {
+        const [, id, part] = guild;
+        if (req.method === "GET" && !part) return await getGuild(env, url, id);
+        if (req.method === "GET" && part === "fights") return await getFights(env, url, id);
+        if (req.method === "POST" && part === "me") return await postMe(env, req, id);
+        if (req.method === "POST" && part === "fights") return await postFight(env, req, id);
+        if (req.method === "POST" && part === "admin") return await postAdmin(env, req, id);
+      }
       return fail(404, "not found");
     } catch (e) {
       console.error(e);
@@ -133,12 +352,20 @@ export default {
     }
   },
 
-  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     const now = Date.now();
+    if (event.cron === "* * * * *") {
+      ctx.waitUntil(guildAlerts(env, now).catch((e) => console.error(e)));
+      return;
+    }
     ctx.waitUntil(env.DB.batch([
       env.DB.prepare("DELETE FROM boss_maps WHERE seen_ms < ?").bind(now - 7 * DAY),
       env.DB.prepare("DELETE FROM cube_reports WHERE at_ms < ?").bind(now - 30 * DAY),
       env.DB.prepare("DELETE FROM writes WHERE hour < ?").bind(Math.floor(now / HOUR) - 2),
+      env.DB.prepare("DELETE FROM guild_posts WHERE at_ms < ?").bind(now - 2 * DAY),
+      env.DB.prepare("DELETE FROM guild_fights WHERE end_ms < ?").bind(now - 90 * DAY),
+      env.DB.prepare("DELETE FROM guild_members WHERE seen_ms < ?").bind(now - 60 * DAY),
+      env.DB.prepare("DELETE FROM guilds WHERE id NOT IN (SELECT DISTINCT guild_id FROM guild_members)"),
     ]));
   },
 };

@@ -19,6 +19,7 @@ export const PAGE: Record<Tab, [string, string]> = {
   fights: ["Fight Log", "Every boss fight: personal bests and runs side by side."],
   arena: ["Arena Log", "Every arena match and opponent."],
   players: ["Players", "Any character's official profile: combat power, item level, stats."],
+  guild: ["Guild", "Boss alerts in Discord, the members' gear and their boss fights."],
   expeditions: ["Expeditions", "Exploration, Conquest and Hard: requirements, drops, bosses."],
   transcendence: ["Transcendence", "Stages, Arcana and boss mechanics."],
   sanctuary: ["Sanctuary", "Abyssal Forge: Ludra: modes, rewards, voucher morphs."],
