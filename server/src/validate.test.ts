@@ -188,3 +188,9 @@ test("call-up post: fixed title, the message, the ping only when asked", () => {
   assert.equal(loud.content, "@here");
   assert.deepEqual(loud.allowed_mentions.parse, ["everyone"]);
 });
+
+test("admin: boss alerts switch must be a boolean", () => {
+  assert.equal(parseAdmin({ officerKey: CODE, bossAlerts: false })?.bossAlerts, false);
+  assert.equal(parseAdmin({ officerKey: CODE })?.bossAlerts, undefined);
+  assert.equal(parseAdmin({ officerKey: CODE, bossAlerts: "yes" }), null);
+});

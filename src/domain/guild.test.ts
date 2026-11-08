@@ -23,7 +23,9 @@ test("cleanGuild: needs an id and a server, keeps codes, consent defaults", () =
 
 test("parseGuild: seen times on the local clock, nameless members dropped", () => {
   const g = parseGuild({ serverNow: 1000, id: "g", name: "S", serverId: 2, leadMin: 7, hasWebhook: true,
-    members: [{ name: "A", seenMs: 900, itemLevel: 3000 }, { name: "" }, 5] }, 5000);
+    members: [{ name: "A", seenMs: 900, itemLevel: 3000 }, { name: "" }, 5], bossAlerts: true }, 5000);
+  assert.equal(g.bossAlerts, true);
+  assert.equal(parseGuild({}, 0).bossAlerts, false);
   assert.equal(g.members.length, 1);
   assert.equal(g.members[0].seenMs, 4900);
   assert.equal(g.leadMin, 7);

@@ -147,7 +147,7 @@
     {:else}<div class="scroll"><table class="sheet"><thead><tr><th>Boss</th><th class="n">Respawns</th></tr></thead>
       <tbody>{#each nextBosses as b (`${b.mapId}:${b.bossId}`)}<tr><td><span class="name">{bossLabel(b, ui.data.bossNames)}</span></td>
         <td class="n num">{formatCountdown(b.timeMs - ui.now)} · {hm(b.timeMs)}</td></tr>{/each}</tbody></table></div>{/if}
-    <p class="hint">{view?.hasWebhook ? `Posted to the guild's Discord ${view.leadMin} min before each respawn.` : "An officer can post these to Discord (Officer, below)."}
+    <p class="hint">{view?.hasWebhook && view.bossAlerts ? `Posted to the guild's Discord ${view.leadMin} min before each respawn.` : "Not posted to Discord: an officer can turn that on (Officer, below)."}
       Your own alerts: <a href="#bosses">Field Bosses</a>.</p>
   </section>
 
@@ -223,8 +223,13 @@
         <button disabled={busy}>{webhook.trim() ? "Save and test" : view?.hasWebhook ? "Remove webhook" : "Save"}</button>
         {#if view?.hasWebhook}<button type="button" class="ghost" disabled={busy} onclick={() => admin({ test: true }, "Test posted")}>Send test</button>{/if}
       </form>
-      <label class="toolbar start">Post <select value={view?.leadMin ?? 5} disabled={busy} onchange={(e) => admin({ leadMin: Number(e.currentTarget.value) }, "Lead time saved")}>
-        {#each [1, 2, 3, 5, 10, 15] as m}<option value={m}>{m}</option>{/each}</select> minutes before a respawn</label>
+      <div class="toolbar start">
+        <label><input type="checkbox" checked={view?.bossAlerts ?? false} disabled={busy} onchange={(e) => admin({ bossAlerts: e.currentTarget.checked }, e.currentTarget.checked ? "Field-boss alerts on" : "Field-boss alerts off")}>
+          Post field-boss alerts</label>
+        {#if view?.bossAlerts}<label><select value={view.leadMin} disabled={busy} onchange={(e) => admin({ leadMin: Number(e.currentTarget.value) }, "Lead time saved")}>
+          {#each [1, 2, 3, 5, 10, 15] as m}<option value={m}>{m}</option>{/each}</select> minutes before a respawn</label>{/if}
+      </div>
+      <p class="hint">Call-ups are posted to the webhook either way.</p>
       <p class="hint">Discord: channel settings → Integrations → Webhooks → New Webhook → Copy Webhook URL. The URL stays on the server: it is never shown again.</p>
       <div class="toolbar start">
         <button class="ghost" onclick={() => copy(pretty(g.officerKey!))}>Copy officer key</button>

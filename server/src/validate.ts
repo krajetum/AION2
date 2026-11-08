@@ -112,7 +112,7 @@ export interface GuildJoin { install: string; code: string; me: Me; share: Share
 export interface MePost { install: string; leave: boolean; me: Me | null; share: Share }
 export interface GuildFight { install: string; id: string; boss: string; endMs: number; battleMs: number; killed: boolean; record: string }
 export interface GuildAdmin {
-  officerKey: string; webhook?: string | null; leadMin?: number; remove?: string; rotateCode: boolean; test: boolean;
+  officerKey: string; webhook?: string | null; leadMin?: number; bossAlerts?: boolean; remove?: string; rotateCode: boolean; test: boolean;
 }
 
 const isInstall = (v: unknown): v is string => typeof v === "string" && UUID.test(v);
@@ -192,6 +192,10 @@ export function parseAdmin(body: unknown): GuildAdmin | null {
   if (body.leadMin !== undefined) {
     if (!isInt(body.leadMin) || body.leadMin < 1 || body.leadMin > MAX_LEAD) return null;
     a.leadMin = body.leadMin;
+  }
+  if (body.bossAlerts !== undefined) {
+    if (typeof body.bossAlerts !== "boolean") return null;
+    a.bossAlerts = body.bossAlerts;
   }
   if (body.remove !== undefined) {
     const name = text(body.remove, MAX_NAME);
