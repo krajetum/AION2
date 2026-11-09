@@ -25,12 +25,13 @@ export const RESET_CONFIG: ResetConfig = {
 
 /** Recurring event: starts at `minute` of every `everyHours`-th hour, counted from `firstHour` (RESET_CONFIG.timeZone).
  *  duration = minutes the Planner reserves for it. */
-export interface GameEvent { id: string; name: string; everyHours: number; minute: number; firstHour: number; duration: number }
+export interface GameEvent { id: string; name: string; everyHours: number; minute: number; firstHour: number; duration: number; /** wall clock of this event, if not RESET_CONFIG.timeZone */ timeZone?: string }
 
 export const EVENTS: GameEvent[] = [
   { id: "shugo", name: "Shugo Festival", everyHours: 1, minute: 0, firstHour: 0, duration: 10 },        // TO VERIFY (time + duration)
   { id: "invasion", name: "Dimensional Invasion", everyHours: 1, minute: 30, firstHour: 0, duration: 10 }, // TO VERIFY (time + duration)
-  { id: "rift", name: "Spacetime Rift", everyHours: 3, minute: 0, firstHour: 0, duration: 15 },          // TO VERIFY (anchor hour + duration)
+  // 02:00, 05:00 … Paris time, DST included: guides 2:00 CEST in Oct, a player saw 11:00 CET on 2026-11-09 (a fixed UTC grid is off by 1 h in winter)
+  { id: "rift", name: "Spacetime Rift", everyHours: 3, minute: 0, firstHour: 2, duration: 15, timeZone: "Europe/Paris" }, // TO VERIFY (duration)
 ];
 
 /** The crowd Worker (server/): shared boss timers and cube spots.

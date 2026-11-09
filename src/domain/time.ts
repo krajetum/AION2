@@ -86,7 +86,8 @@ export function formatCountdown(ms: number) {
 }
 
 /** Next start of a recurring event > now (event times are wall-clock in zone tz). */
-export function nextEvent(ev: GameEvent, now: number, tz: string): number {
+export function nextEvent(ev: GameEvent, now: number, zone: string): number {
+  const tz = ev.timeZone ?? zone;
   const p = zonedParts(now, tz);
   for (let h = p.h; ; h++) {
     if ((((h - ev.firstHour) % ev.everyHours) + ev.everyHours) % ev.everyHours) continue;
