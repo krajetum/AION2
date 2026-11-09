@@ -39,6 +39,8 @@
 <div class="toolbar">{#if !ui.editing}<UndoButton />
     <button class="ghost" disabled={!touched} title="Clears {LABEL[cad].toLowerCase()} progress for this character. Undoable." onclick={reset}>Reset {LABEL[cad]}</button>{/if}
   <button class={ui.editing ? "primary" : ""} onclick={() => act(() => { ui.editing = !ui.editing; })}>{ui.editing ? "Done" : "Edit tasks"}</button></div>
+{#if cats.length > 1}<div class="seg cat-jump" role="group" aria-label="Jump to a category">
+  {#each cats as c (c)}<button onclick={() => document.getElementById("cat-" + c)?.scrollIntoView({ behavior: "smooth", block: "start" })}>{c}</button>{/each}</div>{/if}
 {#if win}<section class="win"><div><h2>All {LABEL[cad].toLowerCase()} tasks done</h2><p>See you after the reset.</p></div></section>{/if}
 {#each cats as cat (cat)}{@const list = tasks.filter((t) => t.category === cat)}<section id="cat-{cat}"><h2>{cat}{#if !ui.editing}{" "}<span class="count">{list.filter((t) => isDone(t, prog?.[t.id])).length}/{list.length}</span>{/if}</h2>
     {#each list as t (t.id)}{#if ui.editing}<EditRow {t} />{:else}<TaskRow {t} />{/if}{/each}

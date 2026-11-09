@@ -3,8 +3,9 @@
 // shared fights, by consent). The app works the same when this is down.
 // API under /v1, backward-compatible changes only (an incompatible one = /v2 alongside).
 import {
-  alertKey, type BossTimer, callupPost, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_CALLUPS, MAX_LEAD, MAX_POSTS, nextDue, nextSend, normCode,
-  parseAdmin, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Ping, POSTED_FOR,
+  alertKey, type Auth, type BossTimer, callupPost, can, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_CALLUPS, MAX_LEAD, MAX_POSTS, nextDue, nextSend,
+  parseAdmin, parseAuth, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
+  type Ping, POSTED_FOR, rank, type Role,
 } from "./validate.ts";
 
 // Minimal Workers types (no @cloudflare/workers-types).
@@ -119,7 +120,8 @@ async function postCubes(env: Env, req: Request) {
 }
 
 // ---- Guilds ----
-// A member is an install in guild_members (the install id is never shown); officer actions need the officer key.
+// A member is an install in guild_members (the install id is never shown), with a role (Leader > Officer > Member);
+// each guild sets the lowest role that has each permission. The leader key (old apps: "officer key") counts as Leader.
 
 const BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const MAX_FIGHTS_SHOWN = 100;
@@ -134,6 +136,24 @@ async function hashOf(code: string): Promise<string> {
 const isMember = (env: Env, guildId: string, install: string | null) =>
   install ? env.DB.prepare("SELECT 1 AS ok FROM guild_members WHERE guild_id = ? AND install = ?").bind(guildId, install.toLowerCase()).first()
     : Promise.resolve(null);
+
+interface Actor { role: Role; byKey: boolean; perms: Record<Perm, Role> }
+/** Who asks in guild `id`: Leader with the leader key, else their install's role; null = neither (a wrong key falls back to the install). */
+async function actorOf(env: Env, id: string, a: Auth): Promise<Actor | null> {
+  const g = await env.DB.prepare("SELECT officer_hash, perms FROM guilds WHERE id = ?").bind(id).first<{ officer_hash: string; perms: string }>();
+  if (!g) return null;
+  const perms = permsOf(g.perms);
+  if (a.officerKey && (await hashOf(a.officerKey)) === g.officer_hash) return { role: "leader", byKey: true, perms };
+  if (!a.install) return null;
+  const m = await env.DB.prepare("SELECT role FROM guild_members WHERE guild_id = ? AND install = ?").bind(id, a.install).first<{ role: Role }>();
+  return m ? { role: m.role, byKey: false, perms } : null;
+}
+/** No Leader left (the last one left, was removed or demoted, or expired): the longest-standing Officer, else member, leads. */
+const ensureLeader = (env: Env, id: string) => env.DB.prepare(
+  `UPDATE guild_members SET role = 'leader' WHERE guild_id = ? AND install = (
+     SELECT install FROM guild_members WHERE guild_id = ? ORDER BY CASE role WHEN 'officer' THEN 0 ELSE 1 END, joined_ms LIMIT 1)
+   AND NOT EXISTS (SELECT 1 FROM guild_members WHERE guild_id = ? AND role = 'leader')`,
+).bind(id, id, id);
 const upsertMember = (env: Env, guildId: string, install: string, me: { name: string; className: string; itemLevel: number | null; combatPower: number | null },
   share: { gear: boolean; fights: boolean }, now: number) =>
   env.DB.prepare(
@@ -165,6 +185,7 @@ async function createGuild(env: Env, req: Request) {
     env.DB.prepare("INSERT INTO guilds (id, name, server_id, member_hash, officer_hash, created_ms) VALUES (?, ?, ?, ?, ?, ?)")
       .bind(id, p.name, p.serverId, await hashOf(memberCode), await hashOf(officerKey), now),
     upsertMember(env, id, p.install, p.me, { gear: true, fights: false }, now),
+    env.DB.prepare("UPDATE guild_members SET role = 'leader' WHERE guild_id = ? AND install = ?").bind(id, p.install),
   ]);
   return json({ id, name: p.name, serverId: p.serverId, memberCode, officerKey });
 }
@@ -181,31 +202,41 @@ async function joinGuild(env: Env, req: Request) {
   return json({ id: g.id, name: g.name, serverId: g.server_id });
 }
 
+type MemberRow = { name: string; class_name: string; item_level: number | null; combat_power: number | null; share_gear: number; share_fights: number;
+  seen_ms: number; role: Role; me: number };
+const readMembers = async (env: Env, id: string, install: string) => (await env.DB.prepare(
+  `SELECT name, class_name, CASE WHEN share_gear THEN item_level END AS item_level,
+     CASE WHEN share_gear THEN combat_power END AS combat_power, share_gear, share_fights, seen_ms, role, install = ? AS me
+   FROM guild_members WHERE guild_id = ? ORDER BY name`,
+).bind(install, id).all<MemberRow>()).results;
+
+/** The guild as this member may see it: members and call-ups only with their view permission (you are always listed). */
 async function getGuild(env: Env, url: URL, id: string) {
-  const install = url.searchParams.get("install");
-  if (!(await isMember(env, id, install))) return fail(403, "not a member");
+  const install = url.searchParams.get("install")?.toLowerCase() ?? null;
+  const who = install ? await actorOf(env, id, { install, officerKey: null }) : null;
+  if (!who) return fail(403, "not a member");
   // The app asks with playing=1 while you play: that's what "online" is (one write per minute at most).
   const now = Date.now();
   if (url.searchParams.get("playing") === "1") {
     await env.DB.prepare("UPDATE guild_members SET seen_ms = ? WHERE guild_id = ? AND install = ? AND seen_ms < ?")
-      .bind(now, id, install!.toLowerCase(), now - 60_000).run();
+      .bind(now, id, install, now - 60_000).run();
   }
   const g = await env.DB.prepare("SELECT name, server_id, lead_min, boss_alerts, webhook IS NOT NULL AS hook FROM guilds WHERE id = ?")
     .bind(id).first<{ name: string; server_id: number; lead_min: number; boss_alerts: number; hook: number }>();
   if (!g) return fail(403, "not a member");
-  const { results } = await env.DB.prepare(
-    `SELECT name, class_name, CASE WHEN share_gear THEN item_level END AS item_level,
-       CASE WHEN share_gear THEN combat_power END AS combat_power, share_gear, share_fights, seen_ms
-     FROM guild_members WHERE guild_id = ? ORDER BY name`,
-  ).bind(id).all<{ name: string; class_name: string; item_level: number | null; combat_power: number | null; share_gear: number; share_fights: number; seen_ms: number }>();
-  const callups = (await env.DB.prepare("SELECT id, at_ms, message, ping, leads FROM guild_callups WHERE guild_id = ? AND at_ms > ? ORDER BY at_ms")
+  let rows = await readMembers(env, id, install!);
+  if (!rows.some((m) => m.role === "leader")) { await ensureLeader(env, id).run(); rows = await readMembers(env, id, install!); }
+  const role = rows.find((m) => m.me)?.role ?? who.role;
+  const sees = (p: Perm) => can(role, p, who.perms);
+  const callups = !sees("view.callups") ? [] : (await env.DB.prepare("SELECT id, at_ms, message, ping, leads FROM guild_callups WHERE guild_id = ? AND at_ms > ? ORDER BY at_ms")
     .bind(id, now - 3600_000).all<{ id: string; at_ms: number; message: string; ping: string; leads: string }>()).results
     .map((c) => ({ id: c.id, atMs: c.at_ms, message: c.message, ping: c.ping, leads: JSON.parse(c.leads) }));
   return json({
     serverNow: Date.now(), id, name: g.name, serverId: g.server_id, leadMin: g.lead_min, bossAlerts: !!g.boss_alerts, hasWebhook: !!g.hook, callups,
-    members: results.map((m) => ({
+    role, perms: who.perms, memberCount: rows.length,
+    members: rows.filter((m) => m.me || sees("view.members")).map((m) => ({
       name: m.name, className: m.class_name, itemLevel: m.item_level, combatPower: m.combat_power,
-      shareGear: !!m.share_gear, shareFights: !!m.share_fights, seenMs: m.seen_ms,
+      shareGear: !!m.share_gear, shareFights: !!m.share_fights, seenMs: m.seen_ms, role: m.role, me: !!m.me,
     })),
   });
 }
@@ -220,6 +251,7 @@ async function postMe(env: Env, req: Request, id: string) {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM guild_members WHERE guild_id = ? AND install = ?").bind(id, p.install),
       env.DB.prepare("DELETE FROM guild_fights WHERE guild_id = ? AND install = ?").bind(id, p.install),
+      ensureLeader(env, id),
     ]);
   } else if (p.me) {
     await upsertMember(env, id, p.install, p.me, p.share, now).run();
@@ -247,7 +279,9 @@ async function postFight(env: Env, req: Request, id: string) {
 
 /** No `boss`: the bosses with shared fights and how many. With `boss`: its last fights, from members still sharing fights. */
 async function getFights(env: Env, url: URL, id: string) {
-  if (!(await isMember(env, id, url.searchParams.get("install")))) return fail(403, "not a member");
+  const who = await actorOf(env, id, { install: url.searchParams.get("install")?.toLowerCase() ?? null, officerKey: null });
+  if (!who) return fail(403, "not a member");
+  if (!can(who.role, "view.fights", who.perms)) return fail(403, "no permission: view.fights");
   const boss = url.searchParams.get("boss");
   const shared = "JOIN guild_members m ON m.guild_id = f.guild_id AND m.install = f.install AND m.share_fights = 1";
   if (!boss) {
@@ -264,12 +298,29 @@ async function postAdmin(env: Env, req: Request, id: string) {
   const now = Date.now();
   const p = parseAdmin(await readBody(req));
   if (!p) return fail(400, "bad request");
-  const g = await env.DB.prepare("SELECT webhook FROM guilds WHERE id = ? AND officer_hash = ?")
-    .bind(id, await hashOf(p.officerKey)).first<{ webhook: string | null }>();
-  if (!g) return fail(403, "wrong officer key");
+  const who = await actorOf(env, id, p);
+  if (!who) return fail(403, "not a member");
+  const leader = who.role === "leader";
+  const lacks = (perm: Perm) => !can(who.role, perm, who.perms);
+  if ((p.webhook !== undefined || p.leadMin !== undefined || p.bossAlerts !== undefined || p.test) && lacks("manage.discord")) return fail(403, "no permission: manage.discord");
+  if (p.rotateCode && lacks("manage.invite")) return fail(403, "no permission: manage.invite");
+  if (p.remove && lacks("manage.members")) return fail(403, "no permission: manage.members");
+  if ((p.setRole || p.perms) && !leader) return fail(403, "leaders only");
+  if (p.claim && !who.byKey) return fail(403, "wrong leader key");
+  if (p.remove) {
+    // Only someone of a lower role (a Leader may remove anyone).
+    const t = await env.DB.prepare("SELECT MAX(CASE role WHEN 'leader' THEN 2 WHEN 'officer' THEN 1 ELSE 0 END) AS r FROM guild_members WHERE guild_id = ? AND name = ?")
+      .bind(id, p.remove).first<{ r: number | null }>();
+    if (t?.r == null) return fail(404, "no such member");
+    if (!leader && t.r >= rank(who.role)) return fail(403, "only members of a lower role");
+  }
   if (!(await allowWrite(env, `officer:${id}`, now))) return fail(429, "too many writes");
+  const g = (await env.DB.prepare("SELECT webhook, perms FROM guilds WHERE id = ?").bind(id).first<{ webhook: string | null; perms: string }>())!;
   const stmts: D1PreparedStatement[] = [];
   let memberCode: string | undefined;
+  if (p.claim) stmts.push(env.DB.prepare("UPDATE guild_members SET role = 'leader' WHERE guild_id = ? AND install = ?").bind(id, p.install));
+  if (p.setRole) stmts.push(env.DB.prepare("UPDATE guild_members SET role = ? WHERE guild_id = ? AND name = ?").bind(p.setRole.role, id, p.setRole.name));
+  if (p.perms) stmts.push(env.DB.prepare("UPDATE guilds SET perms = ? WHERE id = ?").bind(JSON.stringify({ ...JSON.parse(g.perms || "{}"), ...p.perms }), id));
   if (p.webhook !== undefined) stmts.push(env.DB.prepare("UPDATE guilds SET webhook = ? WHERE id = ?").bind(p.webhook, id));
   if (p.leadMin !== undefined) stmts.push(env.DB.prepare("UPDATE guilds SET lead_min = ? WHERE id = ?").bind(p.leadMin, id));
   if (p.bossAlerts !== undefined) stmts.push(env.DB.prepare("UPDATE guilds SET boss_alerts = ? WHERE id = ?").bind(+p.bossAlerts, id));
@@ -284,21 +335,26 @@ async function postAdmin(env: Env, req: Request, id: string) {
       env.DB.prepare("DELETE FROM guild_members WHERE guild_id = ? AND name = ?").bind(id, p.remove),
     );
   }
+  if (p.remove || p.setRole) stmts.push(ensureLeader(env, id));
   if (stmts.length) await env.DB.batch(stmts);
   const hook = p.webhook !== undefined ? p.webhook : g.webhook;
   const tested = p.test ? (hook ? await postDiscord(hook, "Test from AION 2 Companion: boss alerts will be posted here.") : false) : undefined;
   return json({ ok: true, memberCode, tested });
 }
 
-/** Officer key → the guild row, or null. */
-const officerGuild = async (env: Env, id: string, key: string) =>
-  env.DB.prepare("SELECT id FROM guilds WHERE id = ? AND officer_hash = ?").bind(id, await hashOf(key)).first<{ id: string }>();
+/** Who may plan and cancel call-ups: an error response, or null when allowed. */
+async function callupGate(env: Env, id: string, a: Auth): Promise<Response | null> {
+  const who = await actorOf(env, id, a);
+  if (!who) return fail(403, "not a member");
+  return can(who.role, "manage.callups", who.perms) ? null : fail(403, "no permission: manage.callups");
+}
 
 async function createCallup(env: Env, req: Request, id: string) {
   const now = Date.now();
   const p = parseCallup(await readBody(req), now);
   if (!p) return fail(400, "bad request");
-  if (!(await officerGuild(env, id, p.officerKey))) return fail(403, "wrong officer key");
+  const refused = await callupGate(env, id, p);
+  if (refused) return refused;
   if (!(await allowWrite(env, `officer:${id}`, now))) return fail(429, "too many writes");
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM guild_callups WHERE guild_id = ? AND at_ms > ?").bind(id, now).first<{ n: number }>();
   if ((n?.n ?? 0) >= MAX_CALLUPS) return fail(409, "too many call-ups");
@@ -310,10 +366,10 @@ async function createCallup(env: Env, req: Request, id: string) {
 }
 
 async function cancelCallup(env: Env, req: Request, id: string, cid: string) {
-  const b = await readBody(req) as { officerKey?: unknown } | undefined;
-  const key = normCode(b?.officerKey);
-  if (!key) return fail(400, "bad request");
-  if (!(await officerGuild(env, id, key))) return fail(403, "wrong officer key");
+  const a = parseAuth(await readBody(req));
+  if (!a) return fail(400, "bad request");
+  const refused = await callupGate(env, id, a);
+  if (refused) return refused;
   await env.DB.prepare("DELETE FROM guild_callups WHERE id = ? AND guild_id = ?").bind(cid, id).run();
   return json({ ok: true });
 }
