@@ -117,6 +117,10 @@ test("events: hourly at :30 and every 3h across midnight", () => {
   assert.equal(nextEvent(rift, Z("2026-10-15T03:00:00Z"), "UTC"), Z("2026-10-15T05:00:00Z"));
   assert.equal(nextEvent(rift, Z("2026-10-15T23:10:00Z"), "UTC"), Z("2026-10-16T02:00:00Z"));
   assert.equal(nextEvent(rift, Z("2026-10-15T00:30:00Z"), "UTC"), Z("2026-10-15T02:00:00Z"));
+  // own zone wins, DST followed: 11:00 Paris = 10:00 UTC in winter, 09:00 UTC in summer
+  const paris = { ...rift, timeZone: "Europe/Paris" };
+  assert.equal(nextEvent(paris, Z("2026-11-09T09:30:00Z"), "UTC"), Z("2026-11-09T10:00:00Z"));
+  assert.equal(nextEvent(paris, Z("2026-10-15T08:30:00Z"), "UTC"), Z("2026-10-15T09:00:00Z"));
 });
 
 test("event alert lead times", () => {
