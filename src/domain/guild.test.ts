@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { callupKey, cleanGuild, dueCallups, guildFight, leadText, MAX_FIGHT, MAX_ROWS, memberBests, parseGuild, parseGuildFights, rosterRows } from "./guild.ts";
+import { can, DEFAULT_PERMS, myRole, callupKey, cleanGuild, dueCallups, guildFight, leadText, MAX_FIGHT, MAX_ROWS, memberBests, parseGuild, parseGuildFights, rosterRows } from "./guild.ts";
 import type { FightRecord } from "./fights.ts";
 import type { PlayerRow, SkillRow } from "./meter.ts";
 
@@ -31,8 +31,27 @@ test("parseGuild: seen times on the local clock, nameless members dropped", () =
   assert.equal(g.leadMin, 7);
 });
 
+test("roles: an old Worker's answer = member with the default table; the leader key = Leader", () => {
+  const old = parseGuild({ members: [{ name: "A" }] }, 0);
+  assert.equal(old.role, "member");
+  assert.deepEqual(old.perms, DEFAULT_PERMS);
+  assert.equal(old.memberCount, 1);
+  assert.equal(can(old, null, "view.fights"), true);
+  assert.equal(can(old, null, "manage.discord"), false);
+  assert.equal(can(old, { id: "g", name: "", serverId: 1, officerKey: "K", share: { gear: true, fights: false } }, "manage.discord"), true);
+  const g = parseGuild({ role: "officer", perms: { "view.fights": "leader", "manage.discord": "member", bogus: "x", "view.members": "god" },
+    members: [{ name: "A", role: "leader", me: true }, { name: "B", role: "boss" }], memberCount: 9 }, 0);
+  assert.equal(myRole(g, null), "officer");
+  assert.equal(can(g, null, "view.fights"), false);
+  assert.equal(can(g, null, "manage.discord"), true);
+  assert.equal(g.perms["view.members"], "member");
+  assert.deepEqual(g.members.map((m) => [m.role, m.me]), [["leader", true], ["member", false]]);
+  assert.equal(g.memberCount, 9);
+});
+
 test("rosterRows: official numbers fill gaps, highest item level first", () => {
-  const m = (name: string, itemLevel: number | null) => ({ name, className: "", itemLevel, combatPower: null, shareGear: true, shareFights: false, seenMs: 0 });
+  const m = (name: string, itemLevel: number | null) => ({ name, className: "", itemLevel, combatPower: null, shareGear: true, shareFights: false, seenMs: 0,
+    role: "member" as const, me: false });
   const rows = rosterRows([m("A", 2900), m("B", null), m("C", null)], { B: { itemLevel: 3100, combatPower: 9 } });
   assert.deepEqual(rows.map((r) => [r.name, r.itemLevel, r.official]), [["B", 3100, true], ["A", 2900, false], ["C", null, false]]);
 });

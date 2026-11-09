@@ -6,13 +6,17 @@ import type { MeterUpdate } from "../domain/meter.ts";
 import type { MeterEvent, Trigger } from "../domain/triggers.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
-export type Tab = "home" | Cadence | "plan" | "season" | "crafting" | "enhance" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "players" | "guild" | "expeditions" | "transcendence" | "sanctuary" | "mechanics" | "news" | "settings";
-export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "crafting", "enhance", "bosses", "map", "pets", "dps", "fights", "arena", "players", "guild", "expeditions", "transcendence", "sanctuary", "mechanics", "news", "settings"];
-/** Sidebar groups. */
-export const GROUPS: [string, Tab[]][] = [["Overview", ["home"]], ["Tasks", [...CADENCES]], ["Progress", ["plan", "season", "crafting", "enhance"]],
-  ["World", ["bosses", "map", "pets"]], ["Combat", ["dps", "fights", "arena", "players"]], ["Group", ["guild"]],
-  ["Wiki", ["expeditions", "transcendence", "sanctuary", "mechanics"]], ["Info", ["news", "settings"]]];
-export const tabFromHash = (): Tab => { const h = location.hash.slice(1) as Tab; return TABS.includes(h) ? h : "home"; };
+export type Tab = "home" | Cadence | "plan" | "season" | "crafting" | "enhance" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "players" | "guild" | "wiki" | "news" | "settings";
+export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "crafting", "enhance", "bosses", "map", "pets", "dps", "fights", "arena", "players", "guild", "wiki", "news", "settings"];
+/** Sidebar groups, between Home (top), Wiki (after them) and News / Settings (footer). */
+export const GROUPS: [string, Tab[]][] = [["Tasks", [...CADENCES]], ["Plan", ["plan", "season"]], ["Gear", ["crafting", "enhance"]],
+  ["World", ["bosses", "map", "pets"]], ["Combat", ["dps", "fights", "arena"]], ["Social", ["players", "guild"]]];
+/** The four wiki pages before they became one (old #hashes). */
+const OLD_WIKI = ["expeditions", "transcendence", "sanctuary", "mechanics"];
+export const tabFromHash = (): Tab => {
+  const h = location.hash.slice(1) as Tab;
+  return TABS.includes(h) ? h : OLD_WIKI.includes(h) ? "wiki" : "home";
+};
 
 export const ui = $state({
   data: undefined as unknown as AppData, // set by main.ts before mounting

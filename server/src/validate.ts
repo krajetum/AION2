@@ -111,8 +111,40 @@ export interface GuildCreate { install: string; name: string; serverId: number; 
 export interface GuildJoin { install: string; code: string; me: Me; share: Share }
 export interface MePost { install: string; leave: boolean; me: Me | null; share: Share }
 export interface GuildFight { install: string; id: string; boss: string; endMs: number; battleMs: number; killed: boolean; record: string }
-export interface GuildAdmin {
-  officerKey: string; webhook?: string | null; leadMin?: number; bossAlerts?: boolean; remove?: string; rotateCode: boolean; test: boolean;
+export interface GuildAdmin extends Auth {
+  webhook?: string | null; leadMin?: number; bossAlerts?: boolean; remove?: string; rotateCode: boolean; test: boolean;
+  setRole?: { name: string; role: Role }; perms?: Partial<Record<Perm, Role>>; claim: boolean;
+}
+
+// ---- Guild roles: Leader > Officer > Member, and per guild the lowest role that has each permission ----
+export const ROLES = ["member", "officer", "leader"] as const;
+export type Role = (typeof ROLES)[number];
+export const PERMS = ["view.callups", "view.members", "view.fights", "manage.callups", "manage.discord", "manage.members", "manage.invite"] as const;
+export type Perm = (typeof PERMS)[number];
+export const DEFAULT_PERMS: Record<Perm, Role> = {
+  "view.callups": "member", "view.members": "member", "view.fights": "member",
+  "manage.callups": "officer", "manage.discord": "officer", "manage.members": "officer", "manage.invite": "officer",
+};
+export const isRole = (v: unknown): v is Role => ROLES.includes(v as Role);
+export const isPerm = (v: unknown): v is Perm => PERMS.includes(v as Perm);
+export const rank = (r: Role) => ROLES.indexOf(r);
+/** A guild's stored table (JSON of overrides) over the defaults: unknown keys or roles are ignored. */
+export function permsOf(json: string | null | undefined): Record<Perm, Role> {
+  const out = { ...DEFAULT_PERMS };
+  let o: unknown;
+  try { o = JSON.parse(json ?? "{}"); } catch { return out; }
+  if (isObj(o)) for (const [k, v] of Object.entries(o)) if (isPerm(k) && isRole(v)) out[k] = v;
+  return out;
+}
+export const can = (role: Role, perm: Perm, perms: Record<Perm, Role>) => rank(role) >= rank(perms[perm]);
+
+/** Who asks: their install (its role in the guild), and/or the leader key (old apps call it the officer key). */
+export interface Auth { install: string | null; officerKey: string | null }
+export function parseAuth(body: unknown): Auth | null {
+  if (!isObj(body)) return null;
+  const install = isInstall(body.install) ? body.install.toLowerCase() : null;
+  const officerKey = normCode(body.officerKey);
+  return install || officerKey ? { install, officerKey } : null;
 }
 
 const isInstall = (v: unknown): v is string => typeof v === "string" && UUID.test(v);
@@ -178,12 +210,30 @@ export function parseGuildFight(body: unknown): GuildFight | null {
   return { install: body.install.toLowerCase(), id, boss, endMs: f.endMs, battleMs: f.battleTimeMs, killed: f.killed, record };
 }
 
-/** Officer actions. `webhook: ""` or null removes it; anything else must be a Discord webhook. */
+/**
+ * Guild management (each action checked against the asker's role in index.ts). `webhook: ""` or null removes it;
+ * anything else must be a Discord webhook. `claim`: the leader key makes this install a Leader.
+ */
 export function parseAdmin(body: unknown): GuildAdmin | null {
-  if (!isObj(body)) return null;
-  const officerKey = normCode(body.officerKey);
-  if (!officerKey) return null;
-  const a: GuildAdmin = { officerKey, rotateCode: body.rotateCode === true, test: body.test === true };
+  const auth = parseAuth(body);
+  if (!auth || !isObj(body)) return null;
+  const a: GuildAdmin = { ...auth, rotateCode: body.rotateCode === true, test: body.test === true, claim: body.claim === true };
+  if (a.claim && !(a.install && a.officerKey)) return null;
+  if (body.setRole !== undefined) {
+    const r = body.setRole;
+    const name = isObj(r) ? text(r.name, MAX_NAME) : "";
+    if (!name || !isObj(r) || !isRole(r.role)) return null;
+    a.setRole = { name, role: r.role };
+  }
+  if (body.perms !== undefined) {
+    if (!isObj(body.perms)) return null;
+    const perms: Partial<Record<Perm, Role>> = {};
+    for (const [k, v] of Object.entries(body.perms)) {
+      if (!isPerm(k) || !isRole(v)) return null;
+      perms[k] = v;
+    }
+    a.perms = perms;
+  }
   if (body.webhook !== undefined) {
     if (body.webhook === null || body.webhook === "") a.webhook = null;
     else if (isWebhook(body.webhook)) a.webhook = body.webhook;
@@ -242,17 +292,17 @@ export const MAX_LEAD_MIN = 14 * 24 * 60; // 14 days
 export const CALLUP_AHEAD = 60 * 24 * 3600_000; // a call-up at most 60 days ahead
 export const MAX_CALLUPS = 20; // upcoming per guild
 export type Ping = "none" | "here" | "everyone";
-export interface CallupNew { officerKey: string; atMs: number; message: string; ping: Ping; leads: number[] }
+export interface CallupNew extends Auth { atMs: number; message: string; ping: Ping; leads: number[] }
 
 /** Mentions typed in the message are removed: a ping only comes from `ping`. */
 const unmention = (s: string) => s.replace(/@(everyone|here)/gi, "$1").replace(/<@[!&]?\d+>/g, "");
 
 /** POST /v1/guilds/:id/callups. Null = 400. */
 export function parseCallup(body: unknown, serverNow: number): CallupNew | null {
-  if (!isObj(body)) return null;
-  const officerKey = normCode(body.officerKey);
+  const auth = parseAuth(body);
+  if (!auth || !isObj(body)) return null;
   const offset = offsetOf(body.sentMs, serverNow);
-  if (!officerKey || offset === null || !isNum(body.atMs)) return null;
+  if (offset === null || !isNum(body.atMs)) return null;
   const atMs = Math.round(body.atMs + offset);
   if (atMs <= serverNow || atMs > serverNow + CALLUP_AHEAD) return null;
   const message = typeof body.message === "string" ? unmention(body.message).trim().slice(0, MAX_MESSAGE) : "";
@@ -261,7 +311,7 @@ export function parseCallup(body: unknown, serverNow: number): CallupNew | null 
   if (!Array.isArray(body.leads) || !body.leads.length || body.leads.length > MAX_LEADS
     || !body.leads.every((l) => isInt(l) && l >= 0 && l <= MAX_LEAD_MIN)) return null;
   const leads = [...new Set(body.leads as number[])].sort((a, b) => b - a);
-  return { officerKey, atMs, message, ping, leads };
+  return { ...auth, atMs, message, ping, leads };
 }
 
 /** The next reminder time after `after` (atMs - lead), or null when none is left. */

@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  CALLUP_TITLE, callupPost, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
+  can, DEFAULT_PERMS, permsOf, CALLUP_TITLE, callupPost, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
   parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, parseShare, TIME_RANGE,
 } from "./validate.ts";
 
@@ -116,7 +116,7 @@ test("fight: fields checked, size capped", () => {
 
 test("admin: webhook set or removed, lead in range, anything else refused", () => {
   assert.deepEqual(parseAdmin({ officerKey: CODE, webhook: "", leadMin: 10, test: true }),
-    { officerKey: "ABCDEFGH23456767", webhook: null, leadMin: 10, rotateCode: false, test: true });
+    { install: null, officerKey: "ABCDEFGH23456767", webhook: null, leadMin: 10, rotateCode: false, test: true, claim: false });
   assert.equal(parseAdmin({ officerKey: CODE, webhook: "https://example.com/hook" }), null);
   assert.equal(parseAdmin({ officerKey: CODE, leadMin: MAX_LEAD + 1 }), null);
   assert.equal(parseAdmin({ officerKey: CODE, remove: " " }), null);
@@ -193,4 +193,38 @@ test("admin: boss alerts switch must be a boolean", () => {
   assert.equal(parseAdmin({ officerKey: CODE, bossAlerts: false })?.bossAlerts, false);
   assert.equal(parseAdmin({ officerKey: CODE })?.bossAlerts, undefined);
   assert.equal(parseAdmin({ officerKey: CODE, bossAlerts: "yes" }), null);
+});
+
+// ---- Roles ----
+
+test("auth: an install, the leader key, or both; neither = refused", () => {
+  assert.deepEqual(parseAdmin({ install: ID })?.install, ID.toLowerCase());
+  assert.equal(parseAdmin({ install: ID })?.officerKey, null);
+  assert.equal(parseAdmin({ install: "nope", officerKey: "x" }), null);
+  assert.equal(parseCallup(callup({ officerKey: undefined, install: ID }), NOW)?.install, ID.toLowerCase());
+  assert.equal(parseAdmin({ install: ID, claim: true }), null); // claiming needs the key
+  assert.equal(parseAdmin({ install: ID, officerKey: CODE, claim: true })?.claim, true);
+});
+
+test("admin: role changes and permission tables, known roles and permissions only", () => {
+  assert.deepEqual(parseAdmin({ install: ID, setRole: { name: " Hopex ", role: "officer" } })?.setRole, { name: "Hopex", role: "officer" });
+  assert.equal(parseAdmin({ install: ID, setRole: { name: "Hopex", role: "admin" } }), null);
+  assert.equal(parseAdmin({ install: ID, setRole: { name: " ", role: "member" } }), null);
+  assert.deepEqual(parseAdmin({ install: ID, perms: { "view.fights": "officer" } })?.perms, { "view.fights": "officer" });
+  assert.equal(parseAdmin({ install: ID, perms: { "view.everything": "member" } }), null);
+  assert.equal(parseAdmin({ install: ID, perms: { "view.fights": "god" } }), null);
+});
+
+test("permissions: stored overrides over the defaults, compared by rank", () => {
+  assert.deepEqual(permsOf("{}"), DEFAULT_PERMS);
+  assert.deepEqual(permsOf("not json"), DEFAULT_PERMS);
+  const p = permsOf(JSON.stringify({ "view.fights": "officer", "manage.callups": "member", junk: "leader", "view.members": "god" }));
+  assert.equal(p["view.fights"], "officer");
+  assert.equal(p["view.members"], "member");
+  assert.equal(can("member", "view.fights", p), false);
+  assert.equal(can("officer", "view.fights", p), true);
+  assert.equal(can("leader", "view.fights", p), true);
+  assert.equal(can("member", "manage.callups", p), true);
+  assert.equal(can("officer", "manage.discord", DEFAULT_PERMS), true);
+  assert.equal(can("member", "manage.discord", DEFAULT_PERMS), false);
 });

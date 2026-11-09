@@ -9,12 +9,36 @@ export interface GuildShare { gear: boolean; fights: boolean }
 export interface GuildLink { id: string; name: string; serverId: number; memberCode?: string; officerKey?: string; share: GuildShare }
 export interface GuildMember {
   name: string; className: string; itemLevel: number | null; combatPower: number | null;
-  shareGear: boolean; shareFights: boolean; seenMs: number;
+  shareGear: boolean; shareFights: boolean; seenMs: number; role: Role; me: boolean;
 }
 export type Ping = "none" | "here" | "everyone";
 /** An officer's planned raid: reminded `leads` minutes before `atMs` (Discord + members' apps), title "Guild reminder". */
 export interface Callup { id: string; atMs: number; message: string; ping: Ping; leads: number[] }
-export interface GuildView { id: string; name: string; serverId: number; leadMin: number; bossAlerts: boolean; hasWebhook: boolean; members: GuildMember[]; callups: Callup[] }
+/** `members` / `callups`: only what your role may see (you are always in `members`); `memberCount` = everyone. */
+export interface GuildView {
+  id: string; name: string; serverId: number; leadMin: number; bossAlerts: boolean; hasWebhook: boolean; members: GuildMember[]; callups: Callup[];
+  role: Role; perms: Record<Perm, Role>; memberCount: number;
+}
+
+// ---- Roles (mirror of server/src/validate.ts): Leader > Officer > Member; per guild, the lowest role with each permission ----
+export const ROLES = ["member", "officer", "leader"] as const;
+export type Role = (typeof ROLES)[number];
+export const ROLE_LABEL: Record<Role, string> = { member: "Member", officer: "Officer", leader: "Leader" };
+export const PERMS = ["view.callups", "view.members", "view.fights", "manage.callups", "manage.discord", "manage.members", "manage.invite"] as const;
+export type Perm = (typeof PERMS)[number];
+export const DEFAULT_PERMS: Record<Perm, Role> = {
+  "view.callups": "member", "view.members": "member", "view.fights": "member",
+  "manage.callups": "officer", "manage.discord": "officer", "manage.members": "officer", "manage.invite": "officer",
+};
+export const PERM_LABEL: Record<Perm, string> = {
+  "view.callups": "See call-ups", "view.members": "See the members", "view.fights": "See shared fights",
+  "manage.callups": "Plan and cancel call-ups", "manage.discord": "Discord alerts", "manage.members": "Remove members", "manage.invite": "Invite code",
+};
+const isRole = (v: unknown): v is Role => ROLES.includes(v as Role);
+export const rank = (r: Role) => ROLES.indexOf(r);
+/** Your role: Leader while this install keeps the leader key (as the Worker counts it), else the Worker's. */
+export const myRole = (view: GuildView, link: GuildLink | null | undefined): Role => (link?.officerKey ? "leader" : view.role);
+export const can = (view: GuildView, link: GuildLink | null | undefined, perm: Perm) => rank(myRole(view, link)) >= rank(view.perms[perm]);
 /** A member's card as the Worker takes it. */
 export interface GuildMe { name: string; className: string; itemLevel: number | null; combatPower: number | null }
 
@@ -50,7 +74,10 @@ export function parseGuild(j: any, localNow: number): GuildView {
   const members = (Array.isArray(j?.members) ? j.members : []).filter(isObj).map((m: any): GuildMember => ({
     name: str(m.name), className: str(m.className), itemLevel: num(m.itemLevel), combatPower: num(m.combatPower),
     shareGear: m.shareGear === true, shareFights: m.shareFights === true, seenMs: (num(m.seenMs) ?? 0) + shift,
+    role: isRole(m.role) ? m.role : "member", me: m.me === true,
   })).filter((m: GuildMember) => m.name);
+  const perms = { ...DEFAULT_PERMS };
+  if (isObj(j?.perms)) for (const p of PERMS) if (isRole(j.perms[p])) perms[p] = j.perms[p];
   const callups = (Array.isArray(j?.callups) ? j.callups : []).filter((c: any) => isObj(c) && typeof c.id === "string" && num(c.atMs)
     && typeof c.message === "string" && Array.isArray(c.leads)).map((c: any): Callup => ({
     id: c.id, atMs: c.atMs + shift, message: c.message, ping: c.ping === "here" || c.ping === "everyone" ? c.ping : "none",
@@ -59,6 +86,7 @@ export function parseGuild(j: any, localNow: number): GuildView {
   return {
     id: str(j?.id), name: str(j?.name), serverId: num(j?.serverId) ?? 0, leadMin: num(j?.leadMin) ?? 5,
     bossAlerts: j?.bossAlerts === true, hasWebhook: j?.hasWebhook === true, members, callups,
+    role: isRole(j?.role) ? j.role : "member", perms, memberCount: num(j?.memberCount) ?? members.length,
   };
 }
 
