@@ -64,6 +64,8 @@ export function defaultData(): AppData {
       crowdShare: true,
       crashReports: false,
       autoUpdate: true,
+      mascot: true,
+      mascotGender: "m",
     },
   };
 }
@@ -110,6 +112,7 @@ export function normalize(raw: any): AppData {
     install: typeof raw.install === "string" && raw.install ? raw.install : d.install,
     serverId: Number.isInteger(raw.serverId) ? raw.serverId : null,
     guild: cleanGuild(raw.guild),
-    settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels },
+    settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels,
+      mascotGender: rs.mascotGender === "f" ? "f" : "m" },
   };
 }

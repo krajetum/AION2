@@ -4,6 +4,7 @@ import type { FightRecord, RecentFight } from "../domain/fights.ts";
 import type { GuildView } from "../domain/guild.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import type { MeterEvent, Trigger } from "../domain/triggers.ts";
+import type { Cue } from "../domain/mascot.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
 export type Tab = "home" | Cadence | "plan" | "season" | "crafting" | "enhance" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "players" | "guild" | "wiki" | "news" | "settings";
@@ -33,6 +34,7 @@ export const ui = $state({
   recentFights: [] as RecentFight[], // the DPS page's last targets, newest first (memory only: src/domain/fights.ts addRecent)
   fights: [] as FightRecord[], // the Fight Log, newest first (its own file: src/infra/fights.ts)
   lookup: null as { name: string; serverId: number } | null, // a player card's "Full profile": the Players page searches it
+  mascotCues: [] as Cue[], // the alerts the mascot reacts to (main.ts), latest last
   guild: null as GuildView | null, // the guild as the Worker last answered (main.ts syncs it while playing), not saved
   updating: "", // the update in progress or its error, shown in the update banner
   update: undefined as { version: string; install: () => Promise<void> } | undefined, // a newer release (main.ts checkUpdate), offered by a banner

@@ -40,6 +40,7 @@
   import Settings from "./pages/Settings.svelte";
   import Wiki from "./pages/Wiki.svelte";
   import TaskList from "./pages/TaskList.svelte";
+  import Mascot from "./parts/Mascot.svelte";
   import { doneHere, GROUPS, tabFromHash, ui, type Tab } from "./state.svelte.ts";
 
   // Every character always has a season entry once shown (the save file has always had it).
@@ -210,3 +211,4 @@
     </details>{/if}
   </aside>
 </div>
+<Mascot />

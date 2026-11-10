@@ -5,7 +5,8 @@ import { addFight, addRecent, fightEnded, targetEnded, toRecord } from "./domain
 import { charFor, eventsFrom, SUGGEST_MS, type MeterEvent } from "./domain/triggers.ts";
 import { autoTick } from "./app/auto.ts";
 import { RESET_CONFIG as C } from "./config.ts";
-import { checkNotifications } from "./app/notifications.ts";
+import { checkNotifications, type Toast } from "./app/notifications.ts";
+import { cueOf, RIFT_MS } from "./domain/mascot.ts";
 import { muteForAnHour } from "./app/settings.ts";
 import { applyResets } from "./domain/resets.ts";
 import { BUNDLED_DROPS, takeBundledDrops } from "./domain/map.ts";
@@ -31,6 +32,14 @@ import { fightsSnapshot, ui } from "./ui/state.svelte.ts";
 
 const app = document.getElementById("app")!;
 
+/** A notification, and the mascot's cue: it shouts with the alerts, clings on when the rift's alert comes (domain/mascot.ts). */
+const alert: Toast = (s, title, body, sound) => {
+  const kind = cueOf(sound);
+  const now = Date.now();
+  if (kind) ui.mascotCues = [...ui.mascotCues.filter((c) => now - c.atMs < RIFT_MS), { kind, atMs: now }];
+  toast(s, title, body, sound);
+};
+
 async function main() {
   const data = await loadData();
   ui.charId = data.characters[0].id;
@@ -40,7 +49,7 @@ async function main() {
   if (data.map.bundledDrops !== BUNDLED_DROPS)
     await fetch(petDropsUrl).then((r) => r.json()).then((f) => takeBundledDrops(data.map, f)).catch((e) => console.warn("Bundled pet drops not loaded", e));
   applyResets(data, Date.now(), C);
-  checkNotifications(data, Date.now(), toast);
+  checkNotifications(data, Date.now(), alert);
   ui.data = data;
   ui.fights = await loadFights().catch((e) => { console.warn("Fight Log not loaded", e); return []; });
   await save();
@@ -112,7 +121,7 @@ async function main() {
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(ui.data, now, C).length > 0;
-    if (checkNotifications(ui.data, now, toast, ui.guild?.callups) || reset) await save();
+    if (checkNotifications(ui.data, now, alert, ui.guild?.callups) || reset) await save();
   }, 1000);
 }
 

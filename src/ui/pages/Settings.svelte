@@ -89,6 +89,13 @@
     {@render toggle("Overlay during fights", s.dpsOverlay, (e) => { s.dpsOverlay = check(e); meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
     <p class="hint">Without damage, healing or damage taken for this long, the meter resets and the overlay hides until the next fight. 0 = never.</p>
   </section>
+  <section><h2>Mascot</h2>
+    {@render toggle("Show the mascot", s.mascot, (e) => { s.mascot = check(e); })}
+    <label class="setting"><span>Gender</span><select value={s.mascotGender} disabled={!s.mascot}
+      onchange={(e) => act(() => { s.mascotGender = e.currentTarget.value === "f" ? "f" : "m"; })}>
+      <option value="m">Male</option><option value="f">Female</option></select></label>
+    <p class="hint">The little character of the class you play walks along the bottom of the window once the game says who you are (white wings for Elyos, black for Asmodians). It shouts with the alerts, clings on for 10 minutes after the Spacetime Rift's alert, hops when a hidden cube is in view, cheers when you open it and sulks when someone else does. Drag it, throw it, shake it.</p>
+  </section>
   <section><h2>Overlays</h2>
     {@render toggle("Event countdown overlay", s.eventsOverlay, (e) => { s.eventsOverlay = check(e); eventsOverlay(s.eventsOverlay); }, !isDesktop())}
     {@render toggle("Ping and packet loss overlay", s.netOverlay, (e) => { s.netOverlay = check(e); netOverlay(s.netOverlay); }, !isDesktop())}
