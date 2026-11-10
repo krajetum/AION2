@@ -82,6 +82,9 @@ pub struct DetailSkillEntry {
     pub multi_hit_damage: i32,
     #[serde(default)]
     pub multi_hit_hits: i32,
+    /// Companion: casts (`SkillCombatData::cast_count`).
+    #[serde(default)]
+    pub casts: i32,
     #[serde(default)]
     pub min_dmg: i32,
     #[serde(default)]

@@ -12,6 +12,24 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "--port", "1421"],
       "port": 1421
+    },
+    {
+      "name": "worker-local",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd server && npx --yes wrangler@4.149.0 dev --test-scheduled --port 8787"],
+      "port": 8787
+    },
+    {
+      "name": "web-ui-local-worker",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set VITE_CROWD_URL=http://localhost:8787&& npx vite --port 1422"],
+      "port": 1422
+    },
+    {
+      "name": "web-ui-local-worker-2",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set VITE_CROWD_URL=http://localhost:8787&& npx vite --port 1423"],
+      "port": 1423
     }
   ]
 }

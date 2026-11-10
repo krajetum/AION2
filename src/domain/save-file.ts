@@ -2,6 +2,7 @@
 import { cleanBis } from "./bis.ts";
 import { cleanCrafting, emptyCrafting } from "./crafting.ts";
 import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
+import { cleanGuild } from "./guild.ts";
 import { cleanMap, emptyMap } from "./map.ts";
 import { cleanCollections } from "./pets.ts";
 import { cleanWallets } from "./wallet.ts";
@@ -34,6 +35,7 @@ export function defaultData(): AppData {
     undo: [],
     install: crypto.randomUUID(),
     serverId: null,
+    guild: null,
     settings: {
       warnHours: { daily: 2, weekly: 12, monthly: 24 },
       quietStart: "01:00",
@@ -109,6 +111,7 @@ export function normalize(raw: any): AppData {
     undo: Array.isArray(raw.undo) ? raw.undo : [],
     install: typeof raw.install === "string" && raw.install ? raw.install : d.install,
     serverId: Number.isInteger(raw.serverId) ? raw.serverId : null,
+    guild: cleanGuild(raw.guild),
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels,
       mascotGender: rs.mascotGender === "f" ? "f" : "m" },
   };

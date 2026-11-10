@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addFight, compareSkills, fightEnded, MAX_FIGHTS, personalBests, toRecord, type FightRecord } from "./fights.ts";
+import { addFight, addRecent, compareSkills, fightEnded, MAX_FIGHTS, MAX_RECENT, targetEnded, personalBests, toRecord, type FightRecord } from "./fights.ts";
 import type { Fight, PlayerRow, SkillRow } from "./meter.ts";
 
 const skill = (name: string, damage: number): SkillRow => ({ name, damage, hits: 1, critRate: 0, share: 0, dot: false, icon: null });
@@ -24,6 +24,14 @@ test("short fights and non-boss targets are not kept", () => {
   assert.equal(fightEnded(fight("Boss", 5_000), fight("", 0)), false);
   assert.equal(fightEnded(fight("Mob", 60_000, false), fight("", 0)), false);
   assert.equal(fightEnded(undefined, fight("Boss", 0)), false);
+});
+
+test("any target with damage ends in the recent list, the last MAX_RECENT kept", () => {
+  assert.equal(targetEnded(fight("Mob", 3_000, false), fight("Other", 1_000, false)), true);
+  assert.equal(targetEnded(fight("Mob", 3_000, false), fight("Mob", 4_000, false)), false);
+  let list: ReturnType<typeof addRecent> = [];
+  for (let i = 0; i < MAX_RECENT + 2; i++) list = addRecent(list, { endMs: i, fight: fight("Mob", 1_000, false) });
+  assert.deepEqual([list.length, list[0].endMs], [MAX_RECENT, MAX_RECENT + 1]);
 });
 
 test("a record knows whether the boss died", () => {

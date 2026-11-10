@@ -19,10 +19,8 @@ export const PAGE: Record<Tab, [string, string]> = {
   fights: ["Fight Log", "Every boss fight: personal bests and runs side by side."],
   arena: ["Arena Log", "Every arena match and opponent."],
   players: ["Players", "Any character's official profile: combat power, item level, stats."],
-  expeditions: ["Expeditions", "Exploration, Conquest and Hard: requirements, drops, bosses."],
-  transcendence: ["Transcendence", "Stages, Arcana and boss mechanics."],
-  sanctuary: ["Sanctuary", "Abyssal Forge: Ludra: modes, rewards, voucher morphs."],
-  mechanics: ["Dungeon Rules", "Odyle Energy, weekly limits, guaranteed rewards, stagger."],
+  guild: ["Guild", "Boss alerts in Discord, the members' gear and their boss fights."],
+  wiki: ["Wiki", "Dungeons from online guides: requirements, drops, bosses and the rules they share."],
   news: ["News", "Official announcements from Steam."],
   settings: ["Settings", "Characters, notifications and data."],
 };

@@ -115,5 +115,6 @@ export interface AppData {
   undo: UndoEntry[]; // newest last, max 30 (src/undo.ts)
   install: string;          // random id of this install for the crowd Worker (one report per install counts)
   serverId: number | null; // game server of the last character the meter saw (crowd boss timers are per server)
+  guild: import("./guild.ts").GuildLink | null; // the guild this install joined on the crowd Worker (src/domain/guild.ts), with its codes
   settings: Settings;
 }

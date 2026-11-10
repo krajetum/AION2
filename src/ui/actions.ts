@@ -1,4 +1,5 @@
 // Glue between UI events and the app/ use cases: save after each change, undo, progress tracking, news refresh.
+import { syncGuild } from "../app/guild.ts";
 import { trackProgress } from "../app/progress.ts";
 import { findTask } from "../app/tasks.ts";
 import { leftShare } from "../domain/planner.ts";
@@ -69,6 +70,18 @@ export async function refreshNews() {
       toast(s, fresh.length === 1 ? "AION 2 news" : `${fresh.length} AION 2 news`, fresh.map((n) => n.title).join(" · "), ["news"]);
     await save();
   } catch (e) { ui.newsError = "Offline: " + (e as Error).message; console.warn(e); }
+}
+
+/** The guild's members and settings into ui.guild (main.ts while playing, the Guild page when opened).
+ *  An install an officer removed leaves the guild here too. */
+export async function refreshGuild(playing: boolean) {
+  const { view, removed } = await syncGuild(ui.data, ui.meter?.profile, playing);
+  if (view) ui.guild = view;
+  if (removed) {
+    ui.guild = null;
+    await save();
+    showStatus("You are no longer in your guild: an officer removed you or the guild was deleted.");
+  }
 }
 
 /** News link or banner dismiss: marks it read after the click, so a link isn't removed mid-click and still opens. */

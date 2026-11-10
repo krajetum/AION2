@@ -174,7 +174,7 @@
       <dt>Weekly</dt><dd>{WEEKDAYS[C.weekly.weekday]} {pad(C.weekly.hour)}:{pad(C.weekly.minute)}</dd>
       <dt>Monthly</dt><dd>Day {C.monthly.day} at {pad(C.monthly.hour)}:{pad(C.monthly.minute)}</dd>
       <dt>Cloud Merchant</dt><dd>Minute {C.cloudMerchantMinute} of every hour</dd>
-      {#each EVENTS as ev}<dt>{ev.name}</dt><dd>Every {ev.everyHours} h at :{pad(ev.minute)}{ev.everyHours > 1 ? ` from ${pad(ev.firstHour)}:00` : ""}</dd>{/each}
+      {#each EVENTS as ev}<dt>{ev.name}</dt><dd>Every {ev.everyHours} h at :{pad(ev.minute)}{ev.everyHours > 1 ? ` from ${pad(ev.firstHour)}:00` : ""}{ev.timeZone ? ` (${ev.timeZone})` : ""}</dd>{/each}
     </dl>
     <p class="hint">Edit in src/config.ts</p>
   </section>

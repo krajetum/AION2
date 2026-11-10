@@ -1,7 +1,7 @@
 // Startup: load the save file, apply resets, mount the UI, then a 1 s clock for countdowns, resets and notifications.
 import { mount } from "svelte";
 import type { Fight, MeterUpdate } from "./domain/meter.ts";
-import { addFight, fightEnded, toRecord } from "./domain/fights.ts";
+import { addFight, addRecent, fightEnded, targetEnded, toRecord } from "./domain/fights.ts";
 import { charFor, eventsFrom, SUGGEST_MS, type MeterEvent } from "./domain/triggers.ts";
 import { autoTick } from "./app/auto.ts";
 import { RESET_CONFIG as C } from "./config.ts";
@@ -15,7 +15,7 @@ import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
 import { loadFights, saveFights } from "./infra/fights.ts";
 import { findUpdate, getAutostart, isDesktop, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
-import { act, refreshNews, save } from "./ui/actions.ts";
+import { act, refreshGuild, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import EventsOverlay from "./ui/EventsOverlay.svelte";
@@ -24,6 +24,7 @@ import CubeOverlay from "./ui/CubeOverlay.svelte";
 import RadarOverlay from "./ui/RadarOverlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
 import { bossEvery, flushCubes, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
+import { uploadFight } from "./app/guild.ts";
 import { crashReports } from "./infra/sentry.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, radarOverlay, meterOverlay, netOverlay, onEventsOverlay, onNetOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
@@ -85,9 +86,12 @@ async function main() {
       pending = null;
       ui.meter = latest;
       const lastFight: Fight | undefined = last?.fight;
+      if (targetEnded(lastFight, latest.fight)) ui.recentFights = addRecent(ui.recentFights, { endMs: Date.now(), fight: lastFight });
       if (fightEnded(lastFight, latest.fight)) {
-        ui.fights = addFight(ui.fights, toRecord(lastFight, latest.profile, latest.position?.mapId ?? null, Date.now()));
+        const rec = toRecord(lastFight, latest.profile, latest.position?.mapId ?? null, Date.now());
+        ui.fights = addFight(ui.fights, rec);
         saveFights(fightsSnapshot()).catch((e) => console.warn("Fight Log not saved", e));
+        if (!latest.demo) uploadFight(ui.data, rec, latest.profile?.serverId);
       }
       autoTrack(eventsFrom(last, latest, Date.now()), latest);
       last = latest;
@@ -102,19 +106,22 @@ async function main() {
   refreshNews();
   crowdBosses();
   crowdCubes();
+  refreshGuild(false);
   let ticks = 0;
   setInterval(async () => {
     ui.now = Date.now();
     if (++ticks % 1800 === 0) refreshNews(); // every 30 min
     if (ticks % 21600 === 0 && isDesktop()) checkUpdate(); // every 6 h: the app can stay in the tray for days
     // Other players' boss timers every 2 min and cube spots every hour, only while you play.
-    if (ticks % bossEvery === 0 && gameActive(ui.now)) crowdBosses();
+    if (ticks % bossEvery === 0 && gameActive(ui.now)) { crowdBosses(); refreshGuild(true); }
+    // Out of game the guild every 15 min: an officer's call-up reminder reaches you with the app in the tray.
+    else if (ticks % 900 === 0 && ui.data.guild) refreshGuild(false);
     if (ticks % 3600 === 0 && gameActive(ui.now)) crowdCubes();
     if (ticks % 600 === 0) flushCubes(ui.data);
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(ui.data, now, C).length > 0;
-    if (checkNotifications(ui.data, now, alert) || reset) await save();
+    if (checkNotifications(ui.data, now, alert, ui.guild?.callups) || reset) await save();
   }, 1000);
 }
 

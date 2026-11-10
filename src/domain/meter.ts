@@ -3,6 +3,7 @@
 
 export interface SkillRow {
   name: string; damage: number; hits: number; critRate: number; share: number; dot: boolean;
+  casts?: number; // times used (hits close together = one cast; the game sends no cast), absent in older saved fights
   icon: string | null; // icon file on NCSOFT's game-data CDN (skillIconUrl), none for basic attacks
 }
 

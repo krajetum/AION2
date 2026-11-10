@@ -1,8 +1,9 @@
 <script lang="ts">
   import { classIcon } from "../classes.ts";
   import { mapLabel } from "../../domain/arena.ts";
-  import { compareSkills, fightText, personalBests, you, yourDps, type FightRecord } from "../../domain/fights.ts";
+  import { fightText, personalBests, you, yourDps, type FightRecord } from "../../domain/fights.ts";
   import { classColor, clock, displayName, short, skillIconUrl } from "../../domain/meter.ts";
+  import SkillCompare from "../parts/SkillCompare.svelte";
   import { saveFights } from "../../infra/fights.ts";
   import { hm } from "../format.ts";
   import { showStatus } from "../overlays.ts";
@@ -15,10 +16,8 @@
   const bests = $derived(Object.entries(personalBests(list)).sort(([a], [b]) => a.localeCompare(b)));
   // The two fights to compare, older first.
   const pair = $derived(picked.map((id) => ui.fights.find((f) => f.id === id)).filter((f): f is FightRecord => !!f).sort((a, b) => a.endMs - b.endMs));
-  const diff = $derived(pair.length === 2 ? compareSkills(pair[0], pair[1]) : []);
 
   const when = (t: number) => `${new Date(t).toLocaleDateString([], { day: "2-digit", month: "short" })} ${hm(t)}`;
-  const pct = (a: number, b: number) => (a ? `${b >= a ? "+" : ""}${Math.round((b / a - 1) * 100)}%` : "new");
   const where = (f: FightRecord) => (f.mapId == null ? "" : mapLabel(ui.data.arena.maps, f.mapId));
   // Your DPS on a boss over time, oldest first, as a polyline in an 80 × 20 box.
   function spark(name: string) {
@@ -48,23 +47,8 @@
     {#if chars.length > 1}<label>Character <select bind:value={char}><option value="">All</option>{#each chars as c}<option>{c}</option>{/each}</select></label>{/if}
   </div>
 
-  {#if pair.length === 2}{@const [a, b] = pair}<section class="dps-table"><h2>{a.boss === b.boss ? a.boss : `${a.boss} vs ${b.boss}`}: {when(a.endMs)} → {when(b.endMs)}
-      <button class="ghost" onclick={() => { picked = []; }}>Clear</button></h2>
-    <div class="scroll"><table class="sheet">
-      <thead><tr><th></th><th class="n">Before</th><th class="n">After</th><th class="n">Change</th></tr></thead>
-      <tbody>
-        <tr><td>Your DPS</td><td class="n">{short(yourDps(a))}/s</td><td class="n">{short(yourDps(b))}/s</td><td class="n delta" class:up={yourDps(b) >= yourDps(a)}>{pct(yourDps(a), yourDps(b))}</td></tr>
-        <tr><td>Time</td><td class="n">{clock(a.battleTimeMs)}</td><td class="n">{clock(b.battleTimeMs)}</td><td class="n delta" class:up={b.battleTimeMs <= a.battleTimeMs}>{pct(a.battleTimeMs, b.battleTimeMs)}</td></tr>
-        <tr><td>Combat power</td><td class="n">{a.combatPower ? short(a.combatPower) : "—"}</td><td class="n">{b.combatPower ? short(b.combatPower) : "—"}</td><td></td></tr>
-      </tbody></table>
-    {#if diff.length}<table class="sheet">
-      <thead><tr><th>Skill</th><th class="n">Before /s</th><th class="n">After /s</th><th class="n">Change</th><th class="n">Hits</th><th class="n">Crit</th></tr></thead>
-      <tbody>{#each diff as d (d.name)}<tr>
-        <td class="skill-name">{#if d.icon}<img class="skill-icon" src={skillIconUrl(d.icon)} alt="" loading="lazy" width="20" height="20">{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{d.name}{#if d.dot}<span class="dim">DoT</span>{/if}</td>
-        <td class="n">{short(d.dpsA)}</td><td class="n">{short(d.dpsB)}</td><td class="n delta" class:up={d.dpsB >= d.dpsA}>{pct(d.dpsA, d.dpsB)}</td>
-        <td class="n">{d.a?.hits ?? 0} → {d.b?.hits ?? 0}</td>
-        <td class="n">{d.dot ? "–" : `${Math.round((d.a?.critRate ?? 0) * 100)}% → ${Math.round((d.b?.critRate ?? 0) * 100)}%`}</td></tr>{/each}</tbody></table>
-    {:else}<p class="hint">No skill data in these fights.</p>{/if}</div></section>{/if}
+  {#if pair.length === 2}{@const [a, b] = pair}<SkillCompare {a} {b} title="{a.boss === b.boss ? a.boss : `${a.boss} vs ${b.boss}`}: {when(a.endMs)} → {when(b.endMs)}"
+    onclear={() => { picked = []; }} />{/if}
 
   <section class="dps-table"><h2>Personal bests</h2><div class="scroll"><table class="sheet">
     <thead><tr><th>Boss</th><th class="n">Fights</th><th class="n">Kills</th><th class="n">Best DPS</th><th class="n">Fastest kill</th><th>Trend</th></tr></thead>
@@ -91,16 +75,13 @@
             <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{/if}<span class="name">{displayName(r)}</span>{#if r.job}<small>{r.job}</small>{/if}</td>
             <td class="n">{short(r.dps)}/s</td><td class="n">{short(r.damage)}</td><td class="n">{r.share.toFixed(1)}%</td><td class="n">{r.heal ? short(r.heal) : "—"}</td></tr>{/each}</tbody></table>
         {#if me?.skills.length}<table class="sheet">
-          <thead><tr><th>Your skill</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Hits</th><th class="n">Crit</th></tr></thead>
+          <thead><tr><th>Your skill</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Hits</th><th class="n">Used</th><th class="n">Crit</th></tr></thead>
           <tbody>{#each me.skills as s (s.name)}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20">{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">DoT</span>{/if}</td>
-            <td class="n">{short(s.damage)}</td><td class="n">{(s.share * 100).toFixed(1)}%</td><td class="n">{s.hits}</td><td class="n">{s.dot ? "–" : Math.round(s.critRate * 100) + "%"}</td></tr>{/each}</tbody></table>{/if}
+            <td class="n">{short(s.damage)}</td><td class="n">{(s.share * 100).toFixed(1)}%</td><td class="n">{s.hits}</td><td class="n">{s.dot || s.casts == null ? "–" : s.casts}</td><td class="n">{s.dot ? "–" : Math.round(s.critRate * 100) + "%"}</td></tr>{/each}</tbody></table>{/if}
       </td></tr>{/if}
     {/each}</tbody></table></div></section>
 {/if}
 
 <style>
-  .delta { color: var(--negative); }
-  .delta.up { color: var(--positive); }
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
-  h2 button { margin-left: 8px; font-size: 12px; }
 </style>

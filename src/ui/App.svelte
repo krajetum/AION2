@@ -35,13 +35,12 @@
   import Season from "./pages/Season.svelte";
   import Crafting from "./pages/Crafting.svelte";
   import Players from "./pages/Players.svelte";
+  import Guild from "./pages/Guild.svelte";
   import Enhance from "./pages/Enhance.svelte";
   import Settings from "./pages/Settings.svelte";
-  import WikiDungeons from "./pages/WikiDungeons.svelte";
-  import WikiMechanics from "./pages/WikiMechanics.svelte";
+  import Wiki from "./pages/Wiki.svelte";
   import TaskList from "./pages/TaskList.svelte";
   import Mascot from "./parts/Mascot.svelte";
-  import { sortedTasks } from "../app/tasks.ts";
   import { doneHere, GROUPS, tabFromHash, ui, type Tab } from "./state.svelte.ts";
 
   // Every character always has a season entry once shown (the save file has always had it).
@@ -52,9 +51,16 @@
   const plan = $derived(activePlan(ui.data, ui.charId, ui.now));
   const bosses = $derived(bossBoard(ui.data.bosses, ui.now));
   const meter = $derived(ui.meter?.status);
-  // Third sidebar level: the categories of the open task list.
-  const cats = $derived(CADENCES.includes(ui.tab as never)
-    ? [...new Set(sortedTasks(ui.data, ui.tab as (typeof CADENCES)[number]).filter((t) => t.enabled).map((t) => t.category))] : []);
+  // Sidebar groups: the open page's group is open; others only if the player opened them (remembered, this browser only).
+  const NAV_KEY = "aion2-nav-open";
+  let navOpen = $state<Record<string, boolean>>((() => { try { return JSON.parse(localStorage.getItem(NAV_KEY) ?? "{}"); } catch { return {}; } })());
+  const isOpen = (name: string, tabs: Tab[]) => tabs.includes(ui.tab) || navOpen[name] === true;
+  function toggled(name: string, tabs: Tab[], e: Event) {
+    const open = (e.currentTarget as HTMLDetailsElement).open;
+    if (open === isOpen(name, tabs)) return; // set by the page change, not by the player
+    navOpen[name] = open;
+    try { localStorage.setItem(NAV_KEY, JSON.stringify(navOpen)); } catch { /* not kept */ }
+  }
 
   // The character the game says you are playing: offered as a switch (or an add), never switched silently.
   let dismissed = $state("");
@@ -88,7 +94,7 @@
   }
 
   function badge(t: Tab) {
-    if (t === "home" || t === "settings" || t === "news" || t === "dps" || t === "expeditions" || t === "transcendence" || t === "sanctuary" || t === "mechanics" || t === "enhance" || t === "players") return "";
+    if (t === "home" || t === "settings" || t === "news" || t === "dps" || t === "wiki" || t === "enhance" || t === "players" || t === "guild") return "";
     if (t === "map") return ui.data.map.points.length ? num(ui.data.map.points.length) : "";
     if (t === "pets") {
       // Pets at level 3, of those owned, for the character read last.
@@ -142,12 +148,15 @@
 <div class="shell">
   <nav class="side" aria-label="Pages">
     <div class="brand" translate="no"><span class="logo">A2</span><b>AION 2</b><span>Companion</span></div>
-    {#each GROUPS as [name, tabs]}<details open><summary class="label">{@html ICON.chevron}{name}</summary>
-      {#each tabs as t}{@const b = badge(t)}<button class="tab" title={PAGE[t][0]} aria-current={t === ui.tab ? "page" : undefined} onclick={() => go(t)}>
-        {@html ICON[t]}<span class="lbl">{PAGE[t][0]}</span>{#if t === "news"}{#if unread}<span class="badge">{unread}</span>{/if}{:else if b}<span class="count">{b}</span>{/if}</button>
-        {#if t === ui.tab}{#each cats as c (c)}<button class="tab sub" onclick={() => document.getElementById("cat-" + c)?.scrollIntoView({ behavior: "smooth", block: "start" })}><span class="lbl">{c}</span></button>{/each}{/if}{/each}
+    {@render tab("home")}
+    {#each GROUPS as [name, tabs]}<details open={isOpen(name, tabs)} ontoggle={(e) => toggled(name, tabs, e)}><summary class="label">{@html ICON.chevron}{name}</summary>
+      {#each tabs as t}{@render tab(t)}{/each}
     </details>{/each}
+    {@render tab("wiki")}
+    <div class="side-foot">{@render tab("news")}{@render tab("settings")}</div>
   </nav>
+  {#snippet tab(t: Tab)}{@const b = badge(t)}<button class="tab" title={PAGE[t][0]} aria-current={t === ui.tab ? "page" : undefined} onclick={() => go(t)}>
+    {@html ICON[t]}<span class="lbl">{PAGE[t][0]}</span>{#if t === "news"}{#if unread}<span class="badge">{unread}</span>{/if}{:else if b}<span class="count">{b}</span>{/if}</button>{/snippet}
 
   <main>
     {#if ui.update && ui.update.version !== updateHidden}<div class="banner update"><span class="grow">{#if ui.updating}{ui.updating}{:else}<b>AION 2 Companion {ui.update.version}</b> is ready.{/if}</span>
@@ -166,7 +175,7 @@
       <button class="ghost" aria-label="Not now" title="Not now" onclick={() => { ui.suggest = null; }}>{@html ICON.close}</button></div>{/if}
     {#each ui.data.news.filter((n) => !n.read && isImportant(n)) as n (n.gid)}<div class="banner info"><a href={n.url} target="_blank" rel="noopener" onclick={() => markRead(n.gid)}>{n.title}</a>
       <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => markRead(n.gid)}>{@html ICON.close}</button></div>{/each}
-    {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "crafting"}<Crafting />{:else if ui.tab === "enhance"}<Enhance />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "players"}<Players />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "expeditions"}<WikiDungeons kind="expedition" />{:else if ui.tab === "transcendence"}<WikiDungeons kind="transcendence" />{:else if ui.tab === "sanctuary"}<WikiDungeons kind="sanctuary" />{:else if ui.tab === "mechanics"}<WikiMechanics />{:else}<TaskList cad={ui.tab} />{/if}
+    {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "crafting"}<Crafting />{:else if ui.tab === "enhance"}<Enhance />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "players"}<Players />{:else if ui.tab === "guild"}<Guild />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "wiki"}<Wiki />{:else}<TaskList cad={ui.tab} />{/if}
   </main>
 
   <aside class="inspector" aria-label="Timers">

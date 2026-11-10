@@ -32,7 +32,12 @@ a { color: inherit; }
 /* ---------- shell: nav · main · inspector ---------- */
 .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr) 280px; min-height: 100dvh; }
 .side, .inspector { position: sticky; top: 0; height: 100dvh; overflow-y: auto; background: var(--surface); padding: 12px 10px 24px; }
-.side { border-right: 1px solid var(--rule); }
+.side { border-right: 1px solid var(--rule); display: flex; flex-direction: column; padding-bottom: 12px; }
+.side > details, .side > .tab { flex: none; margin-top: 10px; }
+.side > .brand + .tab { margin-top: 0; }
+.side-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--rule); }
+.side > .tab, .side-foot .tab { padding-left: 10px; }
+.side > .tab[aria-current="page"]::before, .side-foot .tab[aria-current="page"]::before { left: 0; }
 .inspector { border-left: 1px solid var(--rule); padding: 14px 14px 24px; }
 main { min-width: 0; padding: 20px 24px 48px; }
 
@@ -42,7 +47,7 @@ details > summary.label::-webkit-details-marker { display: none; }
 details > summary.label:hover { color: var(--text); }
 summary.label svg { width: 12px; height: 12px; flex: none; color: var(--primary); transition: transform var(--ease); }
 details[open] > summary.label svg { transform: rotate(90deg); }
-.side details + details, .inspector details { margin-top: 10px; }
+.inspector details { margin-top: 10px; }
 
 .brand { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px; margin-bottom: 8px; }
 .brand .logo { display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--r-sm); background: var(--teal); color: var(--ground); font-size: 11px; font-weight: 700; }
@@ -58,9 +63,12 @@ details[open] > summary.label svg { transform: rotate(90deg); }
 .tab:hover { color: var(--text); background: var(--raised); }
 .tab[aria-current="page"] { color: var(--text); background: var(--active); }
 .tab[aria-current="page"]::before { content: ""; position: absolute; left: 8px; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--primary); }
-.tab.sub { height: 28px; padding-left: 50px; font-weight: 400; font-size: 12px; }
-.tab.sub::before { content: ""; position: absolute; left: 34px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--faint); }
-.tab.sub:hover::before { background: var(--primary); }
+/* Task list: jump to a category (sticky while scrolling the list). */
+.cat-jump { position: sticky; top: 8px; z-index: 2; display: flex; flex-wrap: wrap; margin-bottom: 12px; box-shadow: 0 0 0 4px var(--ground); }
+.cat-jump ~ section { scroll-margin-top: 56px; }
+/* A button that reads as a link (in-page navigation inside a sentence). */
+button.link { display: inline; height: auto; padding: 0; border: 0; background: none; color: var(--primary); font: inherit; cursor: pointer; }
+button.link:hover { text-decoration: underline; }
 .count { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
 .badge { min-width: 20px; padding: 0 6px; font-size: 11px; font-weight: 600; line-height: 18px; text-align: center; color: var(--primary-ink); background: var(--primary-fill); border-radius: var(--r-pill); }
 
@@ -102,14 +110,16 @@ details[open] > summary.label svg { transform: rotate(90deg); }
 @media (max-width: 760px) {
   .shell { grid-template-columns: 52px minmax(0, 1fr); }
   .side { padding: 8px 4px; }
-  .brand b, .brand span:last-child, .side details > summary.label, .tab.sub { display: none; }
+  .brand b, .brand span:last-child, .side details > summary.label { display: none; }
   .brand { justify-content: center; padding: 0; }
-  .side details + details { margin-top: 8px; border-top: 1px solid var(--rule); padding-top: 8px; }
-  .tab { justify-content: center; padding: 0; height: 40px; }
-  .tab[aria-current="page"]::before { left: 0; }
-  .tab .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .tab .count { display: none; }
-  .tab .badge { position: absolute; top: 0; right: 0; min-width: 16px; line-height: 16px; padding: 0 4px; }
+  /* Icon rail: every group's icons, open or closed. */
+  .side details::details-content { content-visibility: visible; }
+  .side > details { margin-top: 8px; border-top: 1px solid var(--rule); padding-top: 8px; }
+  .side .tab { justify-content: center; padding: 0; height: 40px; }
+  .side .tab[aria-current="page"]::before { left: 0; }
+  .side .tab .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .side .tab .count { display: none; }
+  .side .tab .badge { position: absolute; top: 0; right: 0; min-width: 16px; line-height: 16px; padding: 0 4px; }
   main { padding: 16px 16px 40px; }
 }
 

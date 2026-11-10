@@ -55,6 +55,10 @@ and sends nothing to the game or anywhere else.
     which keeps it only while a recording asks for the game's other connections; meanwhile `capture_filters` is all IPv4 TCP
     (the recorder keeps the game's own connections, the dispatcher only the game's stream). `platform/*` `window_detector`:
     `game_connections` (Windows: the game process's TCP connections from Windows' connection table; elsewhere none).
+15. `combat/data_storage.rs`, `combat/dps_calculator.rs`, `entity/details_context.rs` (2026-11-10): casts per skill.
+    `apply_damage` counts a direct hit as a new cast (`SkillCombatData::cast_count`) when the actor's last hit of that skill
+    on any target was more than `CAST_GAP_MS` (400 ms) before (`Inner::last_skill_hit`, cleared on flush); the details
+    sum it into `DetailSkillEntry::casts` (serde default 0). Nothing else changes.
 
 ## Written for the companion
 
