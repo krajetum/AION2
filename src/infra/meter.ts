@@ -137,7 +137,7 @@ function demoUpdate(): MeterUpdate {
     healSkills: i === 3 ? [{ name: "Demo heal", damage: Math.round(3.6 * t), hits: Math.round(t / 1500), critRate: 0, share: 0.7, dot: false, icon: null },
       { name: "Demo regen", damage: Math.round(1.6 * t), hits: Math.round(t / 1000), critRate: 0, share: 0.3, dot: true, icon: null }] : [],
     skills: DEMO_SPLIT.map((share, k) => ({
-      name: `Demo skill ${k + 1}`, damage: Math.round(demo.dmg[i] * share), hits: Math.round(t / 900 / (k + 1)),
+      name: `Demo skill ${k + 1}`, damage: Math.round(demo.dmg[i] * share), hits: Math.round(t / 900 / (k + 1)), casts: k === 3 ? 0 : Math.round(t / 2700 / (k + 1)),
       critRate: 0.3 - k * 0.05, share, dot: k === 3, icon: null,
     })),
   })).sort((a, b) => b.damage - a.damage);

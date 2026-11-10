@@ -1,6 +1,6 @@
 // UI state. `ui.data` is a deep $state proxy of the save file: app/ use cases mutate it and the page updates.
 import { SvelteSet } from "svelte/reactivity";
-import type { FightRecord } from "../domain/fights.ts";
+import type { FightRecord, RecentFight } from "../domain/fights.ts";
 import type { GuildView } from "../domain/guild.ts";
 import type { MeterUpdate } from "../domain/meter.ts";
 import type { MeterEvent, Trigger } from "../domain/triggers.ts";
@@ -30,6 +30,7 @@ export const ui = $state({
   meter: undefined as MeterUpdate | undefined, // last meter update (the capture runs from app start, main.ts)
   recent: [] as MeterEvent[], // what the meter saw in the last minutes (main.ts): offered as tasks' triggers
   suggest: null as { taskId: string; triggers: Trigger[] } | null, // after a manual tick: tick it by itself next time?
+  recentFights: [] as RecentFight[], // the DPS page's last targets, newest first (memory only: src/domain/fights.ts addRecent)
   fights: [] as FightRecord[], // the Fight Log, newest first (its own file: src/infra/fights.ts)
   lookup: null as { name: string; serverId: number } | null, // a player card's "Full profile": the Players page searches it
   guild: null as GuildView | null, // the guild as the Worker last answered (main.ts syncs it while playing), not saved

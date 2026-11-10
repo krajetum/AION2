@@ -14,7 +14,9 @@
   // Per-skill details only for the rows that are open; none once the page is left.
   $effect(() => { meterWatch([...open]).catch(() => {}); return () => { meterWatch([]).catch(() => {}); }; });
 
-  const f = $derived(u?.fight);
+  let picked = $state<number | null>(null); // endMs of a recent target shown instead of the live fight
+  const past = $derived(picked == null ? undefined : ui.recentFights.find((r) => r.endMs === picked));
+  const f = $derived(past?.fight ?? u?.fight);
   const left = $derived(f?.target ? hpLeft(f.target) : undefined);
   const idle = $derived(ui.data.settings.dpsIdleSeconds);
   const idleText = $derived(idle ? `${idle} s without activity` : "never (Settings)");
@@ -80,6 +82,12 @@
       onclick={() => run(async () => { const on = !ui.data.settings.netOverlay; await act(() => { ui.data.settings.netOverlay = on; }); await netOverlay(on); })}>{ui.data.settings.netOverlay ? "Ping overlay on" : "Ping overlay"}</button>
   </div>
 
+  {#if ui.recentFights.length}<div class="toolbar start"><label>Showing <select aria-label="Fight shown" value={past ? String(past.endMs) : ""}
+      onchange={(e) => { picked = e.currentTarget.value ? Number(e.currentTarget.value) : null; }}>
+      <option value="">Live fight</option>
+      {#each ui.recentFights as r (r.endMs)}<option value={String(r.endMs)}>{r.fight.target?.name || "Unknown target"} · {clock(r.fight.battleTimeMs)} · ended {new Date(r.endMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</option>{/each}
+    </select></label>{#if past}<button class="ghost" onclick={() => { picked = null; }}>Back to live</button>{/if}</div>{/if}
+
   {#if f.target}{@const t = f.target}<section class="dps-target">
     <div class="tname"><b>{t.name || "Unknown target"}</b>{#if t.isBoss}<span class="pill magenta">Boss</span>{/if}<span class="num time">{clock(f.battleTimeMs)}</span></div>
     {#if left != null}<div class="bar hp"><i style:--p={String(left)}></i></div><small class="num">{Math.round(left * 100)}% of {short(t.maxHp)} HP</small>{/if}
@@ -97,11 +105,11 @@
           <td class="n">{short(perSec)}/s</td><td class="n">{short(value)}</td>
           <td class="n">{view === "taken" ? r.hitsTaken : share.toFixed(1) + "%"}</td></tr>
         {#if view !== "taken" && open.has(r.id)}{@const list = view === "healing" ? r.healSkills : r.skills}<tr class="skills"><td colspan="5"><table class="sheet">
-          <thead><tr><th>Skill</th><th class="n">{view === "healing" ? "Healing" : "Damage"}</th><th class="n">Share</th><th class="n">{view === "healing" ? "Ticks" : "Hits"}</th><th class="n">Crit</th></tr></thead>
+          <thead><tr><th>Skill</th><th class="n">{view === "healing" ? "Healing" : "Damage"}</th><th class="n">Share</th><th class="n">{view === "healing" ? "Ticks" : "Hits"}</th><th class="n" title="Times used: hits of a skill close together count as one cast">Used</th><th class="n">Crit</th></tr></thead>
           <tbody>{#each list as s}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20"
                 onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")}>{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">{view === "healing" ? "HoT" : "DoT"}</span>{/if}</td><td class="n">{short(s.damage)}</td>
-              <td class="n">{(s.share * 100).toFixed(1)}%</td><td class="n">{s.hits}</td><td class="n">{s.dot || view === "healing" ? "–" : Math.round(s.critRate * 100) + "%"}</td></tr>
-            {:else}<tr><td colspan="5" class="dim">No skill data yet.</td></tr>{/each}</tbody></table></td></tr>{/if}
+              <td class="n">{(s.share * 100).toFixed(1)}%</td><td class="n">{s.hits}</td><td class="n">{s.dot || view === "healing" || s.casts == null ? "–" : s.casts}</td><td class="n">{s.dot || view === "healing" ? "–" : Math.round(s.critRate * 100) + "%"}</td></tr>
+            {:else}<tr><td colspan="6" class="dim">{past ? "Skills kept only for you and the players open during the fight." : "No skill data yet."}</td></tr>{/each}</tbody></table></td></tr>{/if}
       {/each}</tbody></table></div><p class="hint">{view === "taken" ? "Damage taken from the fight's monsters." : "Click a player for the skill breakdown."}{#if unnamed}&nbsp;Players shown as #number: the game sends
         names on loading screens (teleport, zone change, dungeon), so start the companion before you enter.{/if}</p></section>
   {:else}<p class="empty">{view === "healing" ? "No healing yet." : view === "taken" ? "No damage taken yet." : u.partyOnly ? "No damage from your party yet." : "No fight yet. Hit something."}</p>{/if}

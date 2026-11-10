@@ -4,6 +4,8 @@ import { clock, displayName, hpLeft, short, type Fight, type PlayerRow, type Pro
 
 /** A boss fight shorter than this is not kept (a pull reset, a stray hit). */
 export const MIN_FIGHT_MS = 10_000;
+/** Targets the DPS page keeps (any target, this session only). */
+export const MAX_RECENT = 10;
 /** Fights kept, newest first; personal bests are kept past it. */
 export const MAX_FIGHTS = 500;
 
@@ -21,11 +23,20 @@ export interface FightRecord {
   rows: PlayerRow[]; // as the meter had them at the end: skills for you (and the rows open on the DPS page)
 }
 
-/** The boss fight the meter had (`prev`) is over in `next`: its time went back (idle reset, Reset button) or its target changed. */
-export function fightEnded(prev: Fight | undefined, next: Fight): prev is Fight {
-  if (!prev?.target?.isBoss || prev.battleTimeMs < MIN_FIGHT_MS) return false;
+/** The fight the meter had (`prev`, any target) is over in `next`: its time went back (idle reset, Reset button) or its target changed. */
+export function targetEnded(prev: Fight | undefined, next: Fight): prev is Fight {
+  if (!prev?.target || prev.battleTimeMs <= 0) return false;
   return next.battleTimeMs < prev.battleTimeMs || next.target?.name !== prev.target.name;
 }
+
+/** The same for a boss fight the Fight Log keeps (at least MIN_FIGHT_MS). */
+export const fightEnded = (prev: Fight | undefined, next: Fight): prev is Fight =>
+  !!prev?.target?.isBoss && prev.battleTimeMs >= MIN_FIGHT_MS && targetEnded(prev, next);
+
+/** A target the DPS page keeps: the meter's fight as it was at the end. */
+export interface RecentFight { endMs: number; fight: Fight }
+/** A finished target into the DPS page's recent list: newest first, MAX_RECENT at most. */
+export const addRecent = (list: RecentFight[], r: RecentFight) => [r, ...list].slice(0, MAX_RECENT);
 
 export function toRecord(f: Fight, profile: Profile | null | undefined, mapId: number | null, now: number): FightRecord {
   const t = f.target!;

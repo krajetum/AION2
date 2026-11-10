@@ -41,6 +41,8 @@ pub struct SkillRow {
     pub name: String,
     pub damage: i64,
     pub hits: i32,
+    /// Times used (`DetailSkillEntry::casts`); 0 for DoTs and heals.
+    pub casts: i32,
     pub crit_rate: f64,
     /// Share of this player's damage, 0..1.
     pub share: f64,
@@ -217,20 +219,22 @@ impl Fight {
 }
 
 fn sum_skills(entries: &[DetailSkillEntry], actor: i32, total: f64) -> Vec<SkillRow> {
-    let mut by: HashMap<(i32, bool), (String, i64, i32, i32)> = HashMap::new();
+    let mut by: HashMap<(i32, bool), (String, i64, i32, i32, i32)> = HashMap::new();
     for e in entries.iter().filter(|e| e.actor_id == actor) {
-        let v = by.entry((e.code, e.is_dot)).or_insert_with(|| (e.name.clone(), 0, 0, 0));
+        let v = by.entry((e.code, e.is_dot)).or_insert_with(|| (e.name.clone(), 0, 0, 0, 0));
         v.1 += e.dmg as i64;
         v.2 += e.time;
         v.3 += e.crit;
+        v.4 += e.casts;
     }
     let mut skills: Vec<SkillRow> = by
         .into_iter()
         .filter(|(_, v)| v.1 > 0)
-        .map(|((code, dot), (name, amount, hits, crit))| SkillRow {
+        .map(|((code, dot), (name, amount, hits, crit, casts))| SkillRow {
             name: if name.is_empty() { format!("#{code}") } else { name },
             damage: amount,
             hits,
+            casts,
             crit_rate: if hits > 0 && !dot { crit as f64 / hits as f64 } else { 0.0 },
             share: if total > 0.0 { amount as f64 / total } else { 0.0 },
             dot,

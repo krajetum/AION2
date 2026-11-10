@@ -136,7 +136,7 @@ export function guildFight(r: FightRecord): FightRecord {
 }
 
 const cleanSkill = (s: any): SkillRow => ({
-  name: str(s?.name), damage: num(s?.damage) ?? 0, hits: num(s?.hits) ?? 0, critRate: num(s?.critRate) ?? 0,
+  name: str(s?.name), damage: num(s?.damage) ?? 0, hits: num(s?.hits) ?? 0, casts: num(s?.casts) ?? undefined, critRate: num(s?.critRate) ?? 0,
   share: num(s?.share) ?? 0, dot: s?.dot === true, icon: typeof s?.icon === "string" ? s.icon : null,
 });
 const cleanRow = (x: any): PlayerRow => ({

@@ -1,7 +1,7 @@
 // Startup: load the save file, apply resets, mount the UI, then a 1 s clock for countdowns, resets and notifications.
 import { mount } from "svelte";
 import type { Fight, MeterUpdate } from "./domain/meter.ts";
-import { addFight, fightEnded, toRecord } from "./domain/fights.ts";
+import { addFight, addRecent, fightEnded, targetEnded, toRecord } from "./domain/fights.ts";
 import { charFor, eventsFrom, SUGGEST_MS, type MeterEvent } from "./domain/triggers.ts";
 import { autoTick } from "./app/auto.ts";
 import { RESET_CONFIG as C } from "./config.ts";
@@ -77,6 +77,7 @@ async function main() {
       pending = null;
       ui.meter = latest;
       const lastFight: Fight | undefined = last?.fight;
+      if (targetEnded(lastFight, latest.fight)) ui.recentFights = addRecent(ui.recentFights, { endMs: Date.now(), fight: lastFight });
       if (fightEnded(lastFight, latest.fight)) {
         const rec = toRecord(lastFight, latest.profile, latest.position?.mapId ?? null, Date.now());
         ui.fights = addFight(ui.fights, rec);
