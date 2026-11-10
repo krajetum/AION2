@@ -1629,6 +1629,7 @@ impl DpsCalculator {
                     multi_hit_count: 0,
                     multi_hit_damage: 0,
                     multi_hit_hits: 0,
+                    casts: 0,
                     min_dmg: i32::MAX,
                     max_dmg: 0,
                     crit: 0,
@@ -1658,6 +1659,7 @@ impl DpsCalculator {
                 entry.multi_hit_count += skill_data.multi_hit_count;
                 entry.multi_hit_damage = entry.multi_hit_damage.saturating_add(skill_data.multi_hit_damage);
                 entry.multi_hit_hits += skill_data.multi_hit_hits;
+                entry.casts += skill_data.cast_count;
                 if skill_data.min_damage < entry.min_dmg { entry.min_dmg = skill_data.min_damage; }
                 if skill_data.max_damage > entry.max_dmg { entry.max_dmg = skill_data.max_damage; }
                 entry.crit += skill_data.crit_count;
@@ -1734,6 +1736,7 @@ impl DpsCalculator {
                     multi_hit_count: 0,
                     multi_hit_damage: 0,
                     multi_hit_hits: 0,
+                    casts: 0,
                     min_dmg: 0,
                     max_dmg: 0,
                     crit: 0,

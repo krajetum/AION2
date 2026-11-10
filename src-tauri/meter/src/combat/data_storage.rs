@@ -173,6 +173,9 @@ pub struct SkillCombatData {
     pub multi_hit_count: i32,
     pub multi_hit_damage: i32,
     pub multi_hit_hits: i32,
+    /// Companion: casts, a hit more than `CAST_GAP_MS` after this actor's last hit
+    /// of the skill on any target (`apply_damage`); the target it landed on first holds it.
+    pub cast_count: i32,
     pub heal_amount: i32,
     pub hit_timestamps: Vec<i64>,
     pub spec_flags: [bool; 5],
@@ -209,6 +212,7 @@ impl SkillCombatData {
             multi_hit_count: self.multi_hit_count,
             multi_hit_damage: self.multi_hit_damage,
             multi_hit_hits: self.multi_hit_hits,
+            cast_count: self.cast_count,
             heal_amount: self.heal_amount,
             hit_timestamps: Vec::new(),
             spec_flags: self.spec_flags,
@@ -236,6 +240,7 @@ impl SkillCombatData {
         self.multi_hit_count += other.multi_hit_count;
         self.multi_hit_damage = self.multi_hit_damage.saturating_add(other.multi_hit_damage);
         self.multi_hit_hits += other.multi_hit_hits;
+        self.cast_count += other.cast_count;
         self.heal_amount = self.heal_amount.saturating_add(other.heal_amount);
         self.hit_timestamps.extend(other.hit_timestamps);
         self.hit_timestamps.sort_unstable();
@@ -267,6 +272,7 @@ impl SkillCombatData {
             multi_hit_count: 0,
             multi_hit_damage: 0,
             multi_hit_hits: 0,
+            cast_count: 0,
             heal_amount: 0,
             hit_timestamps: Vec::new(),
             spec_flags: [false; 5],
@@ -528,6 +534,8 @@ struct Inner {
     mob_storage: HashMap<i32, i32>,
     /// Healing done per (healer actor) -> (skill_code, is_hot) -> aggregate.
     heal_storage: HashMap<i32, HashMap<(i32, bool), HealSkillData>>,
+    /// Companion: (actor, skill) → its last direct hit's time, on any target (casts).
+    last_skill_hit: HashMap<(i32, i32), i64>,
     /// Spawn-time / observed-peak MAX HP per entity (denominator for the HP bar).
     mob_hp_data: HashMap<i32, i32>,
     /// Live CURRENT HP per entity, from the in-place `8D <id> 02 01 00 <u32>` feed.
@@ -767,6 +775,7 @@ impl DataStorage {
                 summon_storage: HashMap::new(),
                 mob_storage: HashMap::new(),
                 heal_storage: HashMap::new(),
+                last_skill_hit: HashMap::new(),
                 mob_hp_data: HashMap::new(),
                 mob_current_hp: HashMap::new(),
                 known_player_ids: HashSet::new(),
@@ -2356,6 +2365,7 @@ impl DataStorage {
         inner.hp_floored_ids.clear();
         inner.hp_reset_dummy_ids.clear();
         inner.heal_storage.clear();
+        inner.last_skill_hit.clear();
         inner.current_target = 0;
     }
 
@@ -2375,6 +2385,7 @@ impl DataStorage {
         inner.hp_floored_ids.clear();
         inner.hp_reset_dummy_ids.clear();
         inner.heal_storage.clear();
+        inner.last_skill_hit.clear();
         inner.current_target = 0;
     }
 
@@ -2503,12 +2514,21 @@ fn has_cjk(s: &str) -> bool {
 }
 
 /// Count one damage record into its target's and actor's aggregates.
+/// Companion: hits of one skill closer than this are one cast (an area skill's targets,
+/// a multi-hit's packets). ponytail: a guess, no cast record is known; a skill recast
+/// faster than this counts once, a channel slower than this counts per tick.
+const CAST_GAP_MS: i64 = 400;
+
 fn apply_damage(inner: &mut Inner, pdp: &ParsedDamagePacket) {
     let skill_code = pdp.skill_code();
     let actor_id = pdp.actor_id();
     let target_id = pdp.target_id();
     let timestamp = pdp.timestamp();
     let packet_id = pdp.id();
+    let new_cast = !pdp.is_dot() && {
+        let last = inner.last_skill_hit.insert((actor_id, skill_code), timestamp);
+        last.is_none_or(|t| (timestamp - t).abs() > CAST_GAP_MS)
+    };
 
     // Get or create target combat data
     let target_data = inner.target_combat.entry(target_id).or_insert_with(|| {
@@ -2551,6 +2571,7 @@ fn apply_damage(inner: &mut Inner, pdp: &ParsedDamagePacket) {
         SkillCombatData::new(skill_code, pdp.is_dot())
     });
     skill_data.hit_count += 1;
+    if new_cast { skill_data.cast_count += 1; }
     // saturating_add: per-skill totals are i32 and a long boss fight can
     // exceed i32::MAX — overflow panics in debug and wraps to negative in
     // release. Cap instead of crashing/wrapping.
@@ -3436,6 +3457,18 @@ mod tests {
         s.append_damage(hit(1454, 600, 1_000, 100, false));
         s.append_damage(hit(1454, 600, 2_000, 50, true));
         assert_eq!(totals(&s, 600), (150, 1_000));
+    }
+
+    #[test]
+    fn a_cast_is_a_burst_of_hits_of_one_skill_over_every_target() {
+        let s = DataStorage::new();
+        s.append_damage(hit(1454, 600, 1_000, 100, false));
+        s.append_damage(hit(1454, 601, 1_000, 100, false)); // the same cast's second target
+        s.append_damage(hit(1454, 600, 1_200, 100, false)); // its next packet
+        s.append_damage(hit(1454, 600, 3_000, 100, false)); // cast again
+        s.append_damage(hit(1454, 600, 3_100, 50, true)); // a DoT tick is no cast
+        let casts = |t: i32| s.get_combat_snapshot()[&t].actors[&1454].skills.values().map(|k| k.cast_count).sum::<i32>();
+        assert_eq!((casts(600), casts(601)), (2, 0));
     }
 
     fn with_skill(mut p: ParsedDamagePacket, skill: i32) -> ParsedDamagePacket {
