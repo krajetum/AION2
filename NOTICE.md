@@ -23,6 +23,9 @@ It is distributed WITHOUT ANY WARRANTY; see `LICENSE` for the full text.
 - **Pet soul point spots** (`src/assets/pet-drops.json`): 2,849 drops recorded with this app by its players and
   shared on 2026-10-26, with the players' names taken out. Merged once into every save (`takeBundledDrops`).
 
+- **Advent calendar jokes** (`src/domain/advent.ts`): 24 traditional Christmas cracker jokes, the kind printed in
+  crackers and repeated in many lists with no known author; each is credited in the app as "Traditional cracker joke".
+
 ## NCSOFT material, not under GPL-3.0
 
 - **World map** (`src/assets/ncsoft/world-map.webp`): stitched from AION 2 screenshots, © NCSOFT.

@@ -11,7 +11,10 @@
   import { act, markRead } from "../actions.ts";
   import { hm, LABEL, num } from "../format.ts";
   import { ICON } from "../icons.ts";
+  import { winterActive } from "../../domain/holiday.ts";
+  import AdventCalendar from "../parts/AdventCalendar.svelte";
   import Kpi from "../parts/Kpi.svelte";
+  import { winterNow } from "../winter.ts";
   import TaskRow from "../parts/TaskRow.svelte";
   import { ui } from "../state.svelte.ts";
 
@@ -29,6 +32,8 @@
   const match = $derived(ui.data.arena.matches[0]);
   const news = $derived(ui.data.news.slice(0, 4));
 </script>
+
+{#if ui.data.settings.winterTheme && winterActive(winterNow(ui.now))}<AdventCalendar />{/if}
 
 <div class="kpis">
   {#each cads as x}<Kpi label={LABEL[x.c]} value="{x.all.length - x.left.length}/{x.all.length}" sub={x.left.length ? `${x.left.length} left` : "all done"} cls={x.c === "daily" ? "hero" : ""} />{/each}

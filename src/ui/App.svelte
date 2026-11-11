@@ -41,12 +41,21 @@
   import Wiki from "./pages/Wiki.svelte";
   import TaskList from "./pages/TaskList.svelte";
   import Mascot from "./parts/Mascot.svelte";
+  import Winter from "./parts/Winter.svelte";
+  import { winterActive } from "../domain/holiday.ts";
+  import { winterNow } from "./winter.ts";
   import { doneHere, GROUPS, tabFromHash, ui, type Tab } from "./state.svelte.ts";
 
   // Every character always has a season entry once shown (the save file has always had it).
   $effect.pre(() => { seasonOf(ui.data, ui.charId); });
 
   const s = $derived(ui.data.settings);
+  // The winter theme (1 December to 6 January): the palette in style.css follows `data-season` on <html>.
+  const winter = $derived(s.winterTheme && winterActive(winterNow(ui.now)));
+  $effect(() => {
+    if (winter) document.documentElement.dataset.season = "winter";
+    else delete document.documentElement.dataset.season;
+  });
   const unread = $derived(ui.data.news.filter((n) => !n.read).length);
   const plan = $derived(activePlan(ui.data, ui.charId, ui.now));
   const bosses = $derived(bossBoard(ui.data.bosses, ui.now));
@@ -211,4 +220,5 @@
     </details>{/if}
   </aside>
 </div>
+{#if winter && s.snow}<Winter />{/if}
 <Mascot />
