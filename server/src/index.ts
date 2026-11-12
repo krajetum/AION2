@@ -163,6 +163,15 @@ const upsertMember = (env: Env, guildId: string, install: string, me: { name: st
        item_level = excluded.item_level, combat_power = excluded.combat_power,
        share_gear = excluded.share_gear, share_fights = excluded.share_fights, seen_ms = excluded.seen_ms`,
   ).bind(guildId, install, me.name, me.className, me.itemLevel, me.combatPower, +share.gear, +share.fights, now, now);
+/** Your card in a guild, one row per name: another install's row with this name (an old install, another PC) goes, with its
+ *  fights, and its role isn't passed on (else joining with the Leader's name would make you Leader). */
+const placeMember = (env: Env, guildId: string, install: string, me: Parameters<typeof upsertMember>[3], share: { gear: boolean; fights: boolean }, now: number) => [
+  env.DB.prepare("DELETE FROM guild_fights WHERE guild_id = ? AND install IN (SELECT install FROM guild_members WHERE guild_id = ? AND name = ? AND install <> ?)")
+    .bind(guildId, guildId, me.name, install),
+  env.DB.prepare("DELETE FROM guild_members WHERE guild_id = ? AND name = ? AND install <> ?").bind(guildId, me.name, install),
+  upsertMember(env, guildId, install, me, share, now),
+  ensureLeader(env, guildId),
+];
 
 /** A plain message (no mentions), or a whole webhook body (call-ups: embed and ping). */
 async function postDiscord(webhook: string, message: string | object): Promise<boolean> {
@@ -198,7 +207,7 @@ async function joinGuild(env: Env, req: Request) {
   const g = await env.DB.prepare("SELECT id, name, server_id FROM guilds WHERE member_hash = ?")
     .bind(await hashOf(p.code)).first<{ id: string; name: string; server_id: number }>();
   if (!g) return fail(404, "unknown code");
-  await upsertMember(env, g.id, p.install, p.me, p.share, now).run();
+  await env.DB.batch(placeMember(env, g.id, p.install, p.me, p.share, now));
   return json({ id: g.id, name: g.name, serverId: g.server_id });
 }
 
@@ -254,7 +263,7 @@ async function postMe(env: Env, req: Request, id: string) {
       ensureLeader(env, id),
     ]);
   } else if (p.me) {
-    await upsertMember(env, id, p.install, p.me, p.share, now).run();
+    await env.DB.batch(placeMember(env, id, p.install, p.me, p.share, now));
   } else {
     await env.DB.prepare("UPDATE guild_members SET share_gear = ?, share_fights = ?, seen_ms = ? WHERE guild_id = ? AND install = ?")
       .bind(+p.share.gear, +p.share.fights, now, id, p.install).run();
