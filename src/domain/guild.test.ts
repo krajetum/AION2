@@ -31,6 +31,11 @@ test("parseGuild: seen times on the local clock, nameless members dropped", () =
   assert.equal(g.leadMin, 7);
 });
 
+test("parseGuild: one member per name (two installs), yours else the latest seen, order kept", () => {
+  const g = parseGuild({ members: [{ name: "A", seenMs: 5 }, { name: "B", seenMs: 1, me: true }, { name: "B", seenMs: 9 }, { name: "A", seenMs: 7 }] }, 0);
+  assert.deepEqual(g.members.map((m) => [m.name, m.seenMs]), [["B", 1], ["A", 7]]);
+});
+
 test("roles: an old Worker's answer = member with the default table; the leader key = Leader", () => {
   const old = parseGuild({ members: [{ name: "A" }] }, 0);
   assert.equal(old.role, "member");

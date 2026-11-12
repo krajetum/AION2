@@ -11,7 +11,8 @@ let sentCard = ""; // the card last sent this session: sent again only when it c
 let claimed = ""; // the guild this session claimed Leader in (once)
 
 const path = (data: AppData, part = "") => `/v1/guilds/${data.guild!.id}${part}`;
-const isGone = (e: unknown) => e instanceof CrowdError && e.status === 403;
+// Only the Worker's own answer: a 403 from Cloudflare in front of it (a challenge, a blocked IP) must not drop the guild here.
+const isGone = (e: unknown) => e instanceof CrowdError && e.status === 403 && e.reason === "not a member";
 
 export async function createGuild(data: AppData, name: string, serverId: number, me: GuildMe): Promise<void> {
   const r = await crowd("/v1/guilds", { install: data.install, name, serverId, me });

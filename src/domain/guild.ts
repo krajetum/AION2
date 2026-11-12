@@ -71,11 +71,19 @@ export const meCard = (p: Profile): GuildMe => ({ name: p.name, className: p.job
 /** GET /v1/guilds/:id, last-seen times put on the local clock. */
 export function parseGuild(j: any, localNow: number): GuildView {
   const shift = num(j?.serverNow) ? localNow - j.serverNow : 0;
-  const members = (Array.isArray(j?.members) ? j.members : []).filter(isObj).map((m: any): GuildMember => ({
+  const all = (Array.isArray(j?.members) ? j.members : []).filter(isObj).map((m: any): GuildMember => ({
     name: str(m.name), className: str(m.className), itemLevel: num(m.itemLevel), combatPower: num(m.combatPower),
     shareGear: m.shareGear === true, shareFights: m.shareFights === true, seenMs: (num(m.seenMs) ?? 0) + shift,
     role: isRole(m.role) ? m.role : "member", me: m.me === true,
   })).filter((m: GuildMember) => m.name);
+  // One row per name: the Worker keeps one per install, so a character played from two installs (or after a reinstall)
+  // comes twice; it already acts by name (roles, remove). Yours, else the most recently seen.
+  const pick = new Map<string, GuildMember>();
+  for (const m of all as GuildMember[]) {
+    const cur = pick.get(m.name);
+    if (!cur || (m.me !== cur.me ? m.me : m.seenMs > cur.seenMs)) pick.set(m.name, m);
+  }
+  const members = (all as GuildMember[]).filter((m) => pick.get(m.name) === m);
   const perms = { ...DEFAULT_PERMS };
   if (isObj(j?.perms)) for (const p of PERMS) if (isRole(j.perms[p])) perms[p] = j.perms[p];
   const callups = (Array.isArray(j?.callups) ? j.callups : []).filter((c: any) => isObj(c) && typeof c.id === "string" && num(c.atMs)
