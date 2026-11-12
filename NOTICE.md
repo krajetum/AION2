@@ -23,6 +23,19 @@ It is distributed WITHOUT ANY WARRANTY; see `LICENSE` for the full text.
 - **Pet soul point spots** (`src/assets/pet-drops.json`): 2,849 drops recorded with this app by its players and
   shared on 2026-10-26, with the players' names taken out. Merged once into every save (`takeBundledDrops`).
 
+- **Advent calendar jokes** (`src/domain/advent.ts`): 24 Christmas cracker jokes, credited under each joke in the app with a link:
+  British Comedy Guide, "20 Christmas Cracker jokes to make you groan" (thortful's visitors' vote,
+  https://www.comedy.co.uk/features/bad-christmas-cracker-jokes/) and "The top 10 modern cracker jokes" (Gold's 2013 contest,
+  https://www.comedy.co.uk/features/top_10_new_christmas_cracker_jokes); Chortle, "Ten of the worst Christmas cracker jokes" (2020,
+  https://www.chortle.co.uk/punching-ups/2020/12/21/47534/ten_of_the_worst_christmas_cracker_jokes). Taken 2026-11-12.
+
+## Art under CC0
+
+- **Advent calendar stickers** (`src/assets/winter/*.png`, 16 × 16 pixel art, cut out of the sheets unchanged), both CC0 1.0:
+  "16x16 Holiday Sprites" by jhanson9012 (https://opengameart.org/content/16x16-holiday-sprites): snowflake, reindeer, cocoa,
+  wreath, star, Santa, campfire, red present, tree; Kenney's "Holiday Pack 2016", roguelike tilesheet
+  (https://opengameart.org/content/holiday-pack-2016, www.kenney.nl): orange, teal and green presents.
+
 ## NCSOFT material, not under GPL-3.0
 
 - **World map** (`src/assets/ncsoft/world-map.webp`): stitched from AION 2 screenshots, © NCSOFT.

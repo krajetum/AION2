@@ -66,6 +66,8 @@ export interface Settings {
   mascot: boolean;            // the mascot of the class you play, walking along the bottom of the window
   mascotGender: "m" | "f";   // its gender
   crowdShare: boolean;       // send the boss timers and cube openings the meter sees to the crowd Worker
+  winterTheme: boolean;      // the winter theme and Advent calendar, 1 December to 6 January (src/domain/holiday.ts)
+  snow: boolean;             // its falling snow and New Year fireworks
 }
 
 /** One undo step: the progress of each touched task before the change (null = it had none). */
@@ -115,6 +117,7 @@ export interface AppData {
   undo: UndoEntry[]; // newest last, max 30 (src/undo.ts)
   install: string;          // random id of this install for the crowd Worker (one report per install counts)
   serverId: number | null; // game server of the last character the meter saw (crowd boss timers are per server)
+  advent: import("./holiday.ts").Advent; // the Advent calendar's doors opened this season
   guild: import("./guild.ts").GuildLink | null; // the guild this install joined on the crowd Worker (src/domain/guild.ts), with its codes
   settings: Settings;
 }
