@@ -67,6 +67,6 @@ test("fireworks during the first minute of the year only", () => {
 
 test("one credited joke per door", () => {
   assert.equal(JOKES.length, ADVENT_DAYS);
-  for (const k of JOKES) assert.ok(k.setup && k.punchline && k.credit);
+  for (const k of JOKES) assert.ok(k.setup && k.punchline && k.credit && k.url?.startsWith("https://"));
   assert.equal(new Set(JOKES.map((k) => k.setup)).size, ADVENT_DAYS);
 });

@@ -766,8 +766,8 @@ li.eq-row { cursor: default; }
 .door.today.waiting { animation: door-glow 1.8s ease-in-out infinite alternate; }
 @keyframes door-glow { from { box-shadow: 0 0 0 1px rgb(242 184 75 / .3), 0 0 6px rgb(242 184 75 / .2); } to { box-shadow: 0 0 0 2px rgb(242 184 75 / .6), 0 0 18px rgb(242 184 75 / .45); } }
 .door.open { border-color: var(--gold-bg); color: var(--gold-ink); background: radial-gradient(circle at 50% 40%, rgb(242 184 75 / .28), var(--gold-bg) 75%); }
-.door.open img { width: 70%; height: 70%; object-fit: contain; image-rendering: pixelated; }
-.door.open img + .n { position: absolute; right: 4px; bottom: 2px; font-size: 11px; }
+.door.open img { width: 58%; height: 58%; margin-bottom: 8%; object-fit: contain; image-rendering: pixelated; }
+.door.open img + .n { position: absolute; right: 3px; bottom: 3px; padding: 0 4px; border-radius: 3px; background: rgb(0 0 0 / .45); font-size: 10px; line-height: 14px; }
 .door[aria-pressed="true"] { outline: 2px solid var(--primary); outline-offset: 1px; }
 .cracker { display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 12px 14px; border-radius: var(--r-md); background: var(--raised); text-align: center; }
 .cracker small { color: var(--faint); }
