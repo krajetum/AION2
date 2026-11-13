@@ -112,6 +112,12 @@ export async function cancelCallup(data: AppData, id: string): Promise<void> {
   await crowd(path(data, `/callups/${id}/delete`), auth(data));
 }
 
+/** Posts a planned call-up to the guild's Discord now. */
+export async function sendCallup(data: AppData, id: string): Promise<void> {
+  if (!data.guild) throw new Error("Not in a guild");
+  await crowd(path(data, `/callups/${id}/send`), auth(data));
+}
+
 /** Leader key typed in by a Leader on another install (it was shown once, at creation): Leader here from the next sync. */
 export function setOfficerKey(data: AppData, key: string): void {
   if (data.guild) data.guild.officerKey = key.toUpperCase().replace(/[\s-]/g, "") || undefined;

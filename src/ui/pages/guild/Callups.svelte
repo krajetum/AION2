@@ -1,6 +1,6 @@
 <script lang="ts">
   // Planned raids: the list for everyone allowed to see it, the form and Cancel for whoever may plan them.
-  import { cancelCallup, createCallup } from "../../../app/guild.ts";
+  import { cancelCallup, createCallup, sendCallup } from "../../../app/guild.ts";
   import { can, leadText, type GuildLink, type GuildView, type Ping } from "../../../domain/guild.ts";
   import { formatCountdown } from "../../../domain/time.ts";
   import { refreshGuild } from "../../actions.ts";
@@ -34,7 +34,8 @@
       {#if c.ping !== "none"}<span class="tag">@{c.ping}</span>{/if}</div>
     <p>{c.message}</p>
     <small class="dim">Reminders: {c.leads.map((l) => leadText(l) + (l ? " before" : "")).join(" · ")}</small>
-    {#if plans}<button class="ghost" disabled={gs.busy} onclick={() => { if (confirm("Cancel this call-up? No more reminders are sent.")) run(() => cancelCallup(ui.data, c.id).then(() => refreshGuild(false)), "Call-up cancelled"); }}>Cancel</button>{/if}
+    {#if plans}<div class="acts"><button class="ghost" disabled={gs.busy || !view.hasWebhook} title={view.hasWebhook ? "" : "Set a Discord webhook first"} onclick={() => { if (confirm("Post this call-up to Discord now?")) run(() => sendCallup(ui.data, c.id), "Posted to Discord"); }}>Send to Discord now</button>
+    <button class="ghost" disabled={gs.busy} onclick={() => { if (confirm("Cancel this call-up? No more reminders are sent.")) run(() => cancelCallup(ui.data, c.id).then(() => refreshGuild(false)), "Call-up cancelled"); }}>Cancel</button></div>{/if}
   </div>{:else}<p class="hint">No raid planned.{plans ? "" : " You get a \"Guild reminder\" here and in Discord when one is."}</p>{/each}
 </section>
 
@@ -65,7 +66,7 @@
   .callup { border-top: 1px solid var(--rule); padding: 8px 0; display: grid; gap: 4px; }
   .callup.past { opacity: 0.6; }
   .callup p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .callup button { justify-self: start; }
+  .acts { display: flex; gap: 8px; }
   .tag { font-size: 12px; padding: 0 6px; border-radius: 8px; background: var(--gold-bg); color: var(--gold-ink); }
   .new-callup { display: grid; gap: 8px; max-width: 560px; }
   .new-callup label { display: grid; gap: 4px; }
