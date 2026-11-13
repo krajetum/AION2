@@ -383,6 +383,21 @@ async function cancelCallup(env: Env, req: Request, id: string, cid: string) {
   return json({ ok: true });
 }
 
+/** Posts a planned call-up to the guild's Discord now; the schedule is untouched. */
+async function sendCallup(env: Env, req: Request, id: string, cid: string) {
+  const a = parseAuth(await readBody(req));
+  if (!a) return fail(400, "bad request");
+  const refused = await callupGate(env, id, a);
+  if (refused) return refused;
+  if (!(await allowWrite(env, `officer:${id}`, Date.now()))) return fail(429, "too many writes");
+  const c = await env.DB.prepare("SELECT c.at_ms, c.message, c.ping, g.webhook FROM guild_callups c JOIN guilds g ON g.id = c.guild_id WHERE c.id = ? AND c.guild_id = ?")
+    .bind(cid, id).first<{ at_ms: number; message: string; ping: Ping; webhook: string | null }>();
+  if (!c) return fail(404, "no such call-up");
+  if (!c.webhook) return fail(409, "no Discord webhook set");
+  if (!(await postDiscord(c.webhook, callupPost({ atMs: c.at_ms, message: c.message, ping: c.ping })))) return fail(502, "Discord refused the post");
+  return json({ ok: true });
+}
+
 /** Call-ups with a reminder due: one post each (several reminders missed at once = one post), up to `max`. Returns posts used. */
 async function callupAlerts(env: Env, now: number, max: number): Promise<number> {
   const { results } = await env.DB.prepare(
@@ -456,6 +471,8 @@ export default {
       if (req.method === "POST" && url.pathname === "/v1/guilds/join") return await joinGuild(env, req);
       const cancel = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})\/callups\/([a-z2-7]{12})\/delete$/);
       if (req.method === "POST" && cancel) return await cancelCallup(env, req, cancel[1], cancel[2]);
+      const send = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})\/callups\/([a-z2-7]{12})\/send$/);
+      if (req.method === "POST" && send) return await sendCallup(env, req, send[1], send[2]);
       const guild = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})(?:\/(me|fights|admin|callups))?$/);
       if (guild) {
         const [, id, part] = guild;
