@@ -115,6 +115,19 @@ export function leadText(min: number): string {
   return [d && `${d} day${d > 1 ? "s" : ""}`, h && `${h} h`, m && `${m} min`].filter(Boolean).join(" ");
 }
 
+/** A call-up message as Discord shows it, as safe HTML: escaped first, then Discord's bold / italic / underline /
+ *  strikethrough / code / "- " bullets. Typed @everyone / @here lose their @, as the Worker strips them. */
+export function discordHtml(s: string): string {
+  return s.replace(/@(everyone|here)/gi, "$1")
+    .replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!)
+    .replace(/`([^`\n]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/__([^_]+)__/g, "<u>$1</u>")
+    .replace(/~~([^~]+)~~/g, "<s>$1</s>")
+    .replace(/\*([^*\n]+)\*/g, "<i>$1</i>")
+    .replace(/^- /gm, "• ");
+}
+
 /** Members by item level (highest first), the official profile's numbers where the member shared none. */
 export function rosterRows(members: GuildMember[], official: Record<string, { itemLevel: number | null; combatPower: number | null } | null>): (GuildMember & { official: boolean })[] {
   return members.map((m) => {
