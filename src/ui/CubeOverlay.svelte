@@ -3,7 +3,7 @@
   // and for a few seconds after one is opened): the nearest cube's distance and direction from you, a chime
   // when a new one appears, green "Cube opened" after an opening. Settings > Overlays turns it on and sizes it.
   import { channelVolume } from "../domain/alerts.ts";
-  import { bearing, climb, toMetres, staleFor } from "../domain/map.ts";
+  import { bearing, climb, toMetres, staleFor, travelNote } from "../domain/map.ts";
   import type { MeterUpdate } from "../domain/meter.ts";
   import type { Settings } from "../domain/types.ts";
   import { loadCubePicture, type Opener } from "../infra/map-image.ts";
@@ -58,6 +58,7 @@
   const pos = $derived(u?.position ?? null);
   // Riding a mount or flying, your position stops coming (domain/map.ts staleFor): distance and arrow are from the last one.
   const stale = $derived(pos ? staleFor(pos, now) : null);
+  const travel = $derived(travelNote(u?.travel));
   // With a picture, "cube opened" is the picture alone: the window grows for it, then shrinks back.
   const picture = $derived(lastOpened ? pictures[lastOpened.byYou ? "you" : "other"] : "");
   const showPicture = $derived(opened && !!picture);
@@ -90,7 +91,7 @@
     {#if opened}<b data-tauri-drag-region>Cube opened</b>
       <span data-tauri-drag-region>{lastOpened?.byYou ? "By you" : "By another player"}</span>
     {:else}<b data-tauri-drag-region>{live.length > 1 ? `${live.length} hidden cubes nearby` : "Hidden cube nearby"}</b>
-      <span data-tauri-drag-region>{#if near}≈ {Math.round(toMetres(near.b.dist))} m {near.b.dir}{#if near.h.way !== "level"}{" "}· <em class="climb">{near.h.way === "up" ? "↑" : "↓"} {Math.round(toMetres(Math.abs(near.h.dz)))} m {near.h.way}</em>{/if}{#if stale != null}{" "}· <em class="stale-note" title="The game sends your position on foot, when you open your wings or land, and at each jump on a mount: not while riding or gliding">{stale} s ago</em>{/if}{:else}Position not known yet{/if}</span>{/if}
+      <span data-tauri-drag-region>{#if near}≈ {Math.round(toMetres(near.b.dist))} m {near.b.dir}{#if near.h.way !== "level"}{" "}· <em class="climb">{near.h.way === "up" ? "↑" : "↓"} {Math.round(toMetres(Math.abs(near.h.dz)))} m {near.h.way}</em>{/if}{#if travel || stale != null}{" "}· <em class="stale-note" title="The game sends your position on foot, when you open your wings or land, and at each jump on a mount: not while riding or gliding">{travel ?? `${stale} s ago`}</em>{/if}{:else}Position not known yet{/if}</span>{/if}
   </div>
 </div>
 {/if}

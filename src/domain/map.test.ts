@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind } from "./map.ts";
 import { readFileSync } from "node:fs";
-import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
 
@@ -364,4 +364,11 @@ test("a position stops being fresh after STALE_POSITION_MS (mount, wings)", () =
   const pos = { atMs: 100_000 };
   assert.equal(staleFor(pos, 100_000 + STALE_POSITION_MS), null);
   assert.equal(staleFor(pos, 100_000 + 23_400), 23);
+});
+
+test("travel note: gliding first, then the mount, nothing on foot or from an older meter", () => {
+  assert.equal(travelNote({ mounted: true, gliding: true }), "Gliding · updates on landing");
+  assert.equal(travelNote({ mounted: true, gliding: false }), "On a mount · jump to update");
+  assert.equal(travelNote({ mounted: false, gliding: false }), null);
+  assert.equal(travelNote(undefined), null);
 });

@@ -77,6 +77,7 @@ export interface MeterUpdate {
   profile: Profile | null;
   arena: ArenaMatch | null; // the last match that ended
   position?: SelfPosition | null;
+  travel?: { mounted: boolean; gliding: boolean }; // the meter's position.rs: your position does not come then
   cubes?: Cubes;
   kills?: Kill[];
   pvpDeaths?: number[]; // deaths of players (not you or your party) in PvP hits, last 10 min: your party's kills give you AP too

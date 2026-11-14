@@ -4,7 +4,7 @@
   // cubes around you, north up, centred on you, to lay over the game's minimap. Found cubes of the map you are on (purple),
   // cubes in view now (shining), the map under it if wanted. A normal always-on-top window: it never
   // touches the game's own minimap. Drag it into place and size it by its edges.
-  import { applyAffine, mapOf, onRadar, staleFor, WORLD_MAP_ID, type Affine, type FoundCube, type MapKey, type MapPoint, type SharedCube } from "../domain/map.ts";
+  import { applyAffine, mapOf, onRadar, staleFor, travelNote, WORLD_MAP_ID, type Affine, type FoundCube, type MapKey, type MapPoint, type SharedCube } from "../domain/map.ts";
   import type { MeterUpdate } from "../domain/meter.ts";
   import type { Settings } from "../domain/types.ts";
   import { loadMapImage } from "../infra/map-image.ts";
@@ -55,6 +55,7 @@
   const here = (c: FoundCube) => pos?.mapId != null && (c.mapId != null ? c.mapId === pos.mapId : pos.mapId === WORLD_MAP_ID);
   const elsewhere = $derived(!!pos && !key);
   const stale = $derived(pos ? staleFor(pos, now) : null);
+  const travel = $derived(travelNote(u?.travel));
   const r = $derived(Math.min(w, h) / 2 - 4);
   const range = $derived((settings?.radarRange ?? 100) * 100); // metres → game units (cm)
   const dots = $derived.by(() => {
@@ -84,5 +85,6 @@
   {#if !pos}<small class="radar-note" data-tauri-drag-region>Waiting for your position</small>
   {:else if pos.mapId == null && !dots.length}<small class="radar-note" data-tauri-drag-region>Open the game's map (M) once</small>
   {:else if elsewhere && !dots.length}<small class="radar-note" data-tauri-drag-region>Another map</small>
+  {:else if travel}<small class="radar-note" data-tauri-drag-region title="The game sends your position on foot, when you open your wings or land, and at each jump on a mount: not while riding or gliding">{travel}</small>
   {:else if stale != null}<small class="radar-note" data-tauri-drag-region title="The game sends your position on foot, when you open your wings or land, and at each jump on a mount: not while riding or gliding">Last position {stale} s ago</small>{/if}
 </div>

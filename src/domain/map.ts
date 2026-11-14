@@ -211,6 +211,14 @@ export function staleFor(pos: { atMs: number }, now: number): number | null {
   return age > STALE_POSITION_MS ? Math.round(age / 1000) : null;
 }
 
+/**
+ * Why your position stands still, when the meter knows (src-tauri/meter/src/position.rs `Travel`): gliding (the wings'
+ * flight time falling) or on a mount (got on, not off). Short, for the radar and the cube popup. Null on foot.
+ */
+export function travelNote(t: { mounted: boolean; gliding: boolean } | null | undefined): string | null {
+  return t?.gliding ? "Gliding · updates on landing" : t?.mounted ? "On a mount · jump to update" : null;
+}
+
 /** From you to a point, on the map's axes (x east, y south): distance in game units and a compass label. */
 export function bearing(from: { x: number; y: number }, to: { x: number; y: number }): { dist: number; dir: string; deg: number } {
   const dx = to.x - from.x, dy = to.y - from.y;
