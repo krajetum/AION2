@@ -586,6 +586,9 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
   background: #b46bff; border: 1px solid #111; transition: left .6s linear, top .6s linear; }
 .radar-cube.live { width: 12px; height: 12px; margin: -6px 0 0 -6px; background: #f1dcff; border: 2px solid #fff; animation: cube-glow 1.1s ease-in-out infinite; }
 .radar-note { position: absolute; bottom: 8%; left: 0; right: 0; text-align: center; font-size: 11px; color: #fff; text-shadow: 0 0 3px #000; }
+.radar.stale .radar-you, .radar.stale .radar-cube { opacity: .45; }
+.cube-pop.stale .cube-arrow { opacity: .45; }
+.cube-pop .stale-note { font-style: normal; color: #e0b64a; white-space: nowrap; }
 .arena-gear { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; padding: 6px 4px; }
 .crash pre { max-height: 240px; overflow: auto; font-size: 11px; white-space: pre-wrap; word-break: break-all; }
 .kill-history .seg { margin-bottom: 10px; }

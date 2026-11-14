@@ -197,6 +197,20 @@ export function onRadar(you: { x: number; y: number }, p: { x: number; y: number
   return Math.hypot(dx, dy) <= r * 1.05 ? { x: dx, y: dy } : null;
 }
 
+/**
+ * Your position stops coming while you ride a mount or fly: the game sends it only with map loads and your own buffs
+ * (src-tauri/meter/src/position.rs). The recordings of 2026-11-14 held none while riding (10-23 s), sprinting on the
+ * mount or gliding (13-23 s, boosts included); a buff of yours came when the wings opened, on landing and at each jump
+ * on the mount (every ~1.3 s while jumping). Older than this, the radar and the cube popup say how old it is.
+ */
+export const STALE_POSITION_MS = 10_000;
+
+/** Seconds since your position was read, when older than STALE_POSITION_MS; null while it is fresh. */
+export function staleFor(pos: { atMs: number }, now: number): number | null {
+  const age = now - pos.atMs;
+  return age > STALE_POSITION_MS ? Math.round(age / 1000) : null;
+}
+
 /** From you to a point, on the map's axes (x east, y south): distance in game units and a compass label. */
 export function bearing(from: { x: number; y: number }, to: { x: number; y: number }): { dist: number; dir: string; deg: number } {
   const dx = to.x - from.x, dy = to.y - from.y;
