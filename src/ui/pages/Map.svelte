@@ -7,6 +7,7 @@
   // You are drawn from the meter's position (src-tauri/meter/src/position.rs) through the map's game → pixel fit:
   // the bundled image's own, or the player's references (3+ with game coordinates).
   import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobPet, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
+  import { travelIcon } from "../../domain/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, mapOf, onMap, petHome, petList,
     lootKind, petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
@@ -15,7 +16,7 @@
   import { downloadJson } from "../../infra/storage.ts";
   import { act, commit } from "../actions.ts";
   import { num } from "../format.ts";
-  import { ICON } from "../icons.ts";
+  import { ICON, TRAVEL_ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
   import { MAX_LEVEL, needed, petName as petNameOf, wanted } from "../../domain/pets.ts";
   import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
@@ -318,7 +319,8 @@
 <p class="hint intro">Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
   of yours that gives soul points is put where the mob died (desktop app with the meter running). Each map can use your own image
   instead of the bundled one: it stays only on this PC. The gold dot is you: the game says where you are on teleports and whenever a
-  buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running).</p>
+  buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running). On a mount it turns
+  into a horse and moves only when you jump; gliding, into a wing, and moves when you land: the game sends no position meanwhile.</p>
 {#if error}<p class="hint error">{error}</p>{/if}
 {#if notice}<p class="hint">{notice}</p>{/if}
 
@@ -357,7 +359,8 @@
     {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!active} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
       aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
       onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}</div>{/if}
-    {#if you}<div class="me" class:stale={age > 30} style:left="{you.x}px" style:top="{you.y}px" title="You · {ago(age)}"></div>{/if}
+    {#if you}{@const mode = travelIcon(ui.meter?.travel)}<div class="me" class:stale={age > 30} class:travel={mode} style:left="{you.x}px" style:top="{you.y}px"
+      title="You · {ago(age)}{mode === 'wings' ? ' · gliding' : mode === 'mount' ? ' · on a mount' : ''}">{#if mode}{@html TRAVEL_ICON[mode]}{/if}</div>{/if}
 
     <!-- Corner menu: which map, which layer, and for pets the search, the list and the drop tools. -->
     <div class="map-menu" role="dialog" aria-label="Map menu" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>

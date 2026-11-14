@@ -4,13 +4,14 @@
   // cubes around you, north up, centred on you, to lay over the game's minimap. Found cubes of the map you are on (purple),
   // cubes in view now (shining), the map under it if wanted. A normal always-on-top window: it never
   // touches the game's own minimap. Drag it into place and size it by its edges.
-  import { applyAffine, mapOf, onRadar, staleFor, travelNote, WORLD_MAP_ID, type Affine, type FoundCube, type MapKey, type MapPoint, type SharedCube } from "../domain/map.ts";
+  import { applyAffine, mapOf, onRadar, staleFor, travelIcon, travelNote, WORLD_MAP_ID, type Affine, type FoundCube, type MapKey, type MapPoint, type SharedCube } from "../domain/map.ts";
   import type { MeterUpdate } from "../domain/meter.ts";
   import type { Settings } from "../domain/types.ts";
   import { loadMapImage } from "../infra/map-image.ts";
   import { onMeter } from "../infra/meter.ts";
   import { loadData } from "../infra/storage.ts";
   import { BUNDLED_IMAGE, fitFor } from "./maps.ts";
+  import { TRAVEL_ICON } from "./icons.ts";
 
   let u = $state<MeterUpdate | undefined>();
   $effect(() => onMeter((x) => { u = x; }));
@@ -56,6 +57,7 @@
   const elsewhere = $derived(!!pos && !key);
   const stale = $derived(pos ? staleFor(pos, now) : null);
   const travel = $derived(travelNote(u?.travel));
+  const mode = $derived(travelIcon(u?.travel));
   const r = $derived(Math.min(w, h) / 2 - 4);
   const range = $derived((settings?.radarRange ?? 100) * 100); // metres → game units (cm)
   const dots = $derived.by(() => {
@@ -81,7 +83,7 @@
   {#if backdrop && image}<img class="radar-map" src={image} alt="" draggable="false" style:transform={backdrop}>{/if}
   <span class="radar-n" data-tauri-drag-region>N</span>
   {#each dots as d}<i class="radar-cube" class:live={d.live} class:shared={d.shared} style:left="{w / 2 + d.at!.x}px" style:top="{h / 2 + d.at!.y}px"></i>{/each}
-  <i class="radar-you"></i>
+  <i class="radar-you" class:travel={mode}>{#if mode}{@html TRAVEL_ICON[mode]}{/if}</i>
   {#if !pos}<small class="radar-note" data-tauri-drag-region>Waiting for your position</small>
   {:else if pos.mapId == null && !dots.length}<small class="radar-note" data-tauri-drag-region>Open the game's map (M) once</small>
   {:else if elsewhere && !dots.length}<small class="radar-note" data-tauri-drag-region>Another map</small>

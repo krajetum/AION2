@@ -219,6 +219,10 @@ export function travelNote(t: { mounted: boolean; gliding: boolean } | null | un
   return t?.gliding ? "Gliding · updates on landing" : t?.mounted ? "On a mount · jump to update" : null;
 }
 
+/** Which marker draws you: a wing while gliding, a horse on a mount, else the plain dot. */
+export const travelIcon = (t: { mounted: boolean; gliding: boolean } | null | undefined): "wings" | "mount" | null =>
+  t?.gliding ? "wings" : t?.mounted ? "mount" : null;
+
 /** From you to a point, on the map's axes (x east, y south): distance in game units and a compass label. */
 export function bearing(from: { x: number; y: number }, to: { x: number; y: number }): { dist: number; dir: string; deg: number } {
   const dx = to.x - from.x, dy = to.y - from.y;
