@@ -105,6 +105,10 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
   never send packets, never hook rendering (overlay = normal always-on-top window).
 - Never invent server/event times: they go in `src/config.ts` marked `TO VERIFY`.
 - Resets are computed from timestamps (`lastReset` vs `lastBoundary`), never from timers, so they work after the app was closed.
+- Notification "already shown" marks (`warnedEvent`, etc.): never compare a time that came from the server or the meter with `===`.
+  Such times are moved onto the local clock (`localNow - serverNow`), which shifts by the latency on every sync, so an exact match
+  fails and the toast repeats every sync (guild call-ups, 2026-11-15). Match within a tolerance, as `dueCallups` / `dueBossAlerts` do
+  (`Math.abs(mark - time) < 60_000`), and add a test with a mark a few ms off. Exact `===` is fine only for times computed locally (`nextEvent`).
 - Allowed deps: Tauri plugins notification, store, autostart, http (Steam news, the Worker; its `reqwest` for the official character search/profile in `armory.rs`), updater (tray is core); Svelte 5 (+ vite-plugin-svelte, svelte-check); @sentry/svelte, @sentry/vite-plugin; for the app crate: sentry, tracing-subscriber;
   for `src-tauri/meter`: serde, serde_json, lz4_flex, parking_lot, tracing, libloading, tokio, windows. Ask before adding any other dependency.
 - Ask before deleting files, running commands outside this folder, `git init`, or publishing anything.
