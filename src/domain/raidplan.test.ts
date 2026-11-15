@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addWeeks, bestDays, hourKind, NO_CLASS, withClasses, blockOf, classesOf, decodeWeek, emptyWeek, encodeWeek, freeBySlot, hoursFor, setDay, setRange, slotNow, slotOf, slotStart, unblocked, weekOf, WEEK_HOURS, type MemberAvailability } from "./raidplan.ts";
+import { addWeeks, bestDays, callupFor, CALLUP_LEADS, hourKind, NO_CLASS, withClasses, blockOf, classesOf, decodeWeek, emptyWeek, encodeWeek, freeBySlot, hoursFor, setDay, setRange, slotNow, slotOf, slotStart, unblocked, weekOf, WEEK_HOURS, type MemberAvailability } from "./raidplan.ts";
 
 const B = [
   { day: 2, from: 9, to: 15, label: "Maintenance" },
@@ -94,4 +94,25 @@ test("a member without a class on their card takes the one found in their offici
   const ms = [member("Ann", "", "0".repeat(42)), member("Bob", "Templar", "0".repeat(42)), member("Cid", "", "0".repeat(42))];
   const out = withClasses(ms, { Ann: "Cleric", Bob: "Ranger" });
   assert.deepEqual(out.map((m) => m.className), ["Cleric", "Templar", ""], "a class on the card wins; none found stays empty");
+});
+
+test("call-up from a day's best stretch: its first hour, @everyone, the names, now + 3 h + 1 h", () => {
+  const W = "2026-11-16";
+  const who = Array.from({ length: 9 }, (_, i) => ({ name: `P${i + 1}`, className: "Cleric" }));
+  const d = { day: 4, count: 9, from: 20, to: 22, who, classes: [] as [string, number][] }; // Friday 20 November 20:00 Paris
+  const at = Date.UTC(2026, 10, 20, 19); // 20:00 CET
+  const now = at - 26 * 3_600_000;
+  const c = callupFor(d, W, now, "Europe/Paris")!;
+  assert.equal(c.atMs, at);
+  assert.equal(c.ping, "everyone");
+  assert.deepEqual(c.leads, [26 * 60, ...CALLUP_LEADS]);
+  assert.match(c.message, /9 members are free 20:00–22:00/);
+  assert.match(c.message, /Signed up: P1, P2, P3, P4, P5, P6, P7, P8, P9/);
+  assert.match(c.message, /Your spot is not guaranteed\.$/);
+  assert.deepEqual(callupFor(d, W, at - 90 * 60_000, "Europe/Paris")!.leads, [180, 90, 60], "under 3 h: 3 h is past, the Worker posts at once anyway");
+  assert.equal(callupFor(d, W, at, "Europe/Paris"), null, "already begun");
+  const many = { ...d, count: 200, who: Array.from({ length: 200 }, (_, i) => ({ name: `Player${i}`, className: "" })) };
+  const long = callupFor(many, W, now, "Europe/Paris")!;
+  assert.ok(long.message.length <= 500);
+  assert.match(long.message, /and \d+ more\nYour spot/);
 });
