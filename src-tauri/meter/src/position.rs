@@ -18,6 +18,17 @@
 //! only while no load has said, and the kills read meanwhile get it too (`souls::fill_map`). Found in the packet
 //! recording of 2026-10-23 (two teleports, three walks): the map-load and placed positions match to
 //! the unit, and the buff positions track the walk between them. Layout of 2a/2b 38: `capture::abnormal`.
+//!
+//! None of them comes while you ride a mount or glide (recordings of 2026-11-14): a buff of yours comes when
+//! the wings open, on landing and at each jump on a mount. So the meter says when you are on either
+//! (`Travel`), for the map and the radar to say why your position stands still:
+//!
+//! ```text
+//! <len> 02 90 <you varint> <mount u32> ...   you got on a mount   (2d 3b 09 00: the player's mount, twice)
+//! <len> 05 90 <you varint> 38 3b 01          you got off it        (twice; other ids' 03/06 90 are not yours)
+//! <len> 00 8d <you varint> 01 01 06 <u32>    the wings' flight time, every ~100 ms: falls while you glide
+//!                                            (-6,900/s, -22,900/s on a boost), rises once landed
+//! ```
 
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -41,6 +52,26 @@ pub struct SelfPosition {
 static ME: AtomicI32 = AtomicI32::new(0);
 static LAST: Mutex<Option<SelfPosition>> = Mutex::new(None);
 static MAP: Mutex<Option<i32>> = Mutex::new(None);
+static TRAVEL: Mutex<TravelState> = Mutex::new(TravelState { mounted: false, flight: None, gliding_ms: 0 });
+
+/// Whether you are on a mount or gliding: your position does not come then (see the top of this file).
+#[derive(Debug, Clone, Copy, Default, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Travel {
+    pub mounted: bool,
+    pub gliding: bool,
+}
+
+struct TravelState {
+    mounted: bool,
+    /// The wings' flight time last read.
+    flight: Option<u32>,
+    /// When it last fell (unix ms).
+    gliding_ms: i64,
+}
+
+/// The flight time falls every ~100 ms while you glide: gliding until this long after it last fell.
+const GLIDE_GRACE_MS: i64 = 1_500;
 
 /// Your entity id, as the meter knows it (the engine sets it with every update).
 pub fn set_me(id: Option<i32>) {
@@ -62,10 +93,17 @@ pub fn latest() -> Option<SelfPosition> {
     *LAST.lock()
 }
 
+/// On a mount or gliding, as last read.
+pub fn travel() -> Travel {
+    let t = TRAVEL.lock();
+    Travel { mounted: t.mounted, gliding: t.gliding_ms > 0 && crate::clock::now_ms() - t.gliding_ms < GLIDE_GRACE_MS }
+}
+
 /// Forget it (a capture restart).
 pub fn reset() {
     *LAST.lock() = None;
     *MAP.lock() = None;
+    *TRAVEL.lock() = TravelState { mounted: false, flight: None, gliding_ms: 0 };
 }
 
 fn f32_at(b: &[u8], at: usize) -> Option<f32> {
@@ -81,6 +119,7 @@ fn xyz_at(b: &[u8], at: usize) -> Option<(f32, f32, f32)> {
 
 /// Reads one game frame (its length varint, 2-byte type, body), as the parser hands it on.
 pub fn observe(frame: &[u8]) {
+    track(frame, ME.load(Ordering::Relaxed), &mut TRAVEL.lock(), crate::clock::now_ms());
     let learned = {
         let mut map = MAP.lock();
         let learned = learn_map(frame, &mut map);
@@ -94,6 +133,37 @@ pub fn observe(frame: &[u8]) {
             p.map_id.get_or_insert(id);
         }
         crate::souls::fill_map(id);
+    }
+}
+
+/// Mount on / off and the wings' flight time, from your records.
+fn track(frame: &[u8], me: i32, t: &mut TravelState, now_ms: i64) {
+    if me == 0 {
+        return;
+    }
+    let len = read_varint(frame, 0);
+    if len.length <= 0 {
+        return;
+    }
+    let o = len.length as usize;
+    let Some(op) = frame.get(o..o + 2) else { return };
+    let who = read_varint(frame, o + 2);
+    if who.length <= 0 || who.value != me {
+        return;
+    }
+    let rest = o + 2 + who.length as usize;
+    match op {
+        [0x02, 0x90] => t.mounted = true,
+        [0x05, 0x90] => t.mounted = false,
+        [0x00, 0x8D] if frame.get(rest..rest + 3) == Some(&[1, 1, 6]) => {
+            let Some(v) = frame.get(rest + 3..rest + 7).and_then(|b| b.try_into().ok()).map(u32::from_le_bytes) else { return };
+            if t.flight.is_some_and(|before| v < before) {
+                t.gliding_ms = now_ms;
+                t.mounted = false;
+            }
+            t.flight = Some(v);
+        }
+        _ => {}
     }
 }
 
@@ -193,6 +263,34 @@ mod tests {
         let mut loaded = Some(1110);
         assert_eq!(learn_map(&boss_map, &mut loaded), None, "a map load's word stands");
         assert_eq!(loaded, Some(1110));
+    }
+
+    /// 2026-11-14 15:2x: on a mount and off (player 2301, `fd 11`); another id's mount records are not yours.
+    #[test]
+    fn mount_on_and_off() {
+        let mut t = TravelState { mounted: false, flight: None, gliding_ms: 0 };
+        track(&hex("0f0390863a7c040000010000"), 2301, &mut t, 1);
+        assert!(!t.mounted);
+        track(&hex("110290fd112d3b09040000000000"), 2301, &mut t, 1);
+        assert!(t.mounted);
+        track(&hex("110290ca3f2d3b09040000010000"), 2301, &mut t, 1);
+        track(&hex("0b0590fd11383b01"), 2301, &mut t, 2);
+        assert!(!t.mounted);
+    }
+
+    /// The wings' flight time falling (gliding), the mount's stamina falling (not gliding).
+    #[test]
+    fn gliding_is_the_flight_time_falling() {
+        let mut t = TravelState { mounted: false, flight: None, gliding_ms: 0 };
+        track(&hex("0f008dfd1101010380780200"), 2301, &mut t, 21_042);
+        track(&hex("0f008dfd11010103c0760200"), 2301, &mut t, 21_151);
+        assert_eq!(t.gliding_ms, 0, "stamina, not flight time");
+        track(&hex("0f008dfd110101062a620a00"), 2301, &mut t, 97_054);
+        assert_eq!(t.gliding_ms, 0, "one reading says nothing yet");
+        track(&hex("0f008dfd1101010666580a00"), 2301, &mut t, 97_163);
+        assert_eq!(t.gliding_ms, 97_163);
+        track(&hex("0f008dfd11010106a24e0a00"), 9999, &mut t, 97_272);
+        assert_eq!(t.gliding_ms, 97_163, "someone else's");
     }
 
     #[test]

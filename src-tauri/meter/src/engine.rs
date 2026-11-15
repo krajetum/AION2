@@ -73,6 +73,8 @@ pub struct Update {
     pub arena: Option<ArenaMatch>,
     /// Where you are, from the last record that said (map loads, teleports, your buffs).
     pub position: Option<crate::position::SelfPosition>,
+    /// On a mount or gliding: your position does not come then (`position.rs`).
+    pub travel: crate::position::Travel,
     /// Hidden cubes in view (learned codes) and opened since the meter started.
     pub cubes: crate::cubes::Cubes,
     /// Packets lost since the start because the parser fell behind the capture (crowded fights).
@@ -399,6 +401,7 @@ impl Engine {
                 crate::position::set_me(self.storage.local_player_id().map(|id| id as i32));
                 crate::position::latest()
             },
+            travel: crate::position::travel(),
             cubes: crate::cubes::snapshot(),
             souls: crate::souls::snapshot()
                 .into_iter()

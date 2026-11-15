@@ -7,6 +7,7 @@
   // You are drawn from the meter's position (src-tauri/meter/src/position.rs) through the map's game → pixel fit:
   // the bundled image's own, or the player's references (3+ with game coordinates).
   import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobPet, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
+  import { travelIcon } from "../../domain/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, mapOf, onMap, petHome, petList,
     lootKind, petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
@@ -15,7 +16,7 @@
   import { downloadJson } from "../../infra/storage.ts";
   import { act, commit } from "../actions.ts";
   import { num } from "../format.ts";
-  import { ICON } from "../icons.ts";
+  import { ICON, TRAVEL_ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
   import { MAX_LEVEL, needed, petName as petNameOf, wanted } from "../../domain/pets.ts";
   import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
@@ -318,7 +319,8 @@
 <p class="hint intro">Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
   of yours that gives soul points is put where the mob died (desktop app with the meter running). Each map can use your own image
   instead of the bundled one: it stays only on this PC. The gold dot is you: the game says where you are on teleports and whenever a
-  buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running).</p>
+  buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running). On a mount it turns
+  into a horse and moves only when you jump; gliding, into a wing, and moves when you land: the game sends no position meanwhile.</p>
 {#if error}<p class="hint error">{error}</p>{/if}
 {#if notice}<p class="hint">{notice}</p>{/if}
 
@@ -357,7 +359,8 @@
     {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!active} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
       aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
       onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}</div>{/if}
-    {#if you}<div class="me" class:stale={age > 30} style:left="{you.x}px" style:top="{you.y}px" title="You · {ago(age)}"></div>{/if}
+    {#if you}{@const mode = travelIcon(ui.meter?.travel)}<div class="me" class:stale={age > 30} class:travel={mode} style:left="{you.x}px" style:top="{you.y}px"
+      title="You · {ago(age)}{mode === 'wings' ? ' · gliding' : mode === 'mount' ? ' · on a mount' : ''}">{#if mode}{@html TRAVEL_ICON[mode]}{/if}</div>{/if}
 
     <!-- Corner menu: which map, which layer, and for pets the search, the list and the drop tools. -->
     <div class="map-menu" role="dialog" aria-label="Map menu" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
@@ -456,7 +459,7 @@
       {#if layer === "cubes"}{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(ui.data.map.found.filter((f) => foundOn(f, current)).length)} cubes found{#if sharedHere.length} · {num(sharedHere.length)} from other players{/if}{#if live.length}{" "}· <b class="live-count">{live.length} in view</b>{/if}
       {:else}{num(onThisMap.length)} soul point spots here · {num(drops.length)} in all{/if}
       · {num(refs.length)} references{#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 with game coordinates{/if}
-      · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if pos.mapId == null}<b>which map you are on is not known yet: open the game's map (M) once, or teleport</b>{:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{/if}</span>
+      · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if pos.mapId == null}<b>which map you are on is not known yet: open the game's map (M) once, or teleport</b>{:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{#if ui.meter?.travel?.gliding} · <b>gliding: your position updates when you land</b>{:else if ui.meter?.travel?.mounted} · <b>on a mount: your position updates each time you jump</b>{/if}{/if}</span>
     <span class="grow"></span>
     <label class="btn act">{@html ICON.upload}Import your own {mapName(current)} map <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>
     {#if custom && BUNDLED_IMAGE[current]}<button class="ghost" onclick={remove}>Back to the bundled map</button>{:else if custom}<button class="ghost" onclick={remove}>Remove the image</button>{/if}
