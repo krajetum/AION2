@@ -55,7 +55,7 @@
 {:else}<section class="dps-table"><div class="scroll"><table class="sheet">
   <thead><tr><th>When</th><th>Map</th><th class="n">Time</th><th class="n">Dealt</th><th class="n">Taken</th><th class="n">Deaths</th></tr></thead>
   <tbody>{#each log.matches as m (key(m))}{@const t = matchTotals(m)}{@const k = key(m)}
-    <tr class="prow" style:--p={String(t.dealt + t.taken ? t.dealt / (t.dealt + t.taken) : 0)} aria-expanded={open === k} onclick={() => { open = open === k ? "" : k; }}>
+    <tr class="prow" tabindex="0" style:--p={String(t.dealt + t.taken ? t.dealt / (t.dealt + t.taken) : 0)} aria-expanded={open === k} onclick={() => { open = open === k ? "" : k; }}>
       <td>{when(m.startMs)}</td>
       <td><span class="name">{mapLabel(log.maps, m.mapId)}</span><small>{t.opponents} {t.opponents === 1 ? "opponent" : "opponents"}{#if m.rounds}{" "}· {m.rounds.length} rounds{/if}</small></td>
       <td class="n">{clock(t.ms)}</td><td class="n">{short(t.dealt)}</td><td class="n">{short(t.taken)}</td>
@@ -86,7 +86,7 @@
     <thead><tr><th>When</th><th>Player</th><th>Class</th><th class="n">Server</th><th>Where</th>
       <th class="n">{killView === "death" ? "They dealt" : "You dealt"}</th><th class="n">{killView === "death" ? "You dealt" : "They dealt"}</th></tr></thead>
     <tbody>{#each kills as k (killKey(k))}{@const o = k.other}{@const kk = killKey(k)}
-      <tr class="prow" aria-expanded={killOpen === kk} title="Gear and stats" style:--p="0" onclick={() => { killOpen = killOpen === kk ? "" : kk; }}>
+      <tr class="prow" tabindex="0" aria-expanded={killOpen === kk} title="Gear and stats" style:--p="0" onclick={() => { killOpen = killOpen === kk ? "" : kk; }}>
         <td>{when(k.atMs)}</td>
         <td><span class="name">{o.name || `#${o.id}`}</span></td>
         <td class="cls">{#if classIcon(o.job)}<img class="cls-icon" src={classIcon(o.job)} alt="" width="22" height="23">{/if}{o.job || "—"}</td>
