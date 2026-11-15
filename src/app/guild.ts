@@ -5,6 +5,7 @@ import type { FightRecord } from "../domain/fights.ts";
 import type { Profile } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
 import { crowd, CrowdError } from "../infra/crowd.ts";
+import { encodeWeek, parseAvailability, type Week } from "../domain/raidplan.ts";
 
 const warn = (what: string) => (e: unknown) => console.warn(`Guild ${what} failed`, e);
 let sentCard = ""; // the card last sent this session: sent again only when it changes
@@ -116,6 +117,23 @@ export async function cancelCallup(data: AppData, id: string): Promise<void> {
 export async function sendCallup(data: AppData, id: string): Promise<void> {
   if (!data.guild) throw new Error("Not in a guild");
   await crowd(path(data, `/callups/${id}/send`), auth(data));
+}
+
+/** Raid plan: your hours, and everyone's when you may see the summary. */
+export async function getAvailability(data: AppData) {
+  if (!data.guild) throw new Error("Not in a guild");
+  const r = parseAvailability(await crowd(`${path(data, "/availability")}?install=${data.install}`));
+  if (!r) throw new Error("The server sent something unexpected");
+  return r;
+}
+/** Saves your hours: every week's (`slots`), or one week's only (`week`: its hours, or null = back to every week's). */
+export async function saveAvailability(data: AppData, a: { slots?: Week; week?: { start: string; slots: Week | null } }): Promise<void> {
+  if (!data.guild) throw new Error("Not in a guild");
+  await crowd(path(data, "/availability"), {
+    install: data.install,
+    ...(a.slots ? { slots: encodeWeek(a.slots) } : {}),
+    ...(a.week ? { week: { start: a.week.start, slots: a.week.slots ? encodeWeek(a.week.slots) : null } } : {}),
+  });
 }
 
 /** Leader key typed in by a Leader on another install (it was shown once, at creation): Leader here from the next sync. */

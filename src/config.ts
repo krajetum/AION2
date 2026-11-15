@@ -34,6 +34,17 @@ export const EVENTS: GameEvent[] = [
   { id: "rift", name: "Spacetime Rift", everyHours: 3, minute: 0, firstHour: 2, duration: 15, timeZone: "Europe/Paris" }, // TO VERIFY (duration)
 ];
 
+/** Guild > Raid plan: the week's grid is in this zone (one grid for the whole guild), and these hours can't be marked free.
+ *  day: 0 = Monday … 6 = Sunday; from/to: whole hours, `to` excluded. Source: the player (guild leader), 2026-11-15. */
+export const RAID_PLAN = {
+  timeZone: "Europe/Paris",
+  blocked: [
+    { day: 2, from: 9, to: 15, label: "Maintenance" }, // TO VERIFY (Wednesday 9-15, "usually")
+    { day: 3, from: 21, to: 22, label: "Siege" },      // TO VERIFY (Thursday 21-22)
+    { day: 5, from: 21, to: 22, label: "Siege" },      // TO VERIFY (Saturday 21-22)
+  ],
+};
+
 /** The crowd Worker (server/): shared boss timers and cube spots.
  *  `VITE_CROWD_URL=http://localhost:8787 npm run dev` points the browser preview at `wrangler dev`. */
 export const CROWD_URL = "https://aion2-companion.krajetum.workers.dev";

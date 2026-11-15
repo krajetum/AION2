@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  can, DEFAULT_PERMS, permsOf, CALLUP_TITLE, callupPost, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
+  can, DEFAULT_PERMS, mergeWeeks, MAX_WEEKS, parseAvailability, SLOTS_HEX, permsOf, CALLUP_TITLE, callupPost, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
   parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, parseShare, TIME_RANGE,
 } from "./validate.ts";
 
@@ -227,4 +227,29 @@ test("permissions: stored overrides over the defaults, compared by rank", () => 
   assert.equal(can("member", "manage.callups", p), true);
   assert.equal(can("officer", "manage.discord", DEFAULT_PERMS), true);
   assert.equal(can("member", "manage.discord", DEFAULT_PERMS), false);
+});
+
+test("availability: every week's hours, one week's, or a week cleared; nothing else", () => {
+  const h = "f".repeat(SLOTS_HEX), z = "0".repeat(SLOTS_HEX);
+  const monday = "2027-01-18"; // NOW = 2027-01-15 (Friday)
+  assert.deepEqual(parseAvailability({ install: ID, slots: h.toUpperCase() }, NOW), { install: ID.toLowerCase(), slots: h, week: null });
+  assert.deepEqual(parseAvailability({ install: ID, week: { start: monday, slots: z } }, NOW), { install: ID.toLowerCase(), slots: null, week: { start: monday, slots: z } });
+  assert.deepEqual(parseAvailability({ install: ID, week: { start: monday, slots: null } }, NOW)?.week, { start: monday, slots: null });
+  assert.equal(parseAvailability({ install: ID }, NOW), null, "nothing to set");
+  assert.equal(parseAvailability({ install: ID, slots: h + "0" }, NOW), null, "169 hours");
+  assert.equal(parseAvailability({ install: ID, slots: "g".repeat(SLOTS_HEX) }, NOW), null);
+  assert.equal(parseAvailability({ install: ID, week: { start: "2027-01-19", slots: z } }, NOW), null, "not a Monday");
+  assert.equal(parseAvailability({ install: ID, week: { start: "2026-12-07", slots: z } }, NOW), null, "weeks ago");
+  assert.equal(parseAvailability({ install: ID, week: { start: "2027-03-01", slots: z } }, NOW), null, "too far ahead");
+  assert.equal(parseAvailability({ install: "nope", slots: h }, NOW), null);
+});
+
+test("availability weeks: set, cleared, past ones and extras dropped, junk ignored", () => {
+  const a = "a".repeat(SLOTS_HEX), b = "b".repeat(SLOTS_HEX);
+  const stored = JSON.stringify({ "2027-01-04": a, "2027-01-11": a, junk: a, "2027-01-25": "xyz" });
+  assert.deepEqual(mergeWeeks(stored, { start: "2027-01-18", slots: b }, NOW), { "2027-01-11": a, "2027-01-18": b });
+  assert.deepEqual(mergeWeeks(stored, { start: "2027-01-11", slots: null }, NOW), {});
+  assert.deepEqual(mergeWeeks("not json", null, NOW), {});
+  const many = Object.fromEntries(["2027-01-11", "2027-01-18", "2027-01-25", "2027-02-01"].map((k) => [k, a]));
+  assert.equal(Object.keys(mergeWeeks(JSON.stringify(many), null, NOW)).length, MAX_WEEKS);
 });
