@@ -29,7 +29,7 @@
   const servers = $derived(serversIn(region));
   $effect(() => { if (!servers.some((s) => s.id === serverId)) serverId = servers[0]?.id ?? 0; });
   /** Your card: the character the meter sees, else the name typed in (no gear numbers then). */
-  const me = $derived<GuildMe | null>(profile ? meCard(profile) : charName.trim() ? { name: charName.trim(), className: "", itemLevel: null, combatPower: null } : null);
+  const me = $derived<GuildMe | null>(profile ? meCard(profile) : charName.trim() ? { name: charName.trim(), className: "", itemLevel: null, combatPower: null, serverId: serverId || null } : null);
   const create = () => run(() => createGuild(ui.data, guildName.trim(), profile?.serverId ?? serverId, me!).then(() => refreshGuild(false)), "Guild created");
   const join = () => run(() => joinGuild(ui.data, code, me!).then(() => refreshGuild(false)), "Joined the guild");
 
@@ -69,7 +69,9 @@
   <p class="hint intro">A guild shares field-boss alerts (in your Discord channel), planned raids, the members' gear and the boss fights they choose to share.
     One member creates it and gets an invite code for the others, plus a leader key. No account needed.</p>
   {#if profile}<p class="hint">You'll appear as <b>{profile.name}</b> ({serverName(profile.serverId) || `server ${profile.serverId}`}), as the meter sees you.</p>
-  {:else}<label class="toolbar start">Your character <input bind:value={charName} placeholder="Character name" autocomplete="off"></label>
+  {:else}<div class="toolbar start"><label>Your character <input bind:value={charName} placeholder="Character name" autocomplete="off"></label>
+      <select bind:value={region} aria-label="Region">{#each Object.values(REGIONS) as r}<option value={r}>{r.toUpperCase()}</option>{/each}</select>
+      <select bind:value={serverId} aria-label="Your server">{#each servers as s (s.id)}<option value={s.id}>{s.name}</option>{/each}</select></div>
     <p class="hint">Or start the game with the companion open: the meter fills in your character, item level and CP.</p>{/if}
   <div class="cards">
     <section class="dps-table"><h2>Join a guild</h2>
@@ -79,8 +81,7 @@
     <section class="dps-table"><h2>Create a guild</h2>
       <form class="toolbar start" onsubmit={(e) => { e.preventDefault(); create(); }}>
         <input bind:value={guildName} placeholder="Guild or static name" aria-label="Guild name" maxlength="32" autocomplete="off" required>
-        {#if !profile}<select bind:value={region} aria-label="Region">{#each Object.values(REGIONS) as r}<option value={r}>{r.toUpperCase()}</option>{/each}</select>
-          <select bind:value={serverId} aria-label="Server">{#each servers as s (s.id)}<option value={s.id}>{s.name}</option>{/each}</select>{/if}
+        {#if !profile}<span class="dim">on {serverName(serverId) || "your server"}</span>{/if}
         <button disabled={gs.busy || !me}>Create</button></form></section>
   </div>
   {#if gs.error}<p class="hint">{gs.error}</p>{/if}

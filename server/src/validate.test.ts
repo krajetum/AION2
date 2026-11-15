@@ -84,7 +84,7 @@ test("webhook: only Discord webhooks", () => {
 
 test("create / join: name trimmed, numbers rounded, consent defaults gear on and fights off", () => {
   assert.deepEqual(parseGuildCreate({ install: ID, name: "  Static  ", serverId: 1301, me: ME }), {
-    install: ID.toLowerCase(), name: "Static", serverId: 1301, me: { name: "Krajetum", className: "Gladiator", itemLevel: 3013, combatPower: 120000 },
+    install: ID.toLowerCase(), name: "Static", serverId: 1301, me: { name: "Krajetum", className: "Gladiator", itemLevel: 3013, combatPower: 120000, serverId: null },
   });
   assert.equal(parseGuildCreate({ install: ID, name: " ", serverId: 1301, me: ME }), null);
   assert.equal(parseGuildCreate({ install: "x", name: "S", serverId: 1301, me: ME }), null);
@@ -101,6 +101,8 @@ test("me post: leave, share only, or a new card; a bad card refused", () => {
   assert.equal(parseMePost({ install: ID, share: { fights: true } })?.me, null);
   assert.equal(parseMePost({ install: ID, me: ME })?.me?.name, "Krajetum");
   assert.equal(parseMePost({ install: ID, me: { name: 3 } }), null);
+  assert.equal(parseMePost({ install: ID, me: { ...ME, serverId: 2001 } })?.me?.serverId, 2001);
+  assert.equal(parseMePost({ install: ID, me: { ...ME, serverId: "x" } })?.me?.serverId, null, "a bad server is dropped, the card kept");
 });
 
 test("fight: fields checked, size capped", () => {

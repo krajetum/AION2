@@ -9,6 +9,8 @@ import { encodeWeek, parseAvailability, type Week } from "../domain/raidplan.ts"
 
 const warn = (what: string) => (e: unknown) => console.warn(`Guild ${what} failed`, e);
 let sentCard = ""; // the card last sent this session: sent again only when it changes
+/** The name this install is in the guild as (the Worker's last answer). */
+let cardName = "";
 let claimed = ""; // the guild this session claimed Leader in (once)
 
 const path = (data: AppData, part = "") => `/v1/guilds/${data.guild!.id}${part}`;
@@ -41,14 +43,16 @@ export async function setShare(data: AppData, share: GuildShare): Promise<void> 
 }
 
 /**
- * The guild as the Worker has it, after sending your card if it changed (only for a character on the guild's server).
+ * The guild as the Worker has it, after sending your card if it changed (a character on the guild's server, or the one you're in it as).
  * `removed`: this install isn't a member any more (an officer removed it): data.guild is cleared.
  */
 export async function syncGuild(data: AppData, profile: Profile | null | undefined, playing: boolean): Promise<{ view: GuildView | null; removed: boolean }> {
   const g = data.guild;
   if (!g) return { view: null, removed: false };
   try {
-    if (profile?.name && profile.serverId === g.serverId) {
+    // Your card: a character on the guild's server, or the one you are in the guild as, on any server (a member from
+    // another server); not another character of yours elsewhere, which would replace it.
+    if (profile?.name && (profile.serverId === g.serverId || profile.name === cardName)) {
       const me = meCard(profile);
       const card = JSON.stringify(me);
       if (card !== sentCard) {
@@ -58,6 +62,7 @@ export async function syncGuild(data: AppData, profile: Profile | null | undefin
     }
     const j = await crowd(`${path(data)}?install=${data.install}${playing ? "&playing=1" : ""}`);
     const view = parseGuild(j, Date.now());
+    cardName = view.members.find((m) => m.me)?.name ?? cardName;
     // The leader key kept here, but the Worker doesn't list this install as Leader (an officer from before roles): claim it once.
     if (g.officerKey && view.role !== "leader" && j?.role && claimed !== g.id) {
       claimed = g.id;

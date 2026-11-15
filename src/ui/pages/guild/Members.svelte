@@ -5,6 +5,7 @@
   import { can, myRole, ONLINE_MS, rank, ROLE_LABEL, rosterRows, type GuildLink, type GuildView } from "../../../domain/guild.ts";
   import { classColor, short } from "../../../domain/meter.ts";
   import { officialProfile } from "../../../infra/armory.ts";
+  import { serverName } from "../../../domain/servers.ts";
   import { isDesktop } from "../../../infra/system.ts";
   import { refreshGuild } from "../../actions.ts";
   import { classIcon } from "../../classes.ts";
@@ -15,15 +16,18 @@
   let { g, view }: { g: GuildLink; view: GuildView } = $props();
 
   // Gear: what members shared, else their official profile (desktop app only: the site sends no CORS headers).
-  let official = $state<Record<string, { itemLevel: number | null; combatPower: number | null } | null>>({});
+  let official = $state<Record<string, { itemLevel: number | null; combatPower: number | null; className: string } | null>>({});
   $effect(() => {
     const v = view;
     if (!isDesktop()) return;
     untrack(() => {
       for (const m of v.members) {
-        if (m.itemLevel !== null || m.name in official) continue;
+        if ((m.itemLevel !== null && m.className) || m.name in official) continue;
         official[m.name] = null;
-        officialProfile(m.name, v.serverId).then((p) => { if (p) official[m.name] = { itemLevel: p.itemLevel, combatPower: p.combatPower }; }).catch(() => {});
+        // On the member's own server; a card from before servers were kept: the guild's (a guess).
+        officialProfile(m.name, m.serverId ?? v.serverId).then((p) => {
+          if (p) official[m.name] = { itemLevel: p.itemLevel, combatPower: p.combatPower, className: p.className };
+        }).catch(() => {});
       }
     });
   });
@@ -36,7 +40,7 @@
     if (confirm(`Remove ${name} from the guild? Get a new invite code too, or they can join again.`))
       run(() => adminGuild(ui.data, { remove: name }).then(() => refreshGuild(false)), `${name} removed`);
   };
-  const openPlayer = (name: string) => { ui.lookup = { name, serverId: g.serverId }; ui.tab = "players"; history.replaceState(null, "", "#players"); };
+  const openPlayer = (name: string) => { ui.lookup = { name, serverId: view.members.find((m) => m.name === name)?.serverId ?? g.serverId }; ui.tab = "players"; history.replaceState(null, "", "#players"); };
   const ago = (t: number) => { const m = Math.max(0, Math.round((ui.now - t) / 60_000)); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m / 60)} h ago` : `${Math.floor(m / 1440)} d ago`; };
 </script>
 
@@ -45,7 +49,7 @@
     <thead><tr><th>Name</th><th>Role</th><th class="n">Item level</th><th class="n">CP</th><th>Seen</th><th></th></tr></thead>
     <tbody>{#each roster as m (m.name)}{@const role = roleOf.get(m.name) ?? "member"}<tr style:--cls={classColor(m.className) || null}>
       <td>{#if classIcon(m.className)}<img class="cls-icon" src={classIcon(m.className)} alt={m.className} title={m.className} width="22" height="23">{/if}
-        <button class="ghost" title="Profile, gear and best-in-slot check" onclick={() => openPlayer(m.name)}>{m.name}</button>{#if m.className}<small>{m.className}</small>{/if}</td>
+        <button class="ghost" title="Profile, gear and best-in-slot check" onclick={() => openPlayer(m.name)}>{m.name}</button>{#if m.className}<small>{m.className}</small>{/if}{#if m.serverId && m.serverId !== g.serverId}<small title="Plays on another server">{serverName(m.serverId) || `server ${m.serverId}`}</small>{/if}</td>
       <td><span class="role {role}">{ROLE_LABEL[role]}</span></td>
       <td class="n">{m.itemLevel == null ? "—" : num(m.itemLevel)}{#if m.official}<small class="dim" title="From the official profile"> official</small>{/if}</td>
       <td class="n">{m.combatPower == null ? "—" : short(m.combatPower)}</td>
