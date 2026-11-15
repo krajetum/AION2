@@ -14,6 +14,7 @@
   import Members from "./guild/Members.svelte";
   import Mine from "./guild/Mine.svelte";
   import Overview from "./guild/Overview.svelte";
+  import RaidPlan from "./guild/RaidPlan.svelte";
   import Roles from "./guild/Roles.svelte";
   import { copy, gs, pretty, run } from "./guild/run.svelte.ts";
 
@@ -44,6 +45,7 @@
     const allowed = (i: Item) => !i.need || (i.need === "leader" ? myRole(view, g) === "leader" : can(view, g, i.need));
     const all: [string, Item[]][] = [
       ["Guild", [{ id: "overview", label: "Overview" }, { id: "callups", label: "Call-ups", need: "view.callups", count: view.callups.length },
+        { id: "raidplan", label: "Raid plan", need: "view.raidplan" },
         { id: "members", label: "Members", need: "view.members", count: view.memberCount }, { id: "fights", label: "Fights", need: "view.fights" }]],
       ["Manage", [{ id: "discord", label: "Discord", need: "manage.discord" }, { id: "invite", label: "Invite", need: "manage.invite" },
         { id: "roles", label: "Roles & permissions", need: "leader" }]],
@@ -96,7 +98,7 @@
           <span class="lbl">{i.label}</span>{#if i.count}<span class="count">{i.count}</span>{/if}</button>{/each}{/each}
     </nav>
     <div class="guild-section">
-      {#if section === "callups"}<Callups {g} {view} {go} />{:else if section === "members"}<Members {g} {view} />{:else if section === "fights"}<Fights />
+      {#if section === "callups"}<Callups {g} {view} {go} />{:else if section === "raidplan"}<RaidPlan {g} {view} />{:else if section === "members"}<Members {g} {view} />{:else if section === "fights"}<Fights />
       {:else if section === "discord"}<Discord {view} />{:else if section === "invite"}<Invite {g} />{:else if section === "roles"}<Roles {view} />
       {:else if section === "mine"}<Mine {g} {view} />{:else}<Overview {g} {view} {go} />{/if}
     </div>

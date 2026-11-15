@@ -119,10 +119,10 @@ export interface GuildAdmin extends Auth {
 // ---- Guild roles: Leader > Officer > Member, and per guild the lowest role that has each permission ----
 export const ROLES = ["member", "officer", "leader"] as const;
 export type Role = (typeof ROLES)[number];
-export const PERMS = ["view.callups", "view.members", "view.fights", "manage.callups", "manage.discord", "manage.members", "manage.invite"] as const;
+export const PERMS = ["view.callups", "view.members", "view.fights", "view.raidplan", "view.raidsummary", "manage.callups", "manage.discord", "manage.members", "manage.invite"] as const;
 export type Perm = (typeof PERMS)[number];
 export const DEFAULT_PERMS: Record<Perm, Role> = {
-  "view.callups": "member", "view.members": "member", "view.fights": "member",
+  "view.callups": "member", "view.members": "member", "view.fights": "member", "view.raidplan": "member", "view.raidsummary": "officer",
   "manage.callups": "officer", "manage.discord": "officer", "manage.members": "officer", "manage.invite": "officer",
 };
 export const isRole = (v: unknown): v is Role => ROLES.includes(v as Role);
@@ -340,4 +340,43 @@ export function parseServerId(s: string): number | null {
   if (!/^\d{1,9}$/.test(s)) return null;
   const n = Number(s);
   return isInt(n) && n > 0 ? n : null;
+}
+
+/** Raid plan: a week of hours (7 x 24, Monday 00:00 first, server time), one bit each, as 42 hex digits (domain/raidplan.ts). */
+export const WEEK_HOURS = 168;
+export const SLOTS_HEX = WEEK_HOURS / 4;
+export const MAX_WEEKS = 3; // "only this week" entries kept per member: this week, next week, one more
+const DAY_MS = 86_400_000;
+const isSlots = (v: unknown): v is string => typeof v === "string" && v.length === SLOTS_HEX && /^[0-9a-fA-F]+$/.test(v);
+const WEEK_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** A week's Monday as the app sends it: a real date from last week to 3 weeks ahead (the zone's offset doesn't matter here). */
+const isWeek = (v: unknown, now: number): v is string => {
+  if (typeof v !== "string" || !WEEK_RE.test(v)) return false;
+  const t = Date.parse(v + "T00:00:00Z");
+  return Number.isFinite(t) && new Date(t).getUTCDay() === 1 && t >= now - 8 * DAY_MS && t <= now + 22 * DAY_MS;
+};
+export interface AvailabilityPost { install: string; slots: string | null; week: { start: string; slots: string | null } | null }
+/** Every week's hours (`slots`), and/or one week's (`week`: its hours, or null = back to every week's). */
+export function parseAvailability(body: unknown, now: number): AvailabilityPost | null {
+  if (!isObj(body) || !isInstall(body.install)) return null;
+  const slots = body.slots === undefined ? null : isSlots(body.slots) ? body.slots.toLowerCase() : undefined;
+  if (slots === undefined) return null;
+  let week: AvailabilityPost["week"] = null;
+  if (body.week !== undefined) {
+    const w = body.week;
+    if (!isObj(w) || !isWeek(w.start, now) || !(w.slots === null || isSlots(w.slots))) return null;
+    week = { start: w.start, slots: w.slots === null ? null : (w.slots as string).toLowerCase() };
+  }
+  if (!slots && !week) return null;
+  return { install: body.install.toLowerCase(), slots, week };
+}
+/** The stored weeks with one set or cleared, past ones (Monday more than 7 days ago) dropped, the latest MAX_WEEKS kept. */
+export function mergeWeeks(json: string | null | undefined, week: AvailabilityPost["week"], now: number): Record<string, string> {
+  let o: unknown;
+  try { o = JSON.parse(json ?? "{}"); } catch { o = {}; }
+  const out: Record<string, string> = {};
+  if (isObj(o)) for (const [k, v] of Object.entries(o)) if (WEEK_RE.test(k) && isSlots(v)) out[k] = v;
+  if (week) { if (week.slots === null) delete out[week.start]; else out[week.start] = week.slots; }
+  const kept = Object.keys(out).filter((k) => Date.parse(k + "T00:00:00Z") >= now - 8 * DAY_MS).sort().slice(-MAX_WEEKS);
+  return Object.fromEntries(kept.map((k) => [k, out[k]]));
 }

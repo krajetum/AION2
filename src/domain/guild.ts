@@ -24,14 +24,15 @@ export interface GuildView {
 export const ROLES = ["member", "officer", "leader"] as const;
 export type Role = (typeof ROLES)[number];
 export const ROLE_LABEL: Record<Role, string> = { member: "Member", officer: "Officer", leader: "Leader" };
-export const PERMS = ["view.callups", "view.members", "view.fights", "manage.callups", "manage.discord", "manage.members", "manage.invite"] as const;
+export const PERMS = ["view.callups", "view.members", "view.fights", "view.raidplan", "view.raidsummary", "manage.callups", "manage.discord", "manage.members", "manage.invite"] as const;
 export type Perm = (typeof PERMS)[number];
 export const DEFAULT_PERMS: Record<Perm, Role> = {
-  "view.callups": "member", "view.members": "member", "view.fights": "member",
+  "view.callups": "member", "view.members": "member", "view.fights": "member", "view.raidplan": "member", "view.raidsummary": "officer",
   "manage.callups": "officer", "manage.discord": "officer", "manage.members": "officer", "manage.invite": "officer",
 };
 export const PERM_LABEL: Record<Perm, string> = {
   "view.callups": "See call-ups", "view.members": "See the members", "view.fights": "See shared fights",
+  "view.raidplan": "Raid plan: mark free hours", "view.raidsummary": "Raid plan: see everyone's hours",
   "manage.callups": "Plan and cancel call-ups", "manage.discord": "Discord alerts", "manage.members": "Remove members", "manage.invite": "Invite code",
 };
 const isRole = (v: unknown): v is Role => ROLES.includes(v as Role);

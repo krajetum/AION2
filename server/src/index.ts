@@ -4,8 +4,8 @@
 // API under /v1, backward-compatible changes only (an incompatible one = /v2 alongside).
 import {
   alertKey, type Auth, type BossTimer, callupPost, can, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_CALLUPS, MAX_LEAD, MAX_POSTS, nextDue, nextSend,
-  parseAdmin, parseAuth, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
-  type Ping, POSTED_FOR, rank, type Role,
+  mergeWeeks, parseAdmin, parseAuth, parseAvailability, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
+  type Ping, POSTED_FOR, rank, type Role, SLOTS_HEX,
 } from "./validate.ts";
 
 // Minimal Workers types (no @cloudflare/workers-types).
@@ -260,6 +260,7 @@ async function postMe(env: Env, req: Request, id: string) {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM guild_members WHERE guild_id = ? AND install = ?").bind(id, p.install),
       env.DB.prepare("DELETE FROM guild_fights WHERE guild_id = ? AND install = ?").bind(id, p.install),
+      env.DB.prepare("DELETE FROM guild_availability WHERE guild_id = ? AND install = ?").bind(id, p.install),
       ensureLeader(env, id),
     ]);
   } else if (p.me) {
@@ -283,6 +284,49 @@ async function postFight(env: Env, req: Request, id: string) {
   await env.DB.prepare(
     `INSERT OR REPLACE INTO guild_fights (guild_id, id, install, boss, end_ms, battle_ms, killed, record) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).bind(id, p.id, p.install, p.boss, p.endMs, p.battleMs, +p.killed, p.record).run();
+  return json({ ok: true });
+}
+
+/** Raid plan: your hours (every week's, and weeks that differ), and with `view.raidsummary` every member's, for the app to add up. */
+async function getAvailability(env: Env, url: URL, id: string) {
+  const install = url.searchParams.get("install")?.toLowerCase() ?? null;
+  const who = await actorOf(env, id, { install, officerKey: null });
+  if (!who) return fail(403, "not a member");
+  if (!can(who.role, "view.raidplan", who.perms)) return fail(403, "no permission: view.raidplan");
+  const now = Date.now();
+  const mine = await env.DB.prepare("SELECT slots, weeks, updated_ms FROM guild_availability WHERE guild_id = ? AND install = ?")
+    .bind(id, install).first<{ slots: string; weeks: string; updated_ms: number }>();
+  const out: Record<string, unknown> = {
+    serverNow: now, mine: mine ? { slots: mine.slots, weeks: mergeWeeks(mine.weeks, null, now), updatedMs: mine.updated_ms } : null,
+  };
+  if (can(who.role, "view.raidsummary", who.perms)) {
+    const { results } = await env.DB.prepare(
+      `SELECT m.name AS name, m.class_name AS class_name, a.slots AS slots, a.weeks AS weeks, a.updated_ms AS updated_ms
+       FROM guild_availability a JOIN guild_members m ON m.guild_id = a.guild_id AND m.install = a.install
+       WHERE a.guild_id = ? ORDER BY m.name`,
+    ).bind(id).all<{ name: string; class_name: string; slots: string; weeks: string; updated_ms: number }>();
+    out.members = results.map((r) => ({ name: r.name, className: r.class_name, slots: r.slots, weeks: mergeWeeks(r.weeks, null, now), updatedMs: r.updated_ms }));
+  }
+  return json(out);
+}
+
+/** Your every-week hours and/or one week's; a first post with only a week starts every week empty. */
+async function postAvailability(env: Env, req: Request, id: string) {
+  const now = Date.now();
+  const p = parseAvailability(await readBody(req), now);
+  if (!p) return fail(400, "bad request");
+  const who = await actorOf(env, id, { install: p.install, officerKey: null });
+  if (!who) return fail(403, "not a member");
+  if (!can(who.role, "view.raidplan", who.perms)) return fail(403, "no permission: view.raidplan");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  const old = await env.DB.prepare("SELECT slots, weeks FROM guild_availability WHERE guild_id = ? AND install = ?")
+    .bind(id, p.install).first<{ slots: string; weeks: string }>();
+  const slots = p.slots ?? old?.slots ?? "0".repeat(SLOTS_HEX);
+  const weeks = JSON.stringify(mergeWeeks(old?.weeks, p.week, now));
+  await env.DB.prepare(
+    `INSERT INTO guild_availability (guild_id, install, slots, weeks, updated_ms) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (guild_id, install) DO UPDATE SET slots = excluded.slots, weeks = excluded.weeks, updated_ms = excluded.updated_ms`,
+  ).bind(id, p.install, slots, weeks, now).run();
   return json({ ok: true });
 }
 
@@ -340,6 +384,8 @@ async function postAdmin(env: Env, req: Request, id: string) {
   if (p.remove) {
     stmts.push(
       env.DB.prepare("DELETE FROM guild_fights WHERE guild_id = ? AND install IN (SELECT install FROM guild_members WHERE guild_id = ? AND name = ?)")
+        .bind(id, id, p.remove),
+      env.DB.prepare("DELETE FROM guild_availability WHERE guild_id = ? AND install IN (SELECT install FROM guild_members WHERE guild_id = ? AND name = ?)")
         .bind(id, id, p.remove),
       env.DB.prepare("DELETE FROM guild_members WHERE guild_id = ? AND name = ?").bind(id, p.remove),
     );
@@ -473,12 +519,14 @@ export default {
       if (req.method === "POST" && cancel) return await cancelCallup(env, req, cancel[1], cancel[2]);
       const send = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})\/callups\/([a-z2-7]{12})\/send$/);
       if (req.method === "POST" && send) return await sendCallup(env, req, send[1], send[2]);
-      const guild = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})(?:\/(me|fights|admin|callups))?$/);
+      const guild = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})(?:\/(me|fights|admin|callups|availability))?$/);
       if (guild) {
         const [, id, part] = guild;
         if (req.method === "POST" && part === "callups") return await createCallup(env, req, id);
         if (req.method === "GET" && !part) return await getGuild(env, url, id);
         if (req.method === "GET" && part === "fights") return await getFights(env, url, id);
+        if (req.method === "GET" && part === "availability") return await getAvailability(env, url, id);
+        if (req.method === "POST" && part === "availability") return await postAvailability(env, req, id);
         if (req.method === "POST" && part === "me") return await postMe(env, req, id);
         if (req.method === "POST" && part === "fights") return await postFight(env, req, id);
         if (req.method === "POST" && part === "admin") return await postAdmin(env, req, id);
@@ -505,6 +553,7 @@ export default {
       env.DB.prepare("DELETE FROM guild_members WHERE seen_ms < ?").bind(now - 60 * DAY),
       env.DB.prepare("DELETE FROM guilds WHERE id NOT IN (SELECT DISTINCT guild_id FROM guild_members)"),
       env.DB.prepare("DELETE FROM guild_callups WHERE at_ms < ? OR guild_id NOT IN (SELECT id FROM guilds)").bind(now - DAY),
+      env.DB.prepare("DELETE FROM guild_availability WHERE (guild_id, install) NOT IN (SELECT guild_id, install FROM guild_members)"),
     ]));
   },
 };
