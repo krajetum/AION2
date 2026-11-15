@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, pickWallet, takeApGains, takeApCatchUp, apSince, type Wallet } from "./wallet.ts";
+import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, pickWallet, takeApGains, takeApCatchUp, apByDay, apSince, type Wallet } from "./wallet.ts";
 
 test("the meter's currencies go on their character; older news does not replace newer", () => {
   const all: Record<string, Wallet> = {};
@@ -94,4 +94,12 @@ test("AP catch-up leaves out the meter's own gains and amounts kept before the r
   assert.equal(takeApCatchUp(old, { owner: "Me", values: { "930100003": 150 }, atMs: 3_000 }, 1_000), false);
   // Spent: nothing.
   assert.equal(takeApCatchUp(all, { owner: "Me", values: { "930100003": 10 }, atMs: 30_000 }, 1_000), false);
+});
+
+test("AP per day: the last days, oldest first, gains outside them left out", () => {
+  const noon = new Date(2026, 10, 15, 12).getTime(), DAY = 86_400_000;
+  const g = (amount: number, atMs: number) => ({ amount, atMs, abyss: true, from: "mobs" as const });
+  const w: Wallet = { values: {}, atMs: 0, apGains: [g(10, noon), g(5, noon - 3_600_000), g(7, noon - 2 * DAY), g(99, noon - 9 * DAY)] };
+  assert.deepEqual(apByDay(w, noon, 3), [7, 0, 15]);
+  assert.deepEqual(apByDay({ values: {}, atMs: 0 }, noon, 2), [0, 0]);
 });

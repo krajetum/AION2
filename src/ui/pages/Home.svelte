@@ -6,7 +6,9 @@
   import { clock, short } from "../../domain/meter.ts";
   import { emptySeason, seasonSummary } from "../../domain/season.ts";
   import { isDone } from "../../domain/tasks.ts";
-  import { formatCountdown } from "../../domain/time.ts";
+  import { formatCountdown, lastBoundary } from "../../domain/time.ts";
+  import { streak, strip } from "../../domain/history.ts";
+  import { RESET_CONFIG as C } from "../../config.ts";
   import { CADENCES } from "../../domain/types.ts";
   import { act, markRead } from "../actions.ts";
   import { hm, LABEL, num } from "../format.ts";
@@ -29,6 +31,17 @@
   const tracked = $derived(ui.data.bosses.filter((b) => ui.data.bossAlerts[b.bossId])
     .sort((a, b) => order[bossState(a, ui.now)] - order[bossState(b, ui.now)] || a.timeMs - b.timeMs));
   const match = $derived(ui.data.arena.matches[0]);
+  // The streak strip: the last 35 daily cycles, newest first (domain/history.ts). The boundaries are found once
+  // per cycle, not every second.
+  const cycle = $derived(lastBoundary("daily", ui.now, C));
+  const starts = $derived.by(() => {
+    const out = [cycle];
+    while (out.length < 35) out.push(lastBoundary("daily", out.at(-1)! - 1, C));
+    return out;
+  });
+  const cells = $derived(strip(ui.data.history, ui.charId, starts, cads[0].all.length > 0 && !cads[0].left.length));
+  const run = $derived(streak(cells));
+  const dayLabel = (t: number) => new Date(t).toLocaleDateString([], { day: "numeric", month: "short" });
   const news = $derived(ui.data.news.slice(0, 4));
 </script>
 
@@ -54,6 +67,12 @@
     {#if cads[0].left.length > 6}<p class="hint">+{cads[0].left.length - 6} more in <a href="#daily">Daily</a></p>{/if}
   </section>
 
+  <section><h2>Daily streak <span class="count">{run} day{run === 1 ? "" : "s"} in a row</span></h2>
+    <div class="streak" role="img" aria-label="{cells.filter(Boolean).length} of the last {cells.length} days with every daily task done">
+      {#each [...cells].reverse() as on, i}<i class:on class:today={i === cells.length - 1} title="{dayLabel(starts[cells.length - 1 - i])}{on ? ': every daily done' : ''}"></i>{/each}</div>
+    <p class="hint">A square per day, the last five weeks, today last: filled when every daily task was done before the reset.</p>
+  </section>
+
   <section><h2>Last arena match <span class="count"><a href="#arena">Arena log</a></span></h2>
     {#if match}{@const t = matchTotals(match)}<dl>
       <dt>Map</dt><dd>{ui.data.arena.maps[match.mapId] || `Map ${match.mapId}`} · {hm(match.startMs)}</dd>
@@ -68,3 +87,10 @@
       <small>{new Date(n.date * 1000).toLocaleDateString([], { dateStyle: "medium" })}</small></article>{:else}<p class="hint">No news yet.</p>{/each}
   </section>
 </div>
+
+<style>
+  .streak { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-top: var(--s-2); }
+  .streak i { width: 16px; height: 16px; border-radius: var(--r-sm); background: var(--raised); }
+  .streak i.on { background: var(--teal); }
+  .streak i.today { outline: 1px solid var(--accent); outline-offset: 1px; }
+</style>

@@ -11,6 +11,7 @@ import { checkNotifications, type Toast } from "./app/notifications.ts";
 import { cueOf, RIFT_MS } from "./domain/mascot.ts";
 import { muteForAnHour } from "./app/settings.ts";
 import { applyResets } from "./domain/resets.ts";
+import { recordKina } from "./domain/history.ts";
 import { BUNDLED_DROPS, takeBundledDrops } from "./domain/map.ts";
 import petDropsUrl from "./assets/pet-drops.json?url";
 import { toast } from "./infra/notifier.ts";
@@ -131,7 +132,10 @@ async function main() {
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(ui.data, now, C).length > 0;
-    if (checkNotifications(ui.data, now, alert, ui.guild?.callups) || reset) await save();
+    // Each character's Kina as last seen today (the Wallet's sparkline, domain/history.ts).
+    let kina = false;
+    for (const [name, w] of Object.entries(ui.data.wallets)) kina = recordKina(ui.data.history, name, w.values, now) || kina;
+    if (checkNotifications(ui.data, now, alert, ui.guild?.callups) || reset || kina) await save();
   }, 1000);
 }
 

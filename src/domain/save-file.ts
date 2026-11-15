@@ -3,6 +3,7 @@ import { cleanBis } from "./bis.ts";
 import { cleanCrafting, emptyCrafting } from "./crafting.ts";
 import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
 import { cleanGuild } from "./guild.ts";
+import { cleanHistory, emptyHistory } from "./history.ts";
 import { cleanAdvent, emptyAdvent } from "./holiday.ts";
 import { cleanMap, emptyMap } from "./map.ts";
 import { cleanCollections } from "./pets.ts";
@@ -38,6 +39,7 @@ export function defaultData(): AppData {
     serverId: null,
     guild: null,
     advent: emptyAdvent(),
+    history: emptyHistory(),
     settings: {
       warnHours: { daily: 2, weekly: 12, monthly: 24 },
       quietStart: "01:00",
@@ -120,6 +122,7 @@ export function normalize(raw: any): AppData {
     serverId: Number.isInteger(raw.serverId) ? raw.serverId : null,
     guild: cleanGuild(raw.guild),
     advent: cleanAdvent(raw.advent),
+    history: cleanHistory(raw.history),
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels,
       mascotGender: rs.mascotGender === "f" ? "f" : "m" },
   };

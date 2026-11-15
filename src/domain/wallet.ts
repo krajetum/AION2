@@ -164,3 +164,14 @@ export function pickWallet(all: Record<string, Wallet>, selected: string | undef
   const names = Object.keys(all);
   return names.length === 1 ? { name: names[0], wallet: all[names[0]] } : undefined;
 }
+
+/** Abyss Points gained per local day over the last `days` days, oldest first, today last (the Wallet's sparkline). */
+export function apByDay(w: Wallet, now: number, days = 7): number[] {
+  const day = (t: number) => new Date(t).setHours(0, 0, 0, 0);
+  const out: number[] = Array(days).fill(0), today = day(now);
+  for (const g of w.apGains ?? []) {
+    const i = days - 1 - Math.round((today - day(g.atMs)) / 86_400_000);
+    if (i >= 0 && i < days) out[i] += g.amount;
+  }
+  return out;
+}

@@ -7,8 +7,8 @@ import type { MeterEvent, Trigger } from "../domain/triggers.ts";
 import type { Cue } from "../domain/mascot.ts";
 import { CADENCES, type AppData, type Cadence } from "../domain/types.ts";
 
-export type Tab = "home" | Cadence | "plan" | "season" | "crafting" | "enhance" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "players" | "guild" | "wiki" | "news" | "settings";
-export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "crafting", "enhance", "bosses", "map", "pets", "dps", "fights", "arena", "players", "guild", "wiki", "news", "settings"];
+export type Tab = "home" | Cadence | "plan" | "season" | "crafting" | "enhance" | "bosses" | "map" | "pets" | "dps" | "fights" | "arena" | "players" | "guild" | "wiki" | "trophies" | "news" | "settings";
+export const TABS: Tab[] = ["home", ...CADENCES, "plan", "season", "crafting", "enhance", "bosses", "map", "pets", "dps", "fights", "arena", "players", "guild", "wiki", "trophies", "news", "settings"];
 /** Sidebar groups, between Home (top), Wiki (after them) and News / Settings (footer). */
 export const GROUPS: [string, Tab[]][] = [["Tasks", [...CADENCES]], ["Plan", ["plan", "season"]], ["Gear", ["crafting", "enhance"]],
   ["World", ["bosses", "map", "pets"]], ["Combat", ["dps", "fights", "arena"]], ["Social", ["players", "guild"]]];

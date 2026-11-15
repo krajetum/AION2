@@ -121,6 +121,7 @@ export interface AppData {
   install: string;          // random id of this install for the crowd Worker (one report per install counts)
   serverId: number | null; // game server of the last character the meter saw (crowd boss timers are per server)
   advent: import("./holiday.ts").Advent; // the Advent calendar's doors opened this season
+  history: import("./history.ts").History; // finished daily cycles per character, Kina per day (src/domain/history.ts)
   guild: import("./guild.ts").GuildLink | null; // the guild this install joined on the crowd Worker (src/domain/guild.ts), with its codes
   settings: Settings;
 }

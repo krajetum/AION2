@@ -135,3 +135,14 @@ test("event alert lead times", () => {
   // App opened late: every passed lead is due at once (the caller toasts once).
   assert.deepEqual(dueLeads([10, 5, 1], 30_000, () => false), [10, 5, 1]);
 });
+
+test("the daily reset keeps the finished cycle of each character in the history, once", () => {
+  const d = makeData();
+  const closedAt = Z("2026-10-05T10:00:00Z"), cycle = lastBoundary("daily", closedAt, C);
+  for (const cad of ["daily", "weekly", "monthly"] as const) d.lastReset[cad] = lastBoundary(cad, closedAt, C);
+  delete d.progress.b.daily; // B did not finish
+  applyResets(d, Z("2026-10-08T10:00:00Z"), C); // three resets later: still that one cycle
+  assert.deepEqual(d.history.dailies, { a: [cycle] });
+  applyResets(d, Z("2026-10-08T10:00:10Z"), C);
+  assert.deepEqual(d.history.dailies, { a: [cycle] });
+});

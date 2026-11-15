@@ -9,7 +9,7 @@
   import { gameActive } from "../app/crowd.ts";
   import { bossBoard, bossLabel } from "../domain/bosses.ts";
   import { classColor, sameName } from "../domain/meter.ts";
-  import { apSince, pickWallet, walletRows } from "../domain/wallet.ts";
+  import { apByDay, apSince, pickWallet, walletRows } from "../domain/wallet.ts";
   import { isImportant } from "../domain/news.ts";
   import { emptySeason, seasonSummary } from "../domain/season.ts";
   import { isDone } from "../domain/tasks.ts";
@@ -39,6 +39,9 @@
   import Enhance from "./pages/Enhance.svelte";
   import Settings from "./pages/Settings.svelte";
   import Wiki from "./pages/Wiki.svelte";
+  import Trophies from "./pages/Trophies.svelte";
+  import Spark from "./parts/Spark.svelte";
+  import { tally, trophies } from "../domain/trophies.ts";
   import TaskList from "./pages/TaskList.svelte";
   import Amount from "./parts/Amount.svelte";
   import Confetti from "./parts/Confetti.svelte";
@@ -69,6 +72,8 @@
       "--magenta-bg": `color-mix(in srgb, ${accent} 28%, var(--ground))`, "--magenta-ink": `color-mix(in srgb, ${accent} 55%, #fff)` };
     for (const [k, v] of Object.entries(set)) if (accent) root.setProperty(k, v); else root.removeProperty(k);
   });
+  // Once an hour is enough for what only the date changes (the trophies' count in the sidebar).
+  const hour = $derived(Math.floor(ui.now / 3_600_000) * 3_600_000);
   const unread = $derived(ui.data.news.filter((n) => !n.read).length);
   const plan = $derived(activePlan(ui.data, ui.charId, ui.now));
   const bosses = $derived(bossBoard(ui.data.bosses, ui.now));
@@ -95,6 +100,9 @@
   // Abyss Points gained since the daily reset, by where they came from (click the row).
   const apToday = $derived(wallet && wallet.values[930_100_003] != null ? apSince(wallet, lastBoundary("daily", ui.now, C)) : null);
   let apOpen = $state(false);
+  // Sparklines: Abyss Points gained per day (the gains are kept 8 days), Kina at the end of each day (domain/history.ts).
+  const apDays = $derived(wallet ? apByDay(wallet, hour) : []);
+  const kinaDays = $derived((picked ? ui.data.history.kina[picked.name] : undefined)?.map((p) => p[1]) ?? []);
   const offer = $derived(playing && playing !== dismissed && detected?.id !== ui.charId ? playing : "");
   function switchTo() {
     if (detected) { ui.charId = detected.id; doneHere.clear(); }
@@ -117,6 +125,7 @@
 
   function badge(t: Tab) {
     if (t === "home" || t === "settings" || t === "news" || t === "dps" || t === "wiki" || t === "enhance" || t === "players" || t === "guild") return "";
+    if (t === "trophies") { const n = tally(trophies(ui.data, ui.fights, ui.charId, hour)); return `${n.earned}/${n.total}`; }
     if (t === "map") return ui.data.map.points.length ? num(ui.data.map.points.length) : "";
     if (t === "pets") {
       // Pets at level 3, of those owned, for the character read last.
@@ -181,6 +190,7 @@
       {#each tabs as t}{@render tab(t)}{/each}
     </details>{/each}
     {@render tab("wiki")}
+    {@render tab("trophies")}
     <div class="side-foot">{@render tab("news")}{@render tab("settings")}</div>
   </nav>
   {#snippet tab(t: Tab)}{@const b = badge(t)}<button class="tab" title={PAGE[t][0]} aria-current={t === ui.tab ? "page" : undefined} onclick={() => go(t)}>
@@ -201,7 +211,7 @@
       <button class="ghost" aria-label="Not now" title="Not now" onclick={() => { ui.suggest = null; }}>{@html ICON.close}</button></div>{/if}
     {#each ui.data.news.filter((n) => !n.read && isImportant(n)) as n (n.gid)}<div class="banner info"><a href={n.url} target="_blank" rel="noopener" onclick={() => markRead(n.gid)}>{n.title}</a>
       <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => markRead(n.gid)}>{@html ICON.close}</button></div>{/each}
-    {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "crafting"}<Crafting />{:else if ui.tab === "enhance"}<Enhance />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "players"}<Players />{:else if ui.tab === "guild"}<Guild />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "wiki"}<Wiki />{:else}<TaskList cad={ui.tab} />{/if}
+    {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "crafting"}<Crafting />{:else if ui.tab === "enhance"}<Enhance />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "players"}<Players />{:else if ui.tab === "guild"}<Guild />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "wiki"}<Wiki />{:else if ui.tab === "trophies"}<Trophies />{:else}<TaskList cad={ui.tab} />{/if}
   </main>
 
   <aside class="inspector" aria-label="Timers">
@@ -212,9 +222,9 @@
     {#if s.mutedUntil > ui.now}<span class="chip">Muted until {hm(s.mutedUntil)}<button onclick={() => act(() => unmute(ui.data))}>Unmute</button></span>{/if}
     {#if meter}<div class="meter-dot {meter}"><span class="dot"></span>Meter {meter === "connected" ? "connected" : meter === "searching" ? "searching" : meter === "waiting-game" ? "waiting for the game" : "no capture"}</div>{/if}
     {#if wallet}<details open title="As the game last sent them{wallet.atMs ? ` (${hm(wallet.atMs)})` : ""}: currencies when you enter the world and whenever one changes, Odyle energy when the game sends it"><summary class="label">{@html ICON.chevron}Wallet{#if picked && !sameName(picked.name, selName)}<span class="wallet-of"> · {picked.name}</span>{/if}</summary>
-      {#each walletRows(wallet, s.sumKina) as r ((picked?.name ?? "") + r.name)}<div class="timer event"><small>{r.name}</small><Amount value={r.value} /></div>{/each}
+      {#each walletRows(wallet, s.sumKina) as r ((picked?.name ?? "") + r.name)}<div class="timer event"><small>{r.name}</small>{#if r.name.startsWith("Kina")}<Spark values={kinaDays} label="Kina and bound Kina, the last {kinaDays.length} days" />{/if}<Amount value={r.value} /></div>{/each}
       {#if apToday}<button class="plain timer event ap-today" aria-expanded={apOpen} title="Abyss Points gained since the daily reset: click for where they came from"
-        onclick={() => { apOpen = !apOpen; }}><small>AP today</small><span>{num(apToday.total)}</span></button>
+        onclick={() => { apOpen = !apOpen; }}><small>AP today</small><Spark values={apDays} label="Abyss Points gained per day, the last 7 days" /><span>{num(apToday.total)}</span></button>
         {#if apOpen}<div class="ap-split">
           {#each [["In the Abyss", apToday.abyss], ["Elsewhere", apToday.elsewhere]] as [label, s] (label)}{@const t = (s as typeof apToday.abyss)}
             <div><b>{label}</b> <span>{num(t.players + t.mobs + t.other)}</span></div>

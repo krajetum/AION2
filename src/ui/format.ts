@@ -21,6 +21,7 @@ export const PAGE: Record<Tab, [string, string]> = {
   players: ["Players", "Any character's official profile: combat power, item level, stats."],
   guild: ["Guild", "Boss alerts in Discord, the members' gear and their boss fights."],
   wiki: ["Wiki", "Dungeons from online guides: requirements, drops, bosses and the rules they share."],
+  trophies: ["Trophies", "Badges for what you have done, counted from what the app keeps."],
   news: ["News", "Official announcements from Steam."],
   settings: ["Settings", "Characters, notifications and data."],
 };
