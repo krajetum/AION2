@@ -9,7 +9,11 @@
 
   const SCALE = 2, SIZE = FRAME * SCALE;
 
-  let width = $state(800), height = $state(600);
+  // The stage is the window right of the sidebar (232 px, the 52 px icon rail when narrow: style.css), so the mascot
+  // never stands on the page links.
+  let winWidth = $state(800), height = $state(600);
+  const side = $derived(winWidth <= 760 ? 52 : 232);
+  const width = $derived(winWidth - side);
   const profile = $derived(ui.meter?.profile);
   const sheet = $derived(profile && ui.data.settings.mascot ? sheetFor(profile.job, ui.data.settings.mascotGender, profile.serverId) : null);
 
@@ -76,9 +80,9 @@
   }
 </script>
 
-<svelte:window bind:innerWidth={width} bind:innerHeight={height} />
+<svelte:window bind:innerWidth={winWidth} bind:innerHeight={height} />
 
-{#if sheet && body}<div class="mascot-stage">
+{#if sheet && body}<div class="mascot-stage" style:left="{side}px">
   {#if anim === "rift"}<i class="mascot-vortex" style:left="{body.dir > 0 ? body.x + SIZE - 6 : body.x - 70}px" style:bottom="{body.y + 8}px"></i>{/if}
   <button class="mascot" aria-label="Mascot: drag it, throw it, shake it" title="" style:left="{body.x + shake}px" style:bottom="{body.y + hop}px"
     style:width="{SIZE}px" style:height="{SIZE}px" style:background-image="url(/mascots/{sheet}.png)"

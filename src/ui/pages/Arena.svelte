@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from "../parts/Empty.svelte";
   import { classIcon } from "../classes.ts";
   import { labelMap } from "../../app/arena.ts";
   import { KNOWN_MAPS, mapLabel, matchTotals } from "../../domain/arena.ts";
@@ -47,11 +48,11 @@
   const offOf = (p: { name: string; serverId: number | null }) => (p.name && p.serverId ? official[okey(p.name, p.serverId)] ?? null : null);
 </script>
 
-<p class="hint intro">PvP on an instance map is logged when you leave it. Name a map once (e.g. “Arena of Solitude”) and its matches get that name.
+<details class="intro"><summary>How it works</summary><p class="hint">PvP on an instance map is logged when you leave it. Name a map once (e.g. “Arena of Solitude”) and its matches get that name.
   Yours and your party's gear come from the game; opponents' GS (item level) and CP come from their official profile when you open the match.
-  Click a player, then "Gear and stats" for their whole official profile.</p>
+  Click a player, then "Gear and stats" for their whole official profile.</p></details>
 
-{#if !log.matches.length}<p class="empty">No match yet. Keep the companion open while you play an arena match.</p>
+{#if !log.matches.length}<Empty>No match yet. Keep the companion open while you play an arena match.</Empty>
 {:else}<section class="dps-table"><div class="scroll"><table class="sheet">
   <thead><tr><th>When</th><th>Map</th><th class="n">Time</th><th class="n">Dealt</th><th class="n">Taken</th><th class="n">Deaths</th></tr></thead>
   <tbody>{#each log.matches as m (key(m))}{@const t = matchTotals(m)}{@const k = key(m)}

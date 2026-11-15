@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from "../parts/Empty.svelte";
   import { SvelteSet } from "svelte/reactivity";
   import { clock, displayName, hpLeft, short, STATUS_TEXT, TARGET_MODES, viewRows, VIEWS, type MeterUpdate, classColor, skillIconUrl } from "../../domain/meter.ts";
   import { meterOverlay, netOverlay, meterPartyOnly, meterPause, meterReconnect, meterReset, meterTargetMode, meterView, meterWatch, onMeter } from "../../infra/meter.ts";
@@ -41,13 +42,26 @@
   });
 </script>
 
-<p class="hint intro">Reads a copy of the game's network traffic through Npcap. Never touches the game's memory or files.
-  Third-party tools may be against the game's terms of service: use at your own risk.
-  {#if idle}The fight resets after {idle} s without damage, healing or damage taken (Settings).{/if}</p>
+<p class="hint intro">Third-party tools may be against the game's terms of service: use at your own risk.</p>
+<details class="intro"><summary>How it works</summary>
+  <p class="hint">Reads a copy of the game's network traffic through Npcap. Never touches the game's memory or files.
+    {#if idle}The fight resets after {idle} s without damage, healing or damage taken (Settings).{/if}</p>
+  <!-- What the game has told the companion besides the fight: shows which of these never arrived. -->
+  {#if u}{@const maps = new Set(u.bosses.map((b) => b.mapId))}
+  <p class="hint">Game data: playing <b>{u.profile?.name ?? "not said yet"}</b>{#if u.profile?.level} (lv {u.profile.level}){/if}
+    · Odyle {u.odyle ? `${u.odyle.basic}/${u.odyle.charged} (${u.odyle.owner ?? "owner not said yet"})` : "not sent yet"}
+    · boss maps read: {maps.size} ({u.bosses.length} bosses: {u.bosses.filter((b) => b.up).length} up, {u.bosses.filter((b) => !b.up && b.timeMs > Date.now()).length} respawning, {u.bosses.filter((b) => !b.timeMs).length} no time)
+    · saved boss timers: {ui.data.bosses.length}</p>{/if}
+</details>
 
 {#if !u || !f}<section><p class="hint">Starting the meter…</p></section>{:else}
   <div class="dps-status {u.status}"><span class="dot"></span><b>{STATUS_TEXT[u.status]}</b><span>{u.message}</span>
-    {#if u.pingMs != null}<span class="ping num">{u.pingMs} ms{#if u.lossPct != null} · <span title="Packets resent on the game connection in the last minute: at most the real loss">{u.lossPct.toFixed(1)}% loss</span>{/if}</span>{/if}</div>
+    <span class="grow"></span>
+    {#if u.pingMs != null}<span class="num">{u.pingMs} ms{#if u.lossPct != null} · <span title="Packets resent on the game connection in the last minute: at most the real loss">{u.lossPct.toFixed(1)}% loss</span>{/if}</span>{/if}
+    <!-- The meter's own controls sit with its status; the toolbar below is only what to show. -->
+    <button class="ghost" aria-pressed={u.paused} onclick={() => run(() => meterPause(!u!.paused))}>{u.paused ? "Resume" : "Pause"}</button>
+    <button class="ghost" onclick={() => run(async () => { await meterReset(); open.clear(); })}>Reset</button>
+    <button class="ghost" onclick={() => run(async () => { await meterReconnect(); showStatus("Looking for the game connection again…"); })}>Reconnect</button></div>
   {#if lostRecently}<p class="hint warn-line">The meter fell behind the game's traffic and lost {lostRecently.toLocaleString("en-US")} packets in the
     last minute: the numbers above miss some hits. It happens in very crowded fights (sieges).</p>{/if}
 
@@ -56,30 +70,24 @@
       to Administrators only”, the companion must run as administrator.</p></section>
   {:else if u.status === "searching"}<p class="hint">Still searching after a fight? Hit Reconnect, or start the companion before the game.</p>{/if}
 
-  <!-- What the game has told the companion besides the fight: shows which of these never arrived. -->
-  {@const maps = new Set(u.bosses.map((b) => b.mapId))}
-  <p class="hint">Game data: playing <b>{u.profile?.name ?? "not said yet"}</b>{#if u.profile?.level} (lv {u.profile.level}){/if}
-    · Odyle {u.odyle ? `${u.odyle.basic}/${u.odyle.charged} (${u.odyle.owner ?? "owner not said yet"})` : "not sent yet"}
-    · boss maps read: {maps.size} ({u.bosses.length} bosses: {u.bosses.filter((b) => b.up).length} up, {u.bosses.filter((b) => !b.up && b.timeMs > Date.now()).length} respawning, {u.bosses.filter((b) => !b.timeMs).length} no time)
-    · saved boss timers: {ui.data.bosses.length}</p>
-
-  <div class="toolbar start dps-tools">
+  <!-- One toolbar: what to show from the left (target, who, which numbers), the overlays on the right. -->
+  <div class="toolbar start">
     <label>Target <select aria-label="Target mode" value={f.targetMode} onchange={(e) => run(() => meterTargetMode(e.currentTarget.value))}>
       {#each TARGET_MODES as [id, label]}<option value={id}>{label}</option>{/each}</select></label>
     <div class="seg" role="group" aria-label="Who to show">
-      <button class:on={!u.partyOnly} aria-pressed={!u.partyOnly} onclick={() => run(() => meterPartyOnly(false))}>Everyone on target</button>
+      <button class:on={!u.partyOnly} aria-pressed={!u.partyOnly} title="Everyone on the target" onclick={() => run(() => meterPartyOnly(false))}>Everyone</button>
       <button class:on={u.partyOnly} aria-pressed={u.partyOnly} onclick={() => run(() => meterPartyOnly(true))}>My party</button>
     </div>
     <div class="seg" role="group" aria-label="Show">
       {#each VIEWS as [id, label]}<button class:on={view === id} aria-pressed={view === id} onclick={() => run(() => meterView(id))}>{label}</button>{/each}
     </div>
-    <button aria-pressed={u.paused} onclick={() => run(() => meterPause(!u!.paused))}>{u.paused ? "Resume" : "Pause"}</button>
-    <button onclick={() => run(async () => { await meterReset(); open.clear(); })}>Reset</button>
-    <button class="ghost" onclick={() => run(async () => { await meterReconnect(); showStatus("Looking for the game connection again…"); })}>Reconnect</button>
-    <button class:primary={ui.overlay} disabled={!isDesktop()} title={isDesktop() ? "Shows during fights, hides after " + idleText : "Desktop app only"}
-      onclick={() => run(async () => { const on = !ui.overlay; await act(() => { ui.data.settings.dpsOverlay = on; }); await meterOverlay(on); })}>{ui.overlay ? "Overlay on" : "Overlay"}</button>
-    <button class:primary={ui.data.settings.netOverlay} disabled={!isDesktop()} title={isDesktop() ? "A small always-on-top line with the ping and packet loss" : "Desktop app only"}
-      onclick={() => run(async () => { const on = !ui.data.settings.netOverlay; await act(() => { ui.data.settings.netOverlay = on; }); await netOverlay(on); })}>{ui.data.settings.netOverlay ? "Ping overlay on" : "Ping overlay"}</button>
+    <span class="grow"></span>
+    <div class="seg" role="group" aria-label="Overlays">
+      <button class:on={ui.overlay} aria-pressed={ui.overlay} disabled={!isDesktop()} title={isDesktop() ? "The DPS overlay: shows during fights, hides after " + idleText : "Desktop app only"}
+        onclick={() => run(async () => { const on = !ui.overlay; await act(() => { ui.data.settings.dpsOverlay = on; }); await meterOverlay(on); })}>Overlay</button>
+      <button class:on={ui.data.settings.netOverlay} aria-pressed={ui.data.settings.netOverlay} disabled={!isDesktop()} title={isDesktop() ? "A small always-on-top line with the ping and packet loss" : "Desktop app only"}
+        onclick={() => run(async () => { const on = !ui.data.settings.netOverlay; await act(() => { ui.data.settings.netOverlay = on; }); await netOverlay(on); })}>Ping overlay</button>
+    </div>
   </div>
 
   {#if ui.recentFights.length}<div class="toolbar start"><label>Showing <select aria-label="Fight shown" value={past ? String(past.endMs) : ""}
@@ -112,5 +120,5 @@
             {:else}<tr><td colspan="6" class="dim">{past ? "Skills kept only for you and the players open during the fight." : "No skill data yet."}</td></tr>{/each}</tbody></table></td></tr>{/if}
       {/each}</tbody></table></div><p class="hint">{view === "taken" ? "Damage taken from the fight's monsters." : "Click a player for the skill breakdown."}{#if unnamed}&nbsp;Players shown as #number: the game sends
         names on loading screens (teleport, zone change, dungeon), so start the companion before you enter.{/if}</p></section>
-  {:else}<p class="empty">{view === "healing" ? "No healing yet." : view === "taken" ? "No damage taken yet." : u.partyOnly ? "No damage from your party yet." : "No fight yet. Hit something."}</p>{/if}
+  {:else}<Empty>{view === "healing" ? "No healing yet." : view === "taken" ? "No damage taken yet." : u.partyOnly ? "No damage from your party yet." : "No fight yet. Hit something."}</Empty>{/if}
 {/if}

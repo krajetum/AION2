@@ -316,11 +316,11 @@
   const mapName = (k: MapKey) => worldMap(k).name;
 </script>
 
-<p class="hint intro">Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
+<details class="intro"><summary>How it works</summary><p class="hint">Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
   of yours that gives soul points is put where the mob died (desktop app with the meter running). Each map can use your own image
   instead of the bundled one: it stays only on this PC. The gold dot is you: the game says where you are on teleports and whenever a
   buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running). On a mount it turns
-  into a horse and moves only when you jump; gliding, into a wing, and moves when you land: the game sends no position meanwhile.</p>
+  into a horse and moves only when you jump; gliding, into a wing, and moves when you land: the game sends no position meanwhile.</p></details>
 {#if error}<p class="hint error">{error}</p>{/if}
 {#if notice}<p class="hint">{notice}</p>{/if}
 
@@ -380,7 +380,7 @@
             <input type="checkbox" bind:checked={onlyWanted} disabled={!collection} onchange={() => { if (onlyWanted) { pet = ""; selectedDrop = ""; } }}> Only pets still to collect</label>
           {#if active}<button class="ghost showing" title="Show every soul's spots" onclick={() => { pet = ""; selectedDrop = ""; }}>Showing: {active} ✕</button>{/if}
           <ul class="pet-list" aria-label="Pets">
-            {#each pets as e (e.name)}<li><button class:on={pet.toLowerCase() === e.name.toLowerCase()} aria-pressed={pet.toLowerCase() === e.name.toLowerCase()}
+            {#each pets as e (e.name)}<li><button class="plain" class:on={pet.toLowerCase() === e.name.toLowerCase()} aria-pressed={pet.toLowerCase() === e.name.toLowerCase()}
               onclick={() => choosePet(e.name)}><span class="name">{e.name}</span>
               <span class="hint">{e.mobs.length ? `from ${e.mobs.join(", ")} · ` : ""}{e.drops ? `${num(e.drops)} spot${e.drops === 1 ? "" : "s"}` : "no spots yet"}{e.maps.length ? ` · ${e.maps.map(mapName).join(", ")}` : ""}</span></button></li>
             {:else}<li class="hint">{query.trim() ? `No soul or mob named like "${query.trim()}" yet.` : "No souls yet: kill a mob that gives soul points (meter running) and it joins the list."}</li>{/each}

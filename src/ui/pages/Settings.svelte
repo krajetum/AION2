@@ -75,7 +75,7 @@
   <section><h2>Characters</h2>
     {#each ui.data.characters as c (c.id)}<div class="setting"><input value={c.name} aria-label="Character name" autocomplete="off"
       onchange={(e) => commit(e, (v) => renameCharacter(ui.data, c.id, v), () => c.name)}>{#if ui.data.characters.length > 1}<button onclick={() => del(c.id)}>Delete</button>{/if}</div>{/each}
-    <div class="setting"><input id="new-char" placeholder="New character name…" aria-label="New character name" autocomplete="off" bind:this={newChar}><button onclick={add}>Add</button></div>
+    <div class="setting"><input id="new-char" placeholder="New character name…" aria-label="New character name" autocomplete="off" bind:this={newChar}><button class="primary" onclick={add}>Add</button></div>
   </section>
   <section><h2>Reset warnings</h2>
     {#each CADENCES as c}<label class="setting"><span>{LABEL[c]} reset</span>

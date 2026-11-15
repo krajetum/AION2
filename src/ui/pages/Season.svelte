@@ -67,7 +67,7 @@
   <thead><tr><th>Mission</th><th>Steps done</th><th class="n">AP</th><th class="n">Claimed</th><th class="n">Left</th><th class="c">Counted</th></tr></thead>
   <tbody>{#each missions.filter((x) => x.m.tab === t.tab) as { m, i }}{@const c = claimedOf(m, s)}{@const rem = remainingOf(m, s)}{@const done = stepsOf(m, s)}
     <tr class:done={rem <= 0} class:off={!isCounted(m, s)}>
-    <td><button class="mission" title={done >= m.steps ? "Mark as not done" : "Mark as done"} onclick={() => act(() => setSteps(ui.data, ui.charId, i, done >= m.steps ? 0 : m.steps))}>{@render named(m)}</button></td>
+    <td><button class="plain mission" title={done >= m.steps ? "Mark as not done" : "Mark as done"} onclick={() => act(() => setSteps(ui.data, ui.charId, i, done >= m.steps ? 0 : m.steps))}>{@render named(m)}</button></td>
     <td>{@render pips(m.name, m.steps, done, (n) => setSteps(ui.data, ui.charId, i, n))}</td>
     <td class="n">{m.ap ? num(m.ap) : "–"}</td>
     <td class="n">{@render coins(c)} <span class="of">/ {num(m.coins)}</span></td>
@@ -77,7 +77,7 @@
   <thead><tr><th>Tab</th><th>Mission</th><th>Done this week</th><th class="n">Coins</th><th class="n">AP</th><th class="c">Counted</th></tr></thead>
   <tbody>{#each WEEKLY as m, i}{@const done = weekStepsOf(m, s, week)}<tr class:off={!isIncluded(m, s)} class:done={done >= m.steps}>
     <td class="dim">{m.tab}</td>
-    <td><button class="mission" title={done >= m.steps ? "Mark as not done" : "Mark as done"} onclick={() => act(() => setWeekSteps(ui.data, ui.charId, i, done >= m.steps ? 0 : m.steps, week))}>{@render named(m)}</button></td>
+    <td><button class="plain mission" title={done >= m.steps ? "Mark as not done" : "Mark as done"} onclick={() => act(() => setWeekSteps(ui.data, ui.charId, i, done >= m.steps ? 0 : m.steps, week))}>{@render named(m)}</button></td>
     <td>{@render pips(m.name, m.steps, done, (n) => setWeekSteps(ui.data, ui.charId, i, n, week))}</td>
     <td class="n">{@render coins(stepCoins(m.coins, m.steps, done))} <span class="of">/ {num(m.coins)}</span></td><td class="n">{m.ap ? num(m.ap) : "–"}</td>
     <td class="c">{@render sw(isIncluded(m, s), `Count ${m.name}`, (on) => setIncluded(ui.data, ui.charId, i, on))}</td></tr>{/each}</tbody></table></div>

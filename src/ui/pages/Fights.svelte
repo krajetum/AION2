@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from "../parts/Empty.svelte";
   import { classIcon } from "../classes.ts";
   import { mapLabel } from "../../domain/arena.ts";
   import { fightText, personalBests, you, yourDps, type FightRecord } from "../../domain/fights.ts";
@@ -37,10 +38,10 @@
   const copy = (f: FightRecord) => navigator.clipboard.writeText(fightText(f)).then(() => showStatus("Fight copied"), () => showStatus("Copy failed"));
 </script>
 
-<p class="hint intro">Every boss fight of at least 10 s is kept when the meter resets it (idle, Reset, or a new target).
-  Skill breakdowns are kept for you only. Tick two fights to compare them.</p>
+<details class="intro"><summary>How it works</summary><p class="hint">Every boss fight of at least 10 s is kept when the meter resets it (idle, Reset, or a new target).
+  Skill breakdowns are kept for you only. Tick two fights to compare them.</p></details>
 
-{#if !ui.fights.length}<p class="empty">No fight yet. Keep the companion open while you fight a boss.</p>
+{#if !ui.fights.length}<Empty>No fight yet. Keep the companion open while you fight a boss.</Empty>
 {:else}
   <div class="toolbar start">
     <label>Boss <select bind:value={boss}><option value="">All bosses</option>{#each bossNames as b}<option>{b}</option>{/each}</select></label>

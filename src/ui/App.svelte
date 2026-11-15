@@ -174,17 +174,15 @@
     {@html ICON[t]}<span class="lbl">{PAGE[t][0]}</span>{#if t === "news"}{#if unread}<span class="badge">{unread}</span>{/if}{:else if b}<span class="count">{b}</span>{/if}</button>{/snippet}
 
   <main>
+    <div class="page-head"><h1>{PAGE[ui.tab][0]}</h1><p>{PAGE[ui.tab][1]}</p></div>
     {#if ui.update && ui.update.version !== updateHidden}<div class="banner update"><span class="grow">{#if ui.updating}{ui.updating}{:else}<b>AION 2 Companion {ui.update.version}</b> is ready.{/if}</span>
       <a class="whats-new" href="https://github.com/krajetum/AION2/releases/tag/v{ui.update.version}" target="_blank" rel="noopener">What's new</a>
       <button disabled={ui.updating.startsWith("Downloading") || ui.updating.startsWith("Updating")} onclick={install}>{gameActive(ui.now) ? "Install & restart (stops the meter)" : "Install & restart"}</button>
       <button class="ghost" aria-label="Later" title="Later" onclick={() => { updateHidden = ui.update!.version; }}>{@html ICON.close}</button></div>{/if}
-    <div class="bday"><img src={balloons} alt="" /><img src={cake} alt="" />
+    <!-- The birthday strip: on Home while it counts down, on every page on the day. -->
+    {#if ui.tab === "home" || !bday}<div class="bday"><img src={balloons} alt="" /><img src={cake} alt="" />
       <div class="grow"><b>Hopex's Birthday</b><span>{bday ? `in ${bday}` : "Happy birthday, Hopex!"}</span></div>
-      <img src={gift} alt="" /><img src={confetti} alt="" /></div>
-    <div class="page-head"><h1>{PAGE[ui.tab][0]}</h1><p>{PAGE[ui.tab][1]}</p></div>
-    {#if offer}<div class="banner"><span class="grow">Playing <b>{offer}</b> in game.</span>
-      <button onclick={switchTo}>{detected ? "Switch" : "Add character"}</button>
-      <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => { dismissed = offer; }}>{@html ICON.close}</button></div>{/if}
+      <img src={gift} alt="" /><img src={confetti} alt="" /></div>{/if}
     {#if ui.suggest && suggested}<div class="banner info"><span class="grow">Tick <b>{suggested.name}</b> by itself next time you:</span>
       {#each ui.suggest.triggers as tr}<button onclick={() => learn(tr)}>{triggerLabel(tr, ui.data.arena.maps)}</button>{/each}
       <button class="ghost" aria-label="Not now" title="Not now" onclick={() => { ui.suggest = null; }}>{@html ICON.close}</button></div>{/if}
@@ -196,11 +194,13 @@
   <aside class="inspector" aria-label="Timers">
     <label class="char"><span class="label">Character</span><select id="char" value={ui.charId} onchange={(e) => { ui.charId = e.currentTarget.value; doneHere.clear(); }}>
       {#each ui.data.characters as c (c.id)}<option value={c.id}>{c.name}</option>{/each}</select></label>
+    {#if offer}<span class="chip"><span class="grow">Playing <b>{offer}</b></span><button onclick={switchTo}>{detected ? "Switch" : "Add"}</button>
+      <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => { dismissed = offer; }}>{@html ICON.close}</button></span>{/if}
     {#if s.mutedUntil > ui.now}<span class="chip">Muted until {hm(s.mutedUntil)}<button onclick={() => act(() => unmute(ui.data))}>Unmute</button></span>{/if}
     {#if meter}<div class="meter-dot {meter}"><span class="dot"></span>Meter {meter === "connected" ? "connected" : meter === "searching" ? "searching" : meter === "waiting-game" ? "waiting for the game" : "no capture"}</div>{/if}
     {#if wallet}<details open title="As the game last sent them{wallet.atMs ? ` (${hm(wallet.atMs)})` : ""}: currencies when you enter the world and whenever one changes, Odyle energy when the game sends it"><summary class="label">{@html ICON.chevron}Wallet{#if picked && !sameName(picked.name, selName)}<span class="wallet-of"> · {picked.name}</span>{/if}</summary>
       {#each walletRows(wallet, s.sumKina) as r (r.name)}<div class="timer event"><small>{r.name}</small><span>{num(r.value)}</span></div>{/each}
-      {#if apToday}<button class="timer event ap-today" aria-expanded={apOpen} title="Abyss Points gained since the daily reset: click for where they came from"
+      {#if apToday}<button class="plain timer event ap-today" aria-expanded={apOpen} title="Abyss Points gained since the daily reset: click for where they came from"
         onclick={() => { apOpen = !apOpen; }}><small>AP today</small><span>{num(apToday.total)}</span></button>
         {#if apOpen}<div class="ap-split">
           {#each [["In the Abyss", apToday.abyss], ["Elsewhere", apToday.elsewhere]] as [label, s] (label)}{@const t = (s as typeof apToday.abyss)}

@@ -171,7 +171,7 @@
     <span class="grow"></span>
     {#if own}<button class="ghost" disabled={gs.busy} onclick={backToEvery} title="Forget this week's own hours: your every-week hours count again">Use my usual hours</button>{/if}
     <button class="ghost" disabled={!dirty || gs.busy} onclick={reset}>Undo changes</button>
-    <button disabled={!dirty || gs.busy} onclick={save}>Save</button>
+    <button class="primary" disabled={!dirty || gs.busy} onclick={save}>Save</button>
   </div>
   <p class="hint small">{scope === "every"
     ? "Your usual week: it counts for every week that has no hours of its own."
@@ -223,11 +223,12 @@
           <div class="callup">
           {#if !c}<span class="dim">Already begun</span>
           {:else}{@const on = planned(c.atMs)}
-            <button class="switch" class:on={!!on} role="switch" aria-checked={!!on} disabled={gs.busy}
-              onclick={() => (on ? cancelIt(d, on.id) : makeCallup(d))}
+            <label class="switch"
               title={on ? "On: reminders now, 3 h and 1 h before. Switch off to cancel the raid and post \"Raid cancelled\" (@everyone)"
                 : "@everyone, the names of those free, 'Your spot is not guaranteed': posted now, 3 h and 1 h before"}>
-              <i aria-hidden="true"></i>{on ? "Call-up on" : "Make a call-up"}</button>
+              <!-- The app's switch; it shows what is planned, so it moves once the Worker has it. -->
+              <input type="checkbox" role="switch" checked={!!on} disabled={gs.busy}
+                onchange={(e) => { e.currentTarget.checked = !!on; if (on) cancelIt(d, on.id); else makeCallup(d); }}>{on ? "Call-up on" : "Make a call-up"}</label>
             <button class="ghost" disabled={gs.busy || !view.hasWebhook} onclick={() => testIt(d)}
               title={view.hasWebhook ? "Post it once to Discord with @everyone, to check the ping: nothing planned" : "Set a Discord webhook first"}>Test ping</button>{/if}
           </div>
@@ -290,12 +291,7 @@
   .best li { margin-bottom: 6px; }
   .best li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; }
   .callup { display: flex; gap: 6px; justify-content: flex-end; }
-  /* The call-up toggle: off = make one, on = planned (switch it off to cancel the raid). */
-  .switch { display: inline-flex; align-items: center; gap: 8px; }
-  .switch i { width: 26px; height: 14px; border-radius: 7px; background: var(--ground); position: relative; flex: none; transition: background .15s; }
-  .switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
-  .switch.on i { background: var(--ok-fill); }
-  .switch.on i::after { transform: translateX(12px); background: var(--white); }
+  .callup .switch { font-size: var(--fs-sm); }
   .callup button { height: 26px; padding: 0 10px; font-size: var(--fs-sm); }
   .who { columns: 2; padding-left: 18px; margin: 4px 0; }
   h3 { font-size: var(--fs-lg); margin: 14px 0 6px; }

@@ -80,8 +80,8 @@
 <datalist id="craft-items">{#each items as it (it.id)}<option value={it.name}></option>{/each}</datalist>
 
 {#if view === "bill"}
-<p class="hint intro">Each target's recipe tree, then what it all comes to: {char || "the selected character"}'s pieces first, then crafts, then purchases at the prices you set.
-  Best case: every craft succeeds (a COMBO in game is a bonus on top). A material with no recipe and no price is one to farm (Bound ones).</p>
+<details class="intro"><summary>How it works</summary><p class="hint">Each target's recipe tree, then what it all comes to: {char || "the selected character"}'s pieces first, then crafts, then purchases at the prices you set.
+  Best case: every craft succeeds (a COMBO in game is a bonus on top). A material with no recipe and no price is one to farm (Bound ones).</p></details>
 {#if !c.game}{@render loader()}{/if}
 <div class="kpis">
   <Kpi label="To buy" value={num(bill.buyKina)} sub={bill.unpriced.length ? `${bill.unpriced.length} without a price` : "Kina at market prices"} />
@@ -143,8 +143,8 @@
   </table></div></section>{/if}
 
 {:else}
-<p class="hint intro">Every item, raw or crafted: a recipe is what one craft takes. An input typed that doesn't exist yet is added as a new item.
-  The item code is the game's (aion2hub shows it in the item's link), for reading your inventory in a later version.</p>
+<details class="intro"><summary>How it works</summary><p class="hint">Every item, raw or crafted: a recipe is what one craft takes. An input typed that doesn't exist yet is added as a new item.
+  The item code is the game's (aion2hub shows it in the item's link), for reading your inventory in a later version.</p></details>
 {@render loader()}
 <section class="dps-table"><h2>Items <span class="count">{items.length}</span></h2>
   <input class="craft-search" type="search" placeholder="Search an item" aria-label="Search an item" autocomplete="off" bind:value={query}>

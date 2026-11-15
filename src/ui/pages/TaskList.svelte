@@ -7,6 +7,7 @@
   import { LABEL } from "../format.ts";
   import { showStatus } from "../overlays.ts";
   import EditRow from "../parts/EditRow.svelte";
+  import Empty from "../parts/Empty.svelte";
   import TaskRow from "../parts/TaskRow.svelte";
   import UndoButton from "../parts/UndoButton.svelte";
   import { ui } from "../state.svelte.ts";
@@ -44,7 +45,8 @@
 {#if win}<section class="win"><div><h2>All {LABEL[cad].toLowerCase()} tasks done</h2><p>See you after the reset.</p></div></section>{/if}
 {#each cats as cat (cat)}{@const list = tasks.filter((t) => t.category === cat)}<section id="cat-{cat}"><h2>{cat}{#if !ui.editing}{" "}<span class="count">{list.filter((t) => isDone(t, prog?.[t.id])).length}/{list.length}</span>{/if}</h2>
     {#each list as t (t.id)}{#if ui.editing}<EditRow {t} />{:else}<TaskRow {t} />{/if}{/each}
-  </section>{:else}<p class="empty">No tasks yet. Click <b>Edit tasks</b> to add one.</p>{/each}
+  </section>{:else}<Empty>No {LABEL[cad].toLowerCase()} tasks yet.
+    {#snippet action()}{#if !ui.editing}<button class="primary" onclick={() => { ui.editing = true; }}>Add a task</button>{/if}{/snippet}</Empty>{/each}
 {#if ui.editing}<section class="add"><h2>New {LABEL[cad].toLowerCase()} task</h2>
     <div class="row">
       <input id="new-cat" placeholder="Category…" list="cats" aria-label="Category" autocomplete="off" bind:this={newCat}>

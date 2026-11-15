@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from "../parts/Empty.svelte";
   import { markAllNewsRead } from "../../app/settings.ts";
   import { isImportant } from "../../domain/news.ts";
   import { act, markRead, refreshNews } from "../actions.ts";
@@ -18,4 +19,4 @@
     <small>{new Date(n.date * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</small>
     <p>{n.contents}</p>
     {#if long(n.contents)}<details open={openNews.has(n.gid)} ontoggle={(e) => toggle(e, n.gid)}>
-      <summary><span>Show more</span><span>Show less</span></summary></details>{/if}</article>{:else}<p class="empty">No news yet.</p>{/each}</section>
+      <summary><span>Show more</span><span>Show less</span></summary></details>{/if}</article>{:else}<Empty>No news yet.</Empty>{/each}</section>

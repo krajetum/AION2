@@ -77,12 +77,12 @@
     <section class="dps-table"><h2>Join a guild</h2>
       <form class="toolbar start" onsubmit={(e) => { e.preventDefault(); join(); }}>
         <input bind:value={code} placeholder="Invite code (XXXX-XXXX-XXXX-XXXX)" aria-label="Invite code" autocomplete="off" required>
-        <button disabled={gs.busy || !me}>Join</button></form></section>
+        <button class="primary" disabled={gs.busy || !me}>Join</button></form></section>
     <section class="dps-table"><h2>Create a guild</h2>
       <form class="toolbar start" onsubmit={(e) => { e.preventDefault(); create(); }}>
         <input bind:value={guildName} placeholder="Guild or static name" aria-label="Guild name" maxlength="32" autocomplete="off" required>
         {#if !profile}<span class="dim">on {serverName(serverId) || "your server"}</span>{/if}
-        <button disabled={gs.busy || !me}>Create</button></form></section>
+        <button class="primary" disabled={gs.busy || !me}>Create</button></form></section>
   </div>
   {#if gs.error}<p class="hint">{gs.error}</p>{/if}
 {:else}

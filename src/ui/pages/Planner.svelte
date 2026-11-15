@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from "../parts/Empty.svelte";
   import { EVENTS, RESET_CONFIG as C } from "../../config.ts";
   import { activePlan, planLeft, startPlan, stopPlan } from "../../app/planner.ts";
   import { setPlanMinutes, setPlanNextHours } from "../../app/settings.ts";
@@ -66,7 +67,7 @@
 </div>
 {#if view.r.steps.length}<section><h2>Plan <span class="count">{view.r.steps.length} steps</span></h2>{#each view.r.steps as st (st.kind + st.id + st.start)}{#if st.kind === "event"}<div class="step event"><time>{hm(st.start)}</time><div class="task"><span class="text">
       <span class="name">{st.name}</span><small class="plan-hint">Event · {mins(st.minutes)} reserved</small></span></div></div>{:else}<div class="step {st.urgent ? 'urgent' : ''}"><time>{hm(st.start)}</time><TaskRow t={findTask(ui.data, st.id)} hint={hint(st)} /></div>{/if}{/each}</section>
-{:else if view.r.candidates}<p class="empty">Nothing fits in {mins(view.left)}.</p>
+{:else if view.r.candidates}<Empty>Nothing fits in {mins(view.left)}.</Empty>
 {:else}<section class="win"><div><h2>Nothing left to plan</h2><p>Every task is done.</p></div></section>{/if}
 {#if done.length}<section><h2>Done just now <span class="count">ticked in your Daily / Weekly / Monthly lists too</span></h2>{#each done as id (id)}<TaskRow t={findTask(ui.data, id)} />{/each}</section>{/if}
 {#if view.r.skipped.length}<section><h2>Doesn't fit <span class="count">{view.r.skipped.length}</span></h2>{#each view.r.skipped as x}<div class="task"><span class="text"><span class="name">{x.name}</span>

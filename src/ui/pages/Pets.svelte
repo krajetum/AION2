@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Empty from "../parts/Empty.svelte";
   // Pets page: your pet collection as the game sent it on entering the world (src-tauri/meter/src/pets.rs),
   // with the soul points gained since, and where each pet's soul points drop (the Map page's spots, by pet number).
   import { setPetName } from "../../app/map.ts";
@@ -72,11 +73,11 @@
   }
 </script>
 
-<p class="hint intro">Your pets as the game sent them when you last entered the world (login or character select) with the companion
+<details class="intro"><summary>How it works</summary><p class="hint">Your pets as the game sent them when you last entered the world (login or character select) with the companion
   running, plus the soul points your kills gave since. Changing character in game reads the whole collection again. The game sends numbers, not names:
-  names come from the gamers4.life database, else from the mob its soul points came from, and you can rename any. Level {MAX_LEVEL} is the last.</p>
+  names come from the gamers4.life database, else from the mob its soul points came from, and you can rename any. Level {MAX_LEVEL} is the last.</p></details>
 
-{#if !collection}<p class="empty">No collection read yet{me ? ` for ${me}` : ""}. Log in or change character in game with the companion running (desktop app).</p>
+{#if !collection}<Empty>No collection read yet{me ? ` for ${me}` : ""}. Log in or change character in game with the companion running (desktop app).</Empty>
 {:else}
 {#if unlinked}<p class="hint">{num(unlinked)} spot{unlinked === 1 ? "" : "s"} on the map {unlinked === 1 ? "has" : "have"} no pet number
   (recorded with an app older than this page, in a friend's file or in the spots shared with the app): {unlinked === 1 ? "it shows" : "they show"} on the map but not here.

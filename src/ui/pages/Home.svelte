@@ -3,7 +3,7 @@
   import { sortedTasks } from "../../app/tasks.ts";
   import { matchTotals } from "../../domain/arena.ts";
   import { bossLabel, bossState } from "../../domain/bosses.ts";
-  import { clock, odyleFor, short } from "../../domain/meter.ts";
+  import { clock, short } from "../../domain/meter.ts";
   import { emptySeason, seasonSummary } from "../../domain/season.ts";
   import { isDone } from "../../domain/tasks.ts";
   import { formatCountdown } from "../../domain/time.ts";
@@ -24,7 +24,6 @@
     return { c, all, left: all.filter((t) => !isDone(t, prog?.[t.id])) };
   }));
   const season = $derived(seasonSummary(ui.data.season[ui.charId] ?? emptySeason(), 0));
-  const odyle = $derived(odyleFor(ui.meter, ui.data.characters.find((c) => c.id === ui.charId)?.name));
   // Bosses with a bell (Field Bosses page): up first, then the next respawns.
   const order = { up: 0, due: 1, passed: 2, unknown: 3 };
   const tracked = $derived(ui.data.bosses.filter((b) => ui.data.bossAlerts[b.bossId])
@@ -38,7 +37,6 @@
 <div class="kpis">
   {#each cads as x}<Kpi label={LABEL[x.c]} value="{x.all.length - x.left.length}/{x.all.length}" sub={x.left.length ? `${x.left.length} left` : "all done"} cls={x.c === "daily" ? "hero" : ""} />{/each}
   <Kpi label="Season coins left" value={num(season.seasonalRemaining)} sub="seasonal missions" />
-  {#if odyle}<Kpi label="Odyle energy" value="{odyle.basic} · {odyle.charged}" sub="basic · charged, from the game" />{/if}
 </div>
 
 <div class="home">
