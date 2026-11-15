@@ -39,6 +39,10 @@ test("mood: shout, then a cube opened, then the rift for 10 minutes, then a cube
   assert.equal(mood({ ...base, lastOpened: { byYou: false, atMs: T - 6000 } }), null);
   assert.equal(mood({ ...base, cues: [{ kind: "shout", atMs: T - 1000 }], lastOpened: { byYou: true, atMs: T } }), "shout");
   assert.equal(mood({ ...base, cues: [{ kind: "shout", atMs: T + 5000 }] }), null); // a cue from the future (clock change)
+  // The app's own moments: a cheer or a sulk for 5 s, over the rift.
+  assert.equal(mood({ ...base, cues: [{ kind: "rift", atMs: T - 60_000 }, { kind: "cheer", atMs: T - 1000 }] }), "celebrate");
+  assert.equal(mood({ ...base, cues: [{ kind: "sulk", atMs: T - 1000 }] }), "sad");
+  assert.equal(mood({ ...base, cues: [{ kind: "cheer", atMs: T - 6000 }] }), null);
 });
 
 const W = 800, H = 300, SIZE = 96;

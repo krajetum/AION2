@@ -26,3 +26,9 @@ export function parseGoals(s: string): Goal[] | undefined {
 }
 export const formatGoals = (g?: Goal[]) =>
   (g ?? []).map((x) => `${x.label ? x.label + ":" : ""}${x.target}${x.step ? "/" + x.step : ""}`).join(", ");
+
+/** Every enabled task of a cadence is done for a character; false when the cadence has no task. */
+export function allDone(data: AppData, charId: string, cad: Cadence) {
+  const tasks = data.tasks.filter((t) => t.enabled && t.cadence === cad);
+  return tasks.length > 0 && tasks.every((t) => isDone(t, data.progress[charId]?.[t.id]));
+}

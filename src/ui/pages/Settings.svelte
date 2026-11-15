@@ -91,6 +91,7 @@
   </section>
   <section><h2>Mascot</h2>
     {@render toggle("Show the mascot", s.mascot, (e) => { s.mascot = check(e); })}
+    {@render toggle("Confetti and cheers (a list finished, a personal best, a PvP kill)", s.celebrate, (e) => { s.celebrate = check(e); })}
     <label class="setting"><span>Gender</span><select value={s.mascotGender} disabled={!s.mascot}
       onchange={(e) => act(() => { s.mascotGender = e.currentTarget.value === "f" ? "f" : "m"; })}>
       <option value="m">Male</option><option value="f">Female</option></select></label>

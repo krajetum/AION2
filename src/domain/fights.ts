@@ -94,3 +94,14 @@ export function fightText(r: FightRecord): string {
     .map((p, i) => `${i + 1}. ${displayName(p)}${p.job ? ` (${p.job})` : ""}  ${short(p.dps)}/s  ${p.share.toFixed(1)}%`);
   return [head, ...rows].join("\n");
 }
+
+/** What a new fight beats on its boss, against the log before it: your best DPS, your fastest kill.
+ *  Nothing for the first fight on a boss (no best to beat yet). */
+export function newBests(log: FightRecord[], r: FightRecord): ("dps" | "fastest")[] {
+  const b = personalBests(log)[r.boss];
+  if (!b) return [];
+  return [
+    ...(b.dps && yourDps(r) > yourDps(b.dps) ? ["dps" as const] : []),
+    ...(r.killed && b.fastest && r.battleTimeMs < b.fastest.battleTimeMs ? ["fastest" as const] : []),
+  ];
+}

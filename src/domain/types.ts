@@ -68,6 +68,7 @@ export interface Settings {
   crowdShare: boolean;       // send the boss timers and cube openings the meter sees to the crowd Worker
   winterTheme: boolean;      // the winter theme and Advent calendar, 1 December to 6 January (src/domain/holiday.ts)
   snow: boolean;             // its falling snow and New Year fireworks
+  celebrate: boolean;        // confetti and the mascot's cheer when a list is finished or a personal best falls
 }
 
 /** One undo step: the progress of each touched task before the change (null = it had none). */

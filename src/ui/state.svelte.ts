@@ -34,7 +34,8 @@ export const ui = $state({
   recentFights: [] as RecentFight[], // the DPS page's last targets, newest first (memory only: src/domain/fights.ts addRecent)
   fights: [] as FightRecord[], // the Fight Log, newest first (its own file: src/infra/fights.ts)
   lookup: null as { name: string; serverId: number } | null, // a player card's "Full profile": the Players page searches it
-  mascotCues: [] as Cue[], // the alerts the mascot reacts to (main.ts), latest last
+  mascotCues: [] as Cue[], // what the mascot reacts to (main.ts alerts, actions.ts `cue`), latest last
+  party: 0, // when the last celebration started (actions.ts `celebrate`): parts/Confetti.svelte fires on each change
   guild: null as GuildView | null, // the guild as the Worker last answered (main.ts syncs it while playing), not saved
   updating: "", // the update in progress or its error, shown in the update banner
   update: undefined as { version: string; install: () => Promise<void> } | undefined, // a newer release (main.ts checkUpdate), offered by a banner

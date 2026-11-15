@@ -364,6 +364,10 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
 
+/* --p (a share, 0..1) registered as a number: bars drawn as gradients can glide to their new length. */
+@property --p { syntax: "<number>"; inherits: true; initial-value: 0; }
+.dps-table .prow, .ov-rows li { transition: --p 400ms linear; }
+
 /* ---------- DPS meter ---------- */
 .intro { margin: 0 0 12px; } /* a page's one-line explanation, right under its title */
 /* The longer explanation: closed until asked for, so the page starts with its content. */
@@ -777,7 +781,8 @@ li.eq-row { cursor: default; }
   background-image: radial-gradient(circle at 0 0, rgb(205 232 255 / .09), transparent 90px), radial-gradient(circle at 100% 0, rgb(205 232 255 / .05), transparent 60px);
   box-shadow: inset 0 1px 0 rgb(200 230 255 / .10);
 }
-.winter-sky { position: fixed; inset: 0; width: 100vw; height: 100dvh; pointer-events: none; z-index: 40; }
+/* Canvases over the whole window that never take the pointer: the snow, the confetti. */
+.winter-sky, .fx-layer { position: fixed; inset: 0; width: 100vw; height: 100dvh; pointer-events: none; z-index: 40; }
 
 /* Advent calendar (parts/AdventCalendar.svelte) */
 .advent-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: var(--gap); align-items: stretch; }

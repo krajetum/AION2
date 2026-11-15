@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addFight, addRecent, compareSkills, fightEnded, MAX_FIGHTS, MAX_RECENT, targetEnded, personalBests, toRecord, type FightRecord } from "./fights.ts";
+import { addFight, addRecent, compareSkills, fightEnded, MAX_FIGHTS, MAX_RECENT, newBests, targetEnded, personalBests, toRecord, type FightRecord } from "./fights.ts";
 import type { Fight, PlayerRow, SkillRow } from "./meter.ts";
 
 const skill = (name: string, damage: number): SkillRow => ({ name, damage, hits: 1, critRate: 0, share: 0, dot: false, icon: null });
@@ -60,4 +60,14 @@ test("skills compare by damage per second, matched by name", () => {
   const b = { ...rec("b", "B", 0, 20_000), rows: [row(0, [skill("Slash", 30_000), skill("New", 2_000)])] };
   const d = compareSkills(a, b);
   assert.deepEqual(d.map((x) => [x.name, x.dpsA, x.dpsB]), [["Slash", 1000, 1500], ["Old", 100, 0], ["New", 0, 100]]);
+});
+
+test("a new fight beats the bests of the log before it, never on a boss's first fight", () => {
+  const log = [rec("a", "B", 100, 90_000), rec("b", "B", 300, 120_000, false)];
+  assert.deepEqual(newBests([], rec("x", "B", 500, 10_000)), []);
+  assert.deepEqual(newBests(log, rec("x", "Other", 500, 10_000)), []);
+  assert.deepEqual(newBests(log, rec("x", "B", 301, 95_000)), ["dps"]);
+  assert.deepEqual(newBests(log, rec("x", "B", 50, 60_000)), ["fastest"]);
+  assert.deepEqual(newBests(log, rec("x", "B", 400, 60_000)), ["dps", "fastest"]);
+  assert.deepEqual(newBests(log, rec("x", "B", 300, 60_000, false)), []); // a tie, and not a kill
 });

@@ -2,7 +2,9 @@
 import { syncGuild } from "../app/guild.ts";
 import { trackProgress } from "../app/progress.ts";
 import { findTask } from "../app/tasks.ts";
+import { RIFT_MS, type Cue } from "../domain/mascot.ts";
 import { leftShare } from "../domain/planner.ts";
+import { allDone } from "../domain/tasks.ts";
 import { suggest } from "../domain/triggers.ts";
 import { markNewsRead } from "../app/settings.ts";
 import { mergeNews } from "../domain/news.ts";
@@ -43,10 +45,27 @@ export function commit(e: Event, change: (v: string) => void, stored: () => unkn
   return save();
 }
 
+/** The mascot's cue (domain/mascot.ts): it cheers or sulks for a few seconds. */
+export function cue(kind: Cue["kind"]) {
+  const now = Date.now();
+  ui.mascotCues = [...ui.mascotCues.filter((c) => now - c.atMs < RIFT_MS), { kind, atMs: now }];
+}
+
+/** A small win (a list finished, a personal best): confetti, the mascot cheers, the status line says why.
+ *  Only the line with `settings.celebrate` off. */
+export function celebrate(text: string) {
+  showStatus(text);
+  if (!ui.data.settings.celebrate) return;
+  ui.party = Date.now();
+  cue("cheer");
+}
+
 /** A progress change of the current character (undoable, timed during a Planner session). */
 export function track(id: string, change: () => void) {
   const t = findTask(ui.data, id), before = leftShare(t, ui.data.progress[ui.charId]?.[id]);
+  const wasAll = allDone(ui.data, ui.charId, t.cadence);
   const after = trackProgress(ui.data, ui.charId, id, Date.now(), change);
+  if (!wasAll && allDone(ui.data, ui.charId, t.cadence)) celebrate(`Every ${t.cadence} task is done.`);
   if (ui.tab === "plan" && !after) doneHere.add(id);
   // Ticked by hand just after something in game: offer it as the task's trigger (src/domain/triggers.ts).
   const offer = after < before ? suggest(ui.recent, t, Date.now()).slice(0, 3) : [];

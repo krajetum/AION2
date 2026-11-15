@@ -47,7 +47,9 @@ export const SHOUT_MS = 4_000;
 export const RIFT_MS = 10 * 60_000;
 export const CUBE_MS = 5_000;
 
-export type Cue = { kind: "shout" | "rift"; atMs: number };
+/** shout / rift: an alert's sound (`cueOf`). cheer / sulk: the app's own moments (a list finished, a personal best,
+ *  a PvP kill of yours / your death in PvP), for CUBE_MS. */
+export type Cue = { kind: "shout" | "rift" | "cheer" | "sulk"; atMs: number };
 /** The cue an alert's sound gives (its channel first): the rift's alert → rift, other event and field-boss alerts → shout. */
 export function cueOf(sound: string[]): Cue["kind"] | null {
   if (sound[0] === "rift") return "rift";
@@ -64,6 +66,8 @@ export interface MoodInput {
 export function mood(m: MoodInput): Anim | null {
   const since = (k: Cue["kind"]) => Math.min(...m.cues.filter((c) => c.kind === k).map((c) => m.now - c.atMs).filter((d) => d >= 0), Infinity);
   if (since("shout") < SHOUT_MS) return "shout";
+  if (since("cheer") < CUBE_MS) return "celebrate";
+  if (since("sulk") < CUBE_MS) return "sad";
   if (m.lastOpened && m.now - m.lastOpened.atMs >= 0 && m.now - m.lastOpened.atMs < CUBE_MS) return m.lastOpened.byYou ? "celebrate" : "sad";
   if (since("rift") < RIFT_MS) return "rift";
   if (m.cubeInView) return "happy";

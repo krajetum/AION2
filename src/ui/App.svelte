@@ -40,6 +40,8 @@
   import Settings from "./pages/Settings.svelte";
   import Wiki from "./pages/Wiki.svelte";
   import TaskList from "./pages/TaskList.svelte";
+  import Amount from "./parts/Amount.svelte";
+  import Confetti from "./parts/Confetti.svelte";
   import Mascot from "./parts/Mascot.svelte";
   import Winter from "./parts/Winter.svelte";
   import { winterActive } from "../domain/holiday.ts";
@@ -199,7 +201,7 @@
     {#if s.mutedUntil > ui.now}<span class="chip">Muted until {hm(s.mutedUntil)}<button onclick={() => act(() => unmute(ui.data))}>Unmute</button></span>{/if}
     {#if meter}<div class="meter-dot {meter}"><span class="dot"></span>Meter {meter === "connected" ? "connected" : meter === "searching" ? "searching" : meter === "waiting-game" ? "waiting for the game" : "no capture"}</div>{/if}
     {#if wallet}<details open title="As the game last sent them{wallet.atMs ? ` (${hm(wallet.atMs)})` : ""}: currencies when you enter the world and whenever one changes, Odyle energy when the game sends it"><summary class="label">{@html ICON.chevron}Wallet{#if picked && !sameName(picked.name, selName)}<span class="wallet-of"> · {picked.name}</span>{/if}</summary>
-      {#each walletRows(wallet, s.sumKina) as r (r.name)}<div class="timer event"><small>{r.name}</small><span>{num(r.value)}</span></div>{/each}
+      {#each walletRows(wallet, s.sumKina) as r ((picked?.name ?? "") + r.name)}<div class="timer event"><small>{r.name}</small><Amount value={r.value} /></div>{/each}
       {#if apToday}<button class="plain timer event ap-today" aria-expanded={apOpen} title="Abyss Points gained since the daily reset: click for where they came from"
         onclick={() => { apOpen = !apOpen; }}><small>AP today</small><span>{num(apToday.total)}</span></button>
         {#if apOpen}<div class="ap-split">
@@ -227,4 +229,5 @@
   </aside>
 </div>
 {#if winter && s.snow}<Winter />{/if}
+{#if s.celebrate}<Confetti />{/if}
 <Mascot />

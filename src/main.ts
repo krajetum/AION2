@@ -1,7 +1,9 @@
 // Startup: load the save file, apply resets, mount the UI, then a 1 s clock for countdowns, resets and notifications.
 import { mount } from "svelte";
-import type { Fight, MeterUpdate } from "./domain/meter.ts";
-import { addFight, addRecent, fightEnded, targetEnded, toRecord } from "./domain/fights.ts";
+import { clock, short, type Fight, type MeterUpdate } from "./domain/meter.ts";
+import { addFight, addRecent, fightEnded, newBests, targetEnded, toRecord, yourDps } from "./domain/fights.ts";
+import { allDone } from "./domain/tasks.ts";
+import { CADENCES } from "./domain/types.ts";
 import { charFor, eventsFrom, SUGGEST_MS, type MeterEvent } from "./domain/triggers.ts";
 import { autoTick } from "./app/auto.ts";
 import { RESET_CONFIG as C } from "./config.ts";
@@ -15,7 +17,7 @@ import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
 import { loadFights, saveFights } from "./infra/fights.ts";
 import { findUpdate, getAutostart, isDesktop, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
-import { act, refreshGuild, refreshNews, save } from "./ui/actions.ts";
+import { act, celebrate, cue, refreshGuild, refreshNews, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import EventsOverlay from "./ui/EventsOverlay.svelte";
@@ -89,11 +91,19 @@ async function main() {
       if (targetEnded(lastFight, latest.fight)) ui.recentFights = addRecent(ui.recentFights, { endMs: Date.now(), fight: lastFight });
       if (fightEnded(lastFight, latest.fight)) {
         const rec = toRecord(lastFight, latest.profile, latest.position?.mapId ?? null, Date.now());
+        // A personal best on a boss fought before: said out loud (the demo fight never counts).
+        const beat = latest.demo ? [] : newBests(ui.fights, rec);
+        if (beat.length) celebrate(`Personal best on ${rec.boss}: ${beat.map((b) => (b === "dps" ? `${short(yourDps(rec))}/s` : `killed in ${clock(rec.battleTimeMs)}`)).join(" · ")}`);
         ui.fights = addFight(ui.fights, rec);
         saveFights(fightsSnapshot()).catch((e) => console.warn("Fight Log not saved", e));
         if (!latest.demo) uploadFight(ui.data, rec, latest.profile?.serverId);
       }
       autoTrack(eventsFrom(last, latest, Date.now()), latest);
+      // The mascot lives your PvP with you: a cheer for a kill of yours, a sulk when you die (nothing from the first update).
+      if (last && ui.data.settings.celebrate) {
+        const seen = Math.max(0, ...(last.kills ?? []).map((k) => k.atMs));
+        for (const k of latest.kills ?? []) if (k.atMs > seen && k.kind !== "assist") cue(k.kind === "kill" ? "cheer" : "sulk");
+      }
       last = latest;
       const shared = shareFromMeter(ui.data, latest); // before takeMeterData: it compares with the saved data
       if (takeMeterData(ui.data, latest) || shared) save();
@@ -132,12 +142,17 @@ function autoTrack(evs: MeterEvent[], u: MeterUpdate) {
   const now = Date.now();
   ui.recent = [...ui.recent, ...evs].filter((e) => now - e.atMs <= SUGGEST_MS);
   const char = charFor(ui.data.characters, u.profile?.name);
+  const wasAll = char ? CADENCES.filter((c) => allDone(ui.data, char.id, c)) : [];
   const ticked = char ? evs.flatMap((ev) => autoTick(ui.data, char.id, ev, entered)) : [];
   if (!char || !ticked.length) return;
   save();
   const s = ui.data.settings, mine = char.id === ui.charId, names = [...new Set(ticked.map((t) => t.name))].join(" · ");
   if (s.channels.auto?.on && !(s.mutedUntil > now)) toast(s, mine ? "Ticked by the game" : `Ticked by the game: ${char.name}`, names, ["auto", "check"]);
-  showStatus(`Ticked by the game: ${names}${mine ? " (Ctrl+Z to undo)" : ` (${char.name})`}`);
+  const ticks = `Ticked by the game: ${names}${mine ? " (Ctrl+Z to undo)" : ` (${char.name})`}`;
+  // The tick that finished a list: the same line, with the party.
+  const finished = CADENCES.filter((c) => !wasAll.includes(c) && allDone(ui.data, char.id, c));
+  if (finished.length) celebrate(`${ticks}. Every ${finished.join(" and ")} task is done.`);
+  else showStatus(ticks);
 }
 
 async function crowdBosses() {

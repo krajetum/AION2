@@ -18,7 +18,9 @@
     ? odyleFor(ui.meter, ui.data.characters.find((c) => c.id === ui.charId)?.name) : undefined);
 
   function toggle(e: Event) {
-    const checked = (e.currentTarget as HTMLInputElement).checked;
+    const box = e.currentTarget as HTMLInputElement, checked = box.checked;
+    // A tick lands: the box pops once (with the sound of the "Task checked" channel).
+    if (checked && !matchMedia("(prefers-reduced-motion: reduce)").matches) box.animate([{ transform: "scale(1)" }, { transform: "scale(1.3)" }, { transform: "scale(1)" }], 220);
     act(() => {
       track(t.id, () => setDone(ui.data, ui.charId, t.id, checked));
       if (checked) react(ui.data.settings);
