@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { animOf, ANIMS, countShakes, cueOf, frameAt, grab, mood, newBody, release, RIFT_MS, sheetFor, SHEET_COLS, SHEET_ROWS, step, throwVelocity, type Body } from "./mascot.ts";
+import { animOf, ANIMS, asleep, SLEEP_MS, countShakes, cueOf, frameAt, grab, mood, newBody, release, RIFT_MS, sheetFor, SHEET_COLS, SHEET_ROWS, step, throwVelocity, type Body } from "./mascot.ts";
 
 const T = 1_000_000;
 
@@ -43,6 +43,12 @@ test("mood: shout, then a cube opened, then the rift for 10 minutes, then a cube
   assert.equal(mood({ ...base, cues: [{ kind: "rift", atMs: T - 60_000 }, { kind: "cheer", atMs: T - 1000 }] }), "celebrate");
   assert.equal(mood({ ...base, cues: [{ kind: "sulk", atMs: T - 1000 }] }), "sad");
   assert.equal(mood({ ...base, cues: [{ kind: "cheer", atMs: T - 6000 }] }), null);
+  // It dozes off after 5 quiet minutes on the ground, never with something going on or in the air.
+  const idle = { ...newBody(0, T), state: "idle" as const };
+  assert.equal(asleep(idle, null, T, T - SLEEP_MS), true);
+  assert.equal(asleep(idle, null, T, T - SLEEP_MS + 1), false);
+  assert.equal(asleep(idle, "happy", T, 0), false);
+  assert.equal(asleep(newBody(0, T), null, T, 0), false);
 });
 
 const W = 800, H = 300, SIZE = 96;

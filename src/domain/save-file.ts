@@ -70,6 +70,8 @@ export function defaultData(): AppData {
       mascotGender: "m",
       winterTheme: true,
       snow: true,
+      halloween: true,
+      classAccent: false,
       celebrate: true,
     },
   };

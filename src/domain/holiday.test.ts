@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { JOKES } from "./advent.ts";
-import { ADVENT_DAYS, adventToday, canOpen, cleanAdvent, emptyAdvent, lastOpenable, newYearShow, openDoor, openedNow, winterActive, winterYear } from "./holiday.ts";
+import { ADVENT_DAYS, adventToday, canOpen, cleanAdvent, emptyAdvent, lastOpenable, halloweenActive, newYearShow, openDoor, openedNow, winterActive, winterYear } from "./holiday.ts";
 
 // Local time, as the app uses it.
 const at = (y: number, m: number, d: number, h = 0, min = 0, s = 0) => new Date(y, m - 1, d, h, min, s).getTime();
@@ -69,4 +69,12 @@ test("one credited joke per door", () => {
   assert.equal(JOKES.length, ADVENT_DAYS);
   for (const k of JOKES) assert.ok(k.setup && k.punchline && k.credit && k.url?.startsWith("https://"));
   assert.equal(new Set(JOKES.map((k) => k.setup)).size, ADVENT_DAYS);
+});
+
+test("the Halloween theme runs from 25 October to the end of 1 November", () => {
+  assert.equal(halloweenActive(at(2026, 10, 24, 23, 59, 59)), false);
+  assert.equal(halloweenActive(at(2026, 10, 25)), true);
+  assert.equal(halloweenActive(at(2026, 10, 31, 12)), true);
+  assert.equal(halloweenActive(at(2026, 11, 1, 23, 59, 59)), true);
+  assert.equal(halloweenActive(at(2026, 11, 2)), false);
 });

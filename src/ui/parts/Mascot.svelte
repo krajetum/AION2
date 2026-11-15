@@ -2,7 +2,7 @@
   // The mascot (domain/mascot.ts): your class's little character, walking along the bottom of the window once the game
   // says who you play. It shouts with the alerts, clings on through the rift, hops when a hidden cube is in view,
   // cheers when you open it and sulks when someone else does. Drag it, throw it, shake it.
-  import { ANIMS, animOf, countShakes, FRAME, frameAt, grab, mood, newBody, release, sheetFor, SHEET_COLS, SHEET_ROWS, step,
+  import { ANIMS, animOf, asleep, countShakes, FRAME, frameAt, grab, mood, newBody, release, sheetFor, SHEET_COLS, SHEET_ROWS, step,
     throwVelocity, type Anim, type Body, type Sample } from "../../domain/mascot.ts";
   import { untrack } from "svelte";
   import { ui } from "../state.svelte.ts";
@@ -20,6 +20,8 @@
   let body = $state<Body | null>(null);
   let anim = $state<Anim>("idle"), frame = $state(0), hop = $state(0), shake = $state(0);
   let animStart = 0;
+  let sleeping = $state(false), lastInput = Date.now(); // the last pointer move or key in the companion's window
+  const awake = () => { lastInput = Date.now(); };
 
   // Pointer: grab, drag, throw, shake; a short press without moving is a click (a little hop).
   let samples: Sample[] = [];
@@ -35,14 +37,16 @@
       last = t;
       const m = mood({ now, cues: ui.mascotCues, cubeInView: !!ui.meter?.cubes?.live.length, lastOpened: ui.meter?.cubes?.opened.at(-1) ?? null });
       let b = body!;
-      // Something is going on: it stops walking and stays put.
-      if (m && (b.state === "walk" || b.state === "idle")) b = { ...b, state: "idle", until: now + 1_000 };
+      // Nothing going on and the window untouched for a while: it dozes off where it stands.
+      sleeping = asleep(b, m, now, lastInput);
+      // Something is going on (or it sleeps): it stops walking and stays put.
+      if ((m || sleeping) && (b.state === "walk" || b.state === "idle")) b = { ...b, state: "idle", until: now + 1_000 };
       b = step(b, dt, now, width, height, SIZE, Math.random);
       body = b;
       const a = animOf(b, m);
       if (a !== anim) { anim = a; animStart = now; }
       const since = (now - animStart) / 1000;
-      frame = frameAt(a, now - animStart);
+      frame = sleeping ? 0 : frameAt(a, now - animStart);
       hop = a === "happy" ? Math.abs(Math.sin(since * Math.PI * 1.6)) * 28 : a === "celebrate" ? Math.abs(Math.sin(since * Math.PI * 2)) * 14 : 0;
       shake = a === "rift" || a === "shout" ? (Math.random() - 0.5) * 3 : 0;
       raf = requestAnimationFrame(tick);
@@ -80,13 +84,14 @@
   }
 </script>
 
-<svelte:window bind:innerWidth={winWidth} bind:innerHeight={height} />
+<svelte:window bind:innerWidth={winWidth} bind:innerHeight={height} onpointermove={awake} onpointerdown={awake} onkeydown={awake} />
 
 {#if sheet && body}<div class="mascot-stage" style:left="{side}px">
+  {#if sleeping}<i class="mascot-zzz" style:left="{body.x + SIZE * 0.6}px" style:bottom="{body.y + SIZE * 0.75}px" aria-hidden="true">z</i>{/if}
   {#if anim === "rift"}<i class="mascot-vortex" style:left="{body.dir > 0 ? body.x + SIZE - 6 : body.x - 70}px" style:bottom="{body.y + 8}px"></i>{/if}
   <button class="mascot" aria-label="Mascot: drag it, throw it, shake it" title="" style:left="{body.x + shake}px" style:bottom="{body.y + hop}px"
     style:width="{SIZE}px" style:height="{SIZE}px" style:background-image="url(/mascots/{sheet}.png)"
     style:background-size="{SHEET_COLS * SIZE}px {SHEET_ROWS * SIZE}px"
     style:background-position="-{frame * SIZE}px -{ANIMS[anim].row * SIZE}px" style:transform="scaleX({body.dir})"
-    class:held={body.state === "held"} onpointerdown={pointerdown} onpointermove={pointermove} onpointerup={pointerup} onpointercancel={pointerup}></button>
+    class:held={body.state === "held"} class:asleep={sleeping} onpointerdown={pointerdown} onpointermove={pointermove} onpointerup={pointerup} onpointercancel={pointerup}></button>
 </div>{/if}

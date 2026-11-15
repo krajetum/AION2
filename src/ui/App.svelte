@@ -8,7 +8,7 @@
   import { unmute } from "../app/settings.ts";
   import { gameActive } from "../app/crowd.ts";
   import { bossBoard, bossLabel } from "../domain/bosses.ts";
-  import { sameName } from "../domain/meter.ts";
+  import { classColor, sameName } from "../domain/meter.ts";
   import { apSince, pickWallet, walletRows } from "../domain/wallet.ts";
   import { isImportant } from "../domain/news.ts";
   import { emptySeason, seasonSummary } from "../domain/season.ts";
@@ -44,7 +44,7 @@
   import Confetti from "./parts/Confetti.svelte";
   import Mascot from "./parts/Mascot.svelte";
   import Winter from "./parts/Winter.svelte";
-  import { winterActive } from "../domain/holiday.ts";
+  import { halloweenActive, winterActive } from "../domain/holiday.ts";
   import { winterNow } from "./winter.ts";
   import { doneHere, GROUPS, tabFromHash, ui, type Tab } from "./state.svelte.ts";
 
@@ -54,9 +54,20 @@
   const s = $derived(ui.data.settings);
   // The winter theme (1 December to 6 January): the palette in style.css follows `data-season` on <html>.
   const winter = $derived(s.winterTheme && winterActive(winterNow(ui.now)));
+  // Halloween (25 October to 1 November): colours only.
+  const season = $derived(winter ? "winter" : s.halloween && halloweenActive(winterNow(ui.now)) ? "halloween" : "");
   $effect(() => {
-    if (winter) document.documentElement.dataset.season = "winter";
+    if (season) document.documentElement.dataset.season = season;
     else delete document.documentElement.dataset.season;
+  });
+  // The accent follows the class you play (its emblem's colour, domain/meter.ts): the action colour, its fill dark
+  // enough for a white label, and the tint and ink of the tags. Over the season's palette; off = the tokens as they are.
+  const accent = $derived(s.classAccent ? classColor(ui.meter?.profile?.job ?? "") : "");
+  $effect(() => {
+    const root = document.documentElement.style;
+    const set = { "--primary": accent, "--primary-fill": `color-mix(in srgb, ${accent} 55%, #000)`,
+      "--magenta-bg": `color-mix(in srgb, ${accent} 28%, var(--ground))`, "--magenta-ink": `color-mix(in srgb, ${accent} 55%, #fff)` };
+    for (const [k, v] of Object.entries(set)) if (accent) root.setProperty(k, v); else root.removeProperty(k);
   });
   const unread = $derived(ui.data.news.filter((n) => !n.read).length);
   const plan = $derived(activePlan(ui.data, ui.charId, ui.now));

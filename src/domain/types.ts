@@ -68,6 +68,8 @@ export interface Settings {
   crowdShare: boolean;       // send the boss timers and cube openings the meter sees to the crowd Worker
   winterTheme: boolean;      // the winter theme and Advent calendar, 1 December to 6 January (src/domain/holiday.ts)
   snow: boolean;             // its falling snow and New Year fireworks
+  halloween: boolean;        // the Halloween theme, 25 October to 1 November (colours only)
+  classAccent: boolean;      // the accent colour follows the class you play (domain/meter.ts CLASS_COLORS)
   celebrate: boolean;        // confetti and the mascot's cheer when a list is finished or a personal best falls
 }
 

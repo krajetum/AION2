@@ -97,12 +97,15 @@
       <option value="m">Male</option><option value="f">Female</option></select></label>
     <p class="hint">The little character of the class you play walks along the bottom of the window once the game says who you are (white wings for Elyos, black for Asmodians). It shouts with the alerts, clings on for 10 minutes after the Spacetime Rift's alert, hops when a hidden cube is in view, cheers when you open it and sulks when someone else does. Drag it, throw it, shake it.</p>
   </section>
-  <section><h2>Winter theme <span class="count">1 Dec – 6 Jan</span></h2>
-    {@render toggle("Winter theme and Advent calendar", s.winterTheme, (e) => { s.winterTheme = check(e); })}
+  <section><h2>Themes</h2>
+    {@render toggle("Accent colour of the class you play", s.classAccent, (e) => { s.classAccent = check(e); })}
+    {@render toggle("Halloween theme (25 Oct – 1 Nov)", s.halloween, (e) => { s.halloween = check(e); })}
+    {@render toggle("Winter theme and Advent calendar (1 Dec – 6 Jan)", s.winterTheme, (e) => { s.winterTheme = check(e); })}
     {@render toggle("Snow and New Year fireworks", s.snow, (e) => { s.snow = check(e); }, !s.winterTheme)}
     <p class="hint">From 1 December to 6 January the app dresses for winter: a night-blue palette, an aurora on the sidebar, an Advent
       calendar on Home with a Christmas cracker joke behind each door, snow piling up along the bottom of the window and fireworks
-      at midnight on New Year's Eve. "Reduce motion" in Windows stops the snow and fireworks.</p>
+      at midnight on New Year's Eve. "Reduce motion" in Windows stops the snow and fireworks. The class accent takes the colour of
+      your class's emblem once the game says who you play; Halloween is a week of dusk purple and pumpkin orange.</p>
   </section>
   <section><h2>Overlays</h2>
     {@render toggle("Event countdown overlay", s.eventsOverlay, (e) => { s.eventsOverlay = check(e); eventsOverlay(s.eventsOverlay); }, !isDesktop())}

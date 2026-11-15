@@ -1,11 +1,13 @@
 // The clock the winter theme reads. In `npm run dev` only, the URL can move it to try the theme before December:
-// ?season=winter&day=12 = 12 December at the current time of day, ?season=newyear = ten seconds before midnight on 31 December.
+// ?season=winter&day=12 = 12 December at the current time of day, ?season=newyear = ten seconds before midnight on 31 December,
+// ?season=halloween = 31 October.
 // The clock keeps running from there.
 
 function previewOffset(): number {
   if (!import.meta.env.DEV) return 0;
   const q = new URLSearchParams(location.search), now = new Date(), y = now.getFullYear();
   if (q.get("season") === "newyear") return new Date(y, 11, 31, 23, 59, 50).getTime() - now.getTime();
+  if (q.get("season") === "halloween") return new Date(y, 9, 31, now.getHours(), now.getMinutes(), now.getSeconds()).getTime() - now.getTime();
   if (q.get("season") !== "winter") return 0;
   const day = Math.max(1, Math.min(31, Math.round(Number(q.get("day")) || 1)));
   return new Date(y, 11, day, now.getHours(), now.getMinutes(), now.getSeconds()).getTime() - now.getTime();

@@ -46,6 +46,11 @@ export function sheetFor(job: string, gender: Gender, serverId: number): string 
 export const SHOUT_MS = 4_000;
 export const RIFT_MS = 10 * 60_000;
 export const CUBE_MS = 5_000;
+/** With nothing going on and the companion's window untouched this long, it dozes off where it stands. */
+export const SLEEP_MS = 5 * 60_000;
+/** Asleep: free to wander (no mood), on the ground, and no input in the window for SLEEP_MS. */
+export const asleep = (b: Body, m: Anim | null, now: number, lastInput: number): boolean =>
+  !m && (b.state === "idle" || b.state === "walk") && now - lastInput >= SLEEP_MS;
 
 /** shout / rift: an alert's sound (`cueOf`). cheer / sulk: the app's own moments (a list finished, a personal best,
  *  a PvP kill of yours / your death in PvP), for CUBE_MS. */
