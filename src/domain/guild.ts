@@ -104,7 +104,8 @@ export const callupKey = (c: Callup, lead: number) => `callup:${c.id}@${lead}`;
 /** Call-ups with reminders due now and not yet shown here; several due at once (app closed) give one reminder. */
 export function dueCallups(callups: Callup[], warned: Record<string, number>, now: number): { callup: Callup; leads: number[] }[] {
   return callups.filter((c) => c.atMs > now - 60_000)
-    .map((c) => ({ callup: c, leads: dueLeads(c.leads, c.atMs - now, (l) => warned[callupKey(c, l)] === c.atMs) }))
+    // atMs is shifted onto the local clock by each sync's latency, so a mark matches within a minute (as boss alerts do).
+    .map((c) => ({ callup: c, leads: dueLeads(c.leads, c.atMs - now, (l) => Math.abs((warned[callupKey(c, l)] ?? -Infinity) - c.atMs) < 60_000) }))
     .filter((d) => d.leads.length > 0);
 }
 

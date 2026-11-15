@@ -95,6 +95,7 @@ test("call-ups: parsed onto the local clock; due reminders once, several at once
   assert.deepEqual(dueCallups([c], {}, now), []);
   assert.deepEqual(dueCallups([c], {}, now + D * MIN).map((d) => d.leads), [[2 * D]]);
   assert.deepEqual(dueCallups([c], { [callupKey(c, 2 * D)]: c.atMs }, now + D * MIN), []);
+  assert.deepEqual(dueCallups([c], { [callupKey(c, 2 * D)]: c.atMs - 37 }, now + D * MIN), []); // next sync's clock shift
   assert.deepEqual(dueCallups([c], {}, now + 2.5 * D * MIN).map((d) => d.leads), [[2 * D, D]]); // app was closed: one reminder
   assert.deepEqual(dueCallups([c], {}, c.atMs + 2 * MIN), []);
 });
