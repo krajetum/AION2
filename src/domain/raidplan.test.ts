@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addWeeks, bestDays, blockOf, classesOf, decodeWeek, emptyWeek, encodeWeek, freeBySlot, hoursFor, setDay, setRange, slotNow, slotOf, slotStart, unblocked, weekOf, WEEK_HOURS, type MemberAvailability } from "./raidplan.ts";
+import { addWeeks, bestDays, hourKind, blockOf, classesOf, decodeWeek, emptyWeek, encodeWeek, freeBySlot, hoursFor, setDay, setRange, slotNow, slotOf, slotStart, unblocked, weekOf, WEEK_HOURS, type MemberAvailability } from "./raidplan.ts";
 
 const B = [
   { day: 2, from: 9, to: 15, label: "Maintenance" },
@@ -79,4 +79,13 @@ test("best days: most people at once, the longest stretch they share, who and wh
   assert.deepEqual(days[0].classes, [["Chanter", 2], ["Templar", 1]]);
   assert.equal(freeBySlot(ms, W)[slotOf(5, 21)].length, 0, "nobody at the siege hour");
   assert.deepEqual(classesOf([{ name: "x", className: "" }]), [["?", 1]]);
+});
+
+test("hour colours: every week's free / not free, or only this week's change", () => {
+  assert.equal(hourKind(true, false, false), "free");
+  assert.equal(hourKind(false, true, false), "busy", "editing every week: the usual hours don't matter");
+  assert.equal(hourKind(true, true, true), "free");
+  assert.equal(hourKind(true, false, true), "freeWeek");
+  assert.equal(hourKind(false, true, true), "busyWeek");
+  assert.equal(hourKind(false, false, true), "busy");
 });
