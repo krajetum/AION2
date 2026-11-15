@@ -108,14 +108,27 @@ export async function adminGuild(data: AppData, a: AdminAction): Promise<{ teste
 }
 
 /** A call-up: the Worker reminds the guild's Discord at each lead, the members' apps too. */
-export async function createCallup(data: AppData, c: { atMs: number; message: string; ping: Ping; leads: number[] }): Promise<void> {
+export async function createCallup(data: AppData, c: { atMs: number; message: string; ping: Ping; leads: number[] }): Promise<string> {
   if (!data.guild) throw new Error("Not in a guild");
-  await crowd(path(data, "/callups"), { ...auth(data), sentMs: Date.now(), ...c });
+  const r = await crowd(path(data, "/callups"), { ...auth(data), sentMs: Date.now(), ...c });
+  return typeof r?.id === "string" ? r.id : "";
 }
 
-export async function cancelCallup(data: AppData, id: string): Promise<void> {
+/**
+ * A test of a call-up in the guild's Discord, ping included (to check it reaches people): posted once, marked as a test,
+ * then removed at once (no reminders, nothing left planned).
+ */
+export async function testCallup(data: AppData, c: { atMs: number; message: string; ping: Ping }): Promise<void> {
+  const id = await createCallup(data, { atMs: c.atMs, message: `TEST, nothing planned yet.\n${c.message}`.slice(0, 500), ping: c.ping, leads: [0] });
+  if (!id) throw new Error("The server sent something unexpected");
+  try { await sendCallup(data, id); } finally { await cancelCallup(data, id).catch(() => {}); }
+}
+
+/** Cancels a call-up; `announce`: first posts "Raid cancelled" to Discord with its ping (false back = Discord refused it). */
+export async function cancelCallup(data: AppData, id: string, announce = false): Promise<boolean | undefined> {
   if (!data.guild) throw new Error("Not in a guild");
-  await crowd(path(data, `/callups/${id}/delete`), auth(data));
+  const r = await crowd(path(data, `/callups/${id}/delete`), { ...auth(data), ...(announce ? { announce: true } : {}) });
+  return typeof r?.announced === "boolean" ? r.announced : undefined;
 }
 
 /** Posts a planned call-up to the guild's Discord now. */

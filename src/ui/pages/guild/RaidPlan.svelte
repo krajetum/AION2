@@ -1,10 +1,11 @@
 <script lang="ts">
   // Raid plan: each member paints the hours they are free (every week, or only one week); with view.raidsummary,
   // everyone's hours added up: how many are free each hour, who, which classes, and each day's best stretch.
-  import { getAvailability, saveAvailability } from "../../../app/guild.ts";
+  import { cancelCallup, createCallup, getAvailability, saveAvailability, testCallup } from "../../../app/guild.ts";
+  import { refreshGuild } from "../../actions.ts";
   import { can, type GuildLink, type GuildView } from "../../../domain/guild.ts";
   import {
-    addWeeks, bestDays, blockOf, decodeWeek, hourKind, unblocked, classesOf, DAY_NAMES, DAYS, emptyWeek, freeBySlot, hourLabel, hoursFor, ownWeek, setDay, setRange,
+    addWeeks, bestDays, blockOf, CALLUP_MIN_FREE, callupFor, decodeWeek, hourKind, unblocked, classesOf, DAY_NAMES, DAYS, emptyWeek, freeBySlot, hourLabel, hoursFor, ownWeek, setDay, setRange,
     slotNow, slotOf, slotStart, weekOf, withClasses, NO_CLASS, type Availability, type MemberAvailability, type Week,
   } from "../../../domain/raidplan.ts";
   import { RAID_PLAN } from "../../../config.ts";
@@ -114,6 +115,30 @@
   let picked = $state<number | null>(null);
   const pickedWho = $derived(picked === null ? [] : bySlot[picked] ?? []);
   const notMarked = $derived(Math.max(0, view.memberCount - (members?.length ?? 0)));
+  // A day with CALLUP_MIN_FREE or more free at once: officers can call the raid from here (posted now, 3 h and 1 h before).
+  const plans = $derived(can(view, g, "manage.callups"));
+  // Call-up times come back on this PC's clock (shifted by its offset to the Worker's): the same hour within 5 minutes.
+  const planned = (atMs: number) => view.callups.find((c) => Math.abs(c.atMs - atMs) < 5 * 60_000) ?? null;
+  const makeCallup = (d: (typeof days)[number]) => {
+    const c = callupFor(d, week, Date.now());
+    if (!c) return;
+    if (!confirm(`Call the raid for ${range(d)} with @everyone?\nPosted to Discord now, then 3 h and 1 h before.\n\n${c.message}`)) return;
+    void run(() => createCallup(ui.data, c).then(() => refreshGuild(false)), "Call-up made: posted to Discord within a minute");
+  };
+  /** The toggle switched off: the call-up cancelled (no more reminders) and "Raid cancelled" posted with its ping. */
+  const cancelIt = (d: (typeof days)[number], id: string) => {
+    if (!confirm(`Cancel the raid of ${range(d)}?\nNo more reminders; "Raid cancelled" is posted to Discord with @everyone.`)) return;
+    void run(async () => {
+      const ok = await cancelCallup(ui.data, id, true);
+      await refreshGuild(false);
+      if (ok === false) throw new Error("Call-up cancelled, but Discord refused the \"Raid cancelled\" post: check the webhook");
+    }, view.hasWebhook ? "Raid cancelled: posted to Discord" : "Raid cancelled (no Discord webhook: nothing posted)");
+  };
+  const testIt = (d: (typeof days)[number]) => {
+    const c = callupFor(d, week, Date.now());
+    if (!c || !confirm(`Post a TEST of this call-up to Discord now, with @everyone?\nIt pings everyone in the channel; nothing is planned.`)) return;
+    void run(() => testCallup(ui.data, c), "Test posted to Discord with @everyone (nothing planned)");
+  };
   const range = (d: { day: number; from: number; to: number }) => `${DAY_NAMES[d.day]} ${dateOf(d.day).getUTCDate()}, ${hourLabel(d.from)}–${hourLabel(d.to)}`;
 </script>
 
@@ -192,8 +217,22 @@
   {#if days.length}
     <h3>Best times, {offset ? "next" : "this"} week</h3>
     <ol class="best">{#each days.slice(0, 4) as d (d.day)}
-      <li><b>{range(d)}</b> · {d.count} free · {d.classes.map(([c, n]) => `${c} ${n}`).join(", ")}
-        <div class="dim">{d.who.map((w) => w.name).join(", ")}</div></li>{/each}</ol>
+      <li><div class="what"><b>{range(d)}</b> · {d.count} free · {d.classes.map(([c, n]) => `${c} ${n}`).join(", ")}
+        <div class="dim">{d.who.map((w) => w.name).join(", ")}</div></div>
+        {#if plans && d.count >= CALLUP_MIN_FREE}{@const c = callupFor(d, week, ui.now)}
+          <div class="callup">
+          {#if !c}<span class="dim">Already begun</span>
+          {:else}{@const on = planned(c.atMs)}
+            <button class="switch" class:on={!!on} role="switch" aria-checked={!!on} disabled={gs.busy}
+              onclick={() => (on ? cancelIt(d, on.id) : makeCallup(d))}
+              title={on ? "On: reminders now, 3 h and 1 h before. Switch off to cancel the raid and post \"Raid cancelled\" (@everyone)"
+                : "@everyone, the names of those free, 'Your spot is not guaranteed': posted now, 3 h and 1 h before"}>
+              <i aria-hidden="true"></i>{on ? "Call-up on" : "Make a call-up"}</button>
+            <button class="ghost" disabled={gs.busy || !view.hasWebhook} onclick={() => testIt(d)}
+              title={view.hasWebhook ? "Post it once to Discord with @everyone, to check the ping: nothing planned" : "Set a Discord webhook first"}>Test ping</button>{/if}
+          </div>
+        {/if}
+      </li>{/each}</ol>
   {:else}<p class="hint">Nobody marked free hours for this week yet.</p>{/if}
 
   <div class="grid heat" role="group" aria-label="Members free per hour">
@@ -249,6 +288,15 @@
   .heat .cell.picked { outline: 2px solid var(--text); outline-offset: -1px; }
   .best { padding-left: 20px; margin: 4px 0 14px; }
   .best li { margin-bottom: 6px; }
+  .best li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; }
+  .callup { display: flex; gap: 6px; justify-content: flex-end; }
+  /* The call-up toggle: off = make one, on = planned (switch it off to cancel the raid). */
+  .switch { display: inline-flex; align-items: center; gap: 8px; }
+  .switch i { width: 26px; height: 14px; border-radius: 7px; background: var(--ground); position: relative; flex: none; transition: background .15s; }
+  .switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+  .switch.on i { background: #1e7d3c; }
+  .switch.on i::after { transform: translateX(12px); background: #fff; }
+  .callup button { height: 26px; padding: 0 10px; font-size: 12px; }
   .who { columns: 2; padding-left: 18px; margin: 4px 0; }
   h3 { font-size: 14px; margin: 14px 0 6px; }
 </style>

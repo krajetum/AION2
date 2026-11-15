@@ -145,3 +145,27 @@ export function classesOf(who: Who[]): [string, number][] {
 export const withClasses = <T extends Who>(members: T[], found: Record<string, string>): T[] =>
   members.map((m) => (m.className || !found[m.name] ? m : { ...m, className: found[m.name] }));
 export const hourLabel = (h: number) => `${String(h % 24).padStart(2, "0")}:00`;
+
+/** A day's best stretch with at least this many free gets a "Make a call-up" button (officers, `manage.callups`). */
+export const CALLUP_MIN_FREE = 9;
+/** Its reminders: one at once (a lead as long as the wait, which the Worker posts within a minute), 3 h and 1 h before. */
+export const CALLUP_LEADS = [180, 60];
+const MAX_MESSAGE = 500; // the Worker's call-up message limit (server/src/validate.ts)
+
+/**
+ * The call-up for a day's best stretch: at its first hour, @everyone, the names of those free and "Your spot is not
+ * guaranteed", posted now, 3 h and 1 h before. Null once that hour has begun.
+ */
+export function callupFor(d: DayPeak, week: string, now: number, tz = RAID_PLAN.timeZone): { atMs: number; message: string; ping: "everyone"; leads: number[] } | null {
+  const atMs = slotStart(week, slotOf(d.day, d.from), tz);
+  const wait = Math.floor((atMs - now) / 60_000);
+  if (wait < 1) return null;
+  const head = `Raid: ${d.count} members are free ${hourLabel(d.from)}–${hourLabel(d.to)} (server time).\n`;
+  const tail = "\nYour spot is not guaranteed.";
+  const names = d.who.map((w) => w.name);
+  let list = names.join(", ");
+  for (let n = names.length; n > 0 && head.length + "Signed up: ".length + list.length + tail.length > MAX_MESSAGE; n--) {
+    list = `${names.slice(0, n - 1).join(", ")} and ${names.length - n + 1} more`;
+  }
+  return { atMs, message: `${head}Signed up: ${list}${tail}`, ping: "everyone", leads: [...new Set([wait, ...CALLUP_LEADS])].sort((a, b) => b - a) };
+}
