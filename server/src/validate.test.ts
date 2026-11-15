@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  can, DEFAULT_PERMS, mergeWeeks, MAX_WEEKS, parseAvailability, SLOTS_HEX, permsOf, CALLUP_TITLE, callupPost, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
+  can, DEFAULT_PERMS, mergeWeeks, MAX_WEEKS, parseAvailability, SLOTS_HEX, permsOf, CALLUP_TITLE, callupPost, callupCancelPost, CANCELLED_TITLE, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
   parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, parseShare, TIME_RANGE,
 } from "./validate.ts";
 
@@ -254,4 +254,15 @@ test("availability weeks: set, cleared, past ones and extras dropped, junk ignor
   assert.deepEqual(mergeWeeks("not json", null, NOW), {});
   const many = Object.fromEntries(["2027-01-11", "2027-01-18", "2027-01-25", "2027-02-01"].map((k) => [k, a]));
   assert.equal(Object.keys(mergeWeeks(JSON.stringify(many), null, NOW)).length, MAX_WEEKS);
+});
+
+test("a cancelled call-up's post: same ping, red, the time it was planned for and its message", () => {
+  const at = Date.UTC(2027, 0, 22, 19);
+  const p = callupCancelPost({ atMs: at, message: "Raid: 9 free", ping: "everyone" });
+  assert.equal(p.content, "@everyone");
+  assert.deepEqual(p.allowed_mentions, { parse: ["everyone"] });
+  assert.equal(p.embeds[0].title, CANCELLED_TITLE);
+  assert.match(p.embeds[0].description, new RegExp(`<t:${at / 1000}:F>`));
+  assert.equal(p.embeds[0].fields[0].value, "Raid: 9 free");
+  assert.equal(callupCancelPost({ atMs: at, message: "x", ping: "none" }).content, "");
 });

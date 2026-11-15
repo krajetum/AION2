@@ -124,9 +124,11 @@ export async function testCallup(data: AppData, c: { atMs: number; message: stri
   try { await sendCallup(data, id); } finally { await cancelCallup(data, id).catch(() => {}); }
 }
 
-export async function cancelCallup(data: AppData, id: string): Promise<void> {
+/** Cancels a call-up; `announce`: first posts "Raid cancelled" to Discord with its ping (false back = Discord refused it). */
+export async function cancelCallup(data: AppData, id: string, announce = false): Promise<boolean | undefined> {
   if (!data.guild) throw new Error("Not in a guild");
-  await crowd(path(data, `/callups/${id}/delete`), auth(data));
+  const r = await crowd(path(data, `/callups/${id}/delete`), { ...auth(data), ...(announce ? { announce: true } : {}) });
+  return typeof r?.announced === "boolean" ? r.announced : undefined;
 }
 
 /** Posts a planned call-up to the guild's Discord now. */

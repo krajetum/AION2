@@ -335,6 +335,19 @@ export function callupPost(c: { atMs: number; message: string; ping: Ping }) {
   };
 }
 
+export const CANCELLED_TITLE = "Raid cancelled";
+/** The Discord post for a call-up cancelled with `announce`: same ping, red, the planned time, its message quoted. */
+export function callupCancelPost(c: { atMs: number; message: string; ping: Ping }) {
+  const s = Math.round(c.atMs / 1000);
+  return {
+    username: "AION 2 Companion",
+    content: c.ping === "none" ? "" : `@${c.ping}`,
+    allowed_mentions: { parse: c.ping === "none" ? [] : ["everyone"] },
+    embeds: [{ title: CANCELLED_TITLE, description: `The raid planned for <t:${s}:F> is cancelled.`, color: 0xc0392b,
+      fields: [{ name: "It was", value: c.message.slice(0, 1000) }] }],
+  };
+}
+
 /** The serverId of GET /v1/bosses/:serverId, or null. */
 export function parseServerId(s: string): number | null {
   if (!/^\d{1,9}$/.test(s)) return null;

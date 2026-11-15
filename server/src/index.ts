@@ -3,7 +3,7 @@
 // shared fights, by consent). The app works the same when this is down.
 // API under /v1, backward-compatible changes only (an incompatible one = /v2 alongside).
 import {
-  alertKey, type Auth, type BossTimer, callupPost, can, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_CALLUPS, MAX_LEAD, MAX_POSTS, nextDue, nextSend,
+  alertKey, type Auth, type BossTimer, callupCancelPost, callupPost, can, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_CALLUPS, MAX_LEAD, MAX_POSTS, nextDue, nextSend,
   mergeWeeks, parseAdmin, parseAuth, parseAvailability, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
   type Ping, POSTED_FOR, rank, type Role, SLOTS_HEX,
 } from "./validate.ts";
@@ -421,13 +421,21 @@ async function createCallup(env: Env, req: Request, id: string) {
   return json({ id: cid });
 }
 
+/** Cancels a call-up; with `announce: true`, first posts "Raid cancelled" to the guild's Discord (`announced`: it went through). */
 async function cancelCallup(env: Env, req: Request, id: string, cid: string) {
-  const a = parseAuth(await readBody(req));
+  const body = await readBody(req);
+  const a = parseAuth(body);
   if (!a) return fail(400, "bad request");
   const refused = await callupGate(env, id, a);
   if (refused) return refused;
+  let announced: boolean | undefined;
+  if (body && typeof body === "object" && (body as { announce?: unknown }).announce === true) {
+    const c = await env.DB.prepare("SELECT c.at_ms, c.message, c.ping, g.webhook FROM guild_callups c JOIN guilds g ON g.id = c.guild_id WHERE c.id = ? AND c.guild_id = ?")
+      .bind(cid, id).first<{ at_ms: number; message: string; ping: Ping; webhook: string | null }>();
+    announced = !!c?.webhook && await postDiscord(c.webhook, callupCancelPost({ atMs: c.at_ms, message: c.message, ping: c.ping }));
+  }
   await env.DB.prepare("DELETE FROM guild_callups WHERE id = ? AND guild_id = ?").bind(cid, id).run();
-  return json({ ok: true });
+  return json({ ok: true, announced });
 }
 
 /** Posts a planned call-up to the guild's Discord now; the schedule is untouched. */

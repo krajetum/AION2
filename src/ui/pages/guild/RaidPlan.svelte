@@ -1,7 +1,7 @@
 <script lang="ts">
   // Raid plan: each member paints the hours they are free (every week, or only one week); with view.raidsummary,
   // everyone's hours added up: how many are free each hour, who, which classes, and each day's best stretch.
-  import { createCallup, getAvailability, saveAvailability, testCallup } from "../../../app/guild.ts";
+  import { cancelCallup, createCallup, getAvailability, saveAvailability, testCallup } from "../../../app/guild.ts";
   import { refreshGuild } from "../../actions.ts";
   import { can, type GuildLink, type GuildView } from "../../../domain/guild.ts";
   import {
@@ -118,12 +118,21 @@
   // A day with CALLUP_MIN_FREE or more free at once: officers can call the raid from here (posted now, 3 h and 1 h before).
   const plans = $derived(can(view, g, "manage.callups"));
   // Call-up times come back on this PC's clock (shifted by its offset to the Worker's): the same hour within 5 minutes.
-  const planned = (atMs: number) => view.callups.some((c) => Math.abs(c.atMs - atMs) < 5 * 60_000);
+  const planned = (atMs: number) => view.callups.find((c) => Math.abs(c.atMs - atMs) < 5 * 60_000) ?? null;
   const makeCallup = (d: (typeof days)[number]) => {
     const c = callupFor(d, week, Date.now());
     if (!c) return;
     if (!confirm(`Call the raid for ${range(d)} with @everyone?\nPosted to Discord now, then 3 h and 1 h before.\n\n${c.message}`)) return;
     void run(() => createCallup(ui.data, c).then(() => refreshGuild(false)), "Call-up made: posted to Discord within a minute");
+  };
+  /** The toggle switched off: the call-up cancelled (no more reminders) and "Raid cancelled" posted with its ping. */
+  const cancelIt = (d: (typeof days)[number], id: string) => {
+    if (!confirm(`Cancel the raid of ${range(d)}?\nNo more reminders; "Raid cancelled" is posted to Discord with @everyone.`)) return;
+    void run(async () => {
+      const ok = await cancelCallup(ui.data, id, true);
+      await refreshGuild(false);
+      if (ok === false) throw new Error("Call-up cancelled, but Discord refused the \"Raid cancelled\" post: check the webhook");
+    }, view.hasWebhook ? "Raid cancelled: posted to Discord" : "Raid cancelled (no Discord webhook: nothing posted)");
   };
   const testIt = (d: (typeof days)[number]) => {
     const c = callupFor(d, week, Date.now());
@@ -213,9 +222,12 @@
         {#if plans && d.count >= CALLUP_MIN_FREE}{@const c = callupFor(d, week, ui.now)}
           <div class="callup">
           {#if !c}<span class="dim">Already begun</span>
-          {:else if planned(c.atMs)}<span class="tag">Call-up planned</span>
-          {:else}
-            <button disabled={gs.busy} onclick={() => makeCallup(d)} title="@everyone, the names of those free, 'Your spot is not guaranteed': posted now, 3 h and 1 h before">Make a call-up</button>
+          {:else}{@const on = planned(c.atMs)}
+            <button class="switch" class:on={!!on} role="switch" aria-checked={!!on} disabled={gs.busy}
+              onclick={() => (on ? cancelIt(d, on.id) : makeCallup(d))}
+              title={on ? "On: reminders now, 3 h and 1 h before. Switch off to cancel the raid and post \"Raid cancelled\" (@everyone)"
+                : "@everyone, the names of those free, 'Your spot is not guaranteed': posted now, 3 h and 1 h before"}>
+              <i aria-hidden="true"></i>{on ? "Call-up on" : "Make a call-up"}</button>
             <button class="ghost" disabled={gs.busy || !view.hasWebhook} onclick={() => testIt(d)}
               title={view.hasWebhook ? "Post it once to Discord with @everyone, to check the ping: nothing planned" : "Set a Discord webhook first"}>Test ping</button>{/if}
           </div>
@@ -278,6 +290,12 @@
   .best li { margin-bottom: 6px; }
   .best li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; }
   .callup { display: flex; gap: 6px; justify-content: flex-end; }
+  /* The call-up toggle: off = make one, on = planned (switch it off to cancel the raid). */
+  .switch { display: inline-flex; align-items: center; gap: 8px; }
+  .switch i { width: 26px; height: 14px; border-radius: 7px; background: var(--ground); position: relative; flex: none; transition: background .15s; }
+  .switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+  .switch.on i { background: #1e7d3c; }
+  .switch.on i::after { transform: translateX(12px); background: #fff; }
   .callup button { height: 26px; padding: 0 10px; font-size: 12px; }
   .who { columns: 2; padding-left: 18px; margin: 4px 0; }
   h3 { font-size: 14px; margin: 14px 0 6px; }
