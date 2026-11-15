@@ -88,6 +88,11 @@ button.link:hover { text-decoration: underline; }
 .page-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 16px; }
 .page-head h1 { margin: 0; font-size: var(--fs-2xl); font-weight: 600; line-height: 1.2; }
 .page-head p { margin: 0; color: var(--faint); }
+/* Hides the right column (wallet, timers): more room for the page. */
+.page-head .side-toggle { align-self: center; width: 30px; height: 30px; margin-left: auto; padding: 0; }
+.side-toggle[aria-pressed="true"] { color: var(--text); }
+.shell.no-inspector .inspector { display: none; }
+@media (min-width: 1201px) { .shell.no-inspector { grid-template-columns: 232px minmax(0, 1fr); } }
 
 /* inspector */
 .char { display: flex; flex-direction: column; gap: 6px; padding: 0 6px; }

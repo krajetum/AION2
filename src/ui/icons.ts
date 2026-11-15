@@ -26,6 +26,8 @@ export const ICON = {
   download: icon(`<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>`),
   upload: icon(`<path d="M12 15V4M7 9l5-5 5 5M5 20h14"/>`),
   pin: icon(`<path d="M12 21s-6-5.7-6-11a6 6 0 0 1 12 0c0 5.3-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>`),
+  search: icon(`<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>`),
+  panel: icon(`<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>`),
   chevron: icon(`<path d="M9 6l6 6-6 6"/>`),
   close: icon(`<path d="M6 6l12 12M18 6L6 18"/>`),
   sound: icon(`<path d="M11 5L6 9H3v6h3l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>`),

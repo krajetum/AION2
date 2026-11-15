@@ -46,6 +46,8 @@
   import Amount from "./parts/Amount.svelte";
   import Confetti from "./parts/Confetti.svelte";
   import Mascot from "./parts/Mascot.svelte";
+  import Palette from "./parts/Palette.svelte";
+  import { fade } from "svelte/transition";
   import Winter from "./parts/Winter.svelte";
   import { halloweenActive, winterActive } from "../domain/holiday.ts";
   import { winterNow } from "./winter.ts";
@@ -79,6 +81,15 @@
   const bosses = $derived(bossBoard(ui.data.bosses, ui.now));
   const meter = $derived(ui.meter?.status);
   // Sidebar groups: the open page's group is open; others only if the player opened them (remembered, this browser only).
+  // The right column (wallet, timers) can be hidden for pages that want the width (remembered, this browser only).
+  const WIDE_KEY = "aion2-wide";
+  let wide = $state((() => { try { return localStorage.getItem(WIDE_KEY) === "1"; } catch { return false; } })());
+  function toggleWide() {
+    wide = !wide;
+    try { localStorage.setItem(WIDE_KEY, wide ? "1" : "0"); } catch { /* not kept */ }
+  }
+  let palette = $state<Palette>();
+  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const NAV_KEY = "aion2-nav-open";
   let navOpen = $state<Record<string, boolean>>((() => { try { return JSON.parse(localStorage.getItem(NAV_KEY) ?? "{}"); } catch { return {}; } })());
   const isOpen = (name: string, tabs: Tab[]) => tabs.includes(ui.tab) || navOpen[name] === true;
@@ -182,9 +193,10 @@
 
 <svelte:window onkeydown={keydown} onhashchange={() => { ui.tab = tabFromHash(); }} />
 
-<div class="shell">
+<div class="shell" class:no-inspector={wide}>
   <nav class="side" aria-label="Pages">
     <div class="brand" translate="no"><span class="logo">A2</span><b>AION 2</b><span>Companion</span></div>
+    <button class="tab" title="Open a page, switch character or tick a task (Ctrl+K)" onclick={() => palette?.open()}>{@html ICON.search}<span class="lbl">Go to…</span><span class="count">Ctrl K</span></button>
     {@render tab("home")}
     {#each GROUPS as [name, tabs]}<details open={isOpen(name, tabs)} ontoggle={(e) => toggled(name, tabs, e)}><summary class="label">{@html ICON.chevron}{name}</summary>
       {#each tabs as t}{@render tab(t)}{/each}
@@ -197,7 +209,9 @@
     {@html ICON[t]}<span class="lbl">{PAGE[t][0]}</span>{#if t === "news"}{#if unread}<span class="badge">{unread}</span>{/if}{:else if b}<span class="count">{b}</span>{/if}</button>{/snippet}
 
   <main>
-    <div class="page-head"><h1>{PAGE[ui.tab][0]}</h1><p>{PAGE[ui.tab][1]}</p></div>
+    <div class="page-head"><h1>{PAGE[ui.tab][0]}</h1><p>{PAGE[ui.tab][1]}</p>
+      <button class="ghost side-toggle" aria-pressed={!wide} title={wide ? "Show the wallet and timers" : "Hide the wallet and timers: more room for the page"}
+        aria-label="Wallet and timers column" onclick={toggleWide}>{@html ICON.panel}</button></div>
     {#if ui.update && ui.update.version !== updateHidden}<div class="banner update"><span class="grow">{#if ui.updating}{ui.updating}{:else}<b>AION 2 Companion {ui.update.version}</b> is ready.{/if}</span>
       <a class="whats-new" href="https://github.com/krajetum/AION2/releases/tag/v{ui.update.version}" target="_blank" rel="noopener">What's new</a>
       <button disabled={ui.updating.startsWith("Downloading") || ui.updating.startsWith("Updating")} onclick={install}>{gameActive(ui.now) ? "Install & restart (stops the meter)" : "Install & restart"}</button>
@@ -211,7 +225,8 @@
       <button class="ghost" aria-label="Not now" title="Not now" onclick={() => { ui.suggest = null; }}>{@html ICON.close}</button></div>{/if}
     {#each ui.data.news.filter((n) => !n.read && isImportant(n)) as n (n.gid)}<div class="banner info"><a href={n.url} target="_blank" rel="noopener" onclick={() => markRead(n.gid)}>{n.title}</a>
       <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => markRead(n.gid)}>{@html ICON.close}</button></div>{/each}
-    {#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "crafting"}<Crafting />{:else if ui.tab === "enhance"}<Enhance />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "players"}<Players />{:else if ui.tab === "guild"}<Guild />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "wiki"}<Wiki />{:else if ui.tab === "trophies"}<Trophies />{:else}<TaskList cad={ui.tab} />{/if}
+    <!-- A page fades in when it opens (not with "reduce motion"). -->
+    {#key ui.tab}<div in:fade={{ duration: still ? 0 : 120 }}>{#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "crafting"}<Crafting />{:else if ui.tab === "enhance"}<Enhance />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "players"}<Players />{:else if ui.tab === "guild"}<Guild />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "wiki"}<Wiki />{:else if ui.tab === "trophies"}<Trophies />{:else}<TaskList cad={ui.tab} />{/if}</div>{/key}
   </main>
 
   <aside class="inspector" aria-label="Timers">
@@ -252,3 +267,4 @@
 {#if winter && s.snow}<Winter />{/if}
 {#if s.celebrate}<Confetti />{/if}
 <Mascot />
+<Palette bind:this={palette} />
