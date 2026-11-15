@@ -45,6 +45,6 @@
   .overview { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
   .overview section { margin: 0; }
   .wide { grid-column: 1 / -1; }
-  .big { margin: 0; font-size: 16px; font-weight: 600; }
+  .big { margin: 0; font-size: var(--fs-xl); font-weight: 600; }
   .msg { white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 </style>

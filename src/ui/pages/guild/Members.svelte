@@ -60,7 +60,7 @@
 </section>
 
 <style>
-  .role { font-size: 12px; padding: 1px 8px; border-radius: var(--r-pill); color: var(--muted); background: var(--raised); }
+  .role { font-size: var(--fs-sm); padding: 1px 8px; border-radius: var(--r-pill); color: var(--muted); background: var(--raised); }
   .role.leader { color: var(--gold-ink); background: var(--gold-bg); }
   .role.officer { color: var(--primary-ink); background: var(--primary-fill); }
 </style>

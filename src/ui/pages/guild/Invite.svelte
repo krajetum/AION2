@@ -25,5 +25,5 @@
 </section>
 
 <style>
-  .code { margin: 0 0 8px; font-size: 18px; font-weight: 600; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+  .code { margin: 0 0 8px; font-size: var(--fs-2xl); font-weight: 600; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
 </style>

@@ -150,15 +150,15 @@
   .callup.past { opacity: 0.6; }
   .callup p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   .acts { display: flex; gap: 8px; }
-  .tag { font-size: 12px; padding: 0 6px; border-radius: 8px; background: var(--gold-bg); color: var(--gold-ink); }
+  .tag { font-size: var(--fs-sm); padding: 0 6px; border-radius: 8px; background: var(--gold-bg); color: var(--gold-ink); }
 
   .composer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 24px; align-items: start; margin-top: 10px; }
   .fields, .preview { display: grid; gap: 16px; min-width: 0; }
   .preview { gap: 8px; }
   .field { display: grid; gap: 6px; justify-items: start; }
-  label, .lbl { display: flex; gap: 8px; align-items: baseline; font-size: 12px; font-weight: 600; color: var(--muted); }
+  label, .lbl { display: flex; gap: 8px; align-items: baseline; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
   .preview .lbl:not(:first-child) { margin-top: 10px; }
-  small { color: var(--faint); font-size: 12px; }
+  small { color: var(--faint); font-size: var(--fs-sm); }
   .bad { color: var(--neg-ink); }
   .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .amount { width: 72px; }
@@ -173,7 +173,7 @@
   .m-italic { font-style: italic; }
   .m-underline { text-decoration: underline; }
   .m-strikethrough { text-decoration: line-through; }
-  .m-code { font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+  .m-code { font-family: ui-monospace, Consolas, monospace; font-size: var(--fs-xs); }
   textarea { display: block; width: 100%; box-sizing: border-box; padding: 8px 10px; border: 0; outline: 0; resize: vertical; background: transparent; color: var(--text); font: inherit; line-height: 1.45; }
   textarea::placeholder { color: var(--faint); }
 
@@ -182,21 +182,21 @@
   .pill.on { border-color: transparent; background: var(--gold-bg); color: var(--gold-ink); }
 
   /* Discord's own dark colours: this box shows the post as it lands there. */
-  .discord { display: flex; gap: 12px; padding: 14px; border-radius: var(--r-card); background: #313338; color: #dbdee1; font-size: 14px; }
-  .avatar { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--primary-fill); color: #fff; font-size: 12px; font-weight: 700; }
+  .discord { display: flex; gap: 12px; padding: 14px; border-radius: var(--r-card); background: #313338; color: #dbdee1; font-size: var(--fs-lg); }
+  .avatar { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--primary-fill); color: #fff; font-size: var(--fs-sm); font-weight: 700; }
   .msg { display: grid; gap: 4px; min-width: 0; justify-items: start; }
   .msg > div:first-child b { color: #f2f3f5; }
-  .app { padding: 1px 4px; border-radius: 3px; background: #5865f2; color: #fff; font-size: 10px; font-weight: 600; vertical-align: 1px; }
+  .app { padding: 1px 4px; border-radius: 3px; background: #5865f2; color: #fff; font-size: var(--fs-xs); font-weight: 600; vertical-align: 1px; }
   .mention { padding: 0 2px; border-radius: 3px; background: #3c4270; color: #c9cdfb; }
   .embed { display: grid; gap: 6px; padding: 10px 14px; border-left: 4px solid #d8b45a; border-radius: 4px; background: #2b2d31; min-width: 0; }
   .embed > b { color: #f2f3f5; }
-  .embed .fname { margin-top: 4px; font-size: 13px; }
+  .embed .fname { margin-top: 4px; font-size: var(--fs-md); }
   .desc { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .desc :global(code), .callup p :global(code) { padding: 0 4px; border-radius: 3px; background: #1e1f22; font-size: 13px; }
+  .desc :global(code), .callup p :global(code) { padding: 0 4px; border-radius: 3px; background: #1e1f22; font-size: var(--fs-md); }
   .blank { color: #80848e; font-style: italic; }
   .rel { padding: 0 2px; border-radius: 3px; background: #3f4248; }
 
-  .schedule { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .schedule { list-style: none; margin: 0; padding: 0; font-size: var(--fs-md); }
   .schedule li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-top: 1px solid var(--rule); font-variant-numeric: tabular-nums; }
   .schedule li:first-child { border-top: 0; }
   .gone span:first-child { text-decoration: line-through; color: var(--faint); }

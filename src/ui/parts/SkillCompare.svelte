@@ -30,5 +30,5 @@
 <style>
   .delta { color: var(--negative); }
   .delta.up { color: var(--positive); }
-  h2 button { margin-left: 8px; font-size: 12px; }
+  h2 button { margin-left: 8px; font-size: var(--fs-sm); }
 </style>

@@ -262,27 +262,27 @@
   .seg small { color: var(--faint); margin-left: 4px; }
   .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 4px; }
   .grow { flex: 1; }
-  .small { font-size: 12px; }
+  .small { font-size: var(--fs-sm); }
   .warn { color: var(--warn-ink); }
   .range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 12px; }
   .range label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
   .grid { display: grid; grid-template-columns: 48px repeat(7, minmax(36px, 1fr)); gap: 2px; user-select: none; touch-action: none; max-width: 760px; }
-  .day { display: flex; flex-direction: column; align-items: center; font-size: 12px; padding-bottom: 4px; }
-  .tiny { height: 20px; padding: 0 6px; font-size: 11px; }
-  .hour { font-size: 11px; color: var(--faint); text-align: right; padding-right: 6px; line-height: 18px; font-variant-numeric: tabular-nums; }
+  .day { display: flex; flex-direction: column; align-items: center; font-size: var(--fs-sm); padding-bottom: 4px; }
+  .tiny { height: 20px; padding: 0 6px; font-size: var(--fs-xs); }
+  .hour { font-size: var(--fs-xs); color: var(--faint); text-align: right; padding-right: 6px; line-height: 18px; font-variant-numeric: tabular-nums; }
   .cell { height: 18px; border-radius: 3px; background: var(--ground); cursor: pointer; border: 1px solid transparent; padding: 0; }
   /* My hours: free / not free every week (dark green / red), or only this week (light green / orange). */
-  .cell.free, .legend .free { background: #1e7d3c; }
+  .cell.free, .legend .free { background: var(--ok-fill); }
   .cell.freeWeek, .legend .freeWeek { background: #7fd68f; }
   .cell.busy, .legend .busy { background: color-mix(in srgb, #c0392b 55%, var(--ground)); }
   .cell.busyWeek, .legend .busyWeek { background: #ec8a2f; }
   .legend .blocked { background: repeating-linear-gradient(135deg, var(--raised) 0 3px, var(--ground) 3px 6px); }
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; font-size: var(--fs-sm); color: var(--muted); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend i { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
   .cell.now { border-color: var(--gold-ink); }
   .cell.blocked { cursor: not-allowed; background: repeating-linear-gradient(135deg, var(--raised) 0 4px, var(--ground) 4px 8px); }
-  .heat .cell { font-size: 10px; color: var(--text); font-variant-numeric: tabular-nums;
+  .heat .cell { font-size: var(--fs-xs); color: var(--text); font-variant-numeric: tabular-nums;
     background: color-mix(in srgb, var(--primary) calc(var(--level, 0) * 85%), var(--ground)); }
   .heat .cell.blocked { background: repeating-linear-gradient(135deg, var(--raised) 0 4px, var(--ground) 4px 8px); }
   .heat .cell.picked { outline: 2px solid var(--text); outline-offset: -1px; }
@@ -294,9 +294,9 @@
   .switch { display: inline-flex; align-items: center; gap: 8px; }
   .switch i { width: 26px; height: 14px; border-radius: 7px; background: var(--ground); position: relative; flex: none; transition: background .15s; }
   .switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
-  .switch.on i { background: #1e7d3c; }
-  .switch.on i::after { transform: translateX(12px); background: #fff; }
-  .callup button { height: 26px; padding: 0 10px; font-size: 12px; }
+  .switch.on i { background: var(--ok-fill); }
+  .switch.on i::after { transform: translateX(12px); background: var(--white); }
+  .callup button { height: 26px; padding: 0 10px; font-size: var(--fs-sm); }
   .who { columns: 2; padding-left: 18px; margin: 4px 0; }
-  h3 { font-size: 14px; margin: 14px 0 6px; }
+  h3 { font-size: var(--fs-lg); margin: 14px 0 6px; }
 </style>
