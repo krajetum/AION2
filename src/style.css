@@ -363,6 +363,7 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 .bar.hp i { background: var(--negative); }
 .dps-table .prow { cursor: pointer; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent) calc(var(--p) * 100%), transparent 0); }
 .dps-table .prow:hover { background-color: var(--raised); }
+.dps-table .prow:focus-visible { outline-offset: -2px; } /* inside the row: the table's scroll box clips an outer ring */
 .dps-table .prow.you .name { color: var(--accent); font-weight: 600; }
 .dps-table .prow small { color: var(--faint); }
 .dps-table .rank { width: 1%; color: var(--faint); }

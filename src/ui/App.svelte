@@ -129,6 +129,12 @@
   // Ctrl+Z anywhere except inside a field (the field's own undo wins there).
   function keydown(e: KeyboardEvent) {
     const f = document.activeElement;
+    // Expandable table rows (DPS, Fight Log, Arena): Enter or Space on a focused row is its click.
+    if ((e.key === "Enter" || e.key === " ") && f instanceof HTMLTableRowElement && f.hasAttribute("aria-expanded")) {
+      e.preventDefault();
+      f.click();
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z" && !(f instanceof HTMLInputElement || f instanceof HTMLSelectElement)) {
       e.preventDefault();
       undo();
