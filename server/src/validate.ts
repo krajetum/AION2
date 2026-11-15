@@ -105,7 +105,7 @@ export const MAX_POSTS = 40;
 /** A boss alerted once isn't alerted again for this long (its next respawn is hours away). */
 export const POSTED_FOR = 30 * 60_000;
 
-export interface Me { name: string; className: string; itemLevel: number | null; combatPower: number | null }
+export interface Me { name: string; className: string; itemLevel: number | null; combatPower: number | null; serverId: number | null }
 export interface Share { gear: boolean; fights: boolean }
 export interface GuildCreate { install: string; name: string; serverId: number; me: Me }
 export interface GuildJoin { install: string; code: string; me: Me; share: Share }
@@ -167,7 +167,7 @@ export function parseMe(v: unknown): Me | null {
   if (!isObj(v)) return null;
   const name = text(v.name, MAX_NAME);
   if (!name) return null;
-  return { name, className: text(v.className, MAX_NAME), itemLevel: count(v.itemLevel), combatPower: count(v.combatPower) };
+  return { name, className: text(v.className, MAX_NAME), itemLevel: count(v.itemLevel), combatPower: count(v.combatPower), serverId: isId(v.serverId) ? v.serverId : null };
 }
 
 /** Consent: gear on unless turned off (it's public on the official site anyway), fights only when turned on. */

@@ -95,15 +95,16 @@
   const kind = (s: number) => hourKind(draft[s], usual[s], scope === "week");
 
   // ---- Everyone ----
-  // A member who joined by typing a name has no class on their card: ask their official profile, as Members does
-  // (desktop app only; one lookup per name, cached by infra/armory.ts).
+  // A member who joined by typing a name has no class on their card: ask their official profile on their own server
+  // (desktop app only; one lookup per name, cached by infra/armory.ts). Server not known: no guess (another player
+  // of the same name on the guild's server would give the wrong class).
   let found = $state<Record<string, string>>({});
   const asked = new Set<string>();
   $effect(() => {
     for (const m of members ?? []) {
-      if (m.className || asked.has(m.name)) continue;
+      if (m.className || m.serverId === null || asked.has(m.name)) continue;
       asked.add(m.name);
-      officialProfile(m.name, view.serverId).then((p) => { if (p?.className) found[m.name] = p.className; }).catch(() => {});
+      officialProfile(m.name, m.serverId).then((p) => { if (p?.className) found[m.name] = p.className; }).catch(() => {});
     }
   });
   const everyone = $derived(members ? withClasses(members, found) : null);

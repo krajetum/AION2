@@ -8,7 +8,8 @@ export interface GuildShare { gear: boolean; fights: boolean }
 /** This install's guild (AppData.guild). memberCode = the code it joined with (to invite others), officerKey = officers only. */
 export interface GuildLink { id: string; name: string; serverId: number; memberCode?: string; officerKey?: string; share: GuildShare }
 export interface GuildMember {
-  name: string; className: string; itemLevel: number | null; combatPower: number | null;
+  /** serverId: the member's game server, null when their card predates it (the guild's then, a guess). */
+  name: string; className: string; serverId: number | null; itemLevel: number | null; combatPower: number | null;
   shareGear: boolean; shareFights: boolean; seenMs: number; role: Role; me: boolean;
 }
 export type Ping = "none" | "here" | "everyone";
@@ -41,7 +42,7 @@ export const rank = (r: Role) => ROLES.indexOf(r);
 export const myRole = (view: GuildView, link: GuildLink | null | undefined): Role => (link?.officerKey ? "leader" : view.role);
 export const can = (view: GuildView, link: GuildLink | null | undefined, perm: Perm) => rank(myRole(view, link)) >= rank(view.perms[perm]);
 /** A member's card as the Worker takes it. */
-export interface GuildMe { name: string; className: string; itemLevel: number | null; combatPower: number | null }
+export interface GuildMe { name: string; className: string; itemLevel: number | null; combatPower: number | null; serverId: number | null }
 
 /** Upload limits (server/src/validate.ts MAX_FIGHT, MAX_ROWS). */
 export const MAX_FIGHT = 8 * 1024;
@@ -67,13 +68,13 @@ export function cleanGuild(raw: unknown): GuildLink | null {
 }
 
 /** Your card from what the meter saw (gear score = item level). */
-export const meCard = (p: Profile): GuildMe => ({ name: p.name, className: p.job, itemLevel: p.gearScore, combatPower: p.combatPower });
+export const meCard = (p: Profile): GuildMe => ({ name: p.name, className: p.job, itemLevel: p.gearScore, combatPower: p.combatPower, serverId: p.serverId || null });
 
 /** GET /v1/guilds/:id, last-seen times put on the local clock. */
 export function parseGuild(j: any, localNow: number): GuildView {
   const shift = num(j?.serverNow) ? localNow - j.serverNow : 0;
   const all = (Array.isArray(j?.members) ? j.members : []).filter(isObj).map((m: any): GuildMember => ({
-    name: str(m.name), className: str(m.className), itemLevel: num(m.itemLevel), combatPower: num(m.combatPower),
+    name: str(m.name), className: str(m.className), serverId: num(m.serverId) && m.serverId > 0 ? m.serverId : null, itemLevel: num(m.itemLevel), combatPower: num(m.combatPower),
     shareGear: m.shareGear === true, shareFights: m.shareFights === true, seenMs: (num(m.seenMs) ?? 0) + shift,
     role: isRole(m.role) ? m.role : "member", me: m.me === true,
   })).filter((m: GuildMember) => m.name);
@@ -130,11 +131,11 @@ export function discordHtml(s: string): string {
 }
 
 /** Members by item level (highest first), the official profile's numbers where the member shared none. */
-export function rosterRows(members: GuildMember[], official: Record<string, { itemLevel: number | null; combatPower: number | null } | null>): (GuildMember & { official: boolean })[] {
+export function rosterRows(members: GuildMember[], official: Record<string, { itemLevel: number | null; combatPower: number | null; className?: string } | null>): (GuildMember & { official: boolean })[] {
   return members.map((m) => {
     const o = official[m.name];
     const fill = m.itemLevel === null && !!o;
-    return { ...m, itemLevel: m.itemLevel ?? o?.itemLevel ?? null, combatPower: m.combatPower ?? o?.combatPower ?? null, official: fill };
+    return { ...m, className: m.className || o?.className || "", itemLevel: m.itemLevel ?? o?.itemLevel ?? null, combatPower: m.combatPower ?? o?.combatPower ?? null, official: fill };
   }).sort((a, b) => (b.itemLevel ?? -1) - (a.itemLevel ?? -1) || a.name.localeCompare(b.name));
 }
 

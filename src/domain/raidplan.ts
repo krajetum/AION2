@@ -67,7 +67,7 @@ export function slotNow(week: string, now: number, tz = RAID_PLAN.timeZone): num
 
 /** A member's hours as the Worker keeps them: every week's, and weeks that differ ("only this week"). */
 export interface Availability { slots: string; weeks: Record<string, string>; updatedMs: number }
-export interface MemberAvailability extends Availability { name: string; className: string }
+export interface MemberAvailability extends Availability { name: string; className: string; /** null: not known (a card from before servers were kept) */ serverId: number | null }
 
 /** The hours that count for `week`: that week's own when set, else every week's; blocked hours out. */
 export const hoursFor = (a: Pick<Availability, "slots" | "weeks"> | null | undefined, week: string): Week =>
@@ -95,7 +95,8 @@ export function parseAvailability(j: any): { mine: Availability | null; members:
   } : null;
   const members = Array.isArray(j.members) ? j.members.flatMap((m: any) => {
     const a = av(m);
-    return a && typeof m.name === "string" ? [{ ...a, name: m.name, className: typeof m.className === "string" ? m.className : "" }] : [];
+    return a && typeof m.name === "string" ? [{ ...a, name: m.name, className: typeof m.className === "string" ? m.className : "",
+      serverId: typeof m.serverId === "number" && m.serverId > 0 ? m.serverId : null }] : [];
   }) : null;
   return { mine: av(j.mine), members };
 }

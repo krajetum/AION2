@@ -154,15 +154,16 @@ const ensureLeader = (env: Env, id: string) => env.DB.prepare(
      SELECT install FROM guild_members WHERE guild_id = ? ORDER BY CASE role WHEN 'officer' THEN 0 ELSE 1 END, joined_ms LIMIT 1)
    AND NOT EXISTS (SELECT 1 FROM guild_members WHERE guild_id = ? AND role = 'leader')`,
 ).bind(id, id, id);
-const upsertMember = (env: Env, guildId: string, install: string, me: { name: string; className: string; itemLevel: number | null; combatPower: number | null },
+const upsertMember = (env: Env, guildId: string, install: string, me: { name: string; className: string; itemLevel: number | null; combatPower: number | null; serverId: number | null },
   share: { gear: boolean; fights: boolean }, now: number) =>
   env.DB.prepare(
-    `INSERT INTO guild_members (guild_id, install, name, class_name, item_level, combat_power, share_gear, share_fights, joined_ms, seen_ms)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO guild_members (guild_id, install, name, class_name, item_level, combat_power, share_gear, share_fights, joined_ms, seen_ms, server_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (guild_id, install) DO UPDATE SET name = excluded.name, class_name = excluded.class_name,
        item_level = excluded.item_level, combat_power = excluded.combat_power,
-       share_gear = excluded.share_gear, share_fights = excluded.share_fights, seen_ms = excluded.seen_ms`,
-  ).bind(guildId, install, me.name, me.className, me.itemLevel, me.combatPower, +share.gear, +share.fights, now, now);
+       share_gear = excluded.share_gear, share_fights = excluded.share_fights, seen_ms = excluded.seen_ms,
+       server_id = COALESCE(excluded.server_id, guild_members.server_id)`,
+  ).bind(guildId, install, me.name, me.className, me.itemLevel, me.combatPower, +share.gear, +share.fights, now, now, me.serverId);
 /** Your card in a guild, one row per name: another install's row with this name (an old install, another PC) goes, with its
  *  fights, and its role isn't passed on (else joining with the Leader's name would make you Leader). */
 const placeMember = (env: Env, guildId: string, install: string, me: Parameters<typeof upsertMember>[3], share: { gear: boolean; fights: boolean }, now: number) => [
@@ -211,10 +212,10 @@ async function joinGuild(env: Env, req: Request) {
   return json({ id: g.id, name: g.name, serverId: g.server_id });
 }
 
-type MemberRow = { name: string; class_name: string; item_level: number | null; combat_power: number | null; share_gear: number; share_fights: number;
+type MemberRow = { name: string; class_name: string; server_id: number | null; item_level: number | null; combat_power: number | null; share_gear: number; share_fights: number;
   seen_ms: number; role: Role; me: number };
 const readMembers = async (env: Env, id: string, install: string) => (await env.DB.prepare(
-  `SELECT name, class_name, CASE WHEN share_gear THEN item_level END AS item_level,
+  `SELECT name, class_name, server_id, CASE WHEN share_gear THEN item_level END AS item_level,
      CASE WHEN share_gear THEN combat_power END AS combat_power, share_gear, share_fights, seen_ms, role, install = ? AS me
    FROM guild_members WHERE guild_id = ? ORDER BY name`,
 ).bind(install, id).all<MemberRow>()).results;
@@ -244,7 +245,7 @@ async function getGuild(env: Env, url: URL, id: string) {
     serverNow: Date.now(), id, name: g.name, serverId: g.server_id, leadMin: g.lead_min, bossAlerts: !!g.boss_alerts, hasWebhook: !!g.hook, callups,
     role, perms: who.perms, memberCount: rows.length,
     members: rows.filter((m) => m.me || sees("view.members")).map((m) => ({
-      name: m.name, className: m.class_name, itemLevel: m.item_level, combatPower: m.combat_power,
+      name: m.name, className: m.class_name, serverId: m.server_id, itemLevel: m.item_level, combatPower: m.combat_power,
       shareGear: !!m.share_gear, shareFights: !!m.share_fights, seenMs: m.seen_ms, role: m.role, me: !!m.me,
     })),
   });
@@ -301,11 +302,11 @@ async function getAvailability(env: Env, url: URL, id: string) {
   };
   if (can(who.role, "view.raidsummary", who.perms)) {
     const { results } = await env.DB.prepare(
-      `SELECT m.name AS name, m.class_name AS class_name, a.slots AS slots, a.weeks AS weeks, a.updated_ms AS updated_ms
+      `SELECT m.name AS name, m.class_name AS class_name, m.server_id AS server_id, a.slots AS slots, a.weeks AS weeks, a.updated_ms AS updated_ms
        FROM guild_availability a JOIN guild_members m ON m.guild_id = a.guild_id AND m.install = a.install
        WHERE a.guild_id = ? ORDER BY m.name`,
-    ).bind(id).all<{ name: string; class_name: string; slots: string; weeks: string; updated_ms: number }>();
-    out.members = results.map((r) => ({ name: r.name, className: r.class_name, slots: r.slots, weeks: mergeWeeks(r.weeks, null, now), updatedMs: r.updated_ms }));
+    ).bind(id).all<{ name: string; class_name: string; server_id: number | null; slots: string; weeks: string; updated_ms: number }>();
+    out.members = results.map((r) => ({ name: r.name, className: r.class_name, serverId: r.server_id, slots: r.slots, weeks: mergeWeeks(r.weeks, null, now), updatedMs: r.updated_ms }));
   }
   return json(out);
 }

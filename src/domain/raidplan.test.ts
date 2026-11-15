@@ -53,7 +53,7 @@ test("weeks: Monday in Paris time, across DST; slot starts and now", () => {
 });
 
 const enc = (fn: (w: boolean[]) => boolean[]) => encodeWeek(fn(emptyWeek()));
-const member = (name: string, className: string, slots: string, weeks: Record<string, string> = {}): MemberAvailability => ({ name, className, slots, weeks, updatedMs: 1 });
+const member = (name: string, className: string, slots: string, weeks: Record<string, string> = {}): MemberAvailability => ({ name, className, slots, weeks, updatedMs: 1, serverId: null });
 
 test("only this week: that week's hours replace every week's, other weeks keep them", () => {
   const every = enc((w) => setRange(w, 0, 18, 22, true, B));
