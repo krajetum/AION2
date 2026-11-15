@@ -62,7 +62,7 @@
   <section class="dps-table"><h2>Fights <span class="count">{list.length}</span></h2><div class="scroll"><table class="sheet">
     <thead><tr><th></th><th>When</th><th>Boss</th><th class="n">Time</th><th class="n">Your DPS</th><th class="n">Party</th></tr></thead>
     <tbody>{#each list as f (f.id)}{@const me = you(f)}
-      <tr class="prow" class:you={!!me} style:--p={String(me ? me.share / 100 : 0)} aria-expanded={open === f.id} onclick={() => { open = open === f.id ? "" : f.id; }}>
+      <tr class="prow" tabindex="0" class:you={!!me} style:--p={String(me ? me.share / 100 : 0)} aria-expanded={open === f.id} onclick={() => { open = open === f.id ? "" : f.id; }}>
         <td><input type="checkbox" aria-label="Compare" checked={picked.includes(f.id)} onclick={(e) => { e.stopPropagation(); pick(f.id); }}></td>
         <td>{when(f.endMs)}</td>
         <td><span class="name">{f.boss}</span><small>{[f.killed ? "killed" : "not killed", where(f), f.char].filter(Boolean).join(" · ")}</small></td>

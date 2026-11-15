@@ -25,7 +25,7 @@
           "url": "https://api.steampowered.com/ISteamNews/*"
         },
         {
-          "url": "https://aion2-companion.*.workers.dev/v1/*"
+          "url": "https://aion2-companion.krajetum.workers.dev/v1/*"
         }
       ]
     }

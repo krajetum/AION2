@@ -1,4 +1,4 @@
-# The only workflow; nothing runs on branches or pull requests (run npm test / npm run check locally before merging).
+# The only workflow. A pull request runs the check job only; nothing runs on a branch without one.
 # Every merge into main (or "Run workflow" in Actions, which can pick minor/major) -> checks, then:
 # - server: if server/ changed, applies the D1 migrations and deploys the Cloudflare Worker (no app version bump);
 # - release: if anything else changed, bumps the version in package.json, commits and tags it, builds the Windows
@@ -9,6 +9,9 @@ on:
   push:
     branches: [main]
     paths-ignore: ["**.md"]
+  # Pull requests run the check job only (server and release are skipped below).
+  pull_request:
+    paths-ignore: ["**.md"]
   workflow_dispatch:
     inputs:
       bump:
@@ -17,9 +20,10 @@ on:
         default: patch
 
 # Back-to-back merges release one after the other, each on top of the previous bump.
+# A pull request's checks get their own group, so they never wait behind a release.
 concurrency:
-  group: release
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('check-{0}', github.ref) || 'release' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -61,7 +65,7 @@ jobs:
 
   server:
     needs: check
-    if: needs.check.outputs.server == 'true'
+    if: github.event_name != 'pull_request' && needs.check.outputs.server == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -77,7 +81,7 @@ jobs:
 
   release:
     needs: check
-    if: needs.check.outputs.app == 'true'
+    if: github.event_name != 'pull_request' && needs.check.outputs.app == 'true'
     runs-on: windows-latest
     permissions:
       contents: write

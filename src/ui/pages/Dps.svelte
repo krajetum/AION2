@@ -97,7 +97,7 @@
       <thead><tr><th class="n">#</th><th>Player</th><th class="n">{COLS[view][0]}</th><th class="n">{COLS[view][1]}</th>
         <th class="n">{view === "taken" ? "Hits" : "Share"}</th></tr></thead>
       <tbody>{#each rows as { row: r, value, perSec, share }, i (r.id)}
-        <tr class="prow" class:you={r.isYou} class:heal={view === "healing"} class:taken={view === "taken"} style:--p={String(Math.min(1, share / 100))}
+        <tr class="prow" tabindex={view === "taken" ? undefined : 0} class:you={r.isYou} class:heal={view === "healing"} class:taken={view === "taken"} style:--p={String(Math.min(1, share / 100))}
           style:--cls={classColor(r.job) || null}
           aria-expanded={view !== "taken" && open.has(r.id)} onclick={() => view !== "taken" && toggle(r.id)}>
           <td class="n rank">{i + 1}</td>

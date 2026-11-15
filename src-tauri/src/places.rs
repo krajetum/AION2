@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use tauri::{AppHandle, Manager, PhysicalPosition, WebviewWindow, WindowEvent};
+use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, WebviewWindow, WindowEvent};
 
 #[derive(Default)]
 struct Places {
@@ -61,6 +61,31 @@ fn on_a_screen(app: &AppHandle, (x, y): (i32, i32)) -> bool {
         // The window's top-left corner, with some room for its title row.
         x >= p.x - 40 && y >= p.y - 10 && x < p.x + s.width as i32 - 40 && y < p.y + s.height as i32 - 40
     })
+}
+
+/// Gives the main window the size the player left it at, and remembers it from now on (under
+/// `<label>:size`, in the same file). Not while maximized or minimized (a minimized window is 0 × 0).
+pub fn keep_size(label: &str, w: &WebviewWindow) {
+    let key = format!("{label}:size");
+    if let Some((width, height)) = with(|p| p.at.get(&key).copied()).filter(|&(w, h)| w >= 400 && h >= 300) {
+        let _ = w.set_size(PhysicalSize::new(width as u32, height as u32));
+    }
+    let win = w.clone();
+    w.on_window_event(move |e| {
+        if let WindowEvent::Resized(s) = e {
+            // Asked before taking the lock: never a window call while holding it.
+            if s.width == 0 || win.is_maximized().unwrap_or(false) || win.is_minimized().unwrap_or(false) {
+                return;
+            }
+            let size = (s.width as i32, s.height as i32);
+            with(|p| {
+                if p.at.get(&key) != Some(&size) {
+                    p.at.insert(key.clone(), size);
+                    p.dirty = true;
+                }
+            });
+        }
+    });
 }
 
 /// Puts a new overlay window where it was left, and remembers where it goes from now on.
