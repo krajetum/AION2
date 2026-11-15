@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addWeeks, bestDays, hourKind, blockOf, classesOf, decodeWeek, emptyWeek, encodeWeek, freeBySlot, hoursFor, setDay, setRange, slotNow, slotOf, slotStart, unblocked, weekOf, WEEK_HOURS, type MemberAvailability } from "./raidplan.ts";
+import { addWeeks, bestDays, hourKind, NO_CLASS, withClasses, blockOf, classesOf, decodeWeek, emptyWeek, encodeWeek, freeBySlot, hoursFor, setDay, setRange, slotNow, slotOf, slotStart, unblocked, weekOf, WEEK_HOURS, type MemberAvailability } from "./raidplan.ts";
 
 const B = [
   { day: 2, from: 9, to: 15, label: "Maintenance" },
@@ -78,7 +78,7 @@ test("best days: most people at once, the longest stretch they share, who and wh
   assert.deepEqual(days[0].who.map((w) => w.name), ["Ann", "Bob", "Cid"]);
   assert.deepEqual(days[0].classes, [["Chanter", 2], ["Templar", 1]]);
   assert.equal(freeBySlot(ms, W)[slotOf(5, 21)].length, 0, "nobody at the siege hour");
-  assert.deepEqual(classesOf([{ name: "x", className: "" }]), [["?", 1]]);
+  assert.deepEqual(classesOf([{ name: "x", className: "" }, { name: "y", className: "" }, { name: "z", className: "Ranger" }]), [["Ranger", 1], [NO_CLASS, 2]]);
 });
 
 test("hour colours: every week's free / not free, or only this week's change", () => {
@@ -88,4 +88,10 @@ test("hour colours: every week's free / not free, or only this week's change", (
   assert.equal(hourKind(true, false, true), "freeWeek");
   assert.equal(hourKind(false, true, true), "busyWeek");
   assert.equal(hourKind(false, false, true), "busy");
+});
+
+test("a member without a class on their card takes the one found in their official profile", () => {
+  const ms = [member("Ann", "", "0".repeat(42)), member("Bob", "Templar", "0".repeat(42)), member("Cid", "", "0".repeat(42))];
+  const out = withClasses(ms, { Ann: "Cleric", Bob: "Ranger" });
+  assert.deepEqual(out.map((m) => m.className), ["Cleric", "Templar", ""], "a class on the card wins; none found stays empty");
 });

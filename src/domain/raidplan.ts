@@ -132,10 +132,15 @@ export function bestDays(members: MemberAvailability[], week: string): DayPeak[]
   }
   return days.sort((a, b) => b.count - a.count || (b.to - b.from) - (a.to - a.from) || a.day - b.day);
 }
-/** Classes and how many of each, most first ("" = class not known). */
+/** Shown for a member whose class neither their guild card nor their official profile gave. */
+export const NO_CLASS = "Class unknown";
+/** Classes and how many of each, most first; a missing class last-but-counted as NO_CLASS. */
 export function classesOf(who: Who[]): [string, number][] {
   const n = new Map<string, number>();
-  for (const w of who) n.set(w.className || "?", (n.get(w.className || "?") ?? 0) + 1);
-  return [...n].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  for (const w of who) n.set(w.className || NO_CLASS, (n.get(w.className || NO_CLASS) ?? 0) + 1);
+  return [...n].sort((a, b) => +(a[0] === NO_CLASS) - +(b[0] === NO_CLASS) || b[1] - a[1] || a[0].localeCompare(b[0]));
 }
+/** Members whose guild card has no class (joined by typing a name, not seen by the meter) take the one found elsewhere. */
+export const withClasses = <T extends Who>(members: T[], found: Record<string, string>): T[] =>
+  members.map((m) => (m.className || !found[m.name] ? m : { ...m, className: found[m.name] }));
 export const hourLabel = (h: number) => `${String(h % 24).padStart(2, "0")}:00`;

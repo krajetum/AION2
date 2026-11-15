@@ -5,9 +5,10 @@
   import { can, type GuildLink, type GuildView } from "../../../domain/guild.ts";
   import {
     addWeeks, bestDays, blockOf, decodeWeek, hourKind, unblocked, classesOf, DAY_NAMES, DAYS, emptyWeek, freeBySlot, hourLabel, hoursFor, ownWeek, setDay, setRange,
-    slotNow, slotOf, slotStart, weekOf, type Availability, type MemberAvailability, type Week,
+    slotNow, slotOf, slotStart, weekOf, withClasses, NO_CLASS, type Availability, type MemberAvailability, type Week,
   } from "../../../domain/raidplan.ts";
   import { RAID_PLAN } from "../../../config.ts";
+  import { officialProfile } from "../../../infra/armory.ts";
   import { ui } from "../../state.svelte.ts";
   import { gs, run, say } from "./run.svelte.ts";
 
@@ -94,9 +95,21 @@
   const kind = (s: number) => hourKind(draft[s], usual[s], scope === "week");
 
   // ---- Everyone ----
-  const bySlot = $derived(members ? freeBySlot(members, week) : []);
+  // A member who joined by typing a name has no class on their card: ask their official profile, as Members does
+  // (desktop app only; one lookup per name, cached by infra/armory.ts).
+  let found = $state<Record<string, string>>({});
+  const asked = new Set<string>();
+  $effect(() => {
+    for (const m of members ?? []) {
+      if (m.className || asked.has(m.name)) continue;
+      asked.add(m.name);
+      officialProfile(m.name, view.serverId).then((p) => { if (p?.className) found[m.name] = p.className; }).catch(() => {});
+    }
+  });
+  const everyone = $derived(members ? withClasses(members, found) : null);
+  const bySlot = $derived(everyone ? freeBySlot(everyone, week) : []);
   const most = $derived(Math.max(1, ...bySlot.map((w) => w.length)));
-  const days = $derived(members ? bestDays(members, week) : []);
+  const days = $derived(everyone ? bestDays(everyone, week) : []);
   let picked = $state<number | null>(null);
   const pickedWho = $derived(picked === null ? [] : bySlot[picked] ?? []);
   const notMarked = $derived(Math.max(0, view.memberCount - (members?.length ?? 0)));
@@ -197,7 +210,7 @@
   {#if picked !== null}
     <h3>{DAY_NAMES[Math.floor(picked / 24)]} {hourLabel(picked % 24)}–{hourLabel(picked % 24 + 1)} · {pickedWho.length} free</h3>
     {#if pickedWho.length}<p>{classesOf(pickedWho).map(([c, n]) => `${c} ${n}`).join(" · ")}</p>
-      <ul class="who">{#each pickedWho as w (w.name)}<li>{w.name} <span class="dim">{w.className || "class not known"}</span></li>{/each}</ul>
+      <ul class="who">{#each pickedWho as w (w.name)}<li>{w.name} <span class="dim">{w.className || NO_CLASS}</span></li>{/each}</ul>
     {:else}<p class="hint">Nobody free at this hour.</p>{/if}
   {:else}<p class="hint small">Click an hour to see who is free and their classes.</p>{/if}
 </section>
