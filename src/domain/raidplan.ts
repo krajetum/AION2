@@ -75,6 +75,16 @@ export const hoursFor = (a: Pick<Availability, "slots" | "weeks"> | null | undef
 /** Whether `week` has its own hours (an "only this week" entry). */
 export const ownWeek = (a: Pick<Availability, "weeks"> | null | undefined, week: string) => !!a?.weeks[week];
 
+/**
+ * How an hour of the grid is coloured: free / not free every week, or only this week (free this week but not usually,
+ * or usually free but not this week). Editing every week's hours: only the first two.
+ */
+export type HourKind = "free" | "freeWeek" | "busy" | "busyWeek";
+export function hourKind(free: boolean, usual: boolean, onlyThisWeek: boolean): HourKind {
+  if (!onlyThisWeek || free === usual) return free ? "free" : "busy";
+  return free ? "freeWeek" : "busyWeek";
+}
+
 /** The Worker's answer, checked; null when it isn't one. */
 export function parseAvailability(j: any): { mine: Availability | null; members: MemberAvailability[] | null } | null {
   if (!j || typeof j !== "object") return null;

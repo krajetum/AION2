@@ -4,7 +4,7 @@
   import { getAvailability, saveAvailability } from "../../../app/guild.ts";
   import { can, type GuildLink, type GuildView } from "../../../domain/guild.ts";
   import {
-    addWeeks, bestDays, blockOf, classesOf, DAY_NAMES, DAYS, emptyWeek, freeBySlot, hourLabel, hoursFor, ownWeek, setDay, setRange,
+    addWeeks, bestDays, blockOf, decodeWeek, hourKind, unblocked, classesOf, DAY_NAMES, DAYS, emptyWeek, freeBySlot, hourLabel, hoursFor, ownWeek, setDay, setRange,
     slotNow, slotOf, slotStart, weekOf, type Availability, type MemberAvailability, type Week,
   } from "../../../domain/raidplan.ts";
   import { RAID_PLAN } from "../../../config.ts";
@@ -89,6 +89,9 @@
     await load();
   }, "This week follows your usual hours again");
   const hoursCount = $derived(draft.filter(Boolean).length);
+  /** Every week's hours, to colour what "only this week" changes. */
+  const usual = $derived(mine ? unblocked(decodeWeek(mine.slots)) : emptyWeek());
+  const kind = (s: number) => hourKind(draft[s], usual[s], scope === "week");
 
   // ---- Everyone ----
   const bySlot = $derived(members ? freeBySlot(members, week) : []);
@@ -109,7 +112,7 @@
     </div>
     {#if summary}<div class="seg" role="group" aria-label="View">
       <button class:on={tab === "mine"} aria-pressed={tab === "mine"} onclick={() => (tab = "mine")}>My hours</button>
-      <button class:on={tab === "guild"} aria-pressed={tab === "guild"} onclick={() => (tab = "guild")}>Everyone</button>
+      <button class:on={tab === "guild"} aria-pressed={tab === "guild"} onclick={() => (tab = "guild")}>Everyone (summary)</button>
     </div>{/if}
   </div>
   <p class="hint">Times are server time ({zoneName}){localDiffers ? ", which may differ from your clock" : ""}. Hatched hours are
@@ -135,6 +138,13 @@
     ? "Your usual week: it counts for every week that has no hours of its own."
     : `Only the week of ${weekLabel(week)}: your usual hours stay as they are for the other weeks.`}
     Click or drag over hours to mark them; again to clear.</p>
+  <div class="legend" aria-label="Colours">
+    <span><i class="free"></i>Free every week</span>
+    {#if scope === "week"}<span><i class="freeWeek"></i>Free only this week</span>{/if}
+    <span><i class="busy"></i>Not free every week</span>
+    {#if scope === "week"}<span><i class="busyWeek"></i>Not free only this week</span>{/if}
+    <span><i class="blocked"></i>Blocked</span>
+  </div>
 
   <form class="range" onsubmit={(e) => { e.preventDefault(); applyRange(); }}>
     <select bind:value={rDay} aria-label="Day">{#each DAY_NAMES as d, i}<option value={i}>{d}</option>{/each}</select>
@@ -153,7 +163,7 @@
     {#each Array(24) as _, h}
       <div class="hour">{hourLabel(h)}</div>
       {#each DAYS as _, day}{@const s = slotOf(day, h)}{@const b = blockOf(s)}
-        <button type="button" class="cell" class:free={draft[s]} class:blocked={b} class:now={s === nowSlot} disabled={!!b}
+        <button type="button" class="cell {b ? '' : kind(s)}" class:blocked={b} class:now={s === nowSlot} disabled={!!b}
           aria-label="{DAY_NAMES[day]} {hourLabel(h)}: {b ?? (draft[s] ? 'free' : 'not free')}" aria-pressed={draft[s]}
           title={b ? `${b}: blocked` : `${DAY_NAMES[day]} ${hourLabel(h)}–${hourLabel(h + 1)}`}
           onpointerdown={(e) => paintStart(s, e)} onpointerenter={() => paint(s)} onkeydown={(e) => toggleKey(s, e)}></button>
@@ -208,7 +218,15 @@
   .tiny { height: 20px; padding: 0 6px; font-size: 11px; }
   .hour { font-size: 11px; color: var(--faint); text-align: right; padding-right: 6px; line-height: 18px; font-variant-numeric: tabular-nums; }
   .cell { height: 18px; border-radius: 3px; background: var(--ground); cursor: pointer; border: 1px solid transparent; padding: 0; }
-  .cell.free { background: var(--primary); }
+  /* My hours: free / not free every week (dark green / red), or only this week (light green / orange). */
+  .cell.free, .legend .free { background: #1e7d3c; }
+  .cell.freeWeek, .legend .freeWeek { background: #7fd68f; }
+  .cell.busy, .legend .busy { background: color-mix(in srgb, #c0392b 55%, var(--ground)); }
+  .cell.busyWeek, .legend .busyWeek { background: #ec8a2f; }
+  .legend .blocked { background: repeating-linear-gradient(135deg, var(--raised) 0 3px, var(--ground) 3px 6px); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
   .cell.now { border-color: var(--gold-ink); }
   .cell.blocked { cursor: not-allowed; background: repeating-linear-gradient(135deg, var(--raised) 0 4px, var(--ground) 4px 8px); }
   .heat .cell { font-size: 10px; color: var(--text); font-variant-numeric: tabular-nums;
