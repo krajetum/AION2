@@ -66,6 +66,7 @@ test("guildFight: your skills kept, others' dropped, rows capped, under the size
   const you = row("Me", 99, { isYou: true, skills: Array.from({ length: 200 }, (_, i) => skill(`S${i}`, i)) });
   const out = guildFight(fight("Me", 99, 60_000, true, [...many, you]));
   assert.equal(out.rows.length, MAX_ROWS);
+  assert.equal("timeline" in JSON.parse(JSON.stringify(guildFight({ ...out, timeline: [1, 2] }))), false, "the timeline is not uploaded");
   assert.equal(out.rows[0].name, "Me");
   assert.ok(out.rows.slice(1).every((r) => r.skills.length === 0));
   assert.equal(out.rows[1].name, "P39");

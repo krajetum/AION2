@@ -5,6 +5,7 @@
   import { fightText, personalBests, you, yourDps, type FightRecord } from "../../domain/fights.ts";
   import { classColor, clock, displayName, short, skillIconUrl } from "../../domain/meter.ts";
   import SkillCompare from "../parts/SkillCompare.svelte";
+  import Timeline from "../parts/Timeline.svelte";
   import { saveFights } from "../../infra/fights.ts";
   import { hm } from "../format.ts";
   import { showStatus } from "../overlays.ts";
@@ -39,7 +40,8 @@
 </script>
 
 <details class="intro"><summary>How it works</summary><p class="hint">Every boss fight of at least 10 s is kept when the meter resets it (idle, Reset, or a new target).
-  Skill breakdowns are kept for you only. Tick two fights to compare them.</p></details>
+  Skill breakdowns are kept for you only. Tick two fights to compare them. Open a fight for your DPS second by second:
+  the best 10 s, the opener, and the seconds you dealt no damage.</p></details>
 
 {#if !ui.fights.length}<Empty>No fight yet. Keep the companion open while you fight a boss.</Empty>
 {:else}
@@ -49,7 +51,8 @@
   </div>
 
   {#if pair.length === 2}{@const [a, b] = pair}<SkillCompare {a} {b} title="{a.boss === b.boss ? a.boss : `${a.boss} vs ${b.boss}`}: {when(a.endMs)} → {when(b.endMs)}"
-    onclear={() => { picked = []; }} />{/if}
+    onclear={() => { picked = []; }} />
+    {#if a.timeline && b.timeline}<Timeline runs={[{ label: "Before", t: a.timeline }, { label: "After", t: b.timeline }]} />{/if}{/if}
 
   <section class="dps-table"><h2>Personal bests</h2><div class="scroll"><table class="sheet">
     <thead><tr><th>Boss</th><th class="n">Fights</th><th class="n">Kills</th><th class="n">Best DPS</th><th class="n">Fastest kill</th><th>Trend</th></tr></thead>
@@ -70,6 +73,7 @@
         <td class="n">{clock(f.battleTimeMs)}</td><td class="n">{me ? `${short(me.dps)}/s` : "—"}</td><td class="n">{f.rows.length}</td></tr>
       {#if open === f.id}<tr class="skills"><td colspan="6">
         <div class="toolbar start"><button onclick={() => copy(f)}>Copy as text</button><button class="ghost" onclick={() => remove(f.id)}>Delete</button></div>
+        {#if f.timeline}<Timeline runs={[{ label: "", t: f.timeline }]} />{/if}
         <table class="sheet">
           <thead><tr><th>Player</th><th class="n">DPS</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Healing</th></tr></thead>
           <tbody>{#each [...f.rows].sort((p, q) => q.damage - p.damage) as r (r.id)}<tr class:you={r.isYou} style:--cls={classColor(r.job) || null}>
