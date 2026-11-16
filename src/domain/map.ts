@@ -613,3 +613,59 @@ function solve3(m: number[][], b: number[]): number[] | null {
   if (!scale || Math.abs(d) < scale * 1e-12) return null;
   return [0, 1, 2].map((k) => det(m.map((row, i) => row.map((v, j) => (j === k ? b[i] : v)))) / d);
 }
+
+// ---------- pet farming route ----------
+/** Spots of one soul this close (game units: 30 m) are one camp. */
+export const CAMP_RADIUS = 3_000;
+export interface Stop { pet: string; x: number; y: number; spots: number }
+
+/** One stop per soul: its busiest spot, the drop with most of that soul's drops within `radius` (`spots`). */
+export function petStops(drops: PetDrop[], n: Naming = { souls: {} }, radius = CAMP_RADIUS): Stop[] {
+  const by = new Map<string, { pet: string; at: PetDrop[] }>();
+  for (const d of drops) {
+    const pet = soulOf(n, d), k = pet.toLowerCase();
+    if (!by.has(k)) by.set(k, { pet, at: [] });
+    by.get(k)!.at.push(d);
+  }
+  // ponytail: every pair of a soul's drops is compared (O(k²) per soul); a grid if a soul gets thousands of spots.
+  return [...by.values()].map(({ pet, at }) => {
+    let best = at[0], most = 0;
+    for (const a of at) {
+      const near = at.filter((b) => Math.hypot(a.x - b.x, a.y - b.y) <= radius).length;
+      if (near > most) { most = near; best = a; }
+    }
+    return { pet, x: best.x, y: best.y, spots: most };
+  });
+}
+
+type XY = { x: number; y: number };
+/** The length of a path through `points`, in their units. */
+export const pathLength = (points: XY[]) => points.reduce((s, p, i) => s + (i ? Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) : 0), 0);
+
+/**
+ * An order to visit `stops` in, from `start` (you) or else from the first stop, not coming back: the nearest stop
+ * next, then 2-opt (a stretch of the path is turned round while that shortens it). Straight lines: the game's
+ * terrain, teleports and gliding are not known, so it is a good order, not the shortest walk.
+ */
+export function route<T extends XY>(stops: T[], start?: XY | null): T[] {
+  const dist = (a: XY, b: XY) => Math.hypot(a.x - b.x, a.y - b.y);
+  const left: XY[] = [...stops], path: XY[] = [start ?? left.shift()!];
+  if (!path[0]) return [];
+  while (left.length) {
+    const from = path[path.length - 1];
+    let k = 0;
+    for (let i = 1; i < left.length; i++) if (dist(from, left[i]) < dist(from, left[k])) k = i;
+    path.push(...left.splice(k, 1));
+  }
+  for (let better = true; better; ) {
+    better = false;
+    for (let i = 1; i < path.length - 1; i++) for (let j = i + 1; j < path.length; j++) {
+      const a = path[i - 1], b = path[i], c = path[j], d = path[j + 1];
+      if (dist(a, c) + (d ? dist(b, d) : 0) < dist(a, b) + (d ? dist(c, d) : 0) - 1e-9) {
+        path.splice(i, j - i + 1, ...path.slice(i, j + 1).reverse());
+        better = true;
+      }
+    }
+  }
+  return (start ? path.slice(1) : path) as T[];
+}

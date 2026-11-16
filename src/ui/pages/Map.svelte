@@ -10,7 +10,7 @@
   import { travelIcon } from "../../domain/map.ts";
   import {
     applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, mapOf, onMap, petHome, petList,
-    lootKind, petOf, readDropsFile, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
+    lootKind, pathLength, petOf, petStops, readDropsFile, route, toMetres, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
   } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import { downloadJson } from "../../infra/storage.ts";
@@ -131,6 +131,15 @@
   const petDrops = $derived(size.w && layer === "pets"
     ? onThisMap.filter((d) => !active || isPet(d)).map((d) => ({ d, s: placed(d.x, d.y) })).filter((v) => v.s)
     : []);
+  // Farming route: one stop per pet still to collect on this map (its busiest spot), in a good order from you.
+  let showRoute = $state(remembered("route") === "1");
+  $effect(() => remember("route", showRoute ? "1" : ""));
+  const stops = $derived(showRoute && layer === "pets"
+    ? petStops((collection ? ui.data.map.pets.filter(stillWanted) : ui.data.map.pets).filter((d) => d.item == null && dropMap(d) === current), ui.data.map)
+    : []);
+  const routed = $derived(route(stops, pos && here ? pos : null));
+  const routeKm = $derived(toMetres(pathLength([...(pos && here ? [pos] : []), ...routed])) / 1000);
+  const routePx = $derived(size.w ? [...(pos && here ? [pos] : []), ...routed].map((s) => placed(s.x, s.y)).filter((p) => !!p) : []);
   const selDrop = $derived(drops.find((d) => d.id === selectedDrop));
   // The clicked spot's pet and your progress on it (the Pets page's numbers). A crystal's pet is not its mob's:
   // Agrint's crystal dropped from a Mutated Forest Guardian (2026-10-25).
@@ -356,6 +365,9 @@
       title="Hidden cube · reported by {c.n} players"></div>{/each}
     {#each live as { c, s: at } (c.entity)}<div class="live-cube" style:left="{at!.x}px" style:top="{at!.y}px" title="Hidden cube in view"></div>{/each}
     {#if petDrops.length}<div class="drop-layer" style:transform="translate({view.x}px, {view.y}px)">
+    {#if routePx.length > 1}<svg class="route-line" aria-hidden="true"><polyline points={routePx.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")} /></svg>{/if}
+    {#each routed as s, i (s.pet)}{@const at = placed(s.x, s.y)}{#if at}<span class="route-stop" style:left="{at.x}px" style:top="{at.y}px"
+      title="Stop {i + 1}: {s.pet} · {s.spots} spot{s.spots === 1 ? '' : 's'} here">{i + 1}</span>{/if}{/each}
     {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!active} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
       aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
       onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}</div>{/if}
@@ -378,6 +390,9 @@
           <input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query}>
           <label class="toggle-line" title={collection ? "Hides the spots of pets you have at level 3 (Pets page)" : "Log in or change character in game once, with the companion running"}>
             <input type="checkbox" bind:checked={onlyWanted} disabled={!collection} onchange={() => { if (onlyWanted) { pet = ""; selectedDrop = ""; } }}> Only pets still to collect</label>
+          <label class="toggle-line" title="One stop per pet still to collect on this map, at its busiest spot, in a good order from where you are. Straight lines: terrain and teleports are not known.">
+            <input type="checkbox" bind:checked={showRoute}> Farming route</label>
+          {#if showRoute}<p class="hint">{routed.length ? `${routed.length} stop${routed.length === 1 ? "" : "s"}, about ${routeKm.toFixed(1)} km in straight lines, ${pos && here ? "from you" : "from stop 1 (you are not on this map)"}.` : "No spot of a pet still to collect on this map."}</p>{/if}
           {#if active}<button class="ghost showing" title="Show every soul's spots" onclick={() => { pet = ""; selectedDrop = ""; }}>Showing: {active} ✕</button>{/if}
           <ul class="pet-list" aria-label="Pets">
             {#each pets as e (e.name)}<li><button class="plain" class:on={pet.toLowerCase() === e.name.toLowerCase()} aria-pressed={pet.toLowerCase() === e.name.toLowerCase()}

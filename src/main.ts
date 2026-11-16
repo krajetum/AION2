@@ -2,6 +2,7 @@
 import { mount } from "svelte";
 import { clock, short, type Fight, type MeterUpdate } from "./domain/meter.ts";
 import { addFight, addRecent, fightEnded, newBests, targetEnded, toRecord, yourDps } from "./domain/fights.ts";
+import { perSecond, sample } from "./domain/timeline.ts";
 import { allDone } from "./domain/tasks.ts";
 import { CADENCES } from "./domain/types.ts";
 import { charFor, eventsFrom, SUGGEST_MS, type MeterEvent } from "./domain/triggers.ts";
@@ -80,6 +81,7 @@ async function main() {
   // good: the map still moved minutes after the game was closed (2026-10-28).
   let pending: MeterUpdate | null = null;
   let last: MeterUpdate | undefined; // the previous update: a fight that ended (Fight Log), events for auto-tracked tasks
+  let cum: number[] = []; // the running boss fight's samples (domain/timeline.ts)
   onMeter((u) => {
     const first = !pending;
     pending = u;
@@ -92,6 +94,7 @@ async function main() {
       if (targetEnded(lastFight, latest.fight)) ui.recentFights = addRecent(ui.recentFights, { endMs: Date.now(), fight: lastFight });
       if (fightEnded(lastFight, latest.fight)) {
         const rec = toRecord(lastFight, latest.profile, latest.position?.mapId ?? null, Date.now());
+        if (cum.length > 1) rec.timeline = perSecond(cum);
         // A personal best on a boss fought before: said out loud (the demo fight never counts).
         const beat = latest.demo ? [] : newBests(ui.fights, rec);
         if (beat.length) celebrate(`Personal best on ${rec.boss}: ${beat.map((b) => (b === "dps" ? `${short(yourDps(rec))}/s` : `killed in ${clock(rec.battleTimeMs)}`)).join(" · ")}`);
@@ -99,6 +102,9 @@ async function main() {
         saveFights(fightsSnapshot()).catch((e) => console.warn("Fight Log not saved", e));
         if (!latest.demo) uploadFight(ui.data, rec, latest.profile?.serverId);
       }
+      // Your damage second by second, for the fight's timeline: a new one for each target.
+      if (targetEnded(lastFight, latest.fight)) cum = [];
+      cum = sample(cum, latest.fight);
       autoTrack(eventsFrom(last, latest, Date.now()), latest);
       // The mascot lives your PvP with you: a cheer for a kill of yours, a sulk when you die (nothing from the first update).
       if (last && ui.data.settings.celebrate) {

@@ -547,6 +547,11 @@ body.overlay .status { display: none; }
 .drop-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; }
 .map-view.gliding .drop-layer { transition: transform .6s linear; }
 @media (prefers-reduced-motion: reduce) { .map-view.gliding .drop-layer { transition: none; } }
+/* The farming route: a dashed line through numbered stops, in the spots' layer. */
+.route-line { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.route-line polyline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; stroke-linejoin: round; }
+.route-stop { position: absolute; transform: translate(-50%, -140%); padding: 0 5px; font-size: var(--fs-xs); font-weight: 600; line-height: 16px;
+  color: var(--gold-ink); background: var(--gold-bg); border: 1px solid var(--accent); border-radius: var(--r-sm); cursor: default; }
 .soul-mobs { display: flex; flex-direction: column; gap: 4px; }
 .soul-mobs .setting { display: flex; align-items: center; gap: 8px; margin: 0; }
 .soul-mobs .setting span { flex: 1; font-size: var(--fs-md); }

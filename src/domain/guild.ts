@@ -151,7 +151,8 @@ export function guildFight(r: FightRecord): FightRecord {
   const others = r.rows.filter((x) => !x.isYou).sort((a, b) => b.damage - a.damage)
     .slice(0, MAX_ROWS - (mine ? 1 : 0)).map((x) => ({ ...x, skills: [], healSkills: [] }));
   let skills = [...(mine?.skills ?? [])].sort((a, b) => b.damage - a.damage);
-  const build = (s: SkillRow[]): FightRecord => ({ ...r, rows: mine ? [{ ...mine, skills: s, healSkills: [] }, ...others] : others });
+  // The timeline stays on this PC: the Worker keeps 8 KB a fight.
+  const build = (s: SkillRow[]): FightRecord => ({ ...r, timeline: undefined, rows: mine ? [{ ...mine, skills: s, healSkills: [] }, ...others] : others });
   let out = build(skills);
   if (JSON.stringify(out).length <= MAX_FIGHT) return out;
   skills = skills.map(bareSkill);

@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind, petStops, route, pathLength } from "./map.ts";
 import { readFileSync } from "node:fs";
 import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
@@ -378,4 +378,39 @@ test("travel icon: a wing while gliding, a horse on a mount, the dot on foot", (
   assert.equal(travelIcon({ mounted: true, gliding: false }), "mount");
   assert.equal(travelIcon({ mounted: false, gliding: false }), null);
   assert.equal(travelIcon(null), null);
+});
+
+test("pet stops: one per soul, at its busiest spot", () => {
+  const d = (pet: string, x: number, y: number): PetDrop => ({ id: `${pet}${x}:${y}`, pet, mapId: 1110, x, y, z: 0, atMs: 0, by: "" });
+  const stops = petStops([d("Fox", 0, 0), d("Fox", 50_000, 0), d("Fox", 51_000, 500), d("fox", 50_500, -500), d("Owl", 9, 9)]);
+  assert.deepEqual(stops.map((s) => [s.pet, s.spots]), [["Fox", 3], ["Owl", 1]]);
+  assert.ok(stops[0].x >= 50_000, "the camp of three, not the lone spot");
+});
+
+test("route: every stop once, from you, and 2-opt never worse than nearest-first", () => {
+  const line = [3, 1, 2].map((x) => ({ x, y: 0 }));
+  assert.deepEqual(route(line, { x: 0, y: 0 }).map((p) => p.x), [1, 2, 3]);
+  assert.deepEqual(route(line).map((p) => p.x), [3, 2, 1], "no position: from the first stop");
+  assert.deepEqual(route([]), []);
+  assert.deepEqual(route([], { x: 0, y: 0 }), []);
+  // Nearest-first alone, to compare with.
+  const nearest = (pts: { x: number; y: number }[], s: { x: number; y: number }) => {
+    const left = [...pts], out = [s];
+    while (left.length) {
+      const f = out[out.length - 1];
+      left.sort((a, b) => Math.hypot(a.x - f.x, a.y - f.y) - Math.hypot(b.x - f.x, b.y - f.y));
+      out.push(left.shift()!);
+    }
+    return out;
+  };
+  let seed = 7, shorter = 0;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  for (let run = 0; run < 20; run++) {
+    const pts = Array.from({ length: 30 }, () => ({ x: rnd() * 1000, y: rnd() * 1000 })), s = { x: 500, y: 500 };
+    const r = route(pts, s), a = pathLength([s, ...r]), b = pathLength(nearest(pts, s));
+    assert.equal(new Set(r).size, 30);
+    assert.ok(a <= b + 1e-6, `run ${run}: ${a} > ${b}`);
+    if (a < b - 1e-6) shorter++;
+  }
+  assert.ok(shorter > 0, "2-opt shortened at least one nearest-first route");
 });
