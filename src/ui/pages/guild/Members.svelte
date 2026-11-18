@@ -37,7 +37,7 @@
   const mayRemove = (name: string) => can(view, g, "manage.members") && !view.members.find((m) => m.name === name)?.me
     && (me === "leader" || rank(roleOf.get(name) ?? "member") < rank(me));
   const remove = (name: string) => {
-    if (confirm(`Remove ${name} from the guild? Get a new invite code too, or they can join again.`))
+    if (confirm(`Remove ${name} from the static? Get a new invite code too, or they can join again.`))
       run(() => adminGuild(ui.data, { remove: name }).then(() => refreshGuild(false)), `${name} removed`);
   };
   const openPlayer = (name: string) => { ui.lookup = { name, serverId: view.members.find((m) => m.name === name)?.serverId ?? g.serverId }; ui.tab = "players"; history.replaceState(null, "", "#players"); };

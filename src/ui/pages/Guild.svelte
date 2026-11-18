@@ -30,8 +30,8 @@
   $effect(() => { if (!servers.some((s) => s.id === serverId)) serverId = servers[0]?.id ?? 0; });
   /** Your card: the character the meter sees, else the name typed in (no gear numbers then). */
   const me = $derived<GuildMe | null>(profile ? meCard(profile) : charName.trim() ? { name: charName.trim(), className: "", itemLevel: null, combatPower: null, serverId: serverId || null } : null);
-  const create = () => run(() => createGuild(ui.data, guildName.trim(), profile?.serverId ?? serverId, me!).then(() => refreshGuild(false)), "Guild created");
-  const join = () => run(() => joinGuild(ui.data, code, me!).then(() => refreshGuild(false)), "Joined the guild");
+  const create = () => run(() => createGuild(ui.data, guildName.trim(), profile?.serverId ?? serverId, me!).then(() => refreshGuild(false)), "Static created");
+  const join = () => run(() => joinGuild(ui.data, code, me!).then(() => refreshGuild(false)), "Joined the static");
 
   // ---- In a guild ----
   // untrack: refreshGuild reads the meter, which updates 5 times a second.
@@ -44,7 +44,7 @@
     if (!view) return [];
     const allowed = (i: Item) => !i.need || (i.need === "leader" ? myRole(view, g) === "leader" : can(view, g, i.need));
     const all: [string, Item[]][] = [
-      ["Guild", [{ id: "overview", label: "Overview" }, { id: "callups", label: "Call-ups", need: "view.callups", count: view.callups.length },
+      ["Static", [{ id: "overview", label: "Overview" }, { id: "callups", label: "Call-ups", need: "view.callups", count: view.callups.length },
         { id: "raidplan", label: "Raid plan", need: "view.raidplan" },
         { id: "members", label: "Members", need: "view.members", count: view.memberCount }, { id: "fights", label: "Fights", need: "view.fights" }]],
       ["Manage", [{ id: "discord", label: "Discord", need: "manage.discord" }, { id: "invite", label: "Invite", need: "manage.invite" },
@@ -66,7 +66,7 @@
 </script>
 
 {#if !g}
-  <p class="hint intro">A guild shares field-boss alerts (in your Discord channel), planned raids, the members' gear and the boss fights they choose to share.
+  <p class="hint intro">A static shares field-boss alerts (in your Discord channel), planned raids, the members' gear and the boss fights they choose to share.
     One member creates it and gets an invite code for the others, plus a leader key. No account needed.</p>
   {#if profile}<p class="hint">You'll appear as <b>{profile.name}</b> ({serverName(profile.serverId) || `server ${profile.serverId}`}), as the meter sees you.</p>
   {:else}<div class="toolbar start"><label>Your character <input bind:value={charName} placeholder="Character name" autocomplete="off"></label>
@@ -74,13 +74,13 @@
       <select bind:value={serverId} aria-label="Your server">{#each servers as s (s.id)}<option value={s.id}>{s.name}</option>{/each}</select></div>
     <p class="hint">Or start the game with the companion open: the meter fills in your character, item level and CP.</p>{/if}
   <div class="cards">
-    <section class="dps-table"><h2>Join a guild</h2>
+    <section class="dps-table"><h2>Join a static</h2>
       <form class="toolbar start" onsubmit={(e) => { e.preventDefault(); join(); }}>
         <input bind:value={code} placeholder="Invite code (XXXX-XXXX-XXXX-XXXX)" aria-label="Invite code" autocomplete="off" required>
         <button class="primary" disabled={gs.busy || !me}>Join</button></form></section>
-    <section class="dps-table"><h2>Create a guild</h2>
+    <section class="dps-table"><h2>Create a static</h2>
       <form class="toolbar start" onsubmit={(e) => { e.preventDefault(); create(); }}>
-        <input bind:value={guildName} placeholder="Guild or static name" aria-label="Guild name" maxlength="32" autocomplete="off" required>
+        <input bind:value={guildName} placeholder="Static name" aria-label="Static name" maxlength="32" autocomplete="off" required>
         {#if !profile}<span class="dim">on {serverName(serverId) || "your server"}</span>{/if}
         <button class="primary" disabled={gs.busy || !me}>Create</button></form></section>
   </div>
@@ -91,9 +91,9 @@
     {#if g.memberCode && view && can(view, g, "manage.invite")}<button class="ghost" title="Invite code: give it to new members" onclick={() => copy(pretty(g.memberCode!))}>Copy invite code</button>{/if}
   </div>
   {#if gs.error}<p class="hint">{gs.error}</p>{/if}
-  {#if !view}<p class="hint">Reading the guild…</p>
+  {#if !view}<p class="hint">Reading the static…</p>
   {:else}<div class="guild">
-    <nav class="guild-menu" aria-label="Guild sections">
+    <nav class="guild-menu" aria-label="Static sections">
       {#each groups as [name, items] (name)}{#if name}<span class="label">{name}</span>{:else}<hr>{/if}
         {#each items as i (i.id)}<button class="tab" aria-current={i.id === section ? "page" : undefined} onclick={() => go(i.id)}>
           <span class="lbl">{i.label}</span>{#if i.count}<span class="count">{i.count}</span>{/if}</button>{/each}{/each}

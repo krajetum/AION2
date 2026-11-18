@@ -4,6 +4,7 @@
   import { mapLabel } from "../../domain/arena.ts";
   import { fightText, personalBests, you, yourDps, type FightRecord } from "../../domain/fights.ts";
   import { classColor, clock, displayName, short, skillIconUrl } from "../../domain/meter.ts";
+  import PlayerStats from "../parts/PlayerStats.svelte";
   import SkillCompare from "../parts/SkillCompare.svelte";
   import Timeline from "../parts/Timeline.svelte";
   import { saveFights } from "../../infra/fights.ts";
@@ -11,7 +12,7 @@
   import { showStatus } from "../overlays.ts";
   import { fightsSnapshot, ui } from "../state.svelte.ts";
 
-  let boss = $state(""), char = $state(""), open = $state(""), picked = $state<string[]>([]);
+  let boss = $state(""), char = $state(""), open = $state(""), who = $state<number | null>(null), picked = $state<string[]>([]);
   const bossNames = $derived([...new Set(ui.fights.map((f) => f.boss))].sort());
   const chars = $derived([...new Set(ui.fights.map((f) => f.char).filter(Boolean))].sort());
   const list = $derived(ui.fights.filter((f) => (!boss || f.boss === boss) && (!char || f.char === char)));
@@ -34,7 +35,7 @@
   function remove(id: string) {
     ui.fights = ui.fights.filter((f) => f.id !== id);
     picked = picked.filter((x) => x !== id);
-    saveFights(fightsSnapshot()).catch((e) => console.warn("Fight Log not saved", e));
+    saveFights(fightsSnapshot()).catch((e) => console.warn("DPS Log not saved", e));
   }
   const copy = (f: FightRecord) => navigator.clipboard.writeText(fightText(f)).then(() => showStatus("Fight copied"), () => showStatus("Copy failed"));
 </script>
@@ -66,7 +67,7 @@
   <section class="dps-table"><h2>Fights <span class="count">{list.length}</span></h2><div class="scroll"><table class="sheet">
     <thead><tr><th></th><th>When</th><th>Boss</th><th class="n">Time</th><th class="n">Your DPS</th><th class="n">Party</th></tr></thead>
     <tbody>{#each list as f (f.id)}{@const me = you(f)}
-      <tr class="prow" tabindex="0" class:you={!!me} style:--p={String(me ? me.share / 100 : 0)} aria-expanded={open === f.id} onclick={() => { open = open === f.id ? "" : f.id; }}>
+      <tr class="prow" tabindex="0" class:you={!!me} style:--p={String(me ? me.share / 100 : 0)} aria-expanded={open === f.id} onclick={() => { open = open === f.id ? "" : f.id; who = null; }}>
         <td><input type="checkbox" aria-label="Compare" checked={picked.includes(f.id)} onclick={(e) => { e.stopPropagation(); pick(f.id); }}></td>
         <td>{when(f.endMs)}</td>
         <td><span class="name">{f.boss}</span><small>{[f.killed ? "killed" : "not killed", where(f), f.char].filter(Boolean).join(" · ")}</small></td>
@@ -76,9 +77,12 @@
         {#if f.timeline}<Timeline runs={[{ label: "", t: f.timeline }]} />{/if}
         <table class="sheet">
           <thead><tr><th>Player</th><th class="n">DPS</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Healing</th></tr></thead>
-          <tbody>{#each [...f.rows].sort((p, q) => q.damage - p.damage) as r (r.id)}<tr class:you={r.isYou} style:--cls={classColor(r.job) || null}>
+          <tbody>{#each [...f.rows].sort((p, q) => q.damage - p.damage) as r (r.id)}<tr class="prow" tabindex="0" class:you={r.isYou} style:--cls={classColor(r.job) || null}
+            aria-expanded={who === r.id} onclick={() => { who = who === r.id ? null : r.id; }} onkeydown={(e) => { if (e.key === "Enter") who = who === r.id ? null : r.id; }}>
             <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{/if}<span class="name">{displayName(r)}</span>{#if r.job}<small>{r.job}</small>{/if}</td>
-            <td class="n">{short(r.dps)}/s</td><td class="n">{short(r.damage)}</td><td class="n">{r.share.toFixed(1)}%</td><td class="n">{r.heal ? short(r.heal) : "—"}</td></tr>{/each}</tbody></table>
+            <td class="n">{short(r.dps)}/s</td><td class="n">{short(r.damage)}</td><td class="n">{r.share.toFixed(1)}%</td><td class="n">{r.heal ? short(r.heal) : "—"}</td></tr>
+            {#if who === r.id}<tr class="skills"><td colspan="5"><PlayerStats row={r} ms={f.battleTimeMs} /></td></tr>{/if}{/each}</tbody></table>
+        <p class="hint">Click a player for hits, crits, healing, deaths and damage taken.</p>
         {#if me?.skills.length}<table class="sheet">
           <thead><tr><th>Your skill</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Hits</th><th class="n">Used</th><th class="n">Crit</th></tr></thead>
           <tbody>{#each me.skills as s (s.name)}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20">{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">DoT</span>{/if}</td>

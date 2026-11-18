@@ -55,7 +55,7 @@ async function main() {
   applyResets(data, Date.now(), C);
   checkNotifications(data, Date.now(), alert);
   ui.data = data;
-  ui.fights = await loadFights().catch((e) => { console.warn("Fight Log not loaded", e); return []; });
+  ui.fights = await loadFights().catch((e) => { console.warn("DPS Log not loaded", e); return []; });
   await save();
   app.textContent = "";
   mount(App, { target: app });
@@ -99,7 +99,7 @@ async function main() {
         const beat = latest.demo ? [] : newBests(ui.fights, rec);
         if (beat.length) celebrate(`Personal best on ${rec.boss}: ${beat.map((b) => (b === "dps" ? `${short(yourDps(rec))}/s` : `killed in ${clock(rec.battleTimeMs)}`)).join(" · ")}`);
         ui.fights = addFight(ui.fights, rec);
-        saveFights(fightsSnapshot()).catch((e) => console.warn("Fight Log not saved", e));
+        saveFights(fightsSnapshot()).catch((e) => console.warn("DPS Log not saved", e));
         if (!latest.demo) uploadFight(ui.data, rec, latest.profile?.serverId);
       }
       // Your damage second by second, for the fight's timeline: a new one for each target.

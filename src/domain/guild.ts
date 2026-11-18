@@ -13,7 +13,7 @@ export interface GuildMember {
   shareGear: boolean; shareFights: boolean; seenMs: number; role: Role; me: boolean;
 }
 export type Ping = "none" | "here" | "everyone";
-/** An officer's planned raid: reminded `leads` minutes before `atMs` (Discord + members' apps), title "Guild reminder". */
+/** An officer's planned raid: reminded `leads` minutes before `atMs` (Discord + members' apps), title "Static reminder". */
 export interface Callup { id: string; atMs: number; message: string; ping: Ping; leads: number[] }
 /** `members` / `callups`: only what your role may see (you are always in `members`); `memberCount` = everyone. */
 export interface GuildView {
@@ -169,6 +169,8 @@ const cleanRow = (x: any): PlayerRow => ({
   share: num(x?.share) ?? 0, hps: num(x?.hps) ?? 0, heal: num(x?.heal) ?? 0, combatPower: num(x?.combatPower) ?? 0,
   gearScore: num(x?.gearScore) ?? 0, isYou: x?.isYou === true, inParty: x?.inParty === true, isOthers: x?.isOthers === true,
   damageTaken: num(x?.damageTaken) ?? 0, hitsTaken: num(x?.hitsTaken) ?? 0,
+  deaths: num(x?.deaths) ?? undefined,
+  deathTimes: Array.isArray(x?.deathTimes) ? x.deathTimes.map(num).filter((t: number | null): t is number => t !== null && t >= 0).slice(0, 50) : undefined, hits: num(x?.hits) ?? undefined, critRate: num(x?.critRate) ?? undefined,
   skills: Array.isArray(x?.skills) ? x.skills.map(cleanSkill) : [], healSkills: [],
 });
 
@@ -195,4 +197,44 @@ export function memberBests(fights: FightRecord[]): MemberBest[] {
   for (const f of fights) by.set(f.char, [...(by.get(f.char) ?? []), f]);
   return [...by].map(([char, list]) => ({ char, ...Object.values(personalBests(list))[0] }))
     .sort((a, b) => (b.dps ? yourDps(b.dps) : 0) - (a.dps ? yourDps(a.dps) : 0));
+}
+
+/** Two members' records of one pull may start and end a little apart (each PC's clock, the meter's idle reset). */
+export const PULL_SLACK_MS = 30_000;
+
+export interface PullRow { row: PlayerRow; own: boolean } // own: from that player's own upload (with their skills and totals)
+/** One boss pull as several members recorded it. */
+export interface Pull { id: string; boss: string; startMs: number; endMs: number; battleTimeMs: number; killed: boolean; chars: string[]; rows: PullRow[] }
+
+const startOf = (f: FightRecord) => f.endMs - f.battleTimeMs;
+
+/** Shared fights of the same pull grouped (same boss, their times overlapping within PULL_SLACK_MS, one record per member),
+ *  newest first. Each player once: their own record's row when they shared it, else the biggest row another member saw of them.
+ *  The "Others" row (everyone outside one member's party) is left out once two members merged: it holds the other parties. */
+export function groupPulls(fights: FightRecord[]): Pull[] {
+  const groups: FightRecord[][] = [];
+  for (const f of [...fights].sort((a, b) => startOf(a) - startOf(b))) {
+    const g = groups.find((g) => g[0].boss === f.boss && !g.some((x) => x.char === f.char)
+      && startOf(f) <= Math.max(...g.map((x) => x.endMs)) + PULL_SLACK_MS && f.endMs + PULL_SLACK_MS >= Math.min(...g.map(startOf)));
+    if (g) g.push(f); else groups.push([f]);
+  }
+  return groups.map((g): Pull => {
+    const by = new Map<string, PullRow>();
+    for (const f of g) for (const r of f.rows) {
+      if (r.isOthers && g.length > 1) continue;
+      const name = r.name || (r.isYou ? f.char : "");
+      if (!name && !r.isOthers) continue;
+      const key = r.isOthers ? "\u0000others" : name.toLowerCase();
+      const own = r.isYou, had = by.get(key);
+      if (!had || (own && !had.own) || (own === had.own && r.damage > had.row.damage)) by.set(key, { row: { ...r, name, isYou: false }, own });
+    }
+    const rows = [...by.values()].sort((a, b) => b.row.damage - a.row.damage);
+    const total = rows.reduce((a, r) => a + r.row.damage, 0);
+    for (const r of rows) r.row.share = total ? (r.row.damage / total) * 100 : 0;
+    const end = Math.max(...g.map((f) => f.endMs));
+    return {
+      id: g[0].id, boss: g[0].boss, startMs: Math.min(...g.map(startOf)), endMs: end, battleTimeMs: Math.max(...g.map((f) => f.battleTimeMs)),
+      killed: g.some((f) => f.killed), chars: g.map((f) => f.char).filter(Boolean), rows,
+    };
+  }).sort((a, b) => b.endMs - a.endMs);
 }

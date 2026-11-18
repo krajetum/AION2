@@ -26,7 +26,7 @@
     <tbody>{#each view.members as m (m.name)}<tr><td><span class="name">{m.name}</span>{#if m.me} <small class="dim">you</small>{/if}</td>
       <td><select value={m.role} disabled={gs.busy} aria-label="Role of {m.name}" onchange={(e) => setRole(m.name, e.currentTarget.value as Role, m.me, e.currentTarget)}>
         {#each ROLES as r}<option value={r}>{ROLE_LABEL[r]}</option>{/each}</select></td></tr>{/each}</tbody></table></div>
-  <p class="hint">Leaders can do everything, including this page. Officers do what the table below lets them. A guild always keeps one Leader.</p>
+  <p class="hint">Leaders can do everything, including this page. Officers do what the table below lets them. A static always keeps one Leader.</p>
 </section>
 
 <section><h2>Permissions</h2>
@@ -38,5 +38,5 @@
     <thead><tr><th>See</th><th>Who</th></tr></thead><tbody>{@render rows(VIEW)}</tbody>
     <thead><tr><th>Manage</th><th>Who</th></tr></thead><tbody>{@render rows(MANAGE)}</tbody>
   </table></div>
-  <p class="hint">What a role can't see isn't sent to its members' apps at all. Field-boss timers are always shown: they come from every player, not the guild.</p>
+  <p class="hint">What a role can't see isn't sent to its members' apps at all. Field-boss timers are always shown: they come from every player, not the static.</p>
 </section>

@@ -29,7 +29,7 @@
     </section>
   {/each}
 </div>
-<p class="hint">Counted from what the companion keeps on this PC: the Fight Log, the arena log, your pets and cubes. Oath keeper and
+<p class="hint">Counted from what the companion keeps on this PC: the DPS Log, the arena log, your pets and cubes. Oath keeper and
   Perfect days are {char || "the selected character"}'s.</p>
 
 <style>

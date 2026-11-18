@@ -101,7 +101,7 @@ const auth = (data: AppData) => ({ install: data.install, ...(data.guild?.office
 /** A management action, checked against your role by the Worker. A rotated code replaces the one kept here; `tested` = the test post went through. */
 export async function adminGuild(data: AppData, a: AdminAction): Promise<{ tested?: boolean }> {
   const g = data.guild;
-  if (!g) throw new Error("Not in a guild");
+  if (!g) throw new Error("Not in a static");
   const r = await crowd(path(data, "/admin"), { ...auth(data), ...a });
   if (typeof r.memberCode === "string") g.memberCode = r.memberCode;
   return { tested: r.tested };
@@ -109,7 +109,7 @@ export async function adminGuild(data: AppData, a: AdminAction): Promise<{ teste
 
 /** A call-up: the Worker reminds the guild's Discord at each lead, the members' apps too. */
 export async function createCallup(data: AppData, c: { atMs: number; message: string; ping: Ping; leads: number[] }): Promise<string> {
-  if (!data.guild) throw new Error("Not in a guild");
+  if (!data.guild) throw new Error("Not in a static");
   const r = await crowd(path(data, "/callups"), { ...auth(data), sentMs: Date.now(), ...c });
   return typeof r?.id === "string" ? r.id : "";
 }
@@ -126,27 +126,27 @@ export async function testCallup(data: AppData, c: { atMs: number; message: stri
 
 /** Cancels a call-up; `announce`: first posts "Raid cancelled" to Discord with its ping (false back = Discord refused it). */
 export async function cancelCallup(data: AppData, id: string, announce = false): Promise<boolean | undefined> {
-  if (!data.guild) throw new Error("Not in a guild");
+  if (!data.guild) throw new Error("Not in a static");
   const r = await crowd(path(data, `/callups/${id}/delete`), { ...auth(data), ...(announce ? { announce: true } : {}) });
   return typeof r?.announced === "boolean" ? r.announced : undefined;
 }
 
 /** Posts a planned call-up to the guild's Discord now. */
 export async function sendCallup(data: AppData, id: string): Promise<void> {
-  if (!data.guild) throw new Error("Not in a guild");
+  if (!data.guild) throw new Error("Not in a static");
   await crowd(path(data, `/callups/${id}/send`), auth(data));
 }
 
 /** Raid plan: your hours, and everyone's when you may see the summary. */
 export async function getAvailability(data: AppData) {
-  if (!data.guild) throw new Error("Not in a guild");
+  if (!data.guild) throw new Error("Not in a static");
   const r = parseAvailability(await crowd(`${path(data, "/availability")}?install=${data.install}`));
   if (!r) throw new Error("The server sent something unexpected");
   return r;
 }
 /** Saves your hours: every week's (`slots`), or one week's only (`week`: its hours, or null = back to every week's). */
 export async function saveAvailability(data: AppData, a: { slots?: Week; week?: { start: string; slots: Week | null } }): Promise<void> {
-  if (!data.guild) throw new Error("Not in a guild");
+  if (!data.guild) throw new Error("Not in a static");
   await crowd(path(data, "/availability"), {
     install: data.install,
     ...(a.slots ? { slots: encodeWeek(a.slots) } : {}),

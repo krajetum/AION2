@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { can, DEFAULT_PERMS, myRole, callupKey, cleanGuild, discordHtml, dueCallups, guildFight, leadText, MAX_FIGHT, MAX_ROWS, memberBests, parseGuild, parseGuildFights, rosterRows } from "./guild.ts";
+import { can, DEFAULT_PERMS, myRole, callupKey, cleanGuild, discordHtml, dueCallups, groupPulls, guildFight, leadText, MAX_FIGHT, MAX_ROWS, memberBests, PULL_SLACK_MS, parseGuild, parseGuildFights, rosterRows } from "./guild.ts";
 import type { FightRecord } from "./fights.ts";
 import type { PlayerRow, SkillRow } from "./meter.ts";
 
@@ -108,4 +108,29 @@ test("discordHtml: escaped, then Discord's marks", () => {
 
 test("leadText", () => {
   assert.deepEqual([0, 45, 60, 1440, 2880, 1800].map(leadText), ["at the time", "45 min", "1 h", "1 day", "2 days", "1 day 6 h"]);
+});
+
+test("groupPulls: the same pull from two members is one, each member's own row wins, Others dropped", () => {
+  const at = (f: FightRecord, endMs: number): FightRecord => ({ ...f, id: `${f.char}@${endMs}`, endMs });
+  const a = at(fight("Ann", 0, 120_000, true, [row("Ann", 100, { isYou: true, deaths: 1 }), row("Bob", 50), row("", 0, { isOthers: true, damage: 9_000 })]), 1_000_000);
+  // Bob's PC: ends 12 s later (idle reset, clock), his own numbers; he saw Ann a little lower.
+  const b = at(fight("Bob", 0, 118_000, true, [row("Bob", 70, { isYou: true, hits: 300 }), row("Ann", 90)]), 1_012_000);
+  const c = at(fight("Ann", 120, 90_000), 1_400_000); // Ann's next pull
+  const d = { ...at(fight("Cid", 80, 60_000), 1_005_000), boss: "Other boss" };
+  const p = groupPulls([c, a, b, d]);
+  assert.deepEqual(p.map((x) => [x.boss, x.chars]), [["Gartua", ["Ann"]], ["Gartua", ["Ann", "Bob"]], ["Other boss", ["Cid"]]]);
+  const both = p[1];
+  assert.equal(both.battleTimeMs, 120_000);
+  assert.equal(both.endMs, 1_012_000);
+  assert.deepEqual(both.rows.map((r) => [r.row.name, r.row.dps, r.own, r.row.isYou]), [["Ann", 100, true, false], ["Bob", 70, true, false]]);
+  assert.equal(both.rows[0].row.deaths, 1);
+  assert.equal(both.rows[1].row.hits, 300);
+  assert.equal(Math.round(both.rows[0].row.share + both.rows[1].row.share), 100);
+});
+
+test("groupPulls: pulls apart by more than the slack stay apart; a member's two records never merge", () => {
+  const f = (char: string, endMs: number): FightRecord => ({ ...fight(char, 10, 60_000), id: `${char}${endMs}`, endMs });
+  assert.equal(groupPulls([f("A", 1_000_000), f("B", 1_000_000 + 60_000 + PULL_SLACK_MS + 1)]).length, 2);
+  assert.equal(groupPulls([f("A", 1_000_000), f("B", 1_000_000 + 60_000 + PULL_SLACK_MS - 1)]).length, 1);
+  assert.equal(groupPulls([f("A", 1_000_000), f("A", 1_000_500)]).length, 2);
 });

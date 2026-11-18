@@ -19,12 +19,12 @@
 
 <div class="overview">
   <section class="wide"><h2>Next field bosses</h2>
-    {#if !sameServer}<p class="hint">Timers come from the boss maps players on {serverName(g.serverId) || "the guild's server"} share. Play a character there with the companion open to see them.</p>
+    {#if !sameServer}<p class="hint">Timers come from the boss maps players on {serverName(g.serverId) || "the static's server"} share. Play a character there with the companion open to see them.</p>
     {:else if !nextBosses.length}<p class="hint">No respawn time known. Anyone with the companion open can refresh them by opening the world map in game.</p>
     {:else}<div class="scroll"><table class="sheet"><thead><tr><th>Boss</th><th class="n">Respawns</th></tr></thead>
       <tbody>{#each nextBosses as b (`${b.mapId}:${b.bossId}`)}<tr><td><span class="name">{bossLabel(b, ui.data.bossNames)}</span></td>
         <td class="n num">{formatCountdown(b.timeMs - ui.now)} · {hm(b.timeMs)}</td></tr>{/each}</tbody></table></div>{/if}
-    <p class="hint">{view.hasWebhook && view.bossAlerts ? `Posted to the guild's Discord ${view.leadMin} min before each respawn.` : "Not posted to the guild's Discord."}
+    <p class="hint">{view.hasWebhook && view.bossAlerts ? `Posted to the static's Discord ${view.leadMin} min before each respawn.` : "Not posted to the static's Discord."}
       {#if can(view, g, "manage.discord")}<button class="link" onclick={() => go("discord")}>Discord settings</button>{/if}
       Your own alerts: <a href="#bosses">Field Bosses</a>.</p>
   </section>

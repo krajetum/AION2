@@ -36,7 +36,7 @@ export function trophies(data: AppData, fights: FightRecord[], charId: string, n
       value: best(Object.values(data.pets).map((c) => c.pets.filter((p) => p.level >= MAX_LEVEL).length)) },
     { id: "cubes", name: "Cube hunter", what: "Hidden cubes you opened", tiers: [1, 10, 50, 100, 250],
       value: data.map.found.filter((c) => c.byYou).length },
-    { id: "kills", name: "Boss slayer", what: "Boss kills in the Fight Log", tiers: [1, 10, 50, 100, 250],
+    { id: "kills", name: "Boss slayer", what: "Boss kills in the DPS Log", tiers: [1, 10, 50, 100, 250],
       value: fights.filter((f) => f.killed).length },
     { id: "bosses", name: "Well travelled", what: "Different bosses fought", tiers: [1, 5, 10, 25, 50],
       value: Object.keys(personalBests(fights)).length },

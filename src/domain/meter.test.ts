@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clock, fileSize, hpLeft, odyleFor, short, viewRows, type Fight, type MeterUpdate, type PlayerRow } from "./meter.ts";
+import { advancedStats, clock, fileSize, hpLeft, odyleFor, short, viewRows, type Fight, type MeterUpdate, type PlayerRow } from "./meter.ts";
 
 test("Odyle energy only for the character it belongs to", () => {
   const u = { odyle: { basic: 30, charged: 840, owner: "Naicha" } } as MeterUpdate;
@@ -57,4 +57,20 @@ test("file sizes", () => {
   assert.equal(fileSize(512), "512 B");
   assert.equal(fileSize(20_000), "20 KB");
   assert.equal(fileSize(1_500_000), "1.4 MB");
+});
+
+test("advancedStats: the meter's totals, else the kept skills; deaths with their times", () => {
+  const r: PlayerRow = { id: 1, name: "A", job: "", dps: 1000, damage: 60_000, share: 0, hps: 0, heal: 0, combatPower: 0, gearScore: 0,
+    isYou: true, inParty: true, isOthers: false, damageTaken: 12_000, hitsTaken: 8, deaths: 2, deathTimes: [65_000, 125_400], hits: 120, critRate: 0.25,
+    skills: [], healSkills: [] };
+  const s = Object.fromEntries(advancedStats(r, 60_000).map((x) => [x.label, `${x.value} | ${x.sub}`]));
+  assert.equal(s.Hits, "120 | 2.0/s · crit 25%");
+  assert.equal(s.Deaths, "2 | at 1:05, 2:05");
+  assert.equal(s["Damage taken"], "12.0K | 8 hits");
+  assert.equal(s.Healing, "— | ");
+  const old = { ...r, hits: undefined, critRate: undefined, deaths: undefined, deathTimes: undefined,
+    skills: [{ name: "a", damage: 1, hits: 10, critRate: 0.5, share: 0, dot: false, icon: null }, { name: "b", damage: 1, hits: 30, critRate: 0, share: 0, dot: true, icon: null }] };
+  const o = Object.fromEntries(advancedStats(old, 10_000).map((x) => [x.label, `${x.value} | ${x.sub}`]));
+  assert.equal(o.Hits, "40 | 4.0/s · crit 50%");
+  assert.equal(o.Deaths, "— | ");
 });

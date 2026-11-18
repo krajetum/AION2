@@ -356,6 +356,18 @@ impl Engine {
                     }
                 }
             }
+            // On a boss, every row's totals (hits, crit rate, deaths) for the DPS Log's advanced stats:
+            // A2Tools' hover summary of everyone's skills, and its death marks in the target's details (no skills asked for).
+            let boss = fight.target.as_ref().is_some_and(|t| t.is_boss);
+            let everyone: Vec<_> = if boss { targets.iter().flat_map(|&t| calc.get_hover_details(t, None).skills).collect() } else { Vec::new() };
+            if boss {
+                fight.add_totals(&everyone);
+                if dps.target_id != 0 {
+                    if let Some(d) = calc.get_target_details(dps.target_id, Some(&[])).deaths {
+                        fight.add_deaths(&d);
+                    }
+                }
+            }
             // Per-skill details for the rows opened in the UI, and always yours (the Fight Log keeps them):
             // A2Tools' hover summary for damage; healing per skill is only in the full details.
             let watched: Vec<i32> = {
@@ -367,7 +379,11 @@ impl Engine {
                     let entries: Vec<_> = targets.iter().flat_map(|&t| calc.get_target_details(t, Some(&watched)).heal_skills).collect();
                     fight.attach_heal_skills(&entries);
                 } else {
-                    let entries: Vec<_> = targets.iter().flat_map(|&t| calc.get_hover_details(t, Some(&watched)).skills).collect();
+                    let entries: Vec<_> = if boss {
+                        everyone.into_iter().filter(|e| watched.contains(&e.actor_id)).collect()
+                    } else {
+                        targets.iter().flat_map(|&t| calc.get_hover_details(t, Some(&watched)).skills).collect()
+                    };
                     fight.attach_skills(&entries);
                 }
             }
