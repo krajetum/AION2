@@ -1,11 +1,12 @@
 // Wiki: Expeditions (Exploration, Conquest, Hard) and Transcendence, global/EU build. Pure data: tested with `npm test`.
 // Sources (checked 2026-10-30): aion2.wiki.fextralife.com/Expeditions (2026-10-09), couga54.github.io/aion2-guides (2026-10-10),
-// timesaver.gg (2026-10-17/20/22), expcarry.com Krao Cave Hard (2026-10-27), gamesfuze.com, games.gg (2026-10-05), patch notes of 2026-11-04 (Sanctuary, Exploration rewards).
+// timesaver.gg (2026-10-17/20/22), expcarry.com Krao Cave Hard (2026-10-27), gamesfuze.com, games.gg (2026-10-05), patch notes of 2026-11-04 (Sanctuary, Exploration rewards),
+// 2026-11-18 (Ludra Easy, drop rates, morph recipes).
 // Guides disagree often: a value only one site gives, or given differently, is `unconfirmed` with the alternatives in the note.
 // Drop rates from boosting sites are never used. Update by hand after a patch; KR-only values stay out unless marked.
 import { SEASONAL, WEEKLY } from "./season.ts";
 
-export const VERIFIED = "2026-11-04";
+export const VERIFIED = "2026-11-18";
 
 /** A value; the object form = not confirmed (one source only, or sources disagree), `note` says why. */
 export type Val = string | { v: string; note: string };
@@ -55,6 +56,7 @@ const EXP_KRAO: Source = { name: "Expcarry: Krao Cave Hard", url: "https://expca
 const GF_TR: Source = { name: "Gamesfuze: Transcendence dungeons", url: "https://gamesfuze.com/guides/aion-2-full-transcendence-dungeons-guide/", date: "2026-10-01" };
 const GF_DRAUP: Source = { name: "Gamesfuze: Draupnir", url: "https://gamesfuze.com/guides/aion-2-draupnir-cave-dungeon-guide-all-bosses-mechanics-and-rewards/", date: "2026-09-30" };
 const PATCH: Source = { name: "Patch notes (Steam news)", url: "https://store.steampowered.com/news/app/3393110", date: "2026-11-04" };
+const PATCH_1118: Source = { name: "Patch notes (Steam news): Ludra Easy", url: "https://store.steampowered.com/news/app/3393110", date: "2026-11-18" };
 const GG_FIRE: Source = { name: "games.gg: Fire Temple", url: "https://games.gg/aion-2/guides/aion-2-fire-temple-expedition/", date: "2026-10-05" };
 
 const P15 = "1–5", P25 = "2–5";
@@ -292,22 +294,27 @@ export const DUNGEONS: Dungeon[] = [
   },
   {
     id: "ludra", name: "Abyssal Forge: Ludra", kind: "sanctuary",
-    summary: "Sanctuary for a Force (since 2026-11-04): Normal and Hard, 1 hour per run. Both drop the same item types, at different rates.",
+    summary: "Sanctuary for a Force (since 2026-11-04): Easy (since 2026-11-18), Normal and Hard. Easy 2 hours per run, Normal and Hard 1 hour.",
     modes: [
+      { name: "Easy", level: maybe("45", "Not in the patch notes"), itemLevel: "2,800", party: "10", timeLimit: "2 h", revives: "Unlimited (personal)",
+        guaranteed: maybe("Pick one: Gear Change Voucher (Bound) or Gear Change Voucher: Ludra (Easy) (Bound)", "Inferred from the Easy voucher in the Substance Morph recipes"),
+        drops: ["Ludra's Weapon, Guard (Bound): 15% combined"],
+        changes: ["Same HP as Normal, easier mechanics, critical hits land more easily"] },
       { name: "Normal", level: maybe("45", "Not in the patch notes"), itemLevel: "2,800", party: "10", timeLimit: "60 min",
         guaranteed: "Pick one: Gear Change Voucher (Bound) or Gear Change Voucher: Ludra (Bound)",
-        drops: ["Ludra's Weapon, Guard (Bound)", "Ludra's Bracelet (Bound)", "Abyssal Bracelet (Bound) by chance", "Sealed Abyssal Waves Wings", "Artwork: Abyssal Ludra"] },
+        drops: ["Ludra's Weapon, Guard (Bound): 15% combined (5% before 2026-11-18)", "Ludra's Bracelet (Bound)", "Abyssal Bracelet (Bound) by chance", "Sealed Abyssal Waves Wings", "Artwork: Abyssal Ludra"] },
       { name: "Hard", level: maybe("45", "Not in the patch notes"), itemLevel: "3,000", party: "10", timeLimit: "60 min",
         guaranteed: "Pick one: Gear Change Voucher (Bound) or Gear Change Voucher: Ludra (Hard) (Bound)",
-        drops: ["Same item types as Normal"], changes: ["Different drop rates", "For top Forces: Hall of Fame by region"] },
+        drops: ["Same item types as Normal", "Ludra's Weapon, Guard (Bound): 15% combined (5% before 2026-11-18)"], changes: ["Different drop rates", "For top Forces: Hall of Fame by region"] },
     ],
     bosses: [{ name: "Ludra", role: "final", mechanics: ["No guide yet (2026-11-04)"] }],
     gear: ["Ludra's (Bound): Weapon, Guard, Bracelet (Amplify up to level 5)", "Abyssal Bracelet (Bound): Amplify up to level 3"],
     other: ["Substance Morph: Gear Change Voucher: Ludra ×6, or Ludra (Hard) ×3 → Ludra's Bracelet (Bound)",
       "Substance Morph: Gear Change Voucher: Ludra ×2 → Gear Change Voucher: Ludra (Hard) ×1",
-      "Substance Morph: a Gear Change Voucher → Abyssal Forge: Weapon Selection Chest (Bound)"],
-    tips: ["Normal drops the same item types as Hard: progress there first", "The item level only lets you in: it doesn't mean a clear"],
-    sources: [PATCH],
+      "Substance Morph (5,000,000 Kina, 10M before 2026-11-18): Gear Change Voucher: Ludra (Hard) ×1, Ludra ×2 or Ludra (Easy) ×4 → Abyssal Forge: Weapon Selection Chest (Bound)"],
+    tips: ["Normal drops the same item types as Hard: progress there first", "Easy drops the weapon and guard only, at the same 15%",
+      "The item level only lets you in: it doesn't mean a clear"],
+    sources: [PATCH, PATCH_1118],
   },
 ];
 
@@ -326,7 +333,7 @@ export const MECHANICS: Section[] = [
     "Exploration: from level 20, Legend gear and a few Unique pieces; no weekly limit, except Draupnir, Vakron and Horn Den (like Conquest since 2026-11-04)",
     "Conquest: level 45, three tiers (★1 700 · ★2 1,400 · ★3 2,100 item level), Unique gear, Sealed Wings, more Kina",
     "Hard: Krao Cave and Draupnir only (2026-10-21), 2,600 item level, 4-min Frenzy, 3 revives, Ariel Fragments",
-    "Sanctuary: Abyssal Forge: Ludra (2026-11-04), Force of 10, Normal 2,800 / Hard 3,000 item level, 1 hour per run",
+    "Sanctuary: Abyssal Forge: Ludra (2026-11-04), Force of 10, Easy and Normal 2,800 / Hard 3,000 item level, Easy 2 h (since 2026-11-18), Normal and Hard 1 h per run",
     "Transcendence: level 45, 2–5 players, 4 stages (1,600 / 1,900 / 2,200 / 2,500), Arcana instead of gear",
     "Unlock: episode quest at level 10 (Elyos: Wind Breeze Merchants · Asmodians: Daeva in a Dream)"] },
   { title: "Reward cube and Odyle Energy", lines: [

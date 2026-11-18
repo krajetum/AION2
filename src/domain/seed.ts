@@ -10,7 +10,7 @@ const SEED: Record<Cadence, Row[]> = {
   daily: [
     ["Buy", "Cloud Merchant (Theostones)", undefined, { note: "Restocks every hour · not for early game" }],
     ["Content", "Duty Quests (Energy/Tickets)", [{ target: 5 }]],
-    ["Content", "Pet/Kina Farm", undefined, { note: "Daily cap 1M Kina" }],
+    ["Content", "Pet/Kina Farm", undefined, { note: "Daily cap 1M Bound Kina (field mobs give Bound Kina since 2026-11-18)" }],
   ],
   weekly: [
     ["Content", "Daily Dungeon"],
@@ -22,7 +22,7 @@ const SEED: Record<Cadence, Row[]> = {
     ["Content", "Arena of Solitude", vp(30, 10)],
     ["Content", "Arena of Cooperation", vp(30, 10)],
     ["Content", "Abyss Siege + Corridors"],
-    ["Content", "Sanctuary", undefined, { note: "Abyssal Forge: Ludra · Normal 2,800 / Hard 3,000 item level · 1 h" }],
+    ["Content", "Sanctuary", undefined, { note: "Abyssal Forge: Ludra · Easy/Normal 2,800, Hard 3,000 item level · Easy 2 h, else 1 h" }],
     ["Content", "Chaotic Outer Reshanta", undefined, { note: "3 h a week, more with Outer Entry Stones · from level 45" }],
     ["Season Quests", "Battlefield", [{ target: 3 }]],
     ["Season Quests", "Ascension Trial", [{ target: 3 }]],
@@ -70,19 +70,31 @@ export function seedTasks(): Task[] {
 }
 
 /** Save-file version the seed matches: older saves get `patchTasks`. */
-export const SEED_VERSION = 2;
+export const SEED_VERSION = 3;
+
+/** Notes the patch of 2026-11-18 changed: the old seed text → the new one (a note the player edited stays). */
+const NOTES_V3: Record<string, string> = {
+  "Daily cap 1M Kina": "Pet/Kina Farm",
+  "Abyssal Forge: Ludra · Normal 2,800 / Hard 3,000 item level · 1 h": "Sanctuary",
+};
 
 /** The seed's changes since a save's version, so saves made before them get them too (once: a task the
- *  player deleted stays deleted). 2: the Sanctuary came out (2026-11-04) and Chaotic Outer Reshanta was added. */
+ *  player deleted stays deleted). 2: the Sanctuary came out (2026-11-04) and Chaotic Outer Reshanta was added.
+ *  3: Ludra Easy and Bound Kina from field mobs (2026-11-18), two notes. */
 export function patchTasks(tasks: Task[], version: number): Task[] {
-  if (version >= 2) return tasks;
-  const seed = (name: string) => seedTasks().find((t) => t.cadence === "weekly" && t.name === name)!;
-  const out = tasks.map((t) => t.cadence === "weekly" && t.name === "Sanctuary" && t.note === "Not in the game yet"
-    ? { ...t, enabled: true, note: seed("Sanctuary").note } : t);
-  if (out.some((t) => t.name === "Chaotic Outer Reshanta")) return out;
-  const weekly = out.filter((t) => t.cadence === "weekly");
-  const after = weekly.find((t) => t.name === "Sanctuary")?.order ?? Math.max(-1, ...weekly.map((t) => t.order));
-  return [...out, { ...seed("Chaotic Outer Reshanta"), id: "weekly-outer-reshanta", order: after + 0.5 }];
+  if (version >= 3) return tasks;
+  const seed = (name: string) => seedTasks().find((t) => t.name === name)!;
+  let out = tasks;
+  if (version < 2) {
+    out = out.map((t) => t.cadence === "weekly" && t.name === "Sanctuary" && t.note === "Not in the game yet"
+      ? { ...t, enabled: true, note: seed("Sanctuary").note } : t);
+    if (!out.some((t) => t.name === "Chaotic Outer Reshanta")) {
+      const weekly = out.filter((t) => t.cadence === "weekly");
+      const after = weekly.find((t) => t.name === "Sanctuary")?.order ?? Math.max(-1, ...weekly.map((t) => t.order));
+      out = [...out, { ...seed("Chaotic Outer Reshanta"), id: "weekly-outer-reshanta", order: after + 0.5 }];
+    }
+  }
+  return out.map((t) => t.note && NOTES_V3[t.note] === t.name ? { ...t, note: seed(t.name).note } : t);
 }
 
 /** Id of the seeded Cloud Merchant task (used for the hourly reminder). */

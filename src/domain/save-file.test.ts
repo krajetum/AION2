@@ -11,7 +11,7 @@ test("save file: a save from before 2026-11-04 gets the Sanctuary on and Chaotic
     { id: "weekly-10", cadence: "weekly", category: "Season Quests", name: "Battlefield", enabled: true, order: 10 },
   ];
   const d = normalize({ version: 1, tasks: old, characters: [{ id: "c", name: "Main" }] });
-  assert.equal(d.version, 2);
+  assert.equal(d.version, 3);
   const sanctuary = d.tasks.find((t) => t.name === "Sanctuary")!;
   assert.ok(sanctuary.enabled && sanctuary.note?.includes("Ludra"));
   const outer = d.tasks.find((t) => t.name === "Chaotic Outer Reshanta")!;
@@ -20,6 +20,20 @@ test("save file: a save from before 2026-11-04 gets the Sanctuary on and Chaotic
   // Deleted afterwards: not added again.
   const again = normalize({ ...d, tasks: d.tasks.filter((t) => t.id !== outer.id) });
   assert.ok(!again.tasks.some((t) => t.name === "Chaotic Outer Reshanta"));
+});
+
+test("save file: a v2 save gets the 2026-11-18 notes, an edited note stays", () => {
+  const old: Task[] = [
+    { id: "daily-2", cadence: "daily", category: "Content", name: "Pet/Kina Farm", enabled: true, order: 2, note: "Daily cap 1M Kina" },
+    { id: "weekly-9", cadence: "weekly", category: "Content", name: "Sanctuary", enabled: true, order: 9,
+      note: "Abyssal Forge: Ludra · Normal 2,800 / Hard 3,000 item level · 1 h" },
+    { id: "weekly-1", cadence: "weekly", category: "Content", name: "Daily Dungeon", enabled: true, order: 1, note: "Daily cap 1M Kina" },
+  ];
+  const d = normalize({ version: 2, tasks: old, characters: [{ id: "c", name: "Main" }] });
+  assert.ok(d.tasks.find((t) => t.name === "Pet/Kina Farm")!.note!.includes("Bound Kina"));
+  assert.ok(d.tasks.find((t) => t.name === "Sanctuary")!.note!.includes("Easy"));
+  assert.equal(d.tasks.find((t) => t.name === "Daily Dungeon")!.note, "Daily cap 1M Kina");
+  assert.ok(!d.tasks.some((t) => t.name === "Chaotic Outer Reshanta"));
 });
 
 test("save file: a Sanctuary task the player changed is left alone", () => {
