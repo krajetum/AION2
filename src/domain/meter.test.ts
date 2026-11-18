@@ -61,11 +61,11 @@ test("file sizes", () => {
 
 test("advancedStats: the meter's totals, else the kept skills; deaths with their times", () => {
   const r: PlayerRow = { id: 1, name: "A", job: "", dps: 1000, damage: 60_000, share: 0, hps: 0, heal: 0, combatPower: 0, gearScore: 0,
-    isYou: true, inParty: true, isOthers: false, damageTaken: 12_000, hitsTaken: 8, deaths: 2, deathTimes: [65_000, 125_400], hits: 120, critRate: 0.25,
+    isYou: true, inParty: true, isOthers: false, damageTaken: 12_000, hitsTaken: 8, deaths: 2, deathTimes: [65_000, 125_400], reviveTimes: [77_000, null], hits: 120, critRate: 0.25,
     skills: [], healSkills: [] };
   const s = Object.fromEntries(advancedStats(r, 60_000).map((x) => [x.label, `${x.value} | ${x.sub}`]));
   assert.equal(s.Hits, "120 | 2.0/s · crit 25%");
-  assert.equal(s.Deaths, "2 | at 1:05, 2:05");
+  assert.equal(advancedStats(r, 150_000).find((x) => x.label === "Deaths")!.sub, "at 1:05 (dead 12 s), 2:05 (dead 25 s, not revived)");
   assert.equal(s["Damage taken"], "12.0K | 8 hits");
   assert.equal(s.Healing, "— | ");
   const old = { ...r, hits: undefined, critRate: undefined, deaths: undefined, deathTimes: undefined,

@@ -170,7 +170,9 @@ const cleanRow = (x: any): PlayerRow => ({
   gearScore: num(x?.gearScore) ?? 0, isYou: x?.isYou === true, inParty: x?.inParty === true, isOthers: x?.isOthers === true,
   damageTaken: num(x?.damageTaken) ?? 0, hitsTaken: num(x?.hitsTaken) ?? 0,
   deaths: num(x?.deaths) ?? undefined,
-  deathTimes: Array.isArray(x?.deathTimes) ? x.deathTimes.map(num).filter((t: number | null): t is number => t !== null && t >= 0).slice(0, 50) : undefined, hits: num(x?.hits) ?? undefined, critRate: num(x?.critRate) ?? undefined,
+  deathTimes: Array.isArray(x?.deathTimes) ? x.deathTimes.map(num).filter((t: number | null): t is number => t !== null && t >= 0).slice(0, 50) : undefined,
+  reviveTimes: Array.isArray(x?.reviveTimes) && Array.isArray(x?.deathTimes) && x.reviveTimes.length === x.deathTimes.length
+    ? x.reviveTimes.map((t: unknown) => num(t)).slice(0, 50) : undefined, hits: num(x?.hits) ?? undefined, critRate: num(x?.critRate) ?? undefined,
   skills: Array.isArray(x?.skills) ? x.skills.map(cleanSkill) : [], healSkills: [],
 });
 
@@ -202,7 +204,7 @@ export function memberBests(fights: FightRecord[]): MemberBest[] {
 /** Two members' records of one pull may start and end a little apart (each PC's clock, the meter's idle reset). */
 export const PULL_SLACK_MS = 30_000;
 
-export interface PullRow { row: PlayerRow; own: boolean } // own: from that player's own upload (with their skills and totals)
+export interface PullRow { key: string; row: PlayerRow; own: boolean } // own: from that player's own upload (with their skills and totals)
 /** One boss pull as several members recorded it. */
 export interface Pull { id: string; boss: string; startMs: number; endMs: number; battleTimeMs: number; killed: boolean; chars: string[]; rows: PullRow[] }
 
@@ -218,7 +220,7 @@ export function groupPulls(fights: FightRecord[]): Pull[] {
       && startOf(f) <= Math.max(...g.map((x) => x.endMs)) + PULL_SLACK_MS && f.endMs + PULL_SLACK_MS >= Math.min(...g.map(startOf)));
     if (g) g.push(f); else groups.push([f]);
   }
-  return groups.map((g): Pull => {
+  return groups.map((g, i): Pull => {
     const by = new Map<string, PullRow>();
     for (const f of g) for (const r of f.rows) {
       if (r.isOthers && g.length > 1) continue;
@@ -226,15 +228,36 @@ export function groupPulls(fights: FightRecord[]): Pull[] {
       if (!name && !r.isOthers) continue;
       const key = r.isOthers ? "\u0000others" : name.toLowerCase();
       const own = r.isYou, had = by.get(key);
-      if (!had || (own && !had.own) || (own === had.own && r.damage > had.row.damage)) by.set(key, { row: { ...r, name, isYou: false }, own });
+      if (!had || (own && !had.own) || (own === had.own && r.damage > had.row.damage)) by.set(key, { key, row: { ...r, name, isYou: false }, own });
     }
     const rows = [...by.values()].sort((a, b) => b.row.damage - a.row.damage);
     const total = rows.reduce((a, r) => a + r.row.damage, 0);
     for (const r of rows) r.row.share = total ? (r.row.damage / total) * 100 : 0;
     const end = Math.max(...g.map((f) => f.endMs));
     return {
-      id: g[0].id, boss: g[0].boss, startMs: Math.min(...g.map(startOf)), endMs: end, battleTimeMs: Math.max(...g.map((f) => f.battleTimeMs)),
+      id: `${g[0].id}#${i}`, boss: g[0].boss, startMs: Math.min(...g.map(startOf)), endMs: end, battleTimeMs: Math.max(...g.map((f) => f.battleTimeMs)),
       killed: g.some((f) => f.killed), chars: g.map((f) => f.char).filter(Boolean), rows,
     };
   }).sort((a, b) => b.endMs - a.endMs);
+}
+
+/** A static fight: at least this many of the static's members in it (your own row counts). Only those are shared and shown. */
+export const STATIC_MIN_MEMBERS = 5;
+
+/** How many of the static's members (`names`, any case) have a row in the fight. */
+export function membersIn(f: FightRecord, names: string[]): number {
+  const want = new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean));
+  const seen = new Set(f.rows.map((r) => (r.name || (r.isYou ? f.char : "")).trim().toLowerCase()).filter((n) => want.has(n)));
+  return seen.size;
+}
+export const isStaticFight = (f: FightRecord, names: string[]) => membersIn(f, names) >= STATIC_MIN_MEMBERS;
+
+/** Past fights sent when you turn sharing on: static fights (isStaticFight) as the character you are in the static as,
+ *  the last week (the Worker keeps 90 days), newest first. */
+export const BACKFILL_FIGHTS = 20;
+export const BACKFILL_MS = 7 * 24 * 3600_000;
+export function fightsToShare(log: FightRecord[], char: string, names: string[], now: number): FightRecord[] {
+  if (!char) return [];
+  return log.filter((f) => f.char === char && now - f.endMs < BACKFILL_MS && f.endMs <= now && isStaticFight(f, names))
+    .sort((a, b) => b.endMs - a.endMs).slice(0, BACKFILL_FIGHTS);
 }

@@ -134,7 +134,7 @@ function demoUpdate(): MeterUpdate {
     id: i === 4 ? 16546 : i + 1, name: p.name, job: p.job, damage: demo.dmg[i], dps: demo.dmg[i] / Math.max(1, t / 1000),
     share: demo.dmg[i] / total * 100, hps: i === 3 ? 5_200 : 0, heal: i === 3 ? 5.2 * t : 0, combatPower: 0, gearScore: 0,
     isYou: i === 0, inParty: i < 4, isOthers: false, damageTaken: Math.round([3, 0.5, 0.8, 0.6, 1][i] * t), hitsTaken: Math.round(t / 2000),
-    deaths: i === 2 && t > 40_000 ? 1 : 0, deathTimes: i === 2 && t > 40_000 ? [38_500] : [], hits: Math.round(t / 350), critRate: [0.42, 0.31, 0.55, 0.12, 0.38][i],
+    deaths: i === 2 && t > 40_000 ? 1 : 0, deathTimes: i === 2 && t > 40_000 ? [38_500] : [], reviveTimes: i === 2 && t > 40_000 ? [47_200] : [], hits: Math.round(t / 350), critRate: [0.42, 0.31, 0.55, 0.12, 0.38][i],
     healSkills: i === 3 ? [{ name: "Demo heal", damage: Math.round(3.6 * t), hits: Math.round(t / 1500), critRate: 0, share: 0.7, dot: false, icon: null },
       { name: "Demo regen", damage: Math.round(1.6 * t), hits: Math.round(t / 1000), critRate: 0, share: 0.3, dot: true, icon: null }] : [],
     skills: DEMO_SPLIT.map((share, k) => ({
