@@ -285,7 +285,7 @@ export function dueAlerts(maps: DueMap[], guilds: AlertGuild[], posted: Set<stri
 
 // ---- Guild call-ups: an officer's planned raid, reminded at chosen times before it ----
 
-export const CALLUP_TITLE = "Guild reminder";
+export const CALLUP_TITLE = "Static reminder";
 export const MAX_MESSAGE = 500;
 export const MAX_LEADS = 5;
 export const MAX_LEAD_MIN = 14 * 24 * 60; // 14 days

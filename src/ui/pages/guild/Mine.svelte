@@ -9,7 +9,7 @@
   let { g, view }: { g: GuildLink; view: GuildView } = $props();
   let keyInput = $state("");
   const share = (k: "gear" | "fights", on: boolean) => run(() => setShare(ui.data, { ...g.share, [k]: on }).then(() => refreshGuild(false)));
-  const leave = () => { if (confirm(`Leave ${g.name}? Your card and shared fights are deleted from the guild.`)) run(async () => { await leaveGuild(ui.data); ui.guild = null; }, "Left the guild"); };
+  const leave = () => { if (confirm(`Leave ${g.name}? Your card and shared fights are deleted from the static.`)) run(async () => { await leaveGuild(ui.data); ui.guild = null; }, "Left the static"); };
   const useKey = () => { const k = keyInput; keyInput = ""; void run(async () => { setOfficerKey(ui.data, k); await refreshGuild(false); }, "Leader key saved"); };
 </script>
 
@@ -28,11 +28,11 @@
   {:else}
     <form class="toolbar start" onsubmit={(e) => { e.preventDefault(); useKey(); }}>
       <input bind:value={keyInput} placeholder="Leader key" aria-label="Leader key" autocomplete="off" required><button disabled={gs.busy}>Use</button></form>
-    <p class="hint">The key was shown to whoever created the guild (before roles it was called the officer key). It makes you a Leader.</p>
+    <p class="hint">The key was shown to whoever created the static (before roles it was called the officer key). It makes you a Leader.</p>
   {/if}
 </section>
 
-<section><h2>Leave the guild</h2>
+<section><h2>Leave the static</h2>
   <button class="ghost" disabled={gs.busy} onclick={leave}>Leave {g.name}</button>
-  <p class="hint">Your card and shared fights are deleted from the guild.</p>
+  <p class="hint">Your card and shared fights are deleted from the static.</p>
 </section>

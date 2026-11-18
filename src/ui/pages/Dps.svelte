@@ -1,5 +1,6 @@
 <script lang="ts">
   import Empty from "../parts/Empty.svelte";
+  import PlayerStats from "../parts/PlayerStats.svelte";
   import { SvelteSet } from "svelte/reactivity";
   import { clock, displayName, hpLeft, short, STATUS_TEXT, TARGET_MODES, viewRows, VIEWS, type MeterUpdate, classColor, skillIconUrl } from "../../domain/meter.ts";
   import { meterOverlay, netOverlay, meterPartyOnly, meterPause, meterReconnect, meterReset, meterTargetMode, meterView, meterWatch, onMeter } from "../../infra/meter.ts";
@@ -112,13 +113,13 @@
           <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{:else}<span class="cls-icon none" aria-hidden="true"></span>{/if}<span class="name" class:dim-name={!r.name}>{displayName(r)}</span>{#if r.job || (r.inParty && !r.isYou)}<small>{[r.job, r.inParty && !r.isYou && !u.partyOnly ? "party" : ""].filter(Boolean).join(" · ")}</small>{/if}{#if r.combatPower} <small class="dim">CP {short(r.combatPower)}</small>{/if}</td>
           <td class="n">{short(perSec)}/s</td><td class="n">{short(value)}</td>
           <td class="n">{view === "taken" ? r.hitsTaken : share.toFixed(1) + "%"}</td></tr>
-        {#if view !== "taken" && open.has(r.id)}{@const list = view === "healing" ? r.healSkills : r.skills}<tr class="skills"><td colspan="5"><table class="sheet">
+        {#if view !== "taken" && open.has(r.id)}{@const list = view === "healing" ? r.healSkills : r.skills}<tr class="skills"><td colspan="5">{#if f.target?.isBoss}<PlayerStats row={r} ms={f.battleTimeMs} />{/if}<table class="sheet">
           <thead><tr><th>Skill</th><th class="n">{view === "healing" ? "Healing" : "Damage"}</th><th class="n">Share</th><th class="n">{view === "healing" ? "Ticks" : "Hits"}</th><th class="n" title="Times used: hits of a skill close together count as one cast">Used</th><th class="n">Crit</th></tr></thead>
           <tbody>{#each list as s}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20"
                 onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")}>{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">{view === "healing" ? "HoT" : "DoT"}</span>{/if}</td><td class="n">{short(s.damage)}</td>
               <td class="n">{(s.share * 100).toFixed(1)}%</td><td class="n">{s.hits}</td><td class="n">{s.dot || view === "healing" || s.casts == null ? "–" : s.casts}</td><td class="n">{s.dot || view === "healing" ? "–" : Math.round(s.critRate * 100) + "%"}</td></tr>
             {:else}<tr><td colspan="6" class="dim">{past ? "Skills kept only for you and the players open during the fight." : "No skill data yet."}</td></tr>{/each}</tbody></table></td></tr>{/if}
-      {/each}</tbody></table></div><p class="hint">{view === "taken" ? "Damage taken from the fight's monsters." : "Click a player for the skill breakdown."}{#if unnamed}&nbsp;Players shown as #number: the game sends
+      {/each}</tbody></table></div><p class="hint">{view === "taken" ? "Damage taken from the fight's monsters." : "Click a player for the skill breakdown (on a boss: hits, deaths and damage taken too)."}{#if unnamed}&nbsp;Players shown as #number: the game sends
         names on loading screens (teleport, zone change, dungeon), so start the companion before you enter.{/if}</p></section>
   {:else}<Empty>{view === "healing" ? "No healing yet." : view === "taken" ? "No damage taken yet." : u.partyOnly ? "No damage from your party yet." : "No fight yet. Hit something."}</Empty>{/if}
 {/if}

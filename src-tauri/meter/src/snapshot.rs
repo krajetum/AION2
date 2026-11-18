@@ -105,6 +105,13 @@ pub struct PlayerRow {
     /// Damage this player took from the fight's monsters, and in how many hits.
     pub damage_taken: i64,
     pub hits_taken: i32,
+    /// Times this player died during the boss fight (A2Tools' death marks: party members and named players), 0 elsewhere.
+    pub deaths: i32,
+    /// When each of those deaths came, ms from the fight's first hit.
+    pub death_times: Vec<i64>,
+    /// Hits dealt over all skills and the share of critical ones (DoT ticks left out of the rate), on boss fights; 0 elsewhere.
+    pub hits: i32,
+    pub crit_rate: f64,
     pub skills: Vec<SkillRow>,
     /// Healing per skill (`damage` = amount healed, `hits` = ticks), for rows opened in the healing view.
     pub heal_skills: Vec<SkillRow>,
@@ -155,6 +162,10 @@ impl Fight {
                     is_others: p.is_others,
                     damage_taken: 0,
                     hits_taken: 0,
+                    deaths: 0,
+                    death_times: Vec::new(),
+                    hits: 0,
+                    crit_rate: 0.0,
                     skills: Vec::new(),
                     heal_skills: Vec::new(),
                 }
@@ -199,6 +210,22 @@ impl Fight {
         }
     }
 
+    /// Every row's hit count and crit rate over all its skills (`entries`: everyone's, every target).
+    pub fn add_totals(&mut self, entries: &[DetailSkillEntry]) {
+        for row in &mut self.rows {
+            let (mut hits, mut direct, mut crit) = (0, 0, 0);
+            for e in entries.iter().filter(|e| e.actor_id == row.id) {
+                hits += e.time;
+                if !e.is_dot {
+                    direct += e.time;
+                    crit += e.crit;
+                }
+            }
+            row.hits = hits;
+            row.crit_rate = if direct > 0 { crit as f64 / direct as f64 } else { 0.0 };
+        }
+    }
+
     /// The same for healing (`heal_skills` of the details: `dmg` = amount healed, `time` = ticks).
     pub fn attach_heal_skills(&mut self, entries: &[DetailSkillEntry]) {
         for row in &mut self.rows {
@@ -210,6 +237,16 @@ impl Fight {
     }
 
     /// Adds damage a player took in one fight (`actor` = row id), from the fight's combat data.
+    /// Counts each player's deaths in a boss fight (A2Tools' `TargetDetailsResponse::deaths`, ids as the rows use them).
+    pub fn add_deaths(&mut self, deaths: &[crate::entity::details_context::DeathPoint]) {
+        for d in deaths {
+            if let Some(r) = self.rows.iter_mut().find(|r| r.id == d.actor_id) {
+                r.deaths += 1;
+                r.death_times.push(d.ts_ms);
+            }
+        }
+    }
+
     pub fn add_taken(&mut self, actor: i32, damage: i64, hits: i32) {
         if let Some(r) = self.rows.iter_mut().find(|r| r.id == actor) {
             r.damage_taken += damage;
@@ -281,6 +318,32 @@ mod tests {
         let rows: Vec<_> = f.rows.iter().map(|r| (r.name.as_str(), r.job.as_str(), r.is_you)).collect();
         assert_eq!(rows, [("Them", "Spiritmaster", false), ("", "Gladiator", true)]);
         assert_eq!((f.target.unwrap().name.as_str(), f.battle_time_ms), ("Training Scarecrow", 12_000));
+    }
+
+    #[test]
+    fn totals_count_every_hit_and_crits_of_direct_hits_only() {
+        let mut f = Fight::from_dps(&dps());
+        f.add_totals(&[
+            entry(7, 1, "Slash", 100, 4, 2, false),
+            entry(7, 2, "Bleed", 50, 6, 3, true), // DoT: hits counted, crits not
+            entry(8, 1, "Bolt", 500, 5, 0, false),
+        ]);
+        let t: Vec<_> = f.rows.iter().map(|r| (r.id, r.hits, r.crit_rate)).collect();
+        assert_eq!(t, [(8, 5, 0.0), (7, 10, 0.5)]);
+    }
+
+    #[test]
+    fn deaths_are_counted_per_row_and_unknown_ids_ignored() {
+        use crate::entity::details_context::DeathPoint;
+        let mut f = Fight::from_dps(&dps());
+        f.add_deaths(&[
+            DeathPoint { actor_id: 7, ts_ms: 3_000, revived_ms: Some(9_000) },
+            DeathPoint { actor_id: 7, ts_ms: 11_000, revived_ms: None },
+            DeathPoint { actor_id: 8, ts_ms: 5_000, revived_ms: None },
+            DeathPoint { actor_id: 42, ts_ms: 5_000, revived_ms: None }, // not a row
+        ]);
+        let d: Vec<_> = f.rows.iter().map(|r| (r.id, r.deaths, r.death_times.clone())).collect();
+        assert_eq!(d, [(8, 1, vec![5_000]), (7, 2, vec![3_000, 11_000])]);
     }
 
     #[test]

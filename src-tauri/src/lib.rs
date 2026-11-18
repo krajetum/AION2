@@ -64,8 +64,9 @@ pub fn run() {
             crash::install(app.handle());
             telemetry::start(app.handle()); // after crash.rs: Sentry's panic hook runs first, then crash.log
             places::load(app.handle());
+            places::autosave();
             if let Some(w) = app.get_webview_window("main") {
-                places::keep_size("main", &w);
+                places::keep_place(app.handle(), "main", &w);
             }
             let open = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Mute for 1 hour", true, None::<&str>)?;

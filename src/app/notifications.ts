@@ -55,13 +55,13 @@ export function checkNotifications(data: AppData, now: number, toast: Toast, cal
     if (!silent) toast(s, label, `Respawns in ${d.minutes} min.`, ch === "boss" ? ["boss", "event"] : [ch, "boss", "event"]);
   }
 
-  // Guild call-ups: "Guild reminder" at each lead the officer set; missed while silent = skipped, as events.
+  // Static call-ups: "Static reminder" at each lead the officer set; missed while silent = skipped, as events.
   for (const d of dueCallups(callups, data.warnedEvent, now)) {
     for (const l of d.leads) data.warnedEvent[callupKey(d.callup, l)] = d.callup.atMs;
     changed = true;
     if (!silent && s.channels.guild?.on) {
       const at = new Date(d.callup.atMs).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      toast(s, "Guild reminder", `${d.callup.message} · ${at}`, ["guild", "event"]);
+      toast(s, "Static reminder", `${d.callup.message} · ${at}`, ["guild", "event"]);
     }
   }
   // Call-up marks a day past their time aren't needed any more.

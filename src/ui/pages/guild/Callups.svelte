@@ -69,7 +69,7 @@
     <small class="dim">Reminders: {c.leads.map((l) => leadText(l) + (l ? " before" : "")).join(" · ")}</small>
     {#if plans}<div class="acts"><button class="ghost" disabled={gs.busy || !view.hasWebhook} title={view.hasWebhook ? "" : "Set a Discord webhook first"} onclick={() => { if (confirm("Post this call-up to Discord now?")) run(() => sendCallup(ui.data, c.id), "Posted to Discord"); }}>Send to Discord now</button>
     <button class="ghost" disabled={gs.busy} onclick={() => { if (confirm("Cancel this call-up? No more reminders are sent.")) run(() => cancelCallup(ui.data, c.id).then(() => refreshGuild(false)), "Call-up cancelled"); }}>Cancel</button></div>{/if}
-  </div>{:else}<p class="hint">No raid planned.{plans ? "" : " You get a \"Guild reminder\" here and in Discord when one is."}</p>{/each}
+  </div>{:else}<p class="hint">No raid planned.{plans ? "" : " You get a \"Static reminder\" here and in Discord when one is."}</p>{/each}
 </section>
 
 {#if plans}<section><h2>New call-up</h2>
@@ -124,7 +124,7 @@
           <div><b>AION 2 Companion</b> <span class="app">APP</span></div>
           {#if cuPing !== "none"}<div><span class="mention">@{cuPing}</span></div>{/if}
           <div class="embed">
-            <b>Guild reminder</b>
+            <b>Static reminder</b>
             <div class="desc" class:blank={!cuMessage.trim()}>{#if cuMessage.trim()}{@html discordHtml(cuMessage.trim())}{:else}Your message{/if}</div>
             <b class="fname">When</b>
             <div>{#if atMs > ui.now}{full(atMs)} <span class="rel">in {formatCountdown(atMs - ui.now)}</span>{:else}<span class="blank">Pick a time</span>{/if}</div>
@@ -139,8 +139,8 @@
         {#each cuLeads as l (l)}{@const t = atMs - l * 60_000}
           <li class:gone={t <= ui.now}><span>{when(t)}</span><span class="dim">{t <= ui.now ? "already passed" : leadLabel(l).toLowerCase()}</span></li>{/each}
       </ul>{/if}
-      <small>Members get a "Guild reminder" at each time: in the app, and in Discord
-        {#if view.hasWebhook}(the guild's webhook).{:else}once a webhook is set{#if can(view, g, "manage.discord")} (<button type="button" class="link" onclick={() => go("discord")}>Discord</button>){/if}. Until then, only members' apps.{/if}</small>
+      <small>Members get a "Static reminder" at each time: in the app, and in Discord
+        {#if view.hasWebhook}(the static's webhook).{:else}once a webhook is set{#if can(view, g, "manage.discord")} (<button type="button" class="link" onclick={() => go("discord")}>Discord</button>){/if}. Until then, only members' apps.{/if}</small>
     </div>
   </form>
 </section>{/if}

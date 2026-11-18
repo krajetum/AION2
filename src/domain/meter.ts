@@ -27,6 +27,11 @@ export interface PlayerRow {
   inParty: boolean; // you or a member of your party
   isOthers: boolean; // everyone outside your party on an open-world boss
   damageTaken: number; hitsTaken: number; // from the fight's monsters
+  // Boss fights only (the meter's totals over all skills); none in fights from before them.
+  deaths?: number; // A2Tools' death marks: party members and named players
+  deathTimes?: number[]; // when each death came, ms from the fight's first hit
+  hits?: number; // hits dealt, DoT ticks included
+  critRate?: number; // 0..1 of direct hits
   skills: SkillRow[];
   healSkills: SkillRow[]; // damage = amount healed, hits = ticks
 }
@@ -151,6 +156,26 @@ export function short(n: number): string {
 export function clock(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+export interface Stat { label: string; value: string; sub: string }
+
+/** A player's advanced stats in a fight (`ms` = its length): damage, hits and crits, healing, deaths with their times, damage taken.
+ *  Hits and crit rate fall back to the skills kept when the meter sent no totals (fights from before them, rows open on the DPS page). */
+export function advancedStats(r: PlayerRow, ms: number): Stat[] {
+  const direct = r.skills.filter((s) => !s.dot);
+  const hits = r.hits ?? (r.skills.length ? r.skills.reduce((a, s) => a + s.hits, 0) : undefined);
+  const directHits = direct.reduce((a, s) => a + s.hits, 0);
+  const crit = r.critRate ?? (directHits ? direct.reduce((a, s) => a + s.critRate * s.hits, 0) / directHits : undefined);
+  const sec = Math.max(1, ms / 1000);
+  const times = r.deathTimes ?? [];
+  return [
+    { label: "Damage", value: short(r.damage), sub: `${short(r.dps)}/s` },
+    { label: "Hits", value: hits == null ? "—" : short(hits), sub: hits ? `${(hits / sec).toFixed(1)}/s` + (crit == null ? "" : ` · crit ${Math.round(crit * 100)}%`) : "" },
+    { label: "Healing", value: r.heal ? short(r.heal) : "—", sub: r.heal ? `${short(r.hps)}/s` : "" },
+    { label: "Deaths", value: r.deaths == null ? "—" : String(r.deaths), sub: times.length ? `at ${times.map(clock).join(", ")}` : "" },
+    { label: "Damage taken", value: r.damageTaken ? short(r.damageTaken) : "—", sub: r.hitsTaken ? `${r.hitsTaken} hits` : "" },
+  ];
 }
 
 /** Remaining HP 0..1: the live HP when the game sent it, else max − damage dealt; undefined without a max. */

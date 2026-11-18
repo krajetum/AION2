@@ -99,7 +99,7 @@ export async function refreshGuild(playing: boolean) {
   if (removed) {
     ui.guild = null;
     await save();
-    showStatus("You are no longer in your guild: an officer removed you or the guild was deleted.");
+    showStatus("You are no longer in your static: an officer removed you or the static was deleted.");
   }
 }
 

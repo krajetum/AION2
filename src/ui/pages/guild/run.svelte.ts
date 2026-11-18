@@ -6,7 +6,7 @@ import { showStatus } from "../../overlays.ts";
 export const gs = $state({ busy: false, error: "" });
 
 export const say = (e: unknown) => e instanceof CrowdError
-  ? e.status === 404 ? "No guild has that code." : e.status === 429 ? "Too many changes this hour: try again later."
+  ? e.status === 404 ? "No static has that code." : e.status === 429 ? "Too many changes this hour: try again later."
     : e.status === 403 ? `Refused: ${e.reason || "not allowed"}.` : e.status === 400 ? "The server refused that (check what you typed)." : e.message
   : e instanceof Error ? e.message : String(e);
 
