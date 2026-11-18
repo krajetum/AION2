@@ -238,3 +238,12 @@ export function groupPulls(fights: FightRecord[]): Pull[] {
     };
   }).sort((a, b) => b.endMs - a.endMs);
 }
+
+/** Past fights sent when you turn sharing on: the character you are in the static as, the last week (the Worker keeps 90 days), newest first. */
+export const BACKFILL_FIGHTS = 20;
+export const BACKFILL_MS = 7 * 24 * 3600_000;
+export function fightsToShare(log: FightRecord[], char: string, now: number): FightRecord[] {
+  if (!char) return [];
+  return log.filter((f) => f.char === char && now - f.endMs < BACKFILL_MS && f.endMs <= now)
+    .sort((a, b) => b.endMs - a.endMs).slice(0, BACKFILL_FIGHTS);
+}

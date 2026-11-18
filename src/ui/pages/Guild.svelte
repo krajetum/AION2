@@ -99,7 +99,7 @@
           <span class="lbl">{i.label}</span>{#if i.count}<span class="count">{i.count}</span>{/if}</button>{/each}{/each}
     </nav>
     <div class="guild-section">
-      {#if section === "callups"}<Callups {g} {view} {go} />{:else if section === "raidplan"}<RaidPlan {g} {view} />{:else if section === "members"}<Members {g} {view} />{:else if section === "fights"}<svelte:boundary onerror={(e) => console.error("Static fights failed", e)}><Fights />
+      {#if section === "callups"}<Callups {g} {view} {go} />{:else if section === "raidplan"}<RaidPlan {g} {view} />{:else if section === "members"}<Members {g} {view} />{:else if section === "fights"}<svelte:boundary onerror={(e) => console.error("Static fights failed", e)}><Fights {g} {view} />
         {#snippet failed(e, reset)}<section><h2>Shared fights</h2><p class="error">This section failed to show: {e instanceof Error ? e.message : String(e)}</p>
           <button type="button" onclick={reset}>Try again</button></section>{/snippet}</svelte:boundary>
       {:else if section === "discord"}<Discord {view} />{:else if section === "invite"}<Invite {g} />{:else if section === "roles"}<Roles {view} />

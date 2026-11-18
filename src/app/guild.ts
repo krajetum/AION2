@@ -1,6 +1,6 @@
 // Guild use cases: create / join / leave, consent, your card, shared fights, officer actions (the Worker's /v1/guilds).
 // Network calls throw (CrowdError) for the page to show; the background ones (sync, fight upload) only log.
-import { DEFAULT_SHARE, guildFight, meCard, parseFightBosses, parseGuild, parseGuildFights, type GuildMe, type GuildShare, type GuildView, type Perm, type Ping, type Role } from "../domain/guild.ts";
+import { DEFAULT_SHARE, fightsToShare, guildFight, meCard, parseFightBosses, parseGuild, parseGuildFights, type GuildMe, type GuildShare, type GuildView, type Perm, type Ping, type Role } from "../domain/guild.ts";
 import type { FightRecord } from "../domain/fights.ts";
 import type { Profile } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
@@ -76,11 +76,24 @@ export async function syncGuild(data: AppData, profile: Profile | null | undefin
   }
 }
 
-/** A fight that just ended, shared when you agreed to and you played it on the guild's server. */
+/** A fight that just ended, shared when you agreed to and you played it on the static's server,
+ *  or as the character you are in the static as (a static can mix servers: not an alt elsewhere). */
 export function uploadFight(data: AppData, r: FightRecord, serverId: number | undefined): void {
   const g = data.guild;
-  if (!g?.share.fights || serverId !== g.serverId) return;
+  if (!g?.share.fights || (serverId !== g.serverId && !(r.char && r.char === cardName))) return;
   crowd(path(data, "/fights"), { install: data.install, fight: guildFight(r) }).catch(warn("fight upload"));
+}
+
+/** Turns fight sharing on and sends your last week's fights as `char` (fightsToShare), one at a time; how many went. */
+export async function shareFights(data: AppData, log: FightRecord[], char: string): Promise<number> {
+  if (!data.guild) return 0;
+  await setShare(data, { ...data.guild.share, fights: true });
+  let sent = 0;
+  for (const f of fightsToShare(log, char || cardName, Date.now()).reverse()) {
+    await crowd(path(data, "/fights"), { install: data.install, fight: guildFight(f) });
+    sent++;
+  }
+  return sent;
 }
 
 export async function fightBosses(data: AppData) {

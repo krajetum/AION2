@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { can, DEFAULT_PERMS, myRole, callupKey, cleanGuild, discordHtml, dueCallups, groupPulls, guildFight, leadText, MAX_FIGHT, MAX_ROWS, memberBests, PULL_SLACK_MS, parseGuild, parseGuildFights, rosterRows } from "./guild.ts";
+import { can, DEFAULT_PERMS, myRole, callupKey, cleanGuild, discordHtml, dueCallups, BACKFILL_FIGHTS, BACKFILL_MS, fightsToShare, groupPulls, guildFight, leadText, MAX_FIGHT, MAX_ROWS, memberBests, PULL_SLACK_MS, parseGuild, parseGuildFights, rosterRows } from "./guild.ts";
 import type { FightRecord } from "./fights.ts";
 import type { PlayerRow, SkillRow } from "./meter.ts";
 
@@ -142,4 +142,14 @@ test("groupPulls: keys stay unique when the Others row carries a player's name",
   assert.equal(new Set(keys.filter((_, i) => i < p.rows.length)).size, p.rows.length);
   const ids = groupPulls([f, { ...f }]).map((x) => x.id);
   assert.equal(new Set(ids).size, ids.length); // the same record twice: two pulls, two ids
+});
+
+test("fightsToShare: the static character's fights of the past week, newest first, at most BACKFILL_FIGHTS", () => {
+  const now = 1_000 * BACKFILL_MS;
+  const at = (char: string, ago: number, i = 0): FightRecord => ({ ...fight(char, 10, 60_000), id: `${char}${ago}${i}`, endMs: now - ago });
+  const log = [at("Ann", 1000), at("Bob", 500), at("Ann", BACKFILL_MS + 1), at("Ann", 2000), at("Ann", -5)];
+  assert.deepEqual(fightsToShare(log, "Ann", now).map((f) => f.endMs), [now - 1000, now - 2000]);
+  assert.deepEqual(fightsToShare(log, "", now), []);
+  const many = Array.from({ length: BACKFILL_FIGHTS + 5 }, (_, i) => at("Ann", 1000 + i, i));
+  assert.equal(fightsToShare(many, "Ann", now).length, BACKFILL_FIGHTS);
 });

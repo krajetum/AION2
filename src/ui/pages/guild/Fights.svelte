@@ -2,21 +2,32 @@
   // Boss fights the members shared: per boss, each member's best DPS and fastest kill; two runs side by side;
   // the pulls several members recorded, as one fight with everyone's own numbers.
   import { untrack } from "svelte";
-  import { bossFights, fightBosses } from "../../../app/guild.ts";
+  import { bossFights, fightBosses, shareFights } from "../../../app/guild.ts";
   import { yourDps, type FightRecord } from "../../../domain/fights.ts";
-  import { groupPulls, memberBests } from "../../../domain/guild.ts";
+  import { BACKFILL_FIGHTS, groupPulls, memberBests, type GuildLink, type GuildView } from "../../../domain/guild.ts";
   import { classColor, clock, displayName, short, skillIconUrl } from "../../../domain/meter.ts";
   import { classIcon } from "../../classes.ts";
   import { hm } from "../../format.ts";
+  import { showStatus } from "../../overlays.ts";
   import PlayerStats from "../../parts/PlayerStats.svelte";
   import SkillCompare from "../../parts/SkillCompare.svelte";
   import { ui } from "../../state.svelte.ts";
-  import { gs, say } from "./run.svelte.ts";
+  import { gs, run, say } from "./run.svelte.ts";
+
+  let { g, view }: { g: GuildLink; view: GuildView } = $props();
+  const me = $derived(view.members.find((m) => m.me)?.name ?? "");
+  let reload = $state(0);
+  const share = () => run(async () => {
+    const n = await shareFights(ui.data, ui.fights, me);
+    reload++;
+    showStatus(n ? `Your boss fights are shared (${n} past ${n === 1 ? "fight" : "fights"} sent)` : "Your boss fights are shared");
+  });
 
   let bosses = $state<{ boss: string; n: number }[]>([]), boss = $state(""), fights = $state<FightRecord[]>([]), picked = $state<string[]>([]);
-  $effect(() => { untrack(() => fightBosses(ui.data).then((b) => { bosses = b; if (!boss && b[0]) boss = b[0].boss; }).catch((e) => { gs.error = say(e); })); });
+  $effect(() => { void reload; untrack(() => fightBosses(ui.data).then((b) => { bosses = b; if (!boss && b[0]) boss = b[0].boss; }).catch((e) => { gs.error = say(e); })); });
   $effect(() => {
     const b = boss;
+    void reload;
     if (b) untrack(() => { picked = []; bossFights(ui.data, b).then((f) => { fights = f; }).catch((e) => { gs.error = say(e); }); });
   });
   const bests = $derived(memberBests(fights));
@@ -27,8 +38,14 @@
   const pick = (id: string) => { picked = picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id].slice(-2); };
 </script>
 
+{#if !g.share.fights}<section class="notice"><h2>You don't share your boss fights</h2>
+  <p class="hint">The others can't see your fights, and your pulls don't merge with theirs. Sharing sends each boss fight your meter logs
+    (DPS, skills, deaths; not the second-by-second timeline){me ? `, plus your last ${BACKFILL_FIGHTS} fights of the past week as ${me}` : ""}. You can stop in My settings.</p>
+  <button type="button" class="primary" disabled={gs.busy} onclick={share}>Share my boss fights</button></section>{/if}
+
 <section><h2>Shared fights</h2>
-  {#if !bosses.length}<p class="hint">No fight shared yet. Members who tick "Share my boss fights" (My settings) send each boss fight their meter logs.</p>
+  {#if !bosses.length}<p class="hint">No fight shared yet. Members who share their boss fights (My settings, or the button above) send each boss fight their meter logs:
+    a fight of the same boss at the same time from several members becomes one pull below.</p>
   {:else}
     <label class="toolbar start">Boss <select bind:value={boss}>{#each bosses as b (b.boss)}<option value={b.boss}>{b.boss} ({b.n})</option>{/each}</select></label>
     <div class="scroll"><table class="sheet">
