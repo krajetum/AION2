@@ -71,6 +71,6 @@
 </div></div>
 
 <section class="wiki"><h2>Sources <span class="count">checked {VERIFIED}</span></h2><ul>
-  {#each d.sources as s (s.url)}<li><a href={s.url} target="_blank" rel="noopener">{s.name} ↗</a> <span class="dim">{s.date}</span></li>{/each}</ul>
+  {#each d.sources as s (s.name)}<li><a href={s.url} target="_blank" rel="noopener">{s.name} ↗</a> <span class="dim">{s.date}</span></li>{/each}</ul>
   <p class="hint">Global/EU build. Guides often disagree: "Unconfirmed" values come from one source or differ between sources (hover for details).
     The in-game dungeon window wins over this page.</p></section>

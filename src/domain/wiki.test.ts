@@ -8,6 +8,10 @@ test("wiki: unique ids, every dungeon has modes, a final boss and sources", () =
   for (const d of DUNGEONS) {
     assert.ok(d.modes.length && d.sources.length, d.id);
     assert.ok(d.bosses.some((b) => b.role === "final"), d.id);
+    // The page's each-block keys: a duplicate breaks the render.
+    const unique = (xs: string[]) => new Set(xs).size === xs.length;
+    assert.ok(unique(d.modes.map((m) => m.name)) && unique(d.sources.map((s) => s.name))
+      && unique(d.bosses.map((b) => val(b.name))), d.id);
   }
 });
 
