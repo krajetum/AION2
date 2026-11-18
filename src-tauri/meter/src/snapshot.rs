@@ -109,6 +109,8 @@ pub struct PlayerRow {
     pub deaths: i32,
     /// When each of those deaths came, ms from the fight's first hit.
     pub death_times: Vec<i64>,
+    /// When each of them was revived, same clock; None = not before the fight ended.
+    pub revive_times: Vec<Option<i64>>,
     /// Hits dealt over all skills and the share of critical ones (DoT ticks left out of the rate), on boss fights; 0 elsewhere.
     pub hits: i32,
     pub crit_rate: f64,
@@ -164,6 +166,7 @@ impl Fight {
                     hits_taken: 0,
                     deaths: 0,
                     death_times: Vec::new(),
+                    revive_times: Vec::new(),
                     hits: 0,
                     crit_rate: 0.0,
                     skills: Vec::new(),
@@ -243,6 +246,7 @@ impl Fight {
             if let Some(r) = self.rows.iter_mut().find(|r| r.id == d.actor_id) {
                 r.deaths += 1;
                 r.death_times.push(d.ts_ms);
+                r.revive_times.push(d.revived_ms);
             }
         }
     }
@@ -342,8 +346,8 @@ mod tests {
             DeathPoint { actor_id: 8, ts_ms: 5_000, revived_ms: None },
             DeathPoint { actor_id: 42, ts_ms: 5_000, revived_ms: None }, // not a row
         ]);
-        let d: Vec<_> = f.rows.iter().map(|r| (r.id, r.deaths, r.death_times.clone())).collect();
-        assert_eq!(d, [(8, 1, vec![5_000]), (7, 2, vec![3_000, 11_000])]);
+        let d: Vec<_> = f.rows.iter().map(|r| (r.id, r.deaths, r.death_times.clone(), r.revive_times.clone())).collect();
+        assert_eq!(d, [(8, 1, vec![5_000], vec![None]), (7, 2, vec![3_000, 11_000], vec![Some(9_000), None])]);
     }
 
     #[test]

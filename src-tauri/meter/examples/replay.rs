@@ -91,7 +91,10 @@ fn print_fight(at: i64, f: &aion2_meter::snapshot::Fight) {
     let t = f.target.as_ref().unwrap();
     println!("[{:>7.1} s] boss fight: {} ({} s, HP {} / {})", at as f64 / 1000.0, t.name, f.battle_time_ms / 1000, t.current_hp, t.max_hp);
     for r in &f.rows {
-        let times: Vec<String> = r.death_times.iter().map(|ms| format!("{}:{:02}", ms / 60_000, ms / 1000 % 60)).collect();
+        let times: Vec<String> = r.death_times.iter().zip(&r.revive_times).map(|(ms, back)| {
+            let dead = (back.unwrap_or(f.battle_time_ms) - ms) / 1000;
+            format!("{}:{:02}({}s{})", ms / 60_000, ms / 1000 % 60, dead, if back.is_none() { ",end" } else { "" })
+        }).collect();
         print!("{:>6} ", r.id);
         println!("  {:<16} {:<12} {:>9.0}/s  dmg {:>11}  hits {:>5}  crit {:>3.0}%  deaths {} {:<14} taken {:>9} ({} hits){}{}",
             if r.name.is_empty() { format!("#{}", r.id) } else { r.name.clone() }, r.job, r.dps, r.damage, r.hits, r.crit_rate * 100.0,

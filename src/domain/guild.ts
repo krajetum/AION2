@@ -170,7 +170,9 @@ const cleanRow = (x: any): PlayerRow => ({
   gearScore: num(x?.gearScore) ?? 0, isYou: x?.isYou === true, inParty: x?.inParty === true, isOthers: x?.isOthers === true,
   damageTaken: num(x?.damageTaken) ?? 0, hitsTaken: num(x?.hitsTaken) ?? 0,
   deaths: num(x?.deaths) ?? undefined,
-  deathTimes: Array.isArray(x?.deathTimes) ? x.deathTimes.map(num).filter((t: number | null): t is number => t !== null && t >= 0).slice(0, 50) : undefined, hits: num(x?.hits) ?? undefined, critRate: num(x?.critRate) ?? undefined,
+  deathTimes: Array.isArray(x?.deathTimes) ? x.deathTimes.map(num).filter((t: number | null): t is number => t !== null && t >= 0).slice(0, 50) : undefined,
+  reviveTimes: Array.isArray(x?.reviveTimes) && Array.isArray(x?.deathTimes) && x.reviveTimes.length === x.deathTimes.length
+    ? x.reviveTimes.map((t: unknown) => num(t)).slice(0, 50) : undefined, hits: num(x?.hits) ?? undefined, critRate: num(x?.critRate) ?? undefined,
   skills: Array.isArray(x?.skills) ? x.skills.map(cleanSkill) : [], healSkills: [],
 });
 

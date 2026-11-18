@@ -30,6 +30,7 @@ export interface PlayerRow {
   // Boss fights only (the meter's totals over all skills); none in fights from before them.
   deaths?: number; // A2Tools' death marks: party members and named players
   deathTimes?: number[]; // when each death came, ms from the fight's first hit
+  reviveTimes?: (number | null)[]; // when each of them was revived, same clock; null = not before the fight ended
   hits?: number; // hits dealt, DoT ticks included
   critRate?: number; // 0..1 of direct hits
   skills: SkillRow[];
@@ -169,11 +170,18 @@ export function advancedStats(r: PlayerRow, ms: number): Stat[] {
   const crit = r.critRate ?? (directHits ? direct.reduce((a, s) => a + s.critRate * s.hits, 0) / directHits : undefined);
   const sec = Math.max(1, ms / 1000);
   const times = r.deathTimes ?? [];
+  // How long each death lasted: to the revive, else to the fight's end; none for fights from before revive times.
+  const dead = (t: number, i: number) => {
+    if (!r.reviveTimes || i >= r.reviveTimes.length) return clock(t);
+    const back = r.reviveTimes[i];
+    const s = Math.max(0, Math.round(((back ?? ms) - t) / 1000));
+    return back == null ? `${clock(t)} (dead ${s} s, not revived)` : `${clock(t)} (dead ${s} s)`;
+  };
   return [
     { label: "Damage", value: short(r.damage), sub: `${short(r.dps)}/s` },
     { label: "Hits", value: hits == null ? "—" : short(hits), sub: hits ? `${(hits / sec).toFixed(1)}/s` + (crit == null ? "" : ` · crit ${Math.round(crit * 100)}%`) : "" },
     { label: "Healing", value: r.heal ? short(r.heal) : "—", sub: r.heal ? `${short(r.hps)}/s` : "" },
-    { label: "Deaths", value: r.deaths == null ? "—" : String(r.deaths), sub: times.length ? `at ${times.map(clock).join(", ")}` : "" },
+    { label: "Deaths", value: r.deaths == null ? "—" : String(r.deaths), sub: times.length ? `at ${times.map(dead).join(", ")}` : "" },
     { label: "Damage taken", value: r.damageTaken ? short(r.damageTaken) : "—", sub: r.hitsTaken ? `${r.hitsTaken} hits` : "" },
   ];
 }
