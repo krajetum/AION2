@@ -31,7 +31,7 @@
     }).catch(() => {});
   };
   // Sounds on the cube channel: a chime when one appears, a sad one when another player opens it.
-  const play = (name: string) => { const vol = settings ? channelVolume(settings, "cube") : 70; if (vol) playSound([name, "cube"], vol); };
+  const play = (name: string) => { const vol = settings ? channelVolume(settings, "cube") : 70; if (vol) playSound([name, "cube"], vol, settings?.soundTheme); };
   // The newest opening already announced (-1 until the first update: what was opened before the
   // window opened is not announced).
   let lastHeard = -1;

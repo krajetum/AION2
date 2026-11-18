@@ -1,14 +1,20 @@
 // Toast notifications + sounds (Tauri notification plugin; console in the browser preview).
 import { isTauri } from "@tauri-apps/api/core";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
-import { channelVolume } from "../domain/alerts.ts";
+import { channelVolume, type SoundTheme } from "../domain/alerts.ts";
 import type { Settings } from "../domain/types.ts";
 
-export function playSound(names: string[], volume: number) {
-  const [name, ...rest] = names.includes("default") ? names : [...names, "default"];
-  const a = new Audio(`/sounds/${name}.wav`);
+/** Plays the first of `names` that loads: each from the theme's folder, then the default one, .wav then .mp3; default last. */
+export function playSound(names: string[], volume: number, theme: SoundTheme = "default") {
+  const all = names.includes("default") ? names : [...names, "default"];
+  const paths = theme === "default" ? all : all.flatMap((n) => [`${theme}/${n}`, n]);
+  tryPlay(paths.flatMap((p) => [`${p}.wav`, `${p}.mp3`]), volume);
+}
+
+function tryPlay([file, ...rest]: string[], volume: number) {
+  const a = new Audio(`/sounds/${file}`);
   a.volume = volume / 100;
-  a.play().catch(() => { if (rest.length) playSound(rest, volume); });
+  a.play().catch(() => { if (rest.length) tryPlay(rest, volume); });
 }
 
 /** Hopex's birthday song; never below 5 %, whatever the save file says. */
@@ -20,7 +26,7 @@ export function playBirthday(volume: number) {
 
 export async function toast(s: Settings, title: string, body: string, sound: string[] = ["default"]) {
   const vol = channelVolume(s, sound[0]);
-  if (vol) playSound(sound, vol);
+  if (vol) playSound(sound, vol, s.soundTheme);
   if (!isTauri()) return console.info(`[toast] ${title} — ${body}`); // browser preview
   let ok = await isPermissionGranted();
   if (!ok) ok = (await requestPermission()) === "granted";

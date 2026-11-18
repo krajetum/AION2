@@ -4,7 +4,7 @@
   import { addLead, muteForAnHour, removeLead, setChannelOn, setDpsIdleSeconds, setOverlayOpacity, setLead, setChannelVolume, setVolume, setBirthdayVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
   import { applyResets } from "../../domain/resets.ts";
   import { nextEvent } from "../../domain/time.ts";
-  import { CHANNELS } from "../../domain/alerts.ts";
+  import { CHANNELS, SOUND_THEMES } from "../../domain/alerts.ts";
   import { CADENCES } from "../../domain/types.ts";
   import { playBirthday, playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
@@ -157,6 +157,9 @@
     {@render toggle("Sound", s.sound, (e) => { s.sound = check(e); })}
     <label class="setting"><span>Master volume</span><input type="range" min="0" max="100" value={s.volume}
       onchange={(e) => commit(e, (v) => setVolume(ui.data, v), () => s.volume)}></label>
+    <label class="setting"><span>Sound theme</span><select value={s.soundTheme}
+      onchange={(e) => act(() => { s.soundTheme = SOUND_THEMES.find((t) => t.id === e.currentTarget.value)?.id ?? "default"; })}>
+      {#each SOUND_THEMES as t}<option value={t.id}>{t.name}</option>{/each}</select></label>
     <div class="setting"><span>Hopex's birthday song</span><span class="ctl"><input type="range" min="5" max="100" value={s.birthdayVolume}
       aria-label="Birthday song volume" onchange={(e) => commit(e, (v) => setBirthdayVolume(ui.data, v), () => s.birthdayVolume)}>
       <button class="ghost" aria-label="Play the birthday song" title="sounds/happy-birthday.mp3" onclick={() => playBirthday(s.birthdayVolume)}>{@html ICON.play}</button></span></div>
@@ -168,7 +171,7 @@
         <button class="ghost" aria-pressed={ch.muted} aria-label="Mute {c.name} sound" title="{ch.muted ? 'Unmute' : 'Mute'} sound"
           onclick={() => act(() => toggleChannelMute(ui.data, c.id))}>{@html ch.muted ? ICON.muted : ICON.sound}</button>
         <button class="ghost" aria-label="Play {c.name} sound" title="sounds/{c.sound[0]}.wav"
-          onclick={() => playSound(c.sound, s.volume * ch.volume / 100)}>{@html ICON.play}</button></span>
+          onclick={() => playSound(c.sound, s.volume * ch.volume / 100, s.soundTheme)}>{@html ICON.play}</button></span>
       {#if ch.leads}{@const ev = EVENTS.find((e) => e.id === c.id)}<LeadsRow label={ev?.name ?? c.name} leads={ch.leads}
         next={ch.on && ev ? nextEvent(ev, ui.now, C.timeZone) : undefined}
         onadd={() => addLead(ui.data, c.id)} onremove={(i) => removeLead(ui.data, c.id, i)} onset={(i, v) => setLead(ui.data, c.id, i, v)} />{/if}</div>{/each}

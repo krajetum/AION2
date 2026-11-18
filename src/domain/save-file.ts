@@ -1,7 +1,7 @@
 // Save-file rules: the default data and the migration of old or imported saves. Pure.
 import { cleanBis } from "./bis.ts";
 import { cleanCrafting, emptyCrafting } from "./crafting.ts";
-import { CHANNELS, cleanLeads, LEAD_CHANNELS } from "./alerts.ts";
+import { CHANNELS, cleanLeads, LEAD_CHANNELS, SOUND_THEMES } from "./alerts.ts";
 import { cleanGuild } from "./guild.ts";
 import { cleanHistory, emptyHistory } from "./history.ts";
 import { cleanAdvent, emptyAdvent } from "./holiday.ts";
@@ -70,6 +70,7 @@ export function defaultData(): AppData {
       autoUpdate: true,
       mascot: true,
       mascotGender: "m",
+      soundTheme: "default",
       winterTheme: true,
       snow: true,
       halloween: true,
@@ -124,6 +125,7 @@ export function normalize(raw: any): AppData {
     advent: cleanAdvent(raw.advent),
     history: cleanHistory(raw.history),
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels,
-      mascotGender: rs.mascotGender === "f" ? "f" : "m" },
+      mascotGender: rs.mascotGender === "f" ? "f" : "m",
+      soundTheme: SOUND_THEMES.find((t) => t.id === rs.soundTheme)?.id ?? "default" },
   };
 }

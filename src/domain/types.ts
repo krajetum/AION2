@@ -45,6 +45,7 @@ export interface Settings {
   channels: Record<string, Channel>; // cloud | <event id> | reset | news | check (see CHANNELS in notify.ts)
   sound: boolean;  // master switch: play public/sounds/*.wav with each toast
   volume: number;  // master volume 0..100
+  soundTheme: import("./alerts.ts").SoundTheme; // public/sounds/<theme>/ first, missing files fall back to the default ones
   birthdayVolume: number; // Hopex's birthday song, 5..100: never silent, ignores the master volume and mutes
   planMinutes: number;   // Planner: session length
   planNextHours: number; // Planner: hours until the next session (tasks resetting before it are urgent)

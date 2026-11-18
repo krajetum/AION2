@@ -41,3 +41,11 @@ test("save file: a Sanctuary task the player changed is left alone", () => {
   const d = normalize({ tasks: [t], characters: [{ id: "c", name: "Main" }] });
   assert.deepEqual(d.tasks.find((x) => x.name === "Sanctuary"), t);
 });
+
+test("save file: the sound theme is kept when known, else default", () => {
+  const theme = (soundTheme?: unknown) => normalize({ tasks: [], characters: [{ id: "c", name: "Main" }], settings: { soundTheme } }).settings.soundTheme;
+  assert.equal(theme("scream"), "scream");
+  assert.equal(theme("premium"), "premium");
+  assert.equal(theme("nope"), "default");
+  assert.equal(theme(), "default");
+});

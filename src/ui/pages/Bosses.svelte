@@ -48,7 +48,7 @@
           <div class="seg" role="group" aria-label="How often for {bossLabel(b, ui.data.bossNames)}">
             <button class:on={!a.repeat} aria-pressed={!a.repeat} onclick={() => act(() => setBossRepeat(ui.data, b.bossId, false))}>Once</button>
             <button class:on={a.repeat} aria-pressed={a.repeat} onclick={() => act(() => setBossRepeat(ui.data, b.bossId, true))}>Every respawn</button></div>
-          <button class="ghost" title="sounds/boss.wav" onclick={() => playSound(["boss", "event"], channelVolume(ui.data.settings, "boss") || 70)}>Play sound</button>
+          <button class="ghost" title="sounds/boss.wav" onclick={() => playSound(["boss", "event"], channelVolume(ui.data.settings, "boss") || 70, ui.data.settings.soundTheme)}>Play sound</button>
           {#if st !== "due"}<span class="hint">{a.repeat ? "Fires each time the map shows a respawn time." : "Fires once, on the next respawn time the map shows."}</span>{/if}
         </div></td></tr>{/if}
     {/each}</tbody>

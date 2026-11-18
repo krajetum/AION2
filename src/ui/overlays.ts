@@ -17,5 +17,5 @@ export function showStatus(msg: string, err = false) {
 /** Sound on check. */
 export function react(s: Settings) {
   const vol = channelVolume(s, "check");
-  if (vol) playSound(["check"], vol);
+  if (vol) playSound(["check"], vol, s.soundTheme);
 }
