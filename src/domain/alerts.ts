@@ -23,7 +23,9 @@ export const bossChannel = (label: string) => BOSS_CHANNELS.find((b) => b.boss.t
 
 /** Notification sounds: files in public/sounds/<name>.wav (bundled into the app). Replace them with your own,
  *  same names. Each event uses <event id>.wav (see EVENTS in config.ts), else event.wav.
- *  A missing or broken file falls back to the next name, then default.wav.
+ *  <name>.wav or <name>.mp3 (.wav tried first). A missing or broken file falls back to the next name, then default.
+ *  A sound theme (SOUND_THEMES, settings.soundTheme) other than "default" plays public/sounds/<theme>/<name>.wav first,
+ *  each missing one falling back to the default file of that name.
  *  Each channel = one row in Settings → Notifications (on/off, volume, mute); id = settings.channels key. */
 export const CHANNELS = [
   { id: "cloud", name: "Hourly Cloud Merchant reminder", sound: ["cloud"], on: true },
@@ -37,6 +39,10 @@ export const CHANNELS = [
   { id: "auto", name: "Task ticked by the game (auto-tracked tasks)", sound: ["auto", "check"], on: true },
   { id: "cube", name: "Hidden cube popup", sound: ["cube"], on: true },
 ];
+
+/** Sound themes: a subfolder of public/sounds/ each ("default" = the folder itself). */
+export const SOUND_THEMES = [{ id: "default", name: "Default" }, { id: "scream", name: "Scream" }, { id: "premium", name: "Premium" }] as const;
+export type SoundTheme = typeof SOUND_THEMES[number]["id"];
 
 /** Channels with alert lead times: the events (field bosses have theirs per boss, AppData.bossAlerts). */
 export const LEAD_CHANNELS = EVENTS.map((ev) => ev.id);
