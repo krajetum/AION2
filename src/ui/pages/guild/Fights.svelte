@@ -52,7 +52,7 @@
       <td>{p.chars.join(", ") || "Unknown"}</td><td class="n">{p.rows.length}</td></tr>
     {#if open === p.id}<tr class="skills"><td colspan="4"><table class="sheet">
       <thead><tr><th>Player</th><th class="n">DPS</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Deaths</th></tr></thead>
-      <tbody>{#each p.rows as { row: r, own } (r.name || r.id)}{@const key = r.name || String(r.id)}
+      <tbody>{#each p.rows as { key, row: r, own } (key)}
         <tr class="prow" tabindex="0" class:you={own} style:--cls={classColor(r.job) || null} aria-expanded={who === key}
           onclick={() => { who = who === key ? "" : key; }} onkeydown={(e) => { if (e.key === "Enter") who = who === key ? "" : key; }}>
           <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{/if}<span class="name">{displayName(r)}</span>

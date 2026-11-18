@@ -134,3 +134,12 @@ test("groupPulls: pulls apart by more than the slack stay apart; a member's two 
   assert.equal(groupPulls([f("A", 1_000_000), f("B", 1_000_000 + 60_000 + PULL_SLACK_MS - 1)]).length, 1);
   assert.equal(groupPulls([f("A", 1_000_000), f("A", 1_000_500)]).length, 2);
 });
+
+test("groupPulls: keys stay unique when the Others row carries a player's name", () => {
+  const f = { ...fight("Ann", 10, 60_000, false, [row("Ann", 10, { isYou: true }), row("Bob", 5), row("Bob", 3, { isOthers: true })]), id: "x" };
+  const [p] = groupPulls([f, { ...f }]);
+  const keys = groupPulls([f, { ...f }]).flatMap((x) => x.rows.map((r) => r.key));
+  assert.equal(new Set(keys.filter((_, i) => i < p.rows.length)).size, p.rows.length);
+  const ids = groupPulls([f, { ...f }]).map((x) => x.id);
+  assert.equal(new Set(ids).size, ids.length); // the same record twice: two pulls, two ids
+});

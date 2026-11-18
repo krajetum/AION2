@@ -202,7 +202,7 @@ export function memberBests(fights: FightRecord[]): MemberBest[] {
 /** Two members' records of one pull may start and end a little apart (each PC's clock, the meter's idle reset). */
 export const PULL_SLACK_MS = 30_000;
 
-export interface PullRow { row: PlayerRow; own: boolean } // own: from that player's own upload (with their skills and totals)
+export interface PullRow { key: string; row: PlayerRow; own: boolean } // own: from that player's own upload (with their skills and totals)
 /** One boss pull as several members recorded it. */
 export interface Pull { id: string; boss: string; startMs: number; endMs: number; battleTimeMs: number; killed: boolean; chars: string[]; rows: PullRow[] }
 
@@ -218,7 +218,7 @@ export function groupPulls(fights: FightRecord[]): Pull[] {
       && startOf(f) <= Math.max(...g.map((x) => x.endMs)) + PULL_SLACK_MS && f.endMs + PULL_SLACK_MS >= Math.min(...g.map(startOf)));
     if (g) g.push(f); else groups.push([f]);
   }
-  return groups.map((g): Pull => {
+  return groups.map((g, i): Pull => {
     const by = new Map<string, PullRow>();
     for (const f of g) for (const r of f.rows) {
       if (r.isOthers && g.length > 1) continue;
@@ -226,14 +226,14 @@ export function groupPulls(fights: FightRecord[]): Pull[] {
       if (!name && !r.isOthers) continue;
       const key = r.isOthers ? "\u0000others" : name.toLowerCase();
       const own = r.isYou, had = by.get(key);
-      if (!had || (own && !had.own) || (own === had.own && r.damage > had.row.damage)) by.set(key, { row: { ...r, name, isYou: false }, own });
+      if (!had || (own && !had.own) || (own === had.own && r.damage > had.row.damage)) by.set(key, { key, row: { ...r, name, isYou: false }, own });
     }
     const rows = [...by.values()].sort((a, b) => b.row.damage - a.row.damage);
     const total = rows.reduce((a, r) => a + r.row.damage, 0);
     for (const r of rows) r.row.share = total ? (r.row.damage / total) * 100 : 0;
     const end = Math.max(...g.map((f) => f.endMs));
     return {
-      id: g[0].id, boss: g[0].boss, startMs: Math.min(...g.map(startOf)), endMs: end, battleTimeMs: Math.max(...g.map((f) => f.battleTimeMs)),
+      id: `${g[0].id}#${i}`, boss: g[0].boss, startMs: Math.min(...g.map(startOf)), endMs: end, battleTimeMs: Math.max(...g.map((f) => f.battleTimeMs)),
       killed: g.some((f) => f.killed), chars: g.map((f) => f.char).filter(Boolean), rows,
     };
   }).sort((a, b) => b.endMs - a.endMs);
