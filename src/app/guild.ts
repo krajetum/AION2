@@ -1,6 +1,6 @@
 // Guild use cases: create / join / leave, consent, your card, shared fights, officer actions (the Worker's /v1/guilds).
 // Network calls throw (CrowdError) for the page to show; the background ones (sync, fight upload) only log.
-import { DEFAULT_SHARE, fightsToShare, guildFight, meCard, parseFightBosses, parseGuild, parseGuildFights, type GuildMe, type GuildShare, type GuildView, type Perm, type Ping, type Role } from "../domain/guild.ts";
+import { DEFAULT_SHARE, fightsToShare, guildFight, isStaticFight, meCard, parseFightBosses, parseGuild, parseGuildFights, type GuildMe, type GuildShare, type GuildView, type Perm, type Ping, type Role } from "../domain/guild.ts";
 import type { FightRecord } from "../domain/fights.ts";
 import type { Profile } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
@@ -11,6 +11,7 @@ const warn = (what: string) => (e: unknown) => console.warn(`Guild ${what} faile
 let sentCard = ""; // the card last sent this session: sent again only when it changes
 /** The name this install is in the guild as (the Worker's last answer). */
 let cardName = "";
+let memberNames: string[] = []; // the static's members as of the last sync: a fight is shared only with STATIC_MIN_MEMBERS of them in it
 let claimed = ""; // the guild this session claimed Leader in (once)
 
 const path = (data: AppData, part = "") => `/v1/guilds/${data.guild!.id}${part}`;
@@ -63,6 +64,7 @@ export async function syncGuild(data: AppData, profile: Profile | null | undefin
     const j = await crowd(`${path(data)}?install=${data.install}${playing ? "&playing=1" : ""}`);
     const view = parseGuild(j, Date.now());
     cardName = view.members.find((m) => m.me)?.name ?? cardName;
+    memberNames = view.members.map((m) => m.name);
     // The leader key kept here, but the Worker doesn't list this install as Leader (an officer from before roles): claim it once.
     if (g.officerKey && view.role !== "leader" && j?.role && claimed !== g.id) {
       claimed = g.id;
@@ -76,20 +78,21 @@ export async function syncGuild(data: AppData, profile: Profile | null | undefin
   }
 }
 
-/** A fight that just ended, shared when you agreed to and you played it on the static's server,
- *  or as the character you are in the static as (a static can mix servers: not an alt elsewhere). */
+/** A fight that just ended, shared when you agreed to, you played it on the static's server or as the character you are in
+ *  the static as (a static can mix servers: not an alt elsewhere), and it is a static fight (at least STATIC_MIN_MEMBERS members in it;
+ *  none before the first sync, which lists them). */
 export function uploadFight(data: AppData, r: FightRecord, serverId: number | undefined): void {
   const g = data.guild;
-  if (!g?.share.fights || (serverId !== g.serverId && !(r.char && r.char === cardName))) return;
+  if (!g?.share.fights || (serverId !== g.serverId && !(r.char && r.char === cardName)) || !isStaticFight(r, memberNames)) return;
   crowd(path(data, "/fights"), { install: data.install, fight: guildFight(r) }).catch(warn("fight upload"));
 }
 
-/** Turns fight sharing on and sends your last week's fights as `char` (fightsToShare), one at a time; how many went. */
-export async function shareFights(data: AppData, log: FightRecord[], char: string): Promise<number> {
+/** Turns fight sharing on and sends your last week's static fights as `char` (fightsToShare), one at a time; how many went. */
+export async function shareFights(data: AppData, log: FightRecord[], char: string, names: string[]): Promise<number> {
   if (!data.guild) return 0;
   await setShare(data, { ...data.guild.share, fights: true });
   let sent = 0;
-  for (const f of fightsToShare(log, char || cardName, Date.now()).reverse()) {
+  for (const f of fightsToShare(log, char || cardName, names.length ? names : memberNames, Date.now()).reverse()) {
     await crowd(path(data, "/fights"), { install: data.install, fight: guildFight(f) });
     sent++;
   }

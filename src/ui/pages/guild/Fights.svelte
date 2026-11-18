@@ -4,7 +4,7 @@
   import { untrack } from "svelte";
   import { bossFights, fightBosses, shareFights } from "../../../app/guild.ts";
   import { yourDps, type FightRecord } from "../../../domain/fights.ts";
-  import { BACKFILL_FIGHTS, groupPulls, memberBests, type GuildLink, type GuildView } from "../../../domain/guild.ts";
+  import { groupPulls, isStaticFight, memberBests, STATIC_MIN_MEMBERS, type GuildLink, type GuildView } from "../../../domain/guild.ts";
   import { classColor, clock, displayName, short, skillIconUrl } from "../../../domain/meter.ts";
   import { classIcon } from "../../classes.ts";
   import { hm } from "../../format.ts";
@@ -16,20 +16,23 @@
 
   let { g, view }: { g: GuildLink; view: GuildView } = $props();
   const me = $derived(view.members.find((m) => m.me)?.name ?? "");
+  const names = $derived(view.members.map((m) => m.name));
   let reload = $state(0);
   const share = () => run(async () => {
-    const n = await shareFights(ui.data, ui.fights, me);
+    const n = await shareFights(ui.data, ui.fights, me, names);
     reload++;
     showStatus(n ? `Your boss fights are shared (${n} past ${n === 1 ? "fight" : "fights"} sent)` : "Your boss fights are shared");
   });
 
-  let bosses = $state<{ boss: string; n: number }[]>([]), boss = $state(""), fights = $state<FightRecord[]>([]), picked = $state<string[]>([]);
+  let bosses = $state<{ boss: string; n: number }[]>([]), boss = $state(""), all = $state<FightRecord[]>([]), picked = $state<string[]>([]);
   $effect(() => { void reload; untrack(() => fightBosses(ui.data).then((b) => { bosses = b; if (!boss && b[0]) boss = b[0].boss; }).catch((e) => { gs.error = say(e); })); });
   $effect(() => {
     const b = boss;
     void reload;
-    if (b) untrack(() => { picked = []; bossFights(ui.data, b).then((f) => { fights = f; }).catch((e) => { gs.error = say(e); }); });
+    if (b) untrack(() => { picked = []; bossFights(ui.data, b).then((f) => { all = f; }).catch((e) => { gs.error = say(e); }); });
   });
+  // Only static fights (STATIC_MIN_MEMBERS members in them): a member's other runs stay theirs.
+  const fights = $derived(all.filter((f) => isStaticFight(f, names)));
   const bests = $derived(memberBests(fights));
   const pulls = $derived(groupPulls(fights));
   let open = $state(""), who = $state("");
@@ -40,12 +43,13 @@
 
 {#if !g.share.fights}<section class="notice"><h2>You don't share your boss fights</h2>
   <p class="hint">The others can't see your fights, and your pulls don't merge with theirs. Sharing sends each boss fight your meter logs
-    (DPS, skills, deaths; not the second-by-second timeline){me ? `, plus your last ${BACKFILL_FIGHTS} fights of the past week as ${me}` : ""}. You can stop in My settings.</p>
+    (DPS, skills, deaths; not the second-by-second timeline) when at least {STATIC_MIN_MEMBERS} of the static's members were in it,
+    {me ? `starting with those of the past week as ${me}` : "starting with those of the past week"}. Your other fights stay on your PC. You can stop in My settings.</p>
   <button type="button" class="primary" disabled={gs.busy} onclick={share}>Share my boss fights</button></section>{/if}
 
 <section><h2>Shared fights</h2>
-  {#if !bosses.length}<p class="hint">No fight shared yet. Members who share their boss fights (My settings, or the button above) send each boss fight their meter logs:
-    a fight of the same boss at the same time from several members becomes one pull below.</p>
+  {#if !bosses.length}<p class="hint">No static fight shared yet: a boss fight with at least {STATIC_MIN_MEMBERS} of the static's members in it, from a member who shares
+    their boss fights (My settings, or the button above). The same fight from several members becomes one pull below.</p>
   {:else}
     <label class="toolbar start">Boss <select bind:value={boss}>{#each bosses as b (b.boss)}<option value={b.boss}>{b.boss} ({b.n})</option>{/each}</select></label>
     <div class="scroll"><table class="sheet">
