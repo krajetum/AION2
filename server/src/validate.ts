@@ -393,3 +393,28 @@ export function mergeWeeks(json: string | null | undefined, week: AvailabilityPo
   const kept = Object.keys(out).filter((k) => Date.parse(k + "T00:00:00Z") >= now - 8 * DAY_MS).sort().slice(-MAX_WEEKS);
   return Object.fromEntries(kept.map((k) => [k, out[k]]));
 }
+
+// Redeem codes players share (Home > Codes): each lasts a week for everyone, unless REDEEM_EXPIRED_VOTES installs mark it expired.
+export const REDEEM_TTL = 7 * 24 * 3600_000;
+export const REDEEM_EXPIRED_VOTES = 5;
+/** A removed or ended code stays known this long, so the same code can't be shared again meanwhile. */
+export const REDEEM_KEEP = 30 * 24 * 3600_000;
+export const MAX_REDEEM_LISTED = 50;
+/** Letters, digits, dashes and underscores, 4-40 of them (the game's coupon codes as players type them). */
+const REDEEM_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{2,38}[A-Za-z0-9]$/;
+
+/** The code as shared (spaces trimmed), or null when it doesn't look like one. */
+export function redeemCode(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const c = v.trim();
+  return REDEEM_RE.test(c) ? c : null;
+}
+/** Two codes that differ only in case are the same code. */
+export const redeemKey = (code: string) => code.toUpperCase();
+
+export interface RedeemPost { install: string; code: string; key: string }
+export function parseRedeemPost(body: unknown): RedeemPost | null {
+  if (!isObj(body) || !isInstall(body.install)) return null;
+  const code = redeemCode(body.code);
+  return code ? { install: body.install.toLowerCase(), code, key: redeemKey(code) } : null;
+}

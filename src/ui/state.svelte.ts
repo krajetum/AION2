@@ -36,6 +36,8 @@ export const ui = $state({
   lookup: null as { name: string; serverId: number } | null, // a player card's "Full profile": the Players page searches it
   mascotCues: [] as Cue[], // what the mascot reacts to (main.ts alerts, actions.ts `cue`), latest last
   party: 0, // when the last celebration started (actions.ts `celebrate`): parts/Confetti.svelte fires on each change
+  codes: [] as import("../domain/codes.ts").RedeemCode[], // the shared redeem codes as the Worker last answered (actions.ts refreshCodes), not saved
+  codesError: "",
   guild: null as GuildView | null, // the guild as the Worker last answered (main.ts syncs it while playing), not saved
   updating: "", // the update in progress or its error, shown in the update banner
   update: undefined as { version: string; install: () => Promise<void> } | undefined, // a newer release (main.ts checkUpdate), offered by a banner

@@ -33,6 +33,7 @@ export const CHANNELS = [
   { id: "boss", name: "Field boss alerts (set per boss in Field Bosses)", sound: ["boss", "event"], on: true },
   ...BOSS_CHANNELS.map((b) => ({ id: b.id, name: `${b.boss}: respawn alert (set in Field Bosses)`, sound: [b.id, "boss", "event"], on: true })),
   { id: "guild", name: "Static reminders (call-ups from your static's officers)", sound: ["guild", "event"], on: true },
+  { id: "codes", name: "Redeem codes reminder (entering the game or another character, while a shared code is left)", sound: ["codes", "news"], on: true },
   { id: "reset", name: "Reset warnings", sound: ["reset"], on: true },
   { id: "news", name: "News", sound: ["news"], on: true },
   { id: "check", name: "Task checked (vine boom)", sound: ["check"], on: true },

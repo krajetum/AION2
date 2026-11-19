@@ -1,4 +1,6 @@
 // Glue between UI events and the app/ use cases: save after each change, undo, progress tracking, news refresh.
+import { fetchCodes } from "../app/codes.ts";
+import { reminderText, shouldRemind, toRedeem } from "../domain/codes.ts";
 import { syncGuild } from "../app/guild.ts";
 import { trackProgress } from "../app/progress.ts";
 import { findTask } from "../app/tasks.ts";
@@ -89,6 +91,29 @@ export async function refreshNews() {
       toast(s, fresh.length === 1 ? "AION 2 news" : `${fresh.length} AION 2 news`, fresh.map((n) => n.title).join(" · "), ["news"]);
     await save();
   } catch (e) { ui.newsError = "Offline: " + (e as Error).message; console.warn(e); }
+}
+
+/** The shared redeem codes into ui.codes (startup, every 30 min, Home, entering the game). */
+export async function refreshCodes() {
+  try {
+    ui.codes = await fetchCodes();
+    ui.codesError = "";
+  } catch (e) { ui.codesError = "Offline: " + (e as Error).message; console.warn("Codes not read", e); }
+}
+
+/** Entering the game or another character: a reminder of the codes still to redeem, and that the rewards land on `char`. */
+let remindedFor: string | null = null;
+export async function remindCodes(char: string | undefined) {
+  if (!shouldRemind(char, remindedFor)) return;
+  remindedFor = char!;
+  const s = ui.data.settings;
+  if (!s.channels.codes?.on || s.mutedUntil > Date.now()) return;
+  await refreshCodes();
+  const left = toRedeem(ui.codes, ui.data.codes, Date.now());
+  if (!left.length) return;
+  const { title, body } = reminderText(left, char!);
+  toast(s, title, body, ["codes", "news"]);
+  showStatus(`${title}. ${body}`);
 }
 
 /** The guild's members and settings into ui.guild (main.ts while playing, the Guild page when opened).
