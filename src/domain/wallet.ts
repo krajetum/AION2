@@ -14,6 +14,8 @@ export const CURRENCIES: { code: number; name: string }[] = [
 export interface MeterWallet {
   owner: string | null; values: Record<string, number>; atMs: number;
   apGains?: { amount: number; mapId: number | null; atMs: number }[]; // Abyss Points gained, on the map you were on
+  items?: Record<string, number>; // the bag's pieces of the item codes the app sent (Crafting), once a whole inventory was read
+  stored?: Record<string, number>; // the same in the warehouse (currencies.rs: the login inventory holds it)
 }
 /** Where Abyss Points came from: a PvP kill or assist of yours, a mob you killed, or anything else (quests, rewards). */
 export type ApSource = "players" | "mobs" | "other";
@@ -23,6 +25,9 @@ export interface Wallet {
   atMs: number;                   // when the game last sent one of them
   odyle?: { basic: number; charged: number; atMs: number };
   apGains?: ApGain[];             // the last AP_KEEP_MS of Abyss Points gained (`takeApGains`)
+  items?: Record<string, number>; // item code → pieces in the bag (Crafting's "Fill from game")
+  stored?: Record<string, number>; // item code → pieces in the warehouse
+  itemsAt?: number;               // when they were last sent
 }
 
 /** Abyss Points' item code. */
@@ -38,6 +43,14 @@ export const AP_SETTLE_MS = 6_000;
 export const AP_NEAR_MS = 5_000;
 
 const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+const counts = (o: object) => Object.fromEntries(Object.entries(o).filter(([, v]) => ok(v))) as Record<string, number>;
+
+/** Pieces per item code in the bag and the warehouse together (Crafting's "Fill owned from game"). */
+export function owned(w: Pick<Wallet, "items" | "stored">): Record<string, number> {
+  const out = { ...w.items };
+  for (const [code, n] of Object.entries(w.stored ?? {})) out[code] = (out[code] ?? 0) + n;
+  return out;
+}
 
 export function cleanWallets(raw: any): Record<string, Wallet> {
   const out: Record<string, Wallet> = {};
@@ -48,7 +61,8 @@ export function cleanWallets(raw: any): Record<string, Wallet> {
     const ap = (Array.isArray(w.apGains) ? w.apGains : []).filter((g: any) => g && ok(g.amount) && ok(g.atMs) && ["players", "mobs", "other"].includes(g.from))
       .map((g: any): ApGain => ({ amount: g.amount, atMs: g.atMs, abyss: !!g.abyss, from: g.from }));
     out[name] = { values, atMs: w.atMs, ...(o && ok(o.basic) && ok(o.charged) && ok(o.atMs) && { odyle: { basic: o.basic, charged: o.charged, atMs: o.atMs } }),
-      ...(ap.length && { apGains: ap }) };
+      ...(ap.length && { apGains: ap }),
+      ...(w.items && typeof w.items === "object" && ok(w.itemsAt) && { items: counts(w.items), itemsAt: w.itemsAt, ...(w.stored && typeof w.stored === "object" && { stored: counts(w.stored) }) }) };
   }
   return out;
 }
@@ -62,6 +76,12 @@ export function takeWallet(all: Record<string, Wallet>, w: MeterWallet | null | 
   let changed = false;
   for (const [code, v] of Object.entries(w.values)) if (ok(v) && kept.values[code] !== v) { kept.values[code] = v; changed = true; }
   if (changed) kept.atMs = w.atMs;
+  if (w.items && (JSON.stringify(w.items) !== JSON.stringify(kept.items ?? null) || JSON.stringify(w.stored ?? null) !== JSON.stringify(kept.stored ?? null))) {
+    kept.items = { ...w.items };
+    if (w.stored) kept.stored = { ...w.stored }; else delete kept.stored;
+    kept.itemsAt = w.atMs;
+    changed = true;
+  }
   return changed;
 }
 

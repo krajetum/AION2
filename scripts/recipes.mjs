@@ -4,7 +4,7 @@
 import { writeFileSync } from "node:fs";
 
 // Bump when this script changes the recipes it writes: the app reloads loaded game recipes on a new rev.
-const REV = 2;
+const REV = 3;
 
 const SITE = "https://aion2hub.com";
 const get = async (path) => { const r = await fetch(SITE + path); if (!r.ok) throw new Error(`${path}: ${r.status}`); return r.text(); };
@@ -51,6 +51,13 @@ for (const [key, combo] of Object.entries(combos)) {
   }
 }
 const items = Object.fromEntries(Object.values(data.items).map((it) => [it.i, it.n]));
+// Per item: [icon file under ICON_BASE (crafting.ts), grade, category, profession]: a product's from its recipe's
+// sub-type and profession, a Splendent from the proc its base's, anything else a material with no profession.
+const made = {};
+for (const r of data.recipes) made[r.p] ??= [data.subTypes[r.sub]?.cat ?? "Materials", r.prof ?? ""];
+for (const [key, combo] of Object.entries(combos)) made[key] ??= made[combo.base];
+const meta = Object.fromEntries(Object.entries(data.items).map(([key, it]) => [it.i, [it.m ?? "", it.g ?? "", ...(made[key] ?? ["Materials", ""])]]));
+if (data.iconBase !== "https://assets.playnccdn.com/static-aion2-gamedata/resources/") console.warn(`Icon base changed: ${data.iconBase}`);
 writeFileSync(new URL("../src/assets/recipes.json", import.meta.url),
-  JSON.stringify({ source: "aion2hub.com crafting calculator (Global client data)", builtAt: data.builtAt, rev: REV, items, recipes }) + "\n");
+  JSON.stringify({ source: "aion2hub.com crafting calculator (Global client data)", builtAt: data.builtAt, rev: REV, items, meta, recipes }) + "\n");
 console.log(`${Object.keys(items).length} items, ${Object.keys(recipes.Elyos).length} Elyos and ${Object.keys(recipes.Asmodian).length} Asmodian recipes (${data.builtAt})`);

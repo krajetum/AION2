@@ -677,6 +677,20 @@ body.overlay:has(.radar) #app { padding: 0; background: transparent; }
 .craft-fields input[type="number"] { width: 110px; }
 .craft-search { width: 100%; max-width: 320px; margin-top: 10px; }
 .craft-share { width: 100%; margin-top: 10px; font: inherit; font-size: var(--fs-sm); }
+.craft-icon { width: 24px; height: 24px; margin-right: 6px; vertical-align: middle; border-radius: var(--r-sm);
+  border: 1px solid var(--edge, var(--border)); }
+.craft-filters { margin-top: 10px; flex-wrap: wrap; }
+.craft-filters .seg { flex-wrap: wrap; }
+.craft-pick { position: relative; display: flex; align-items: center; flex: 1 1 260px; max-width: 380px; }
+.craft-pick input { flex: 1; min-width: 0; }
+.craft-pick-list { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; max-height: 320px; overflow-y: auto; margin-top: 4px;
+  padding: 4px; background: var(--raised); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-float); }
+.craft-pick-cat { padding: 6px 6px 2px; color: var(--faint); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em; }
+.craft-pick-list button { display: flex; align-items: center; gap: 0; width: 100%; height: auto; padding: 3px 6px; background: none; border: 0;
+  color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: var(--r-sm); }
+.craft-pick-list button:hover, .craft-pick-list button:focus-visible { background: var(--active); }
+.craft-pick-list button span { flex: 1; }
+.craft-pick-list button small { margin-left: 8px; }
 
 /* Players page: equipment from the official profile. Grade colours as the official site shows them. */
 .grade-Unique { color: var(--grade-unique); }
