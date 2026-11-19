@@ -76,7 +76,7 @@
   li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--rule); }
   li.done { opacity: 0.55; }
   .acts button.on { background: var(--active); color: var(--text); }
-  .code { font-family: var(--mono, ui-monospace, monospace); font-weight: 600; letter-spacing: 0.03em; padding: 2px 4px; }
+  .code { font-family: ui-monospace, monospace; font-weight: 600; letter-spacing: 0.03em; padding: 2px 4px; }
   li small { color: var(--muted); }
   .acts { margin-left: auto; display: flex; gap: 6px; }
   form { display: flex; gap: 8px; margin-top: 10px; }
