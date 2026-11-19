@@ -30,7 +30,7 @@ import { takeMeterData } from "./app/arena.ts";
 import { bossEvery, flushCubes, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
 import { uploadFight } from "./app/guild.ts";
 import { crashReports } from "./infra/sentry.ts";
-import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, radarOverlay, meterOverlay, netOverlay, onEventsOverlay, onNetOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
+import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, meterItemCodes, radarOverlay, meterOverlay, netOverlay, onEventsOverlay, onNetOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { fightsSnapshot, ui } from "./ui/state.svelte.ts";
 
@@ -72,6 +72,7 @@ async function main() {
     await onNetOverlay((on) => { if (ui.data.settings.netOverlay !== on) act(() => { ui.data.settings.netOverlay = on; }); });
     if (data.settings.netOverlay) await netOverlay(true).catch(() => {});
     await meterCubeCodes(data.map.cubeCodes).catch(() => {});
+    await meterItemCodes(data.crafting.items).catch(() => {});
     if (data.settings.cubePopup) await cubePopup(true, data.settings.cubePopupSize).catch(() => {});
     if (data.settings.radar) await radarOverlay(true).catch(() => {});
   }
