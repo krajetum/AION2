@@ -1,4 +1,5 @@
 // Cloudflare Worker: players' apps share the field-boss timers and hidden-cube openings they see.
+// Players also share the game's redeem codes (Home > Codes).
 // No player names, only a random install id, except in guilds (the members' character names, item level and CP,
 // shared fights, by consent). The app works the same when this is down.
 // API under /v1, backward-compatible changes only (an incompatible one = /v2 alongside).
@@ -6,6 +7,7 @@ import {
   alertKey, type Auth, type BossTimer, callupCancelPost, callupPost, can, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_CALLUPS, MAX_LEAD, MAX_POSTS, nextDue, nextSend,
   mergeWeeks, parseAdmin, parseAuth, parseAvailability, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
   type Ping, POSTED_FOR, rank, type Role, SLOTS_HEX,
+  MAX_REDEEM_LISTED, parseRedeemPost, REDEEM_EXPIRED_VOTES, REDEEM_KEEP, REDEEM_TTL,
 } from "./validate.ts";
 
 // Minimal Workers types (no @cloudflare/workers-types).
@@ -509,6 +511,44 @@ async function guildAlerts(env: Env, now: number): Promise<void> {
   if (stmts.length) await env.DB.batch(stmts);
 }
 
+// Redeem codes (Home > Codes): the live ones, newest first, with how many marked each expired.
+async function getRedeem(env: Env) {
+  const now = Date.now();
+  const { results } = await env.DB.prepare(
+    `SELECT c.code, c.added_ms, c.expires_ms, (SELECT COUNT(*) FROM redeem_votes v WHERE v.key = c.key) AS votes
+     FROM redeem_codes c WHERE c.dead_ms IS NULL AND c.expires_ms > ? ORDER BY c.added_ms DESC LIMIT ?`,
+  ).bind(now, MAX_REDEEM_LISTED).all<{ code: string; added_ms: number; expires_ms: number; votes: number }>();
+  return json({ serverNow: now, codes: results.map((r) => ({ code: r.code, addedMs: r.added_ms, expiresMs: r.expires_ms, votes: r.votes })) });
+}
+
+/** A new code for everyone, for a week. Refused (409) when the same code (any case) is listed, or ended or was removed lately. */
+async function postRedeem(env: Env, req: Request) {
+  const now = Date.now();
+  const p = parseRedeemPost(await readBody(req));
+  if (!p) return fail(400, "not a code");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  const had = await env.DB.prepare("SELECT dead_ms, expires_ms FROM redeem_codes WHERE key = ?").bind(p.key).first<{ dead_ms: number | null; expires_ms: number }>();
+  if (had) return fail(409, had.dead_ms === null && had.expires_ms > now ? "already listed" : "expired");
+  await env.DB.prepare("INSERT INTO redeem_codes (key, code, install, added_ms, expires_ms) VALUES (?, ?, ?, ?, ?)")
+    .bind(p.key, p.code, p.install, now, now + REDEEM_TTL).run();
+  return json({ ok: true, code: p.code, addedMs: now, expiresMs: now + REDEEM_TTL, serverNow: now });
+}
+
+/** An install says the code no longer works: one vote each; REDEEM_EXPIRED_VOTES of them remove it at once. */
+async function postRedeemExpired(env: Env, req: Request) {
+  const now = Date.now();
+  const p = parseRedeemPost(await readBody(req));
+  if (!p) return fail(400, "not a code");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  const live = await env.DB.prepare("SELECT 1 AS x FROM redeem_codes WHERE key = ? AND dead_ms IS NULL AND expires_ms > ?").bind(p.key, now).first();
+  if (!live) return json({ removed: true, votes: 0 });
+  await env.DB.prepare("INSERT OR IGNORE INTO redeem_votes (key, install) VALUES (?, ?)").bind(p.key, p.install).run();
+  const votes = (await env.DB.prepare("SELECT COUNT(*) AS n FROM redeem_votes WHERE key = ?").bind(p.key).first<{ n: number }>())?.n ?? 0;
+  const removed = votes >= REDEEM_EXPIRED_VOTES;
+  if (removed) await env.DB.prepare("UPDATE redeem_codes SET dead_ms = ? WHERE key = ?").bind(now, p.key).run();
+  return json({ removed, votes });
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -522,6 +562,9 @@ export default {
       if (req.method === "POST" && url.pathname === "/v1/bosses") return await postBosses(env, url, req);
       if (req.method === "GET" && url.pathname === "/v1/cubes") return await getCubes(env, url);
       if (req.method === "POST" && url.pathname === "/v1/cubes") return await postCubes(env, req);
+      if (req.method === "GET" && url.pathname === "/v1/codes") return await getRedeem(env);
+      if (req.method === "POST" && url.pathname === "/v1/codes") return await postRedeem(env, req);
+      if (req.method === "POST" && url.pathname === "/v1/codes/expired") return await postRedeemExpired(env, req);
       if (req.method === "POST" && url.pathname === "/v1/guilds") return await createGuild(env, req);
       if (req.method === "POST" && url.pathname === "/v1/guilds/join") return await joinGuild(env, req);
       const cancel = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})\/callups\/([a-z2-7]{12})\/delete$/);
@@ -563,6 +606,8 @@ export default {
       env.DB.prepare("DELETE FROM guilds WHERE id NOT IN (SELECT DISTINCT guild_id FROM guild_members)"),
       env.DB.prepare("DELETE FROM guild_callups WHERE at_ms < ? OR guild_id NOT IN (SELECT id FROM guilds)").bind(now - DAY),
       env.DB.prepare("DELETE FROM guild_availability WHERE (guild_id, install) NOT IN (SELECT guild_id, install FROM guild_members)"),
+      env.DB.prepare("DELETE FROM redeem_codes WHERE MAX(expires_ms, COALESCE(dead_ms, 0)) < ?").bind(now - REDEEM_KEEP),
+      env.DB.prepare("DELETE FROM redeem_votes WHERE key NOT IN (SELECT key FROM redeem_codes)"),
     ]));
   },
 };

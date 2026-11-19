@@ -15,6 +15,7 @@
   import { ICON } from "../icons.ts";
   import { winterActive } from "../../domain/holiday.ts";
   import AdventCalendar from "../parts/AdventCalendar.svelte";
+  import Codes from "../parts/Codes.svelte";
   import Kpi from "../parts/Kpi.svelte";
   import { winterNow } from "../winter.ts";
   import TaskRow from "../parts/TaskRow.svelte";
@@ -53,6 +54,8 @@
 </div>
 
 <div class="home">
+  <Codes />
+
   <section class="dps-table"><h2>Tracked field bosses <span class="count"><a href="#bosses">All bosses</a></span></h2>
     {#if tracked.length}<div class="scroll"><table class="sheet"><tbody>{#each tracked as b (b.mapId + ":" + b.bossId)}{@const st = bossState(b, ui.now)}{@const a = ui.data.bossAlerts[b.bossId]}<tr class="boss {st}">
       <td><span class="name">{bossLabel(b, ui.data.bossNames)}</span><small>Map {b.mapId} · alert {a.leads.join(", ")} min before · {a.repeat ? "every respawn" : "once"}</small></td>

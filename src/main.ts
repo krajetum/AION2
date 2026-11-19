@@ -19,7 +19,7 @@ import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
 import { loadFights, saveFights } from "./infra/fights.ts";
 import { findUpdate, getAutostart, isDesktop, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
-import { act, celebrate, cue, refreshGuild, refreshNews, save } from "./ui/actions.ts";
+import { act, celebrate, cue, refreshCodes, refreshGuild, refreshNews, remindCodes, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import EventsOverlay from "./ui/EventsOverlay.svelte";
@@ -106,6 +106,8 @@ async function main() {
       if (targetEnded(lastFight, latest.fight)) cum = [];
       cum = sample(cum, latest.fight);
       autoTrack(eventsFrom(last, latest, Date.now()), latest);
+      // Entering the game or another character: the shared redeem codes still to use, and who gets the rewards.
+      if (!latest.demo) remindCodes(latest.profile?.name);
       // The mascot lives your PvP with you: a cheer for a kill of yours, a sulk when you die (nothing from the first update).
       if (last && ui.data.settings.celebrate) {
         const seen = Math.max(0, ...(last.kills ?? []).map((k) => k.atMs));
@@ -121,13 +123,14 @@ async function main() {
   crashReports(data.settings.crashReports).catch((e) => console.warn("Crash reports not started", e));
   if (isDesktop()) checkUpdate(true);
   refreshNews();
+  refreshCodes();
   crowdBosses();
   crowdCubes();
   refreshGuild(false);
   let ticks = 0;
   setInterval(async () => {
     ui.now = Date.now();
-    if (++ticks % 1800 === 0) refreshNews(); // every 30 min
+    if (++ticks % 1800 === 0) { refreshNews(); refreshCodes(); } // every 30 min
     if (ticks % 21600 === 0 && isDesktop()) checkUpdate(); // every 6 h: the app can stay in the tray for days
     // Other players' boss timers every 2 min and cube spots every hour, only while you play.
     if (ticks % bossEvery === 0 && gameActive(ui.now)) { crowdBosses(); refreshGuild(true); }

@@ -1,6 +1,7 @@
 // Save-file rules: the default data and the migration of old or imported saves. Pure.
 import { cleanBis } from "./bis.ts";
 import { cleanCrafting, emptyCrafting } from "./crafting.ts";
+import { cleanMarks, emptyMarks } from "./codes.ts";
 import { CHANNELS, cleanLeads, LEAD_CHANNELS, SOUND_THEMES } from "./alerts.ts";
 import { cleanGuild } from "./guild.ts";
 import { cleanHistory, emptyHistory } from "./history.ts";
@@ -39,6 +40,7 @@ export function defaultData(): AppData {
     serverId: null,
     guild: null,
     advent: emptyAdvent(),
+    codes: emptyMarks(),
     history: emptyHistory(),
     settings: {
       warnHours: { daily: 2, weekly: 12, monthly: 24 },
@@ -123,6 +125,7 @@ export function normalize(raw: any): AppData {
     serverId: Number.isInteger(raw.serverId) ? raw.serverId : null,
     guild: cleanGuild(raw.guild),
     advent: cleanAdvent(raw.advent),
+    codes: cleanMarks(raw.codes),
     history: cleanHistory(raw.history),
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels,
       mascotGender: rs.mascotGender === "f" ? "f" : "m",

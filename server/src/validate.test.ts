@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   can, DEFAULT_PERMS, mergeWeeks, MAX_WEEKS, parseAvailability, SLOTS_HEX, permsOf, CALLUP_TITLE, callupPost, callupCancelPost, CANCELLED_TITLE, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
-  parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, parseShare, TIME_RANGE,
+  parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseRedeemPost, parseServerId, parseShare, redeemKey, TIME_RANGE,
 } from "./validate.ts";
 
 const NOW = 1_800_000_000_000;
@@ -265,4 +265,11 @@ test("a cancelled call-up's post: same ping, red, the time it was planned for an
   assert.match(p.embeds[0].description, new RegExp(`<t:${at / 1000}:F>`));
   assert.equal(p.embeds[0].fields[0].value, "Raid: 9 free");
   assert.equal(callupCancelPost({ atMs: at, message: "x", ping: "none" }).content, "");
+});
+
+test("redeem codes: trimmed, 4-40 letters/digits/dashes/underscores, one key per code in any case", () => {
+  assert.deepEqual(parseRedeemPost({ install: ID, code: "  Aion2-Gift_2026 " }), { install: ID.toLowerCase(), code: "Aion2-Gift_2026", key: "AION2-GIFT_2026" });
+  for (const bad of ["abc", "a".repeat(41), "has space", "-LEADING", "TRAILING-", "<script>", 42, null]) assert.equal(parseRedeemPost({ install: ID, code: bad }), null, String(bad));
+  assert.equal(parseRedeemPost({ install: "nope", code: "GOODCODE" }), null);
+  assert.equal(redeemKey("abCD-1"), redeemKey("ABcd-1"));
 });
