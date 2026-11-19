@@ -67,6 +67,14 @@ export function setOwned(data: AppData, char: string, id: string, v: string) {
   else delete o[id];
 }
 
+/** The game's inventory (item code → pieces) into the character's stock: every item with a code gets its count, 0 when
+ *  the inventory has none. Items without a code keep what was typed. Returns how many items it set. */
+export function fillOwned(data: AppData, char: string, items: Record<string, number>): number {
+  let n = 0;
+  for (const it of Object.values(data.crafting.items)) if (it.code != null) { setOwned(data, char, it.id, String(items[it.code] ?? 0)); n++; }
+  return n;
+}
+
 /** How many to craft; 0 takes the target out. */
 export function setTarget(data: AppData, id: string, v: string) {
   const c = data.crafting, n = count(v), t = c.targets.find((x) => x.item === id);

@@ -81,6 +81,9 @@ export async function sizeOverlay(w: number, h: number) {
 export const cubePopup = (show: boolean, scale = 1) => (isTauri() ? invoke<void>("cube_popup", { show, scale }) : Promise.resolve());
 /** Hands the engine the cube codes learned in earlier sessions. */
 export const meterCubeCodes = (codes: number[]) => (isTauri() ? invoke<void>("meter_cube_codes", { codes }) : Promise.resolve());
+/** The Crafting items' game codes: the meter sends their inventory pieces with the wallet. */
+export const meterItemCodes = (items: Record<string, { code?: number }>) =>
+  (isTauri() ? invoke<void>("meter_item_codes", { codes: Object.values(items).flatMap((it) => (it.code != null ? [it.code] : [])) }) : Promise.resolve());
 /** The event overlay was turned on or off (also from the overlay itself). */
 export const onNetOverlay = (fn: (on: boolean) => void) => (isTauri() ? listen<boolean>("net-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));
 export const onEventsOverlay = (fn: (on: boolean) => void) => (isTauri() ? listen<boolean>("events-overlay", (e) => fn(e.payload)) : Promise.resolve(() => {}));

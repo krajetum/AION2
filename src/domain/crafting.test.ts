@@ -115,7 +115,11 @@ test("the bundled game recipes: one faction's items by code, prices and choices 
   assert.equal(d.items["110330103"].name, "Ebony Dragon Lord Dagger");
   assert.equal(d.items["110830100"].recipe?.inputs.length, 3);
   assert.equal(d.items["110830100"].name, "Splendent Star Dragon Lord Staff #110830100", "two Splendent staffs of one name: by upgrade and by COMBO");
-  assert.deepEqual({ ...d.items["610730022"], recipe: undefined }, { id: "610730022", name: "Enhanced Thick Balaur Scale", code: 610730022, price: 9, buy: true, recipe: undefined });
+  const { icon, grade, cat, ...kept } = d.items["610730022"];
+  assert.deepEqual({ ...kept, recipe: undefined }, { id: "610730022", name: "Enhanced Thick Balaur Scale", code: 610730022, price: 9, buy: true, prof: "Jewelcrafting", recipe: undefined });
+  assert.deepEqual([icon?.endsWith(".png"), grade, cat], [true, "Epic", "Materials"], "icon, grade and category from the game data");
+  assert.deepEqual([d.items["110330103"].cat, d.items["110330103"].prof], ["Weapons", "Blacksmithing"]);
+  assert.equal(cleanCrafting(d).items["110330103"].icon, d.items["110330103"].icon, "kept in the save");
   assert.equal(d.items["630520007"].name, "Lesser Dragon Scale Hardener (Bound)");
   assert.equal(d.items["110130013"].name, "Artisan's Splendent Orichalcum Greatsword #110130013");
   assert.deepEqual(d.game, { side: "Asmodian", builtAt: g.builtAt, rev: g.rev });

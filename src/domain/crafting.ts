@@ -1,6 +1,6 @@
 // Crafting bill of materials: recipes (nested: a material can be crafted from others), what each character owns and
 // market prices → what to craft, what to buy and the Kina it costs. Best case: every craft succeeds (no failure, no
-// COMBO). Item codes are the game's (aion2hub's item ids are the same numbers), kept for reading the inventory later. Pure.
+// COMBO). Item codes are the game's (aion2hub's item ids are the same numbers), matched against the inventory the meter reads. Pure.
 
 export interface Input { item: string; qty: number }
 export interface Recipe { inputs: Input[]; yields: number; kina: number } // yields: pieces per craft; kina: fee per craft
@@ -12,7 +12,16 @@ export interface CraftItem {
   priceAt?: number; // when the price was set
   recipe?: Recipe;
   buy?: boolean;    // bought even though it has a recipe
+  icon?: string;    // the game's icon file (ICON_BASE + icon), from the game recipes
+  grade?: string;   // Common / Rare / Epic / Unique
+  cat?: string;     // Weapons / Armor / Accessories / Consumables / Materials; none = an item the player added
+  prof?: string;    // the profession that crafts it (or uses it, for a profession's own materials)
 }
+
+/** NCSOFT's CDN for the game's icons (as aion2hub's data and `skillIconUrl` use it). */
+export const ICON_BASE = "https://assets.playnccdn.com/static-aion2-gamedata/resources/";
+export const CATEGORIES = ["Weapons", "Armor", "Accessories", "Consumables", "Materials"] as const;
+const META = ["icon", "grade", "cat", "prof"] as const;
 export interface CraftData {
   items: Record<string, CraftItem>;
   targets: Input[];                               // what to craft, and how many
@@ -23,7 +32,10 @@ export interface CraftData {
 export type Side = "Elyos" | "Asmodian";
 /** The game's recipes bundled with the app (src/assets/recipes.json, built by scripts/recipes.mjs from aion2hub's
  *  Global client data): item names by code, and per faction product code → [pieces per craft, [input code, qty][]]. */
-export interface GameRecipes { builtAt: string; rev: number; items: Record<string, string>; recipes: Record<Side, Record<string, [number, [number, number][]]>> }
+export interface GameRecipes {
+  builtAt: string; rev: number; items: Record<string, string>;
+  meta?: Record<string, [icon: string, grade: string, cat: string, prof: string]>; // see scripts/recipes.mjs
+  recipes: Record<Side, Record<string, [number, [number, number][]]>> }
 
 /** One material of the bill: its total need, what stock covers, and how the rest is got. */
 export interface Line { item: string; level: number; need: number; used: number; craft: number; buy: number; cost: number; fee: number }
@@ -127,6 +139,8 @@ export function takeGameRecipes(data: CraftData, g: GameRecipes, side: Side): nu
     const it = (data.items[c] ??= { id: c, name });
     it.name = name;
     it.code = Number(c);
+    const m = g.meta?.[c] ?? [];
+    META.forEach((k, i) => { if (m[i]) it[k] = m[i]; else delete it[k]; });
     const r = rs[c];
     if (r) it.recipe = { inputs: r[1].map(([i, qty]) => ({ item: String(i), qty })), yields: r[0], kina: it.recipe?.kina ?? 0 };
   }
@@ -149,6 +163,7 @@ export function cleanCrafting(raw: any): CraftData {
       ...(count(it.price) && { price: it.price, ...(count(it.priceAt) && { priceAt: it.priceAt }) }),
       ...(inputs.length && { recipe: { inputs, yields: count(r.yields) && r.yields >= 1 ? r.yields : 1, kina: count(r.kina) ? r.kina : 0 } }),
       ...(it.buy === true && { buy: true }),
+      ...Object.fromEntries(META.filter((k) => typeof it[k] === "string" && it[k]).map((k) => [k, it[k]])),
     };
   }
   // Inputs and targets of items that are gone are dropped.

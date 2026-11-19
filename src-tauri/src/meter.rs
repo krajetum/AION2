@@ -446,6 +446,12 @@ pub fn meter_cube_codes(codes: Vec<u32>) {
     aion2_meter::cubes::set_codes(&codes);
 }
 
+/// The Crafting page's item codes: their pieces in the inventory come with the wallet (`currencies.rs`).
+#[tauri::command]
+pub fn meter_item_codes(codes: Vec<u32>) {
+    aion2_meter::currencies::set_item_codes(&codes);
+}
+
 fn close(app: &AppHandle, label: &str) {
     if let Some(w) = app.get_webview_window(label) {
         let _ = w.close();

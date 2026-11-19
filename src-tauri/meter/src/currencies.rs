@@ -21,8 +21,20 @@
 //!
 //! The inventory comes before the game says who you are (`33 36`), so a full inventory is put on the character
 //! of the next self record, not on the one played before a character change.
+//!
+//! The same records carry every other item (a loot of the day's common item, 2026-10-27 11:49, has the layout too):
+//! the `<slot u32>` is the stack's own id (it stays when the stack moves), so the inventory's stacks of the item codes
+//! the app asks for (`set_item_codes`: the Crafting page's items) are kept by it, summed per code in `Wallet::items`
+//! once a whole inventory was read (on entering the world: a meter started in game sees only the changes).
+//!
+//! The byte after the amount is where the stack is, the next one its slot there (recordings of 2026-11-19, checked with
+//! the player): `0f` the warehouse, `01` the bag (also the currencies), `0b` worn gear, `10` not known (two daggers).
+//! The login inventory holds the warehouse too; opening it at the NPC sends its stacks again (a `1b 56` of 75 stacks),
+//! opening it from the bag's button (subscription) sends nothing. A move between them is `45 56` (warehouse to bag)
+//! or `43 56` (bag to warehouse), with the stack's `1b 56`: the same id, its new place (a split gets a new id).
+//! Worn gear is not counted; the warehouse goes in `Wallet::stored`, the rest in `Wallet::items`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -45,7 +57,17 @@ pub struct Wallet {
     pub at_ms: i64,
     /// Abyss Points gained since the inventory was read, each with the map it came on (the last MAX_AP_GAINS).
     pub ap_gains: Vec<ApGain>,
+    /// Pieces in the inventory per item code asked for (`set_item_codes`), none before a whole inventory was read.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub items: Option<BTreeMap<u32, u64>>,
+    /// The same in the warehouse.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stored: Option<BTreeMap<u32, u64>>,
 }
+
+/// Where a stack is: the byte after its amount.
+const WAREHOUSE: u8 = 0x0f;
+const WORN: u8 = 0x0b;
 
 /// Abyss Points gained in one change (spending is not counted), on the map you were on (`position::map_id`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
@@ -64,6 +86,24 @@ struct State {
     waiting_self: bool,
     /// That self record came: the profile is the inventory's character from the next update on.
     self_seen: bool,
+    /// The item codes the app asks for.
+    known: HashSet<u32>,
+    /// The inventory's stacks of those codes: stack id -> (code, pieces).
+    bag: BTreeMap<u32, (u32, u64, u8)>, // stack id -> (code, pieces, where)
+    /// When the last whole-inventory record came (none yet = the bag only has changes: not sent).
+    bag_ms: Option<i64>,
+}
+
+/// A whole inventory may come in several records back to back: one within this of the last adds to it.
+const INVENTORY_BURST_MS: i64 = 2_000;
+
+/// The item codes whose inventory pieces to keep (the Crafting page's items). Stacks already read of other codes go.
+pub fn set_item_codes(codes: &[u32]) {
+    let mut guard = STATE.lock();
+    let s = guard.get_or_insert_with(State::default);
+    s.known = codes.iter().copied().filter(|c| !CODES.contains(c)).collect();
+    let known = &s.known;
+    s.bag.retain(|_, (code, _, _)| known.contains(code));
 }
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
@@ -80,7 +120,23 @@ fn claim(s: &mut State, profile: Option<&str>) -> Option<Wallet> {
             s.waiting_self = false;
         }
     }
-    (s.wallet.owner.is_some() && !s.wallet.values.is_empty()).then(|| s.wallet.clone())
+    if s.wallet.owner.is_none() || s.wallet.values.is_empty() {
+        return None;
+    }
+    let mut w = s.wallet.clone();
+    if s.bag_ms.is_some() {
+        let (mut items, mut stored) = (BTreeMap::new(), BTreeMap::new());
+        for &(code, n, place) in s.bag.values() {
+            match place {
+                WORN => {}
+                WAREHOUSE => *stored.entry(code).or_insert(0) += n,
+                _ => *items.entry(code).or_insert(0) += n,
+            }
+        }
+        w.items = Some(items);
+        w.stored = Some(stored);
+    }
+    Some(w)
 }
 
 /// Reads one game frame (its length varint, 2-byte type, body), as the parser hands it on.
@@ -100,12 +156,28 @@ fn read(s: &mut State, frame: &[u8], now_ms: i64) {
         [0x11, 0x56] => {
             let values = amounts(&frame[body..]);
             if !values.is_empty() {
-                s.wallet = Wallet { owner: None, values, at_ms: now_ms, ap_gains: Vec::new() };
+                s.wallet = Wallet { owner: None, values, at_ms: now_ms, ap_gains: Vec::new(), items: None, stored: None };
                 s.waiting_self = true;
                 s.self_seen = false;
             }
+            if s.bag_ms.is_none_or(|t| now_ms - t > INVENTORY_BURST_MS || now_ms < t) {
+                s.bag.clear();
+            }
+            s.bag_ms = Some(now_ms);
+            let known = &s.known;
+            for (id, code, n, place) in stacks(&frame[body..], |c| known.contains(&c)) {
+                s.bag.insert(id, (code, n, place));
+            }
         }
         [0x1B, 0x56] => {
+            let known = &s.known;
+            for (id, code, n, place) in stacks(&frame[body..], |c| known.contains(&c)) {
+                if n == 0 {
+                    s.bag.remove(&id);
+                } else {
+                    s.bag.insert(id, (code, n, place));
+                }
+            }
             let values = amounts(&frame[body..]);
             if !values.is_empty() {
                 // A gain: the amount before is known (inventory or an earlier change) and the new one is higher.
@@ -129,12 +201,19 @@ fn read(s: &mut State, frame: &[u8], now_ms: i64) {
 /// The currencies in a record: each code after `00 <place u16> 00`, its amount the u64 after it (less than 10^13:
 /// a code's bytes inside another field give nonsense).
 fn amounts(body: &[u8]) -> BTreeMap<u32, u64> {
-    let mut out = BTreeMap::new();
+    stacks(body, |c| CODES.contains(&c)).into_iter().map(|(_, code, n, _)| (code, n)).collect()
+}
+
+/// Every item of a code `wanted` takes in a record: (stack id, code, pieces, where), the id the u32 before `00 <place u16> 00`
+/// (0 when the record starts too close to read it), where the byte after the amount.
+fn stacks(body: &[u8], wanted: impl Fn(u32) -> bool) -> Vec<(u32, u32, u64, u8)> {
+    let mut out = Vec::new();
     for i in 4..body.len().saturating_sub(11) {
         let code = u32::from_le_bytes(body[i..i + 4].try_into().unwrap());
         let amount = u64::from_le_bytes(body[i + 4..i + 12].try_into().unwrap());
-        if CODES.contains(&code) && body[i - 4] == 0 && body[i - 1] == 0 && amount < 10_000_000_000_000 {
-            out.insert(code, amount);
+        if wanted(code) && body[i - 4] == 0 && body[i - 1] == 0 && amount < 10_000_000_000_000 {
+            let id = if i >= 8 { u32::from_le_bytes(body[i - 8..i - 4].try_into().unwrap()) } else { 0 };
+            out.push((id, code, amount, body.get(i + 12).copied().unwrap_or(0)));
         }
     }
     out
@@ -164,7 +243,7 @@ mod tests {
     #[test]
     fn an_inventory_waits_for_its_character() {
         let mut s = State::default();
-        s.wallet = Wallet { owner: Some("Old".into()), values: BTreeMap::from([(KINA, 1)]), at_ms: 1, ap_gains: Vec::new() };
+        s.wallet = Wallet { owner: Some("Old".into()), values: BTreeMap::from([(KINA, 1)]), at_ms: 1, ap_gains: Vec::new(), items: None, stored: None };
         let mut inv = vec![0u8, 0x11, 0x56, 0x10, 0x02, 0x01, 0x00, 0, 0, 0, 0, 0, 0, 0, 0];
         inv.extend(ABYSS_POINTS.to_le_bytes());
         inv.extend(300_795u64.to_le_bytes());
@@ -211,5 +290,77 @@ mod tests {
         change(&mut s, 225_824, 20);
         assert_eq!(s.wallet.ap_gains.iter().map(|g| (g.amount, g.at_ms)).collect::<Vec<_>>(), [(29, 10)]);
         assert_eq!(s.wallet.values[&ABYSS_POINTS], 225_824);
+    }
+
+    /// One item: `<id u32> 00 <place u16> 00 <code u32> <amount u64>` and 16 bytes after, as in the records above.
+    fn item(id: u32, place: u16, code: u32, n: u64) -> Vec<u8> {
+        stack(id, place, code, n, 0x01)
+    }
+    /// One item, `at` = where it is (the byte after the amount).
+    fn stack(id: u32, place: u16, code: u32, n: u64, at: u8) -> Vec<u8> {
+        let mut b = id.to_le_bytes().to_vec();
+        b.push(0);
+        b.extend(place.to_le_bytes());
+        b.push(0);
+        b.extend(code.to_le_bytes());
+        b.extend(n.to_le_bytes());
+        b.push(at);
+        b.extend([0u8; 15]);
+        b
+    }
+    fn record(op: [u8; 2], items: &[Vec<u8>]) -> Vec<u8> {
+        let mut f = vec![op[0], op[1], items.len() as u8, 0x01, 0x00];
+        for i in items {
+            f.extend(i);
+        }
+        let n = f.len() + 2; // the length as a two-byte varint
+        assert!(n < 1 << 14);
+        [vec![(n & 0x7f) as u8 | 0x80, (n >> 7) as u8], f].concat()
+    }
+
+    #[test]
+    fn the_inventorys_crafting_items_are_summed_per_code() {
+        const ORE: u32 = 610_100_001;
+        const OTHER: u32 = 610_100_002;
+        let mut s = State { known: HashSet::from([ORE]), ..State::default() };
+        // Changes before any whole inventory: kept, not sent.
+        read(&mut s, &record([0x1b, 0x56], &[item(9, 1, ORE, 3)]), 1);
+        read(&mut s, &record([0x11, 0x56], &[item(1, 2, KINA, 500), item(2, 3, ORE, 40), item(3, 4, ORE, 25)]), 10);
+        read(&mut s, &record([0x11, 0x56], &[item(4, 5, OTHER, 7)]), 11);
+        read(&mut s, &[0x06, 0x33, 0x36, 0, 0, 0], 12);
+        let w = claim(&mut s, Some("Me")).unwrap();
+        assert_eq!(w.items, Some(BTreeMap::from([(ORE, 65)])), "two stacks summed, the earlier change dropped, an unknown code ignored");
+        assert_eq!(w.values, BTreeMap::from([(KINA, 500)]));
+        // A stack used down, the other used up.
+        read(&mut s, &record([0x1b, 0x56], &[item(2, 3, ORE, 10), item(3, 4, ORE, 0)]), 20);
+        assert_eq!(claim(&mut s, Some("Me")).unwrap().items, Some(BTreeMap::from([(ORE, 10)])));
+    }
+
+    #[test]
+    fn an_inventory_in_two_records_back_to_back_is_one() {
+        const ORE: u32 = 610_100_001;
+        let mut s = State { known: HashSet::from([ORE]), ..State::default() };
+        read(&mut s, &record([0x11, 0x56], &[item(1, 2, KINA, 500), item(2, 3, ORE, 40)]), 10);
+        read(&mut s, &record([0x11, 0x56], &[item(3, 4, ORE, 2)]), 500);
+        assert_eq!(s.bag.len(), 2);
+        read(&mut s, &record([0x11, 0x56], &[item(1, 2, KINA, 500)]), 60_000);
+        assert!(s.bag.is_empty(), "a new whole inventory later replaces it");
+    }
+
+    /// The login inventory of 2026-11-19 20:31: materials in the warehouse (`0f`), scrolls in the bag (`01`), a worn
+    /// dagger (`0b`); then 5 of a stack taken out of the warehouse (`45 56`, the stack's place now `01`).
+    #[test]
+    fn bag_and_warehouse_apart_worn_gear_not_counted() {
+        const ORE: u32 = 610_620_013;
+        const SCROLL: u32 = 630_000_001;
+        const DAGGER: u32 = 110_330_103;
+        let mut s = State { known: HashSet::from([ORE, SCROLL, DAGGER]), ..State::default() };
+        read(&mut s, &record([0x11, 0x56], &[item(1, 2, KINA, 500), stack(2, 3, ORE, 118, 0x0f), stack(3, 4, SCROLL, 89, 0x01), stack(4, 5, DAGGER, 1, 0x0b)]), 10);
+        read(&mut s, &[0x06, 0x33, 0x36, 0, 0, 0], 11);
+        let w = claim(&mut s, Some("Me")).unwrap();
+        assert_eq!((w.items.unwrap(), w.stored.unwrap()), (BTreeMap::from([(SCROLL, 89)]), BTreeMap::from([(ORE, 118)])));
+        read(&mut s, &record([0x1b, 0x56], &[stack(2, 3, ORE, 118, 0x01)]), 20);
+        let w = claim(&mut s, Some("Me")).unwrap();
+        assert_eq!((w.items.unwrap(), w.stored.unwrap()), (BTreeMap::from([(ORE, 118), (SCROLL, 89)]), BTreeMap::new()));
     }
 }

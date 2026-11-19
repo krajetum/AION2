@@ -59,6 +59,7 @@ pub fn run() {
             links::open_url,
             armory::armory_get,
             meter::meter_cube_codes,
+            meter::meter_item_codes,
         ])
         .setup(|app| {
             crash::install(app.handle());

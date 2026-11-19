@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, pickWallet, takeApGains, takeApCatchUp, apByDay, apSince, type Wallet } from "./wallet.ts";
+import { cleanWallets, takeOdyle, takeWallet, walletOf, walletRows, pickWallet, takeApGains, takeApCatchUp, apByDay, apSince, owned, type Wallet } from "./wallet.ts";
 
 test("the meter's currencies go on their character; older news does not replace newer", () => {
   const all: Record<string, Wallet> = {};
@@ -102,4 +102,13 @@ test("AP per day: the last days, oldest first, gains outside them left out", () 
   const w: Wallet = { values: {}, atMs: 0, apGains: [g(10, noon), g(5, noon - 3_600_000), g(7, noon - 2 * DAY), g(99, noon - 9 * DAY)] };
   assert.deepEqual(apByDay(w, noon, 3), [7, 0, 15]);
   assert.deepEqual(apByDay({ values: {}, atMs: 0 }, noon, 2), [0, 0]);
+});
+
+test("bag and warehouse: kept with the wallet, and summed for Crafting", () => {
+  const all: Record<string, Wallet> = {};
+  assert.ok(takeWallet(all, { owner: "Me", values: { "930100031": 5 }, atMs: 1, items: { "610620013": 3 }, stored: { "610620013": 118, "610680051": 14 } }));
+  assert.deepEqual(owned(all["Me"]), { "610620013": 121, "610680051": 14 });
+  assert.ok(!takeWallet(all, { owner: "Me", values: { "930100031": 5 }, atMs: 2, items: { "610620013": 3 }, stored: { "610620013": 118, "610680051": 14 } }), "nothing new");
+  assert.ok(takeWallet(all, { owner: "Me", values: { "930100031": 5 }, atMs: 3, items: { "610620013": 3 }, stored: { "610620013": 100 } }), "the warehouse alone changed");
+  assert.deepEqual(cleanWallets(JSON.parse(JSON.stringify(all)))["Me"].stored, { "610620013": 100 });
 });
