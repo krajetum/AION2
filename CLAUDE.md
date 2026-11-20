@@ -18,6 +18,7 @@ Tauri 2 + TypeScript + Svelte 5 + Vite. Single user, multiple characters, everyt
   builds, signs and publishes a GitHub Release + `latest.json`, the updater endpoint). Minor/major: "Run workflow" in Actions (runs both).
   Don't bump the version by hand; pull after a merge. Version lives only in `package.json`.
 - `npm run dev` — UI only in a browser on http://localhost:1420 (launch config `web-ui` in `.claude/launch.json`)
+- `node scripts/chiptune.mjs` — redraws the Pingy theme's 8-bit sounds into `public/sounds/pingy/` (no deps; the restored beeps there are not its)
 - `python3 scripts/mascots.py` — redraws the mascots' sprite sheets into `public/mascots/` (Pillow + numpy, a dev tool: the app ships only the PNGs)
 
 ## Verifying changes
@@ -33,7 +34,7 @@ Layers, dependencies pointing inward: `domain` ← `app` ← `ui` / `infra`; `ma
 - `src/domain/` — pure rules, no DOM/Tauri/Svelte, tested with `npm test`
   - `types.ts` — data model (`AppData` = save file = export format); `seed.ts` — initial tasks from the Sheet; `patchTasks`: seed changes for saves older than `SEED_VERSION` (`AppData.version`), applied once in `normalize`
   - `time.ts` — time-zone math (Intl only), last/next boundary, event times; `resets.ts` — `applyResets` (`reset.test.ts`: app closed across resets, DST, month ends)
-  - `tasks.ts` — `isDone`, goal text format; `alerts.ts` — notification channels, volume, quiet hours, event lead times; `SOUND_THEMES` (Default / Scream / Premium, `settings.soundTheme`: `public/sounds/<theme>/<name>.wav` first; every sound .wav or .mp3, .wav tried first; each missing file falls back to the default one, `infra/notifier.ts` `playSound`); `BOSS_CHANNELS` (field bosses with their own channel: sound `public/sounds/<id>.wav`, volume, switch; Immortal Gartua = `gartua.wav`, the player's recording; `armed` = on by default: `app/bosses.ts` `armDefaultBosses`, run by `checkNotifications`, arms it once (5 min, repeat), `AppData.bossDefaulted` keeps it off once the player turns it off), `bossChannel`
+  - `tasks.ts` — `isDone`, goal text format; `alerts.ts` — notification channels, volume, quiet hours, event lead times; `SOUND_THEMES` (Default / Scream / Premium / Pingy (the old beeps from before the .mp3s + 8-bit sounds drawn by `node scripts/chiptune.mjs`), `settings.soundTheme`: `public/sounds/<theme>/<name>.wav` first; every sound .wav or .mp3, .wav tried first; each missing file falls back to the default one, `infra/notifier.ts` `playSound`); `BOSS_CHANNELS` (field bosses with their own channel: sound `public/sounds/<id>.wav`, volume, switch; Immortal Gartua = `gartua.wav`, the player's recording; `armed` = on by default: `app/bosses.ts` `armDefaultBosses`, run by `checkNotifications`, arms it once (5 min, repeat), `AppData.bossDefaulted` keeps it off once the player turns it off), `bossChannel`
   - `planner.ts` — knapsack over unfinished tasks for an N-minute session, events pinned, estimates learned from tick timings
   - `season.ts` — Season Oath Coin missions (fixed data from the coin sheet) + Summary math; steps ticked per mission
     (seasonal, and weekly per weekly reset) → claimed / still to claim this week (≈ for partial steps: only mission totals are known); `SEASON` end date lives in `config.ts`
