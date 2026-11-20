@@ -2,7 +2,9 @@
 # Every merge into main (or "Run workflow" in Actions, which can pick minor/major) -> checks, then:
 # - server: if server/ changed, applies the D1 migrations and deploys the Cloudflare Worker (no app version bump);
 # - release: if anything else changed, bumps the version in package.json, commits and tags it, builds the Windows
-#   installer, signs it and publishes a GitHub Release with latest.json, which installed apps read to update themselves.
+#   installer, signs it and publishes a GitHub Release with latest.json, which installed apps read to update themselves;
+# - linux: after release, builds the Linux AppImage/.deb/.rpm and adds them (and their latest.json entries) to that release.
+#   A pull request touching src-tauri/ or this workflow builds them too, uploading nothing.
 # Pushes made with GITHUB_TOKEN don't re-trigger this workflow.
 name: release
 on:
@@ -31,6 +33,7 @@ jobs:
     outputs:
       app: ${{ steps.changes.outputs.app }}
       server: ${{ steps.changes.outputs.server }}
+      linux: ${{ steps.changes.outputs.linux }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,7 +52,12 @@ jobs:
         shell: bash
         env:
           BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
+          # A pull request builds Linux only when it touches the Rust side or this workflow.
+          if [ -n "$PR_BASE" ] && git diff --name-only "$PR_BASE" "$GITHUB_SHA" | grep -qE '^(src-tauri/|.github/workflows/)'; then
+            echo "linux=true" >> "$GITHUB_OUTPUT"
+          fi
           # Manual run, first push, or a "before" commit no longer in history (force push): do both.
           if [ "${{ github.event_name }}" != push ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             echo "app=true" >> "$GITHUB_OUTPUT"
@@ -85,6 +93,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -101,6 +111,7 @@ jobs:
       - run: cargo test -p aion2-meter
         working-directory: src-tauri
       - name: Bump version, commit and tag
+        id: bump
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -114,7 +125,7 @@ jobs:
             v=$(npm version "${{ inputs.bump || 'patch' }}" --no-git-tag-version)
             git commit -am "${v#v}"
             git tag -f "$v"
-            if git push --atomic origin HEAD:main "$v"; then exit 0; fi
+            if git push --atomic origin HEAD:main "$v"; then echo "tag=$v" >> "$GITHUB_OUTPUT"; exit 0; fi
             git tag -d "$v"
             sleep $((try * 5))
           done
@@ -143,3 +154,43 @@ jobs:
           if [ -z "$SENTRY_AUTH_TOKEN" ]; then echo "No SENTRY_AUTH_TOKEN secret: skipped"; exit 0; fi
           # The app's own exe + pdb only (not target/release/deps: thousands of files). `sentry` = @sentry/vite-plugin's CLI.
           npx sentry debug-files upload --include-sources src-tauri/target/release/*.exe src-tauri/target/release/*.pdb
+
+  # Linux, onto the release the job above published (tauri-action finds it by tag and merges latest.json).
+  # Ubuntu 22.04: the oldest glibc still built on, so the AppImage runs on more distributions.
+  # The meter loads libpcap at runtime (libloading): nothing to link at build time.
+  linux:
+    needs: [check, release]
+    if: >-
+      !cancelled() && needs.check.result == 'success' &&
+      (needs.release.result == 'success' || (github.event_name == 'pull_request' && needs.check.outputs.linux == 'true'))
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }} # empty on a pull request: its own commit
+      - name: Tauri's Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      # No SENTRY_AUTH_TOKEN: the release job already uploaded the same JS source maps.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ needs.release.outputs.tag }} # empty on a pull request: build only, upload nothing
+          releaseName: AION 2 Companion v__VERSION__
+          releaseDraft: false
+          includeUpdaterJson: true
