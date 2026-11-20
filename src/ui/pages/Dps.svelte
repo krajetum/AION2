@@ -2,7 +2,7 @@
   import Empty from "../parts/Empty.svelte";
   import PlayerStats from "../parts/PlayerStats.svelte";
   import { SvelteSet } from "svelte/reactivity";
-  import { clock, displayName, hpLeft, short, STATUS_TEXT, TARGET_MODES, viewRows, VIEWS, type MeterUpdate, classColor, skillIconUrl } from "../../domain/meter.ts";
+  import { activeText, clock, displayName, hpLeft, short, STATUS_TEXT, TARGET_MODES, viewRows, VIEWS, type MeterUpdate, classColor, skillIconUrl } from "../../domain/meter.ts";
   import { meterOverlay, netOverlay, meterPartyOnly, meterPause, meterReconnect, meterReset, meterTargetMode, meterView, meterWatch, onMeter } from "../../infra/meter.ts";
   import { isDesktop } from "../../infra/system.ts";
   import { act } from "../actions.ts";
@@ -27,6 +27,9 @@
   const unnamed = $derived(rows.some(({ row: r }) => !r.name && !r.isYou));
   // Column labels per view: per second, total, and what the breakdown lists.
   const COLS = { damage: ["DPS", "Damage"], healing: ["HPS", "Healing"], taken: ["Taken/s", "Taken"] } as const;
+  // Active time: on a boss, damage view (the meter sends it for boss fights only).
+  const active = $derived(view === "damage" && !!f?.target?.isBoss);
+  const span = $derived(active ? 6 : 5);
 
   async function run(what: () => Promise<unknown>) {
     try { await what(); } catch (e) { showStatus("DPS meter: " + e, true); }
@@ -104,7 +107,7 @@
 
   {#if rows.length}<section class="dps-table"><div class="scroll"><table class="sheet">
       <thead><tr><th class="n">#</th><th>Player</th><th class="n">{COLS[view][0]}</th><th class="n">{COLS[view][1]}</th>
-        <th class="n">{view === "taken" ? "Hits" : "Share"}</th></tr></thead>
+        <th class="n">{view === "taken" ? "Hits" : "Share"}</th>{#if active}<th class="n" title="How much of the fight the player spent hitting the boss (a gap of more than 2 s between hits is time not hitting)">Active</th>{/if}</tr></thead>
       <tbody>{#each rows as { row: r, value, perSec, share }, i (r.id)}
         <tr class="prow" tabindex={view === "taken" ? undefined : 0} class:you={r.isYou} class:heal={view === "healing"} class:taken={view === "taken"} style:--p={String(Math.min(1, share / 100))}
           style:--cls={classColor(r.job) || null}
@@ -112,8 +115,8 @@
           <td class="n rank">{i + 1}</td>
           <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{:else}<span class="cls-icon none" aria-hidden="true"></span>{/if}<span class="name" class:dim-name={!r.name}>{displayName(r)}</span>{#if r.job || (r.inParty && !r.isYou)}<small>{[r.job, r.inParty && !r.isYou && !u.partyOnly ? "party" : ""].filter(Boolean).join(" · ")}</small>{/if}{#if r.combatPower} <small class="dim">CP {short(r.combatPower)}</small>{/if}</td>
           <td class="n">{short(perSec)}/s</td><td class="n">{short(value)}</td>
-          <td class="n">{view === "taken" ? r.hitsTaken : share.toFixed(1) + "%"}</td></tr>
-        {#if view !== "taken" && open.has(r.id)}{@const list = view === "healing" ? r.healSkills : r.skills}<tr class="skills"><td colspan="5">{#if f.target?.isBoss}<PlayerStats row={r} ms={f.battleTimeMs} />{/if}<table class="sheet">
+          <td class="n">{view === "taken" ? r.hitsTaken : share.toFixed(1) + "%"}</td>{#if active}<td class="n">{activeText(r, f.battleTimeMs)}</td>{/if}</tr>
+        {#if view !== "taken" && open.has(r.id)}{@const list = view === "healing" ? r.healSkills : r.skills}<tr class="skills"><td colspan={span}>{#if f.target?.isBoss}<PlayerStats row={r} ms={f.battleTimeMs} />{/if}<table class="sheet">
           <thead><tr><th>Skill</th><th class="n">{view === "healing" ? "Healing" : "Damage"}</th><th class="n">Share</th><th class="n">{view === "healing" ? "Ticks" : "Hits"}</th><th class="n" title="Times used: hits of a skill close together count as one cast">Used</th><th class="n">Crit</th></tr></thead>
           <tbody>{#each list as s}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20"
                 onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")}>{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">{view === "healing" ? "HoT" : "DoT"}</span>{/if}</td><td class="n">{short(s.damage)}</td>

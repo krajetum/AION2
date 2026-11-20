@@ -96,8 +96,8 @@ fn print_fight(at: i64, f: &aion2_meter::snapshot::Fight) {
             format!("{}:{:02}({}s{})", ms / 60_000, ms / 1000 % 60, dead, if back.is_none() { ",end" } else { "" })
         }).collect();
         print!("{:>6} ", r.id);
-        println!("  {:<16} {:<12} {:>9.0}/s  dmg {:>11}  hits {:>5}  crit {:>3.0}%  deaths {} {:<14} taken {:>9} ({} hits){}{}",
+        println!("  {:<16} {:<12} {:>9.0}/s  dmg {:>11}  hits {:>5}  crit {:>3.0}%  active {:>3.0}%  deaths {} {:<14} taken {:>9} ({} hits){}{}",
             if r.name.is_empty() { format!("#{}", r.id) } else { r.name.clone() }, r.job, r.dps, r.damage, r.hits, r.crit_rate * 100.0,
-            r.deaths, times.join(","), r.damage_taken, r.hits_taken, if r.is_you { "  YOU" } else { "" }, if r.is_others { "  OTHERS" } else { "" });
+            r.active_ms as f64 * 100.0 / f.battle_time_ms.max(1) as f64, r.deaths, times.join(","), r.damage_taken, r.hits_taken, if r.is_you { "  YOU" } else { "" }, if r.is_others { "  OTHERS" } else { "" });
     }
 }

@@ -33,6 +33,7 @@ export interface PlayerRow {
   reviveTimes?: (number | null)[]; // when each of them was revived, same clock; null = not before the fight ended
   hits?: number; // hits dealt, DoT ticks included
   critRate?: number; // 0..1 of direct hits
+  activeMs?: number; // time spent hitting the boss: each direct hit counts 2 s after it (the meter's ACTIVE_WINDOW_MS)
   skills: SkillRow[];
   healSkills: SkillRow[]; // damage = amount healed, hits = ticks
 }
@@ -161,6 +162,14 @@ export function clock(ms: number): string {
 
 export interface Stat { label: string; value: string; sub: string }
 
+/** Share of the fight (`ms` long) the player spent hitting the boss, 0..1; none for fights from before active time. */
+export const activeShare = (r: PlayerRow, ms: number): number | undefined =>
+  r.activeMs == null || ms <= 0 ? undefined : Math.min(1, r.activeMs / ms);
+/** "82%", or "—" when not known (not a boss, an older fight). */
+export const activeText = (r: PlayerRow, ms: number) => { const a = activeShare(r, ms); return a == null ? "—" : `${Math.round(a * 100)}%`; };
+/** "12% HP left", "killed", or "" when the boss's HP isn't known. */
+export const hpText = (left: number | undefined) => (left == null ? "" : left <= 0 ? "killed" : `${Math.max(1, Math.round(left * 100))}% HP left`);
+
 /** A player's advanced stats in a fight (`ms` = its length): damage, hits and crits, healing, deaths with their times, damage taken.
  *  Hits and crit rate fall back to the skills kept when the meter sent no totals (fights from before them, rows open on the DPS page). */
 export function advancedStats(r: PlayerRow, ms: number): Stat[] {
@@ -179,7 +188,9 @@ export function advancedStats(r: PlayerRow, ms: number): Stat[] {
   };
   return [
     { label: "Damage", value: short(r.damage), sub: `${short(r.dps)}/s` },
-    { label: "Hits", value: hits == null ? "—" : short(hits), sub: hits ? `${(hits / sec).toFixed(1)}/s` + (crit == null ? "" : ` · crit ${Math.round(crit * 100)}%`) : "" },
+    { label: "Crit rate", value: crit == null ? "—" : `${Math.round(crit * 100)}%`, sub: crit == null || !directHits ? (crit == null ? "" : "of direct hits") : `${Math.round(crit * directHits)} of ${directHits} direct hits` },
+    { label: "Active time", value: activeText(r, ms), sub: r.activeMs == null ? "" : `${clock(Math.min(r.activeMs, ms))} of ${clock(ms)} hitting the boss` },
+    { label: "Hits", value: hits == null ? "—" : short(hits), sub: hits ? `${(hits / sec).toFixed(1)}/s` : "" },
     { label: "Healing", value: r.heal ? short(r.heal) : "—", sub: r.heal ? `${short(r.hps)}/s` : "" },
     { label: "Deaths", value: r.deaths == null ? "—" : String(r.deaths), sub: times.length ? `at ${times.map(dead).join(", ")}` : "" },
     { label: "Damage taken", value: r.damageTaken ? short(r.damageTaken) : "—", sub: r.hitsTaken ? `${r.hitsTaken} hits` : "" },

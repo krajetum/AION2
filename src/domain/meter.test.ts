@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { advancedStats, clock, fileSize, hpLeft, odyleFor, short, viewRows, type Fight, type MeterUpdate, type PlayerRow } from "./meter.ts";
+import { activeShare, activeText, advancedStats, clock, hpText, fileSize, hpLeft, odyleFor, short, viewRows, type Fight, type MeterUpdate, type PlayerRow } from "./meter.ts";
 
 test("Odyle energy only for the character it belongs to", () => {
   const u = { odyle: { basic: 30, charged: 840, owner: "Naicha" } } as MeterUpdate;
@@ -64,13 +64,27 @@ test("advancedStats: the meter's totals, else the kept skills; deaths with their
     isYou: true, inParty: true, isOthers: false, damageTaken: 12_000, hitsTaken: 8, deaths: 2, deathTimes: [65_000, 125_400], reviveTimes: [77_000, null], hits: 120, critRate: 0.25,
     skills: [], healSkills: [] };
   const s = Object.fromEntries(advancedStats(r, 60_000).map((x) => [x.label, `${x.value} | ${x.sub}`]));
-  assert.equal(s.Hits, "120 | 2.0/s · crit 25%");
+  assert.equal(s.Hits, "120 | 2.0/s");
+  assert.equal(s["Crit rate"], "25% | of direct hits");
   assert.equal(advancedStats(r, 150_000).find((x) => x.label === "Deaths")!.sub, "at 1:05 (dead 12 s), 2:05 (dead 25 s, not revived)");
   assert.equal(s["Damage taken"], "12.0K | 8 hits");
   assert.equal(s.Healing, "— | ");
   const old = { ...r, hits: undefined, critRate: undefined, deaths: undefined, deathTimes: undefined,
     skills: [{ name: "a", damage: 1, hits: 10, critRate: 0.5, share: 0, dot: false, icon: null }, { name: "b", damage: 1, hits: 30, critRate: 0, share: 0, dot: true, icon: null }] };
   const o = Object.fromEntries(advancedStats(old, 10_000).map((x) => [x.label, `${x.value} | ${x.sub}`]));
-  assert.equal(o.Hits, "40 | 4.0/s · crit 50%");
+  assert.equal(o.Hits, "40 | 4.0/s");
+  assert.equal(o["Crit rate"], "50% | 5 of 10 direct hits");
   assert.equal(o.Deaths, "— | ");
+});
+
+test("active time and HP text", () => {
+  const r = { activeMs: 90_000 } as PlayerRow;
+  assert.equal(activeShare(r, 120_000), 0.75);
+  assert.equal(activeText(r, 120_000), "75%");
+  assert.equal(activeText({ activeMs: 200_000 } as PlayerRow, 120_000), "100%");
+  assert.equal(activeText({} as PlayerRow, 120_000), "—");
+  assert.equal(hpText(0), "killed");
+  assert.equal(hpText(0.123), "12% HP left");
+  assert.equal(hpText(0.001), "1% HP left");
+  assert.equal(hpText(undefined), "");
 });

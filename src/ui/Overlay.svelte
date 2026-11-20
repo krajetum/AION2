@@ -21,7 +21,7 @@
   <button class="ghost" aria-label="Reset" title="Reset" onclick={() => meterReset()}>↺</button>
   <button class="ghost" aria-label="Hide until the next fight" title="Hide until the next fight" onclick={() => meterOverlayHide()}>{@html ICON.close}</button>
 </div>
-{#if left != null}<div class="bar hp"><i style:--p={String(left)}></i></div>{/if}
+{#if left != null}<div class="hpline"><div class="bar hp"><i style:--p={String(left)}></i></div><small class="num">{Math.round(left * 100)}%</small></div>{/if}
 {#if u && u.view !== "damage"}<small class="ov-view">{u.view === "healing" ? "Healing" : "Damage taken"}</small>{/if}
 <ol class="ov-rows">{#each rows as { row: r, perSec, share } (r.id)}
   <li class:you={r.isYou} class:heal={u?.view === "healing"} class:taken={u?.view === "taken"} style:--p={String(Math.min(1, perSec / (rows[0].perSec || 1)))} style:--cls={classColor(r.job) || null}>

@@ -3,7 +3,7 @@
   import { classIcon } from "../classes.ts";
   import { mapLabel } from "../../domain/arena.ts";
   import { fightText, personalBests, you, yourDps, type FightRecord } from "../../domain/fights.ts";
-  import { classColor, clock, displayName, short, skillIconUrl } from "../../domain/meter.ts";
+  import { activeText, classColor, clock, displayName, hpText, short, skillIconUrl } from "../../domain/meter.ts";
   import PlayerStats from "../parts/PlayerStats.svelte";
   import SkillCompare from "../parts/SkillCompare.svelte";
   import Timeline from "../parts/Timeline.svelte";
@@ -37,6 +37,15 @@
     picked = picked.filter((x) => x !== id);
     saveFights(fightsSnapshot()).catch((e) => console.warn("DPS Log not saved", e));
   }
+  // Personal bests folded away or not, remembered on this PC.
+  const BESTS_KEY = "aion2-dpslog-bests-open";
+  let bestsOpen = $state((() => { try { return localStorage.getItem(BESTS_KEY) !== "0"; } catch { return true; } })());
+  function foldBests() {
+    bestsOpen = !bestsOpen;
+    try { localStorage.setItem(BESTS_KEY, bestsOpen ? "1" : "0"); } catch { /* private window: not remembered */ }
+  }
+  // The boss's HP at the end: "killed", "12% HP left", or for fights from before it only killed or not.
+  const hp = (f: FightRecord) => hpText(f.hpLeft) || (f.killed ? "killed" : "not killed");
   const copy = (f: FightRecord) => navigator.clipboard.writeText(fightText(f)).then(() => showStatus("Fight copied"), () => showStatus("Copy failed"));
 </script>
 
@@ -55,33 +64,35 @@
     onclear={() => { picked = []; }} />
     {#if a.timeline && b.timeline}<Timeline runs={[{ label: "Before", t: a.timeline }, { label: "After", t: b.timeline }]} />{/if}{/if}
 
-  <section class="dps-table"><h2>Personal bests</h2><div class="scroll"><table class="sheet">
+  <section class="dps-table"><h2><button class="fold" aria-expanded={bestsOpen} aria-controls="dpslog-bests" onclick={foldBests}>
+    <span class="chev" aria-hidden="true">▸</span>Personal bests <span class="count">{bests.length}</span></button></h2>
+  {#if bestsOpen}<div class="scroll" id="dpslog-bests"><table class="sheet">
     <thead><tr><th>Boss</th><th class="n">Fights</th><th class="n">Kills</th><th class="n">Best DPS</th><th class="n">Fastest kill</th><th>Trend</th></tr></thead>
     <tbody>{#each bests as [name, b] (name)}{@const line = spark(name)}<tr>
       <td><span class="name">{name}</span></td><td class="n">{b.fights}</td><td class="n">{b.kills}</td>
       <td class="n">{#if b.dps}{short(yourDps(b.dps))}/s <small class="dim">{when(b.dps.endMs)}</small>{:else}—{/if}</td>
       <td class="n">{#if b.fastest}{clock(b.fastest.battleTimeMs)} <small class="dim">{when(b.fastest.endMs)}</small>{:else}—{/if}</td>
       <td>{#if line}<svg class="spark" viewBox="0 0 80 20" width="80" height="20" aria-label="Your DPS over time"><polyline points={line} /></svg>{/if}</td></tr>{/each}</tbody>
-  </table></div></section>
+  </table></div>{/if}</section>
 
   <section class="dps-table"><h2>Fights <span class="count">{list.length}</span></h2><div class="scroll"><table class="sheet">
-    <thead><tr><th></th><th>When</th><th>Boss</th><th class="n">Time</th><th class="n">Your DPS</th><th class="n">Party</th></tr></thead>
+    <thead><tr><th></th><th>When</th><th>Boss</th><th class="n">Time</th><th class="n">Boss HP</th><th class="n">Your DPS</th><th class="n">Party</th></tr></thead>
     <tbody>{#each list as f (f.id)}{@const me = you(f)}
       <tr class="prow" tabindex="0" class:you={!!me} style:--p={String(me ? me.share / 100 : 0)} aria-expanded={open === f.id} onclick={() => { open = open === f.id ? "" : f.id; who = null; }}>
         <td><input type="checkbox" aria-label="Compare" checked={picked.includes(f.id)} onclick={(e) => { e.stopPropagation(); pick(f.id); }}></td>
         <td>{when(f.endMs)}</td>
-        <td><span class="name">{f.boss}</span><small>{[f.killed ? "killed" : "not killed", where(f), f.char].filter(Boolean).join(" · ")}</small></td>
-        <td class="n">{clock(f.battleTimeMs)}</td><td class="n">{me ? `${short(me.dps)}/s` : "—"}</td><td class="n">{f.rows.length}</td></tr>
-      {#if open === f.id}<tr class="skills"><td colspan="6">
+        <td><span class="name">{f.boss}</span><small>{[where(f), f.char].filter(Boolean).join(" · ")}</small></td>
+        <td class="n">{clock(f.battleTimeMs)}</td><td class="n" class:dim={!f.killed}>{hp(f)}</td><td class="n">{me ? `${short(me.dps)}/s` : "—"}</td><td class="n">{f.rows.length}</td></tr>
+      {#if open === f.id}<tr class="skills"><td colspan="7">
         <div class="toolbar start"><button onclick={() => copy(f)}>Copy as text</button><button class="ghost" onclick={() => remove(f.id)}>Delete</button></div>
         {#if f.timeline}<Timeline runs={[{ label: "", t: f.timeline }]} />{/if}
         <table class="sheet">
-          <thead><tr><th>Player</th><th class="n">DPS</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Healing</th></tr></thead>
+          <thead><tr><th>Player</th><th class="n">DPS</th><th class="n">Damage</th><th class="n">Share</th><th class="n" title="How much of the fight the player spent hitting the boss (a gap of more than 2 s between hits is time not hitting)">Active</th><th class="n">Healing</th></tr></thead>
           <tbody>{#each [...f.rows].sort((p, q) => q.damage - p.damage) as r (r.id)}<tr class="prow" tabindex="0" class:you={r.isYou} style:--cls={classColor(r.job) || null}
             aria-expanded={who === r.id} onclick={() => { who = who === r.id ? null : r.id; }} onkeydown={(e) => { if (e.key === "Enter") who = who === r.id ? null : r.id; }}>
             <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{/if}<span class="name">{displayName(r)}</span>{#if r.job}<small>{r.job}</small>{/if}</td>
-            <td class="n">{short(r.dps)}/s</td><td class="n">{short(r.damage)}</td><td class="n">{r.share.toFixed(1)}%</td><td class="n">{r.heal ? short(r.heal) : "—"}</td></tr>
-            {#if who === r.id}<tr class="skills"><td colspan="5"><PlayerStats row={r} ms={f.battleTimeMs} /></td></tr>{/if}{/each}</tbody></table>
+            <td class="n">{short(r.dps)}/s</td><td class="n">{short(r.damage)}</td><td class="n">{r.share.toFixed(1)}%</td><td class="n">{activeText(r, f.battleTimeMs)}</td><td class="n">{r.heal ? short(r.heal) : "—"}</td></tr>
+            {#if who === r.id}<tr class="skills"><td colspan="6"><PlayerStats row={r} ms={f.battleTimeMs} /></td></tr>{/if}{/each}</tbody></table>
         <p class="hint">Click a player for hits, crits, healing, deaths and damage taken.</p>
         {#if me?.skills.length}<table class="sheet">
           <thead><tr><th>Your skill</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Hits</th><th class="n">Used</th><th class="n">Crit</th></tr></thead>
@@ -93,4 +104,8 @@
 
 <style>
   .spark polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+  h2 .fold { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  h2 .fold:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-sm); }
+  .chev { display: inline-block; transition: transform 0.15s; }
+  h2 .fold[aria-expanded="true"] .chev { transform: rotate(90deg); }
 </style>
