@@ -169,7 +169,7 @@ const cleanRow = (x: any): PlayerRow => ({
   share: num(x?.share) ?? 0, hps: num(x?.hps) ?? 0, heal: num(x?.heal) ?? 0, combatPower: num(x?.combatPower) ?? 0,
   gearScore: num(x?.gearScore) ?? 0, isYou: x?.isYou === true, inParty: x?.inParty === true, isOthers: x?.isOthers === true,
   damageTaken: num(x?.damageTaken) ?? 0, hitsTaken: num(x?.hitsTaken) ?? 0,
-  deaths: num(x?.deaths) ?? undefined,
+  deaths: num(x?.deaths) ?? undefined, activeMs: num(x?.activeMs) ?? undefined,
   deathTimes: Array.isArray(x?.deathTimes) ? x.deathTimes.map(num).filter((t: number | null): t is number => t !== null && t >= 0).slice(0, 50) : undefined,
   reviveTimes: Array.isArray(x?.reviveTimes) && Array.isArray(x?.deathTimes) && x.reviveTimes.length === x.deathTimes.length
     ? x.reviveTimes.map((t: unknown) => num(t)).slice(0, 50) : undefined, hits: num(x?.hits) ?? undefined, critRate: num(x?.critRate) ?? undefined,
@@ -182,6 +182,7 @@ export function parseGuildFights(j: any): FightRecord[] {
   return list.filter((f: any) => isObj(f) && typeof f.id === "string" && typeof f.boss === "string" && Array.isArray(f.rows)
     && num(f.battleTimeMs) && num(f.endMs)).map((f: any): FightRecord => ({
     id: f.id, endMs: f.endMs, battleTimeMs: f.battleTimeMs, boss: f.boss, maxHp: num(f.maxHp) ?? 0, killed: f.killed === true,
+    hpLeft: typeof f.hpLeft === "number" && f.hpLeft >= 0 && f.hpLeft <= 1 ? f.hpLeft : undefined,
     mapId: num(f.mapId), char: str(f.char), gearScore: num(f.gearScore), combatPower: num(f.combatPower), rows: f.rows.map(cleanRow),
   }));
 }
@@ -206,9 +207,11 @@ export const PULL_SLACK_MS = 30_000;
 
 export interface PullRow { key: string; row: PlayerRow; own: boolean } // own: from that player's own upload (with their skills and totals)
 /** One boss pull as several members recorded it. */
-export interface Pull { id: string; boss: string; startMs: number; endMs: number; battleTimeMs: number; killed: boolean; chars: string[]; rows: PullRow[] }
+export interface Pull { id: string; boss: string; startMs: number; endMs: number; battleTimeMs: number; killed: boolean; hpLeft?: number; chars: string[]; rows: PullRow[] }
 
 const startOf = (f: FightRecord) => f.endMs - f.battleTimeMs;
+/** The lowest HP any member saw the boss at (the last one to stop recording saw it lowest); none when no record has it. */
+const lowest = (v: (number | undefined)[]) => { const k = v.filter((x): x is number => x != null); return k.length ? Math.min(...k) : undefined; };
 
 /** Shared fights of the same pull grouped (same boss, their times overlapping within PULL_SLACK_MS, one record per member),
  *  newest first. Each player once: their own record's row when they shared it, else the biggest row another member saw of them.
@@ -236,7 +239,7 @@ export function groupPulls(fights: FightRecord[]): Pull[] {
     const end = Math.max(...g.map((f) => f.endMs));
     return {
       id: `${g[0].id}#${i}`, boss: g[0].boss, startMs: Math.min(...g.map(startOf)), endMs: end, battleTimeMs: Math.max(...g.map((f) => f.battleTimeMs)),
-      killed: g.some((f) => f.killed), chars: g.map((f) => f.char).filter(Boolean), rows,
+      killed: g.some((f) => f.killed), hpLeft: lowest(g.map((f) => f.hpLeft)), chars: g.map((f) => f.char).filter(Boolean), rows,
     };
   }).sort((a, b) => b.endMs - a.endMs);
 }

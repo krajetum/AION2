@@ -391,6 +391,9 @@ details.intro > .hint { margin: 6px 0 0; max-width: 90ch; }
 .dps-target small { color: var(--faint); font-size: var(--fs-sm); }
 .bar.hp { height: 8px; border-radius: var(--r-sm); margin-bottom: 6px; }
 .bar.hp i { background: var(--negative); }
+.hpline { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.hpline .bar.hp { flex: 1; margin-bottom: 0; }
+.hpline small { font-size: var(--fs-sm); color: var(--muted); }
 .dps-table .prow { cursor: pointer; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, transparent) calc(var(--p) * 100%), transparent 0); }
 .dps-table .prow:hover { background-color: var(--raised); }
 .dps-table .prow:focus-visible { outline-offset: -2px; } /* inside the row: the table's scroll box clips an outer ring */

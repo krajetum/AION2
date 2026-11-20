@@ -16,6 +16,7 @@ export interface FightRecord {
   boss: string;
   maxHp: number;
   killed: boolean;
+  hpLeft?: number; // the boss's HP left at the end, 0..1 (fights from before it: none)
   mapId: number | null;
   char: string; // who you played, as the game said ("" when not known)
   gearScore: number | null;
@@ -44,7 +45,7 @@ export function toRecord(f: Fight, profile: Profile | null | undefined, mapId: n
   const t = f.target!;
   return {
     id: `${now}:${t.name}`, endMs: now, battleTimeMs: f.battleTimeMs, boss: t.name || "Unknown boss", maxHp: t.maxHp,
-    killed: hpLeft(t) === 0, mapId, char: profile?.name ?? "", gearScore: profile?.gearScore ?? null,
+    killed: hpLeft(t) === 0, hpLeft: hpLeft(t), mapId, char: profile?.name ?? "", gearScore: profile?.gearScore ?? null,
     combatPower: profile?.combatPower ?? null, rows: f.rows,
   };
 }

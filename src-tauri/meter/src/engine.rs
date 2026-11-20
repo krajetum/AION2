@@ -183,6 +183,8 @@ pub struct Engine {
     game: Mutex<(i64, bool)>,
     /// (deaths read up to this time, the kills and deaths found)
     kills: Mutex<(i64, Vec<crate::kills::Kill>)>,
+    /// The boss's full details read at most once a second: (target, read at, deaths, active ms by actor).
+    boss_details: Mutex<(i32, i64, Vec<crate::entity::details_context::DeathPoint>, HashMap<i32, i64>)>,
 }
 
 impl Engine {
@@ -228,6 +230,7 @@ impl Engine {
             bosses: Mutex::new((0, Vec::new())),
             arena: Mutex::new(ArenaWatch::default()),
             kills: Mutex::new((crate::clock::now_ms(), Vec::new())),
+            boss_details: Mutex::new((0, i64::MIN, Vec::new(), HashMap::new())),
             ports,
             ping,
             paused,
@@ -254,6 +257,7 @@ impl Engine {
             bosses: Mutex::new((0, Vec::new())),
             arena: Mutex::new(ArenaWatch::default()),
             kills: Mutex::new((i64::MIN, Vec::new())),
+            boss_details: Mutex::new((0, i64::MIN, Vec::new(), HashMap::new())),
             ports: Arc::new(CombatPortDetector::new()),
             ping,
             paused: Arc::new(AtomicBool::new(false)),
@@ -356,16 +360,23 @@ impl Engine {
                     }
                 }
             }
-            // On a boss, every row's totals (hits, crit rate, deaths) for the DPS Log's advanced stats:
-            // A2Tools' hover summary of everyone's skills, and its death marks in the target's details (no skills asked for).
+            // On a boss, every row's totals (hits, crit rate, deaths, active time) for the DPS Log's advanced stats:
+            // A2Tools' hover summary of everyone's skills; its full target details (death marks, every hit's time)
+            // at most once a second, they copy every hit's timestamp.
             let boss = fight.target.as_ref().is_some_and(|t| t.is_boss);
             let everyone: Vec<_> = if boss { targets.iter().flat_map(|&t| calc.get_hover_details(t, None).skills).collect() } else { Vec::new() };
             if boss {
                 fight.add_totals(&everyone);
                 if dps.target_id != 0 {
-                    if let Some(d) = calc.get_target_details(dps.target_id, Some(&[])).deaths {
-                        fight.add_deaths(&d);
+                    let mut cache = self.boss_details.lock();
+                    let now = crate::clock::now_ms();
+                    if cache.0 != dps.target_id || now - cache.1 >= 1_000 || now < cache.1 {
+                        let d = calc.get_target_details(dps.target_id, None);
+                        // Hit times there are ms from the fight's first hit.
+                        *cache = (dps.target_id, now, d.deaths.unwrap_or_default(), crate::snapshot::active_by_actor(&d.skills, 0, d.battle_time));
                     }
+                    fight.add_deaths(&cache.2);
+                    fight.add_active(&cache.3);
                 }
             }
             // Per-skill details for the rows opened in the UI, and always yours (the Fight Log keeps them):
