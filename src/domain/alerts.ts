@@ -42,7 +42,7 @@ export const CHANNELS = [
 ];
 
 /** Sound themes: a subfolder of public/sounds/ each ("default" = the folder itself). */
-export const SOUND_THEMES = [{ id: "default", name: "Default" }, { id: "scream", name: "Scream" }, { id: "premium", name: "Premium" }] as const;
+export const SOUND_THEMES = [{ id: "default", name: "Default" }, { id: "scream", name: "Scream" }, { id: "premium", name: "Premium" }, { id: "pingy", name: "Pingy" }] as const;
 export type SoundTheme = typeof SOUND_THEMES[number]["id"];
 
 /** Channels with alert lead times: the events (field bosses have theirs per boss, AppData.bossAlerts). */
