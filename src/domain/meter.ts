@@ -188,8 +188,9 @@ export function advancedStats(r: PlayerRow, ms: number): Stat[] {
   };
   return [
     { label: "Damage", value: short(r.damage), sub: `${short(r.dps)}/s` },
+    { label: "Crit rate", value: crit == null ? "—" : `${Math.round(crit * 100)}%`, sub: crit == null || !directHits ? (crit == null ? "" : "of direct hits") : `${Math.round(crit * directHits)} of ${directHits} direct hits` },
     { label: "Active time", value: activeText(r, ms), sub: r.activeMs == null ? "" : `${clock(Math.min(r.activeMs, ms))} of ${clock(ms)} hitting the boss` },
-    { label: "Hits", value: hits == null ? "—" : short(hits), sub: hits ? `${(hits / sec).toFixed(1)}/s` + (crit == null ? "" : ` · crit ${Math.round(crit * 100)}%`) : "" },
+    { label: "Hits", value: hits == null ? "—" : short(hits), sub: hits ? `${(hits / sec).toFixed(1)}/s` : "" },
     { label: "Healing", value: r.heal ? short(r.heal) : "—", sub: r.heal ? `${short(r.hps)}/s` : "" },
     { label: "Deaths", value: r.deaths == null ? "—" : String(r.deaths), sub: times.length ? `at ${times.map(dead).join(", ")}` : "" },
     { label: "Damage taken", value: r.damageTaken ? short(r.damageTaken) : "—", sub: r.hitsTaken ? `${r.hitsTaken} hits` : "" },

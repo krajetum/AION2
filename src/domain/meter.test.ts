@@ -64,14 +64,16 @@ test("advancedStats: the meter's totals, else the kept skills; deaths with their
     isYou: true, inParty: true, isOthers: false, damageTaken: 12_000, hitsTaken: 8, deaths: 2, deathTimes: [65_000, 125_400], reviveTimes: [77_000, null], hits: 120, critRate: 0.25,
     skills: [], healSkills: [] };
   const s = Object.fromEntries(advancedStats(r, 60_000).map((x) => [x.label, `${x.value} | ${x.sub}`]));
-  assert.equal(s.Hits, "120 | 2.0/s · crit 25%");
+  assert.equal(s.Hits, "120 | 2.0/s");
+  assert.equal(s["Crit rate"], "25% | of direct hits");
   assert.equal(advancedStats(r, 150_000).find((x) => x.label === "Deaths")!.sub, "at 1:05 (dead 12 s), 2:05 (dead 25 s, not revived)");
   assert.equal(s["Damage taken"], "12.0K | 8 hits");
   assert.equal(s.Healing, "— | ");
   const old = { ...r, hits: undefined, critRate: undefined, deaths: undefined, deathTimes: undefined,
     skills: [{ name: "a", damage: 1, hits: 10, critRate: 0.5, share: 0, dot: false, icon: null }, { name: "b", damage: 1, hits: 30, critRate: 0, share: 0, dot: true, icon: null }] };
   const o = Object.fromEntries(advancedStats(old, 10_000).map((x) => [x.label, `${x.value} | ${x.sub}`]));
-  assert.equal(o.Hits, "40 | 4.0/s · crit 50%");
+  assert.equal(o.Hits, "40 | 4.0/s");
+  assert.equal(o["Crit rate"], "50% | 5 of 10 direct hits");
   assert.equal(o.Deaths, "— | ");
 });
 
