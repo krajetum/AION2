@@ -1,4 +1,13 @@
 <script lang="ts">
+  import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
+  import { Switch } from "$lib/components/ui/switch/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
+  import UnderlineTabs from "$lib/components/app/UnderlineTabs.svelte";
+  import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
+  // One setting: its label on the left, the control on the right.
+  const ROW = "flex min-h-11 flex-wrap items-center justify-between gap-3 border-b py-1.5 text-sm last:border-0";
   import { EVENTS, RESET_CONFIG as C } from "../../config.ts";
   import { addCharacter, deleteCharacter, renameCharacter } from "../../app/characters.ts";
   import { addLead, muteForAnHour, removeLead, setChannelOn, setDpsIdleSeconds, setOverlayOpacity, setLead, setChannelVolume, setVolume, setBirthdayVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
@@ -21,13 +30,13 @@
   import { ui } from "../state.svelte.ts";
 
   const s = $derived(ui.data.settings);
-  let newChar = $state<HTMLInputElement>();
+  let newChar = $state<HTMLInputElement | null>(null);
 
   function add() {
-    const name = newChar?.value.trim();
+    const name = newChar?.value.trim() ?? "";
     if (!name) return;
     addCharacter(ui.data, name);
-    newChar!.value = "";
+    if (newChar) newChar.value = "";
     act(() => {});
   }
   function del(id: string) {
@@ -65,51 +74,53 @@
     if (file) { await saveCubePicture(who, file); await showCubePicture(who); }
   }
   async function dropCubePicture(who: Opener) { await clearCubePicture(who); await showCubePicture(who); }
-  const check = (e: Event) => (e.currentTarget as HTMLInputElement).checked;
 
   // Tabs and sub-tabs, like the game's settings; the last one opened is remembered (this browser only).
   const TABS = [
-    { id: "general", name: "General", subs: [["characters", "Characters"], ["times", "Reset times"]] },
-    { id: "alerts", name: "Notifications", subs: [["alerts", "Alerts"], ["sounds", "Sounds"], ["warnings", "Reset warnings"]] },
-    { id: "display", name: "Display", subs: [["mascot", "Mascot"], ["themes", "Themes"]] },
-    { id: "overlays", name: "Overlays", subs: [["windows", "Overlays"], ["cube", "Cube popup & radar"]] },
-    { id: "game", name: "Game data", subs: [["meter", "DPS meter"], ["sharing", "Other players"], ["diagnostics", "Diagnostics"]] },
-    { id: "system", name: "System", subs: [["system", "System"], ["backup", "Backup"]] },
+    ["general", "General", [["characters", "Characters"], ["times", "Reset times"]]],
+    ["alerts", "Notifications", [["alerts", "Alerts"], ["sounds", "Sounds"], ["warnings", "Reset warnings"]]],
+    ["display", "Display", [["mascot", "Mascot"], ["themes", "Themes"]]],
+    ["overlays", "Overlays", [["windows", "Overlays"], ["cube", "Cube popup & radar"]]],
+    ["game", "Game data", [["meter", "DPS meter"], ["sharing", "Other players"], ["diagnostics", "Diagnostics"]]],
+    ["system", "System", [["system", "System"], ["backup", "Backup"]]],
   ] as const;
   const KEY = "aion2-settings-tab";
   let open = $state<string[]>(["general", "characters"]);
-  $effect(() => { try { const v = JSON.parse(localStorage.getItem(KEY) ?? "null"); const t = TABS.find((t) => t.id === v?.[0]); if (t?.subs.some(([id]) => id === v[1])) open = v; } catch { /* default */ } });
+  $effect(() => { try { const v = JSON.parse(localStorage.getItem(KEY) ?? "null"); const t = TABS.find((t) => t[0] === v?.[0]); if (t?.[2].some(([id]) => id === v[1])) open = v; } catch { /* default */ } });
   function pick(tab: string, sub?: string) {
-    const t = TABS.find((x) => x.id === tab)!;
-    open = [tab, sub ?? t.subs[0][0]];
+    const t = TABS.find((x) => x[0] === tab)!;
+    open = [tab, sub ?? t[2][0][0]];
     try { localStorage.setItem(KEY, JSON.stringify(open)); } catch { /* not kept */ }
   }
-  const tab = $derived(TABS.find((t) => t.id === open[0]) ?? TABS[0]);
+  const tab = $derived(TABS.find((t) => t[0] === open[0]) ?? TABS[0]);
   const sub = $derived(open[1]);
   const setPreset = (v: string) => act(() => { s.soundTheme = v === "custom" ? "custom" : isTheme(v) ? v : "default"; });
   const setChannelTheme = (id: string, v: string) => act(() => { if (isTheme(v)) s.channelThemes = { ...s.channelThemes, [id]: v }; });
 </script>
 
-{#snippet toggle(label: string, on: boolean, change: (e: Event) => unknown, disabled = false)}<label class="setting switch"><span>{label}</span><input type="checkbox" checked={on} {disabled}
-  onchange={(e) => act(() => change(e))}></label>{/snippet}
 
-<nav class="settings-tabs" aria-label="Settings">
-  {#each TABS as t (t.id)}<button class:on={t.id === tab.id} aria-current={t.id === tab.id ? "page" : undefined} onclick={() => pick(t.id)}>{t.name}</button>{/each}
-</nav>
-{#if tab.subs.length > 1}<div class="seg settings-sub" role="group" aria-label="{tab.name} section">
-  {#each tab.subs as [id, name] (id)}<button class:on={id === sub} aria-pressed={id === sub} onclick={() => pick(tab.id, id)}>{name}</button>{/each}
-</div>{/if}
+{#snippet toggle(label: string, on: boolean, change: (on: boolean) => unknown, disabled = false)}<label class="{ROW} cursor-pointer"><span>{label}</span>
+  <Switch checked={on} {disabled} onCheckedChange={(v) => act(() => change(v))} /></label>{/snippet}
+{#snippet range(value: number, label: string, min: number, max: number, change: (e: Event) => void, disabled = false, step = 1)}<input data-slot="range" class="w-32 accent-primary disabled:opacity-35"
+  type="range" {min} {max} {step} {value} aria-label={label} {disabled} onchange={change}>{/snippet}
 
-<div class="settings">
+
+<div class="mb-3 grid gap-3">
+  <UnderlineTabs label="Settings" items={TABS.map((t) => [t[0], t[1]] as const)} value={tab[0]} onchange={(v) => pick(v)} />
+  {#if tab[2].length > 1}<ToggleGroup.Root type="single" variant="outline" size="sm" class="self-start" aria-label="{tab[1]} section" value={sub}
+    onValueChange={(v) => { if (v) pick(tab[0], v); }}>{#each tab[2] as [id, name] (id)}<ToggleGroup.Item value={id}>{name}</ToggleGroup.Item>{/each}</ToggleGroup.Root>{/if}
+</div>
+
+<div class="grid grid-cols-[repeat(auto-fit,minmax(340px,1fr))] items-start gap-x-3">
 {#if sub === "characters"}
-  <section><h2>Characters</h2>
-    {#each ui.data.characters as c (c.id)}<div class="setting"><input value={c.name} aria-label="Character name" autocomplete="off"
-      onchange={(e) => commit(e, (v) => renameCharacter(ui.data, c.id, v), () => c.name)}>{#if ui.data.characters.length > 1}<button onclick={() => del(c.id)}>Delete</button>{/if}</div>{/each}
-    <div class="setting"><input id="new-char" placeholder="New character name…" aria-label="New character name" autocomplete="off" bind:this={newChar}><button class="primary" onclick={add}>Add</button></div>
-  </section>
+  <Panel title="Characters">
+    {#each ui.data.characters as c (c.id)}<div class={ROW}><Input class="flex-1" value={c.name} aria-label="Character name" autocomplete="off"
+      onchange={(e) => commit(e, (v) => renameCharacter(ui.data, c.id, v), () => c.name)} />{#if ui.data.characters.length > 1}<Button variant="outline" size="sm" onclick={() => del(c.id)}>Delete</Button>{/if}</div>{/each}
+    <div class={ROW}><Input class="flex-1" id="new-char" placeholder="New character name…" aria-label="New character name" autocomplete="off" bind:ref={newChar} /><Button size="sm" onclick={add}>Add</Button></div>
+  </Panel>
 {:else if sub === "times"}
-  <section><h2>Reset times <span class="count">TO VERIFY</span></h2>
-    <dl>
+  <Panel title="Reset times" count="TO VERIFY">
+    <dl class="text-sm">
       <dt>Time zone</dt><dd>{C.timeZone}</dd>
       <dt>Daily</dt><dd>{pad(C.daily.hour)}:{pad(C.daily.minute)}</dd>
       <dt>Weekly</dt><dd>{WEEKDAYS[C.weekly.weekday]} {pad(C.weekly.hour)}:{pad(C.weekly.minute)}</dd>
@@ -118,139 +129,137 @@
       {#each EVENTS as ev}<dt>{ev.name}</dt><dd>Every {ev.everyHours} h at :{pad(ev.minute)}{ev.everyHours > 1 ? ` from ${pad(ev.firstHour)}:00` : ""}{ev.timeZone ? ` (${ev.timeZone})` : ""}, {ev.duration} min</dd>{/each}
     </dl>
     <p class="hint">Edit in src/config.ts</p>
-  </section>
+  </Panel>
 {:else if sub === "alerts"}
-  <section class="wide"><h2>Alerts</h2>
-    {#each CHANNELS as c}{@const ch = s.channels[c.id]}<div class="setting chan">
-      {#if c.id === "check"}<span>{c.name}</span>{:else}<label class="switch"><input type="checkbox" checked={ch.on}
-        onchange={(e) => act(() => setChannelOn(ui.data, c.id, check(e)))}><span>{c.name}</span></label>{/if}
-      <span class="ctl"><input type="range" min="0" max="100" value={ch.volume} aria-label="{c.name} volume" disabled={ch.muted}
-        onchange={(e) => commit(e, (v) => setChannelVolume(ui.data, c.id, v), () => ch.volume)}>
-        <button class="ghost" aria-pressed={ch.muted} aria-label="Mute {c.name} sound" title="{ch.muted ? 'Unmute' : 'Mute'} sound"
-          onclick={() => act(() => toggleChannelMute(ui.data, c.id))}>{@html ch.muted ? ICON.muted : ICON.sound}</button>
-        <button class="ghost" aria-label="Play {c.name} sound" title="sounds/{c.sound[0]}.wav"
-          onclick={() => playSound(c.sound, s.volume * ch.volume / 100, themeFor(s, c.id))}>{@html ICON.play}</button></span>
+  <Panel title="Alerts" class="col-span-full">
+    {#each CHANNELS as c}{@const ch = s.channels[c.id]}<div class={ROW}>
+      {#if c.id === "check"}<span>{c.name}</span>{:else}<label class="flex flex-[1_1_auto] cursor-pointer items-center gap-2.5"><Switch checked={ch.on}
+        onCheckedChange={(on) => act(() => setChannelOn(ui.data, c.id, on))} /><span>{c.name}</span></label>{/if}
+      <span class="flex items-center gap-1">{@render range(ch.volume, `${c.name} volume`, 0, 100, (e) => commit(e, (v) => setChannelVolume(ui.data, c.id, v), () => ch.volume), ch.muted)}
+        <Button variant="ghost" size="icon-sm" aria-pressed={ch.muted} aria-label="Mute {c.name} sound" title="{ch.muted ? 'Unmute' : 'Mute'} sound"
+          onclick={() => act(() => toggleChannelMute(ui.data, c.id))}>{#if ch.muted}<ICON.muted />{:else}<ICON.sound />{/if}</Button>
+        <Button variant="ghost" size="icon-sm" aria-label="Play {c.name} sound" title="sounds/{c.sound[0]}.wav"
+          onclick={() => playSound(c.sound, s.volume * ch.volume / 100, themeFor(s, c.id))}><ICON.play /></Button></span>
       {#if ch.leads}{@const ev = EVENTS.find((e) => e.id === c.id)}<LeadsRow label={ev?.name ?? c.name} leads={ch.leads}
         next={ch.on && ev ? nextEvent(ev, ui.now, C.timeZone) : undefined}
         onadd={() => addLead(ui.data, c.id)} onremove={(i) => removeLead(ui.data, c.id, i)} onset={(i, v) => setLead(ui.data, c.id, i, v)} />{/if}</div>{/each}
-    <div class="setting"><span>Quiet hours</span><span class="ctl">
-      <input type="time" value={s.quietStart} aria-label="Quiet hours start" onchange={(e) => commit(e, (v) => { s.quietStart = v; }, () => s.quietStart)}> to
-      <input type="time" value={s.quietEnd} aria-label="Quiet hours end" onchange={(e) => commit(e, (v) => { s.quietEnd = v; }, () => s.quietEnd)}></span></div>
-    <div class="btns"><button onclick={() => act(() => muteForAnHour(ui.data, Date.now()))}>Mute 1 h</button><button class="ghost" onclick={() => act(() => unmute(ui.data))}>Unmute</button><button class="ghost"
-      onclick={() => toast(s, "AION 2 Companion", "Notifications are working.")}>Test notification</button></div>
-  </section>
+    <div class={ROW}><span>Quiet hours</span><span class="flex items-center gap-1.5 text-muted-foreground">
+      <Input class="w-28" type="time" value={s.quietStart} aria-label="Quiet hours start" onchange={(e) => commit(e, (v) => { s.quietStart = v; }, () => s.quietStart)} /> to
+      <Input class="w-28" type="time" value={s.quietEnd} aria-label="Quiet hours end" onchange={(e) => commit(e, (v) => { s.quietEnd = v; }, () => s.quietEnd)} /></span></div>
+    <div class="flex flex-wrap gap-2 pt-3"><Button variant="outline" size="sm" onclick={() => act(() => muteForAnHour(ui.data, Date.now()))}>Mute 1 h</Button><Button variant="ghost" size="sm" onclick={() => act(() => unmute(ui.data))}>Unmute</Button>
+      <Button variant="ghost" size="sm" onclick={() => toast(s, "AION 2 Companion", "Notifications are working.")}>Test notification</Button></div>
+  </Panel>
 {:else if sub === "sounds"}
-  <section><h2>Sounds</h2>
-    {@render toggle("Sound", s.sound, (e) => { s.sound = check(e); })}
-    <label class="setting"><span>Master volume</span><input type="range" min="0" max="100" value={s.volume}
-      onchange={(e) => commit(e, (v) => setVolume(ui.data, v), () => s.volume)}></label>
-    <label class="setting"><span>Sound theme</span><select value={s.soundTheme} onchange={(e) => setPreset(e.currentTarget.value)}>
-      {#each SOUND_THEMES as t}<option value={t.id}>{t.name}</option>{/each}<option value="custom">Custom: one per sound</option></select></label>
-    <div class="setting"><span>Hopex's birthday song</span><span class="ctl"><input type="range" min="5" max="100" value={s.birthdayVolume}
-      aria-label="Birthday song volume" onchange={(e) => commit(e, (v) => setBirthdayVolume(ui.data, v), () => s.birthdayVolume)}>
-      <button class="ghost" aria-label="Play the birthday song" title="sounds/happy-birthday.mp3" onclick={() => playBirthday(s.birthdayVolume)}>{@html ICON.play}</button></span></div>
-    <p class="hint">A theme plays its own version of every sound; a sound it doesn't have plays the Default one. Custom: pick the theme of each sound below.</p>
-  </section>
-  {#if s.soundTheme === "custom"}<section><h2>Theme per sound</h2>
-    {#each CHANNELS as c}{@const ch = s.channels[c.id]}<div class="setting"><span>{c.name}</span><span class="ctl">
-      <select value={themeFor(s, c.id)} aria-label="{c.name} theme" onchange={(e) => setChannelTheme(c.id, e.currentTarget.value)}>
-        {#each SOUND_THEMES as t}<option value={t.id}>{t.name}</option>{/each}</select>
-      <button class="ghost" aria-label="Play {c.name} sound" onclick={() => playSound(c.sound, s.volume * ch.volume / 100, themeFor(s, c.id))}>{@html ICON.play}</button></span></div>{/each}
-  </section>{/if}
+  <Panel title="Sounds">
+    {@render toggle("Sound", s.sound, (on) => { s.sound = on; })}
+    <label class={ROW}><span>Master volume</span>{@render range(s.volume, "Master volume", 0, 100, (e) => commit(e, (v) => setVolume(ui.data, v), () => s.volume))}</label>
+    <label class={ROW}><span>Sound theme</span><NativeSelect value={s.soundTheme} onchange={(e) => setPreset(e.currentTarget.value)}>
+      {#each SOUND_THEMES as t}<NativeSelectOption value={t.id}>{t.name}</NativeSelectOption>{/each}<NativeSelectOption value="custom">Custom: one per sound</NativeSelectOption></NativeSelect></label>
+    <div class={ROW}><span>Hopex's birthday song</span><span class="flex items-center gap-1">{@render range(s.birthdayVolume, "Birthday song volume", 5, 100,
+      (e) => commit(e, (v) => setBirthdayVolume(ui.data, v), () => s.birthdayVolume))}
+      <Button variant="ghost" size="icon-sm" aria-label="Play the birthday song" title="sounds/happy-birthday.mp3" onclick={() => playBirthday(s.birthdayVolume)}><ICON.play /></Button></span></div>
+    <p class="hint">A theme plays its own version of every sound; a sound it doesn't have plays the Default one. Custom: pick the theme of each sound.</p>
+  </Panel>
+  {#if s.soundTheme === "custom"}<Panel title="Theme per sound">
+    {#each CHANNELS as c}{@const ch = s.channels[c.id]}<div class={ROW}><span class="flex-1">{c.name}</span><span class="flex items-center gap-1">
+      <NativeSelect value={themeFor(s, c.id)} aria-label="{c.name} theme" onchange={(e) => setChannelTheme(c.id, e.currentTarget.value)}>
+        {#each SOUND_THEMES as t}<NativeSelectOption value={t.id}>{t.name}</NativeSelectOption>{/each}</NativeSelect>
+      <Button variant="ghost" size="icon-sm" aria-label="Play {c.name} sound" onclick={() => playSound(c.sound, s.volume * ch.volume / 100, themeFor(s, c.id))}><ICON.play /></Button></span></div>{/each}
+  </Panel>{/if}
 {:else if sub === "warnings"}
-  <section><h2>Reset warnings</h2>
-    {#each CADENCES as c}<label class="setting"><span>{LABEL[c]} reset</span>
-      <span class="ctl"><input type="number" inputmode="numeric" min="0" max="168" value={s.warnHours[c]}
-        onchange={(e) => commit(e, (v) => setWarnHours(ui.data, c, v), () => s.warnHours[c])}> h before</span></label>{/each}
-  </section>
+  <Panel title="Reset warnings">
+    {#each CADENCES as c}<label class={ROW}><span>{LABEL[c]} reset</span>
+      <span class="flex items-center gap-1.5 text-muted-foreground"><Input class="w-18" type="number" inputmode="numeric" min="0" max="168" value={s.warnHours[c]}
+        onchange={(e) => commit(e, (v) => setWarnHours(ui.data, c, v), () => s.warnHours[c])} /> h before</span></label>{/each}
+  </Panel>
 {:else if sub === "mascot"}
-  <section><h2>Mascot</h2>
-    {@render toggle("Show the mascot", s.mascot, (e) => { s.mascot = check(e); })}
-    {@render toggle("Confetti and cheers (a list finished, a personal best, a PvP kill)", s.celebrate, (e) => { s.celebrate = check(e); })}
-    <label class="setting"><span>Gender</span><select value={s.mascotGender} disabled={!s.mascot}
+  <Panel title="Mascot">
+    {@render toggle("Show the mascot", s.mascot, (on) => { s.mascot = on; })}
+    {@render toggle("Confetti and cheers (a list finished, a personal best, a PvP kill)", s.celebrate, (on) => { s.celebrate = on; })}
+    <label class={ROW}><span>Gender</span><NativeSelect value={s.mascotGender} disabled={!s.mascot}
       onchange={(e) => act(() => { s.mascotGender = e.currentTarget.value === "f" ? "f" : "m"; })}>
-      <option value="m">Male</option><option value="f">Female</option></select></label>
+      <NativeSelectOption value="m">Male</NativeSelectOption><NativeSelectOption value="f">Female</NativeSelectOption></NativeSelect></label>
     <p class="hint">The little character of the class you play walks along the bottom of the window once the game says who you are (white wings for Elyos, black for Asmodians). It shouts with the alerts, clings on while the Spacetime Rift is open, fights a wisp for the Dimensional Invasion's first 3 minutes, gets a lantern critter's visit for the Shugo Festival's first 3 minutes (event times: General › Reset times), hops when a hidden cube is in view, cheers when you open it and sulks when someone else does. Drag it, throw it, shake it.</p>
-  </section>
+  </Panel>
 {:else if sub === "themes"}
-  <section><h2>Themes</h2>
-    {@render toggle("Accent colour of the class you play", s.classAccent, (e) => { s.classAccent = check(e); })}
-    {@render toggle("Halloween theme (25 Oct – 1 Nov)", s.halloween, (e) => { s.halloween = check(e); })}
-    {@render toggle("Winter theme and Advent calendar (1 Dec – 6 Jan)", s.winterTheme, (e) => { s.winterTheme = check(e); })}
-    {@render toggle("Snow and New Year fireworks", s.snow, (e) => { s.snow = check(e); }, !s.winterTheme)}
+  <Panel title="Themes">
+    {@render toggle("Accent colour of the class you play", s.classAccent, (on) => { s.classAccent = on; })}
+    {@render toggle("Halloween theme (25 Oct – 1 Nov)", s.halloween, (on) => { s.halloween = on; })}
+    {@render toggle("Winter theme and Advent calendar (1 Dec – 6 Jan)", s.winterTheme, (on) => { s.winterTheme = on; })}
+    {@render toggle("Snow and New Year fireworks", s.snow, (on) => { s.snow = on; }, !s.winterTheme)}
     <p class="hint">From 1 December to 6 January the app dresses for winter: a night-blue palette, an aurora on the sidebar, an Advent
       calendar on Home with a Christmas cracker joke behind each door, snow piling up along the bottom of the window and fireworks
       at midnight on New Year's Eve. "Reduce motion" in Windows stops the snow and fireworks. The class accent takes the colour of
       your class's emblem once the game says who you play; Halloween is a week of dusk purple and pumpkin orange.</p>
-  </section>
+  </Panel>
 {:else if sub === "windows"}
-  <section><h2>Overlays</h2>
-    {@render toggle("Event countdown overlay", s.eventsOverlay, (e) => { s.eventsOverlay = check(e); eventsOverlay(s.eventsOverlay); }, !isDesktop())}
-    {@render toggle("Ping and packet loss overlay", s.netOverlay, (e) => { s.netOverlay = check(e); netOverlay(s.netOverlay); }, !isDesktop())}
-    {@render toggle("DPS overlay during fights", s.dpsOverlay, (e) => { s.dpsOverlay = check(e); meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
-    {@render toggle("Hide when the game is not in front", s.overlayFollowGame, (e) => { s.overlayFollowGame = check(e); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, !isDesktop())}
-    <label class="setting"><span>Opacity</span><span class="ctl"><input type="range" min="20" max="100" step="5" value={s.overlayOpacity} aria-label="Overlay opacity"
-      onchange={(e) => { commit(e, (v) => setOverlayOpacity(ui.data, v), () => s.overlayOpacity); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }}> {s.overlayOpacity}%</span></label>
+  <Panel title="Overlays">
+    {@render toggle("Event countdown overlay", s.eventsOverlay, (on) => { s.eventsOverlay = on; eventsOverlay(s.eventsOverlay); }, !isDesktop())}
+    {@render toggle("Ping and packet loss overlay", s.netOverlay, (on) => { s.netOverlay = on; netOverlay(s.netOverlay); }, !isDesktop())}
+    {@render toggle("DPS overlay during fights", s.dpsOverlay, (on) => { s.dpsOverlay = on; meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
+    {@render toggle("Hide when the game is not in front", s.overlayFollowGame, (on) => { s.overlayFollowGame = on; overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, !isDesktop())}
+    <label class={ROW}><span>Opacity</span><span class="flex items-center gap-2 text-muted-foreground tabular-nums">{@render range(s.overlayOpacity, "Overlay opacity", 20, 100,
+      (e) => { commit(e, (v) => setOverlayOpacity(ui.data, v), () => s.overlayOpacity); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, false, 5)} {s.overlayOpacity}%</span></label>
     <p class="hint">Overlays remember where you put them and never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
-  </section>
+  </Panel>
 {:else if sub === "cube"}
-  <section><h2>Cube popup</h2>
-    {@render toggle("Hidden cube popup", s.cubePopup, (e) => { s.cubePopup = check(e); cubePopup(s.cubePopup, s.cubePopupSize); }, !isDesktop())}
-    <label class="setting"><span>Cube popup size</span><select value={String(s.cubePopupSize)} disabled={!isDesktop() || !s.cubePopup}
+  <Panel title="Cube popup">
+    {@render toggle("Hidden cube popup", s.cubePopup, (on) => { s.cubePopup = on; cubePopup(s.cubePopup, s.cubePopupSize); }, !isDesktop())}
+    <label class={ROW}><span>Cube popup size</span><NativeSelect value={String(s.cubePopupSize)} disabled={!isDesktop() || !s.cubePopup}
       onchange={(e) => act(() => { s.cubePopupSize = +e.currentTarget.value; cubePopup(s.cubePopup, s.cubePopupSize); })}>
-      {#each CUBE_SIZES as [k, label]}<option value={String(k)}>{label}</option>{/each}</select></label>
-    {#each OPENERS as [who, label]}<div class="setting"><span>{label}</span><span class="ctl">
-      {#if cubePictures[who]}<img class="cube-thumb" src={cubePictures[who]} alt="Chosen: {label}">{/if}
-      <label class="btn">{cubePictures[who] ? "Change" : "Choose"} <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onchange={(e) => pickCubePicture(who, e)}></label>
-      {#if cubePictures[who]}<button class="ghost" onclick={() => dropCubePicture(who)}>Remove</button>{/if}</span></div>{/each}
+      {#each CUBE_SIZES as [k, label]}<NativeSelectOption value={String(k)}>{label}</NativeSelectOption>{/each}</NativeSelect></label>
+    {#each OPENERS as [who, label]}<div class={ROW}><span>{label}</span><span class="flex items-center gap-1.5">
+      {#if cubePictures[who]}<img class="size-8 rounded object-cover" src={cubePictures[who]} alt="Chosen: {label}">{/if}
+      <label class={buttonVariants({ variant: "outline", size: "sm" })}>{cubePictures[who] ? "Change" : "Choose"} <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onchange={(e) => pickCubePicture(who, e)}></label>
+      {#if cubePictures[who]}<Button variant="ghost" size="sm" onclick={() => dropCubePicture(who)}>Remove</Button>{/if}</span></div>{/each}
     <p class="hint">The cube popup (top centre at first; drag it anywhere) shows while a hidden cube the app knows is in view, with
       its distance and direction, chimes when one appears (sound: Notifications › Alerts), turns green when you open one (red, with a sad sound, when someone else does) or shows your picture for it instead
       (pictures stay only on this PC). It learns cubes as they are opened near you; the first one is built in.</p>
-  </section>
-  <section><h2>Cube radar</h2>
-    {@render toggle("Cube radar", s.radar, (e) => { s.radar = check(e); radarOverlay(s.radar); }, !isDesktop())}
-    {#if s.radar}<label class="setting"><span>Radar range</span><select value={String(s.radarRange)}
+  </Panel>
+  <Panel title="Cube radar">
+    {@render toggle("Cube radar", s.radar, (on) => { s.radar = on; radarOverlay(s.radar); }, !isDesktop())}
+    {#if s.radar}<label class={ROW}><span>Radar range</span><NativeSelect value={String(s.radarRange)}
         onchange={(e) => act(() => { s.radarRange = +e.currentTarget.value; })}>
-        {#each [50, 100, 200, 400] as m}<option value={String(m)}>{m} m</option>{/each}</select></label>
-      {@render toggle("Map under the radar", s.radarMap, (e) => { s.radarMap = check(e); })}
-      {@render toggle("Round radar", s.radarRound, (e) => { s.radarRound = check(e); })}{/if}
+        {#each [50, 100, 200, 400] as m}<NativeSelectOption value={String(m)}>{m} m</NativeSelectOption>{/each}</NativeSelect></label>
+      {@render toggle("Map under the radar", s.radarMap, (on) => { s.radarMap = on; })}
+      {@render toggle("Round radar", s.radarRound, (on) => { s.radarRound = on; })}{/if}
     <p class="hint">The cube radar shows the cubes around you, north up, centred on you, while a cube is in view (as the cube popup):
       drag it over the game's minimap, size it by its edges and set the range to match. It cannot turn with the camera, so it matches only a north-up minimap.</p>
-  </section>
+  </Panel>
 {:else if sub === "meter"}
-  <section><h2>DPS meter</h2>
-    <label class="setting"><span>Reset after inactivity</span>
-      <span class="ctl"><input type="number" inputmode="numeric" min="0" max="3600" value={s.dpsIdleSeconds}
-        onchange={(e) => { commit(e, (v) => setDpsIdleSeconds(ui.data, v), () => s.dpsIdleSeconds); meterIdle(s.dpsIdleSeconds); }}> s</span></label>
-    {@render toggle("Overlay during fights", s.dpsOverlay, (e) => { s.dpsOverlay = check(e); meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
+  <Panel title="DPS meter">
+    <label class={ROW}><span>Reset after inactivity</span>
+      <span class="flex items-center gap-1.5 text-muted-foreground"><Input class="w-18" type="number" inputmode="numeric" min="0" max="3600" value={s.dpsIdleSeconds}
+        onchange={(e) => { commit(e, (v) => setDpsIdleSeconds(ui.data, v), () => s.dpsIdleSeconds); meterIdle(s.dpsIdleSeconds); }} /> s</span></label>
+    {@render toggle("Overlay during fights", s.dpsOverlay, (on) => { s.dpsOverlay = on; meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
     <p class="hint">Without damage, healing or damage taken for this long, the meter resets and the overlay hides until the next fight. 0 = never.</p>
-  </section>
+  </Panel>
 {:else if sub === "sharing"}
-  <section><h2>Other players</h2>
-    {@render toggle("Share boss timers, cube spots and gathering spots", s.crowdShare, (e) => { s.crowdShare = check(e); })}
+  <Panel title="Other players">
+    {@render toggle("Share boss timers, cube spots and gathering spots", s.crowdShare, (on) => { s.crowdShare = on; })}
     <p class="hint">The app shows the field-boss timers other players on your server read, the hidden cubes three or more
       players saw opened and the spots other players gathered at. Sharing sends what your meter sees: server, map and boss ids with their times,
       where cubes were opened, and where you gathered what (material and time). Never names, yours or anyone's. Turn it off and you still get the others'.</p>
-  </section>
+  </Panel>
 {:else if sub === "diagnostics"}
   <Recorder />
 {:else if sub === "system"}
-  <section><h2>System</h2>
-    {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}
-    {@render toggle("Update by itself when the app opens", s.autoUpdate, (e) => { s.autoUpdate = check(e); }, !isDesktop())}
-    {@render toggle("Get pre-release (beta) versions", s.betaUpdates, (e) => { s.betaUpdates = check(e); }, !isDesktop())}
+  <Panel title="System">
+    {@render toggle("Start with Windows", ui.autostart, async (on) => { ui.autostart = await setAutostart(on); }, !isDesktop())}
+    {@render toggle("Update by itself when the app opens", s.autoUpdate, (on) => { s.autoUpdate = on; }, !isDesktop())}
+    {@render toggle("Get pre-release (beta) versions", s.betaUpdates, (on) => { s.betaUpdates = on; }, !isDesktop())}
     <p class="hint">Beta versions get new features first and may break. Checked when the app opens and every 6 hours.
       Turned off, you stay on your version until the next stable release.</p>
-    {@render toggle("Send crash reports", s.crashReports, (e) => { s.crashReports = check(e); crashReports(s.crashReports); })}
+    {@render toggle("Send crash reports", s.crashReports, (on) => { s.crashReports = on; crashReports(s.crashReports); })}
     <p class="hint">Sends the app's errors, crashes, warnings and timings to Sentry so they can be fixed: where in the code, the app version
       and your Windows/WebView version, plus a screen recording of some sessions with every text, input and image hidden.
       No names, servers, positions or save data. For the app's core the switch applies at the next start.</p>
-  </section>
+  </Panel>
 {:else if sub === "backup"}
-  <section><h2>Backup</h2>
+  <Panel title="Backup">
     <p class="hint">Everything the app keeps (characters, tasks, settings, maps…) as one JSON file; the DPS Log and pictures stay apart.</p>
-    <div class="btns"><button onclick={() => exportJson(ui.data)}>Export JSON</button>
-      <label class="btn">Import JSON <input type="file" accept=".json,application/json" hidden onchange={importFile}></label></div>
-  </section>
+    <div class="flex flex-wrap gap-2 pt-3"><Button variant="outline" size="sm" onclick={() => exportJson(ui.data)}>Export JSON</Button>
+      <label class={buttonVariants({ variant: "outline", size: "sm" })}>Import JSON <input type="file" accept=".json,application/json" hidden onchange={importFile}></label></div>
+  </Panel>
 {/if}
 </div>

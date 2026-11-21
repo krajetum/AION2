@@ -1,4 +1,18 @@
 <script lang="ts">
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
+  import ChevronUp from "@lucide/svelte/icons/chevron-up";
+  import Minus from "@lucide/svelte/icons/minus";
+  import Plus from "@lucide/svelte/icons/plus";
+  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
+  import X from "@lucide/svelte/icons/x";
+  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
+  import { Checkbox } from "$lib/components/ui/checkbox/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
+  import { Progress } from "$lib/components/ui/progress/index.js";
+  import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
+  import Intro from "$lib/components/app/Intro.svelte";
   import { untrack } from "svelte";
   // Map page: three maps (Asmodian, Elyos, Abyss), each the bundled image (src/assets/ncsoft/, © NCSOFT) or one the
   // player imported (kept only on this PC, infra/map-image.ts), with its own points and fit. Two layers, picked in the
@@ -358,29 +372,28 @@
   const mapName = (k: MapKey) => worldMap(k).name;
 </script>
 
-<details class="intro"><summary>How it works</summary><p class="hint">Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
+<Intro><p>Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
   of yours that gives soul points is put where the mob died (desktop app with the meter running). Gathering: every gather of yours
   is put where the node is (or where you stood, when the node came into view before the meter started), one spot per material,
-  with the spots two or more other players gathered at (dashed). Each map can use your own image
+  with the spots other players gathered at (dashed). Each map can use your own image
   instead of the bundled one: it stays only on this PC. The gold dot is you: the game says where you are on teleports and whenever a
   buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running). On a mount it turns
-  into a horse and moves only when you jump; gliding, into a wing, and moves when you land: the game sends no position meanwhile.</p></details>
+  into a horse and moves only when you jump; gliding, into a wing, and moves when you land: the game sends no position meanwhile.</p></Intro>
 {#if error}<p class="hint error">{error}</p>{/if}
 {#if notice}<p class="hint">{notice}</p>{/if}
 
-<section class="map-page">
+<div class="map-page mb-3 rounded-xl bg-card ring-1 ring-foreground/10">
   <div class="map-tools">
-    <div class="seg" role="group" aria-label="Click on the map to">{#each MODES as [m, label]}
-      <button class:on={mode === m} aria-pressed={mode === m} onclick={() => { mode = m; }}>{label}</button>{/each}</div>
+    <ToggleGroup.Root type="single" variant="outline" size="sm" aria-label="Click on the map to" value={mode} onValueChange={(v) => { if (v) { mode = v as typeof mode; } }}>{#each MODES as [m, label]}<ToggleGroup.Item value={m}>{label}</ToggleGroup.Item>{/each}</ToggleGroup.Root>
     {#if layer === "cubes"}<div class="swatches" role="group" aria-label="Spawn group for new cubes">{#each GROUP_COLORS as c, i}
       <button class="swatch" class:on={group === i} style:--c={c} aria-pressed={group === i} aria-label="Group {i + 1}" title="Group {i + 1}"
         onclick={() => { group = i; }}></button>{/each}</div>{/if}
     <span class="grow"></span>
-    <button class="ghost" aria-label="Zoom out" title="Zoom out" onclick={() => zoom(1 / 1.5)}>−</button>
-    <button class="ghost" aria-label="Zoom in" title="Zoom in" onclick={() => zoom(1.5)}>+</button>
-    <button class="ghost" onclick={refit}>Fit</button>
-    {#if youPx}<button class="ghost" class:on={follow} aria-pressed={follow} title="Keep the map centred on you (dragging the map stops it)"
-      onclick={() => { follow = !follow; if (follow) centerOnMe(); }}>{follow ? "Following you" : "Follow me"}</button>{/if}
+    <Button variant="ghost" size="icon-sm" aria-label="Zoom out" title="Zoom out" onclick={() => zoom(1 / 1.5)}><Minus /></Button>
+    <Button variant="ghost" size="icon-sm" aria-label="Zoom in" title="Zoom in" onclick={() => zoom(1.5)}><Plus /></Button>
+    <Button variant="ghost" size="sm" onclick={refit}>Fit</Button>
+    {#if youPx}<Button variant={follow ? "secondary" : "ghost"} size="sm" aria-pressed={follow} title="Keep the map centred on you (dragging the map stops it)"
+      onclick={() => { follow = !follow; if (follow) centerOnMe(); }}>{follow ? "Following you" : "Follow me"}</Button>{/if}
   </div>
 
   <div class="map-view" class:adding={mode !== "move"} class:gliding={follow && !!youPx} bind:this={box} bind:clientWidth={vw} bind:clientHeight={vh}
@@ -388,7 +401,7 @@
     {#if url}<img src={url} alt="" draggable="false" onload={loaded}
       style:transform="translate({view.x}px, {view.y}px) scale({view.scale})">
     {:else}<div class="map-empty"><p>No {mapName(current)} map image yet.</p>
-      <label class="btn" onpointerdown={(e) => e.stopPropagation()}>Import a map image <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label></div>{/if}
+      <label class={buttonVariants({ variant: "outline", size: "sm" })} onpointerdown={(e) => e.stopPropagation()}>Import a map image <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label></div>{/if}
     {#each marks as c (c.points.map((p) => p.id).join())}{@const p = c.points[0]}
       <button class="mark" class:ref={c.points.length === 1 && p.kind === "ref"} class:cluster={c.points.length > 1} class:sel={c.points.some((q) => q.id === selected)}
         style:left="{c.x}px" style:top="{c.y}px" style:--c={mixed(c) ? "#e8e4dc" : GROUP_COLORS[p.group]}
@@ -418,22 +431,18 @@
     <!-- Corner menu: which map, which layer, and for pets the search, the list and the drop tools. -->
     <div class="map-menu" role="dialog" aria-label="Map menu" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
       <div class="map-menu-head">
-        <div class="seg" role="group" aria-label="Map">{#each MAPS as m}
-          <button class:on={current === m.key} aria-pressed={current === m.key} onclick={() => { current = m.key; }}>{m.name}</button>{/each}</div>
-        <button class="ghost" aria-expanded={menuOpen} aria-label={menuOpen ? "Hide the menu" : "Show the menu"} title={menuOpen ? "Hide" : "Show"}
-          onclick={() => { menuOpen = !menuOpen; }}>{menuOpen ? "▴" : "▾"}</button>
+        <ToggleGroup.Root type="single" variant="outline" size="sm" class="flex flex-1" aria-label="Map" value={current} onValueChange={(v) => { if (v) { current = v as typeof current; } }}>{#each MAPS as m}<ToggleGroup.Item class="flex-1" value={m.key}>{m.name}</ToggleGroup.Item>{/each}</ToggleGroup.Root>
+        <Button variant="ghost" size="icon-sm" aria-expanded={menuOpen} aria-label={menuOpen ? "Hide the menu" : "Show the menu"} title={menuOpen ? "Hide" : "Show"}
+          onclick={() => { menuOpen = !menuOpen; }}>{#if menuOpen}<ChevronUp />{:else}<ChevronDown />{/if}</Button>
       </div>
       {#if menuOpen}
-        <div class="seg" role="group" aria-label="Show">
-          <button class:on={layer === "cubes"} aria-pressed={layer === "cubes"} onclick={() => { layer = "cubes"; selectedDrop = ""; }}>Cubes</button>
-          <button class:on={layer === "pets"} aria-pressed={layer === "pets"} onclick={() => { layer = "pets"; selected = ""; }}>Pets</button>
-          <button class:on={layer === "gather"} aria-pressed={layer === "gather"} onclick={() => { layer = "gather"; selected = ""; selectedDrop = ""; }}>Gathering</button></div>
+        <ToggleGroup.Root type="single" variant="outline" size="sm" class="flex" aria-label="Show" value={layer} onValueChange={(v) => { if (v) { layer = v as typeof layer; if (v !== "pets") selectedDrop = ""; if (v !== "cubes") selected = ""; } }}><ToggleGroup.Item class="flex-1" value="cubes">Cubes</ToggleGroup.Item><ToggleGroup.Item class="flex-1" value="pets">Pets</ToggleGroup.Item><ToggleGroup.Item class="flex-1" value="gather">Gathering</ToggleGroup.Item></ToggleGroup.Root>
         {#if layer === "gather"}
-          <input type="search" placeholder="Search a material" aria-label="Search a material" autocomplete="off" bind:value={gatherQuery} oninput={() => { gatherItem = 0; selectedGather = null; }}>
-          <label class="toggle-line" title="Hides the spots only other players reported"><input type="checkbox" bind:checked={onlyMine}> Only where I gathered</label>
-          <p class="hint gather-refresh"><button class="ghost" disabled={refreshing} title="Sends your new spots, then reads the other players' (the server's list can be up to 5 min old)" onclick={refreshSpots}>{refreshing ? "Refreshing…" : "↻ Refresh"}</button>
+          <Input type="search" placeholder="Search a material" aria-label="Search a material" autocomplete="off" bind:value={gatherQuery} oninput={() => { gatherItem = 0; selectedGather = null; }} />
+          <label class="toggle-line" title="Hides the spots only other players reported"><Checkbox bind:checked={onlyMine} /> Only where I gathered</label>
+          <p class="hint gather-refresh"><Button variant="ghost" size="sm" disabled={refreshing} title="Sends your new spots, then reads the other players' (the server's list can be up to 5 min old)" onclick={refreshSpots}><RefreshCw />{refreshing ? "Refreshing…" : "Refresh"}</Button>
             {refreshFailed ? "The server could not be reached." : ui.gathersAt ? `Others' spots read at ${hm(ui.gathersAt)}.` : ""}</p>
-          {#if gatherItem}<button class="ghost showing" title="Show every material" onclick={() => { gatherItem = 0; selectedGather = null; }}>Showing: {material(gatherItem)} ✕</button>{/if}
+          {#if gatherItem}<Button variant="outline" size="sm" class="self-start border-gold text-gold" title="Show every material" onclick={() => { gatherItem = 0; selectedGather = null; }}>Showing: {material(gatherItem)} <X /></Button>{/if}
           <ul class="pet-list" aria-label="Materials">
             {#each gatherList as [item, n] (item)}<li><button class="plain" class:on={gatherItem === item} aria-pressed={gatherItem === item}
               onclick={() => { gatherItem = gatherItem === item ? 0 : item; selectedGather = null; }}>
@@ -444,13 +453,13 @@
           </ul>
         {/if}
         {#if layer === "pets"}
-          <input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query}>
+          <Input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query} />
           <label class="toggle-line" title={collection ? "Hides the spots of pets you have at level 3 (Pets page)" : "Log in or change character in game once, with the companion running"}>
-            <input type="checkbox" bind:checked={onlyWanted} disabled={!collection} onchange={() => { if (onlyWanted) { pet = ""; selectedDrop = ""; } }}> Only pets still to collect</label>
+            <Checkbox bind:checked={onlyWanted} disabled={!collection} onCheckedChange={(on) => { if (on) { pet = ""; selectedDrop = ""; } }} /> Only pets still to collect</label>
           <label class="toggle-line" title="One stop per pet still to collect on this map, at its busiest spot, in a good order from where you are. Straight lines: terrain and teleports are not known.">
-            <input type="checkbox" bind:checked={showRoute}> Farming route</label>
+            <Checkbox bind:checked={showRoute} /> Farming route</label>
           {#if showRoute}<p class="hint">{routed.length ? `${routed.length} stop${routed.length === 1 ? "" : "s"}, about ${routeKm.toFixed(1)} km in straight lines, ${pos && here ? "from you" : "from stop 1 (you are not on this map)"}.` : "No spot of a pet still to collect on this map."}</p>{/if}
-          {#if active}<button class="ghost showing" title="Show every soul's spots" onclick={() => { pet = ""; selectedDrop = ""; }}>Showing: {active} ✕</button>{/if}
+          {#if active}<Button variant="outline" size="sm" class="self-start border-gold text-gold" title="Show every soul's spots" onclick={() => { pet = ""; selectedDrop = ""; }}>Showing: {active} <X /></Button>{/if}
           <ul class="pet-list" aria-label="Pets">
             {#each pets as e (e.name)}<li><button class="plain" class:on={pet.toLowerCase() === e.name.toLowerCase()} aria-pressed={pet.toLowerCase() === e.name.toLowerCase()}
               onclick={() => choosePet(e.name)}><span class="name">{e.name}</span>
@@ -460,55 +469,53 @@
           {#if active && !onThisMap.some(isPet)}<p class="hint">No {active} spots on the {mapName(current)} map.</p>{/if}
           {#if chosen && pointMobs.length}<div class="soul-mobs"><span class="hint">The soul each mob gives (a mob's name is not always its soul's):</span>
             {#each pointMobs as mob (mob)}<label class="setting"><span>{mob}</span>
-              <input list="soul-names" value={names[mob.toLowerCase()] ?? chosen.name} aria-label="Soul of {mob}" autocomplete="off"
-                onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; act(() => setMobSoul(ui.data, mob, v)); if (v.trim()) pet = v.trim(); }}></label>{/each}
+              <Input class="h-7 w-38" list="soul-names" value={names[mob.toLowerCase()] ?? chosen.name} aria-label="Soul of {mob}" autocomplete="off"
+                onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; act(() => setMobSoul(ui.data, mob, v)); if (v.trim()) pet = v.trim(); }} /></label>{/each}
             </div>{/if}
           <datalist id="soul-names">{#each petList(drops, "", ui.data.map) as e (e.name)}<option value={e.name}></option>{/each}</datalist>
           <details class="soul-mobs">
             <summary class="hint">Your last loots: name a pet's crystal ({num(Object.keys(items).length)} named)</summary>
             <span class="hint">Once a pet's collection is done its mobs drop a crystal instead of soul points. Write which pet's an item is,
               once: from then on its drops go on the map, this session's included.</span>
-            <label class="toggle-line"><input type="checkbox" bind:checked={everyLoot}> Show every loot (each kill's usual item too)</label>
+            <label class="toggle-line"><Checkbox bind:checked={everyLoot} /> Show every loot (each kill's usual item too)</label>
             {#each lastLoots as l (l.item + ":" + l.mob)}<label class="setting" class:likely={l.kind === "crystal"}><span>{l.mob || "Unknown mob"} · <span class="num">{l.item}</span>
-              {#if l.kind === "crystal"}<small class="likely-tag">likely crystal</small>{/if}</span>
-              <input list="soul-names" value={items[String(l.item)] ?? ""} placeholder="Not a crystal" aria-label="Crystal of (item {l.item})" autocomplete="off"
-                onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; act(() => setItemSoul(ui.data, l.item, v)); if (v.trim()) pet = v.trim(); }}></label>
+              {#if l.kind === "crystal"}<Badge variant="secondary" class="ml-1.5 text-gold">likely crystal</Badge>{/if}</span>
+              <Input class="h-7 w-38" list="soul-names" value={items[String(l.item)] ?? ""} placeholder="Not a crystal" aria-label="Crystal of (item {l.item})" autocomplete="off"
+                onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; act(() => setItemSoul(ui.data, l.item, v)); if (v.trim()) pet = v.trim(); }} /></label>
             {:else}<span class="hint">{everyLoot ? "No loot yet this session (desktop app with the meter running)." : "No crystal or unusual item yet this session."}</span>{/each}
           </details>
           <div class="btns">
-            <button disabled={!pos || !petName} title={!pos ? "Needs your position from the meter (desktop app)" : !petName ? "Pick or type the soul first" : "Saves your position now, for kills the meter missed"}
-              class="act strong" onclick={dropHere}>{@html ICON.pin}Soul points here{petName ? `: ${petName}` : ""}</button>
+            <Button variant="outline" size="sm" class="border-primary text-primary" disabled={!pos || !petName} title={!pos ? "Needs your position from the meter (desktop app)" : !petName ? "Pick or type the soul first" : "Saves your position now, for kills the meter missed"}
+              onclick={dropHere}><ICON.pin />Soul points here{petName ? `: ${petName}` : ""}</Button>
           </div>
           <div class="btns">
-            <button class="act" disabled={!ui.data.map.pets.length} title="Save every spot and name to a file in Downloads, to send to friends" onclick={exportDrops}>{@html ICON.download}Export drops</button>
-            <label class="btn act" title="Add the spots and names of a friend's exported file">{@html ICON.upload}Import a friend's drops <input type="file" accept="application/json,.json" hidden onchange={pickDrops}></label>
+            <Button variant="outline" size="sm" disabled={!ui.data.map.pets.length} title="Save every spot and name to a file in Downloads, to send to friends" onclick={exportDrops}><ICON.download />Export drops</Button>
+            <label class={buttonVariants({ variant: "outline", size: "sm" })} title="Add the spots and names of a friend's exported file"><ICON.upload />Import a friend's drops <input type="file" accept="application/json,.json" hidden onchange={pickDrops}></label>
           </div>
         {/if}
       {/if}
     </div>
 
     {#if sel}<div class="map-panel" role="dialog" aria-label="Point" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}><h2>{sel.kind === "ref" ? "Reference" : "Cube spot"} <span class="count num">x {sel.x} · y {sel.y}</span>
-        <button class="ghost" aria-label="Close" title="Close" onclick={() => { selected = ""; }}>{@html ICON.close}</button></h2>
-      <div class="setting"><input value={sel.label} placeholder={sel.kind === "ref" ? "Place (e.g. an obelisk)" : "Note"} aria-label="Label" autocomplete="off"
-        onchange={(e) => commit(e, (v) => setPointLabel(ui.data, sel.id, v), () => sel.label)}>
-        <div class="seg" role="group" aria-label="Kind">
-          <button class:on={sel.kind === "cube"} aria-pressed={sel.kind === "cube"} onclick={() => act(() => setPointKind(ui.data, sel.id, "cube"))}>Cube</button>
-          <button class:on={sel.kind === "ref"} aria-pressed={sel.kind === "ref"} onclick={() => act(() => setPointKind(ui.data, sel.id, "ref"))}>Reference</button></div></div>
+        <Button variant="ghost" size="icon-sm" aria-label="Close" title="Close" onclick={() => { selected = ""; }}><ICON.close /></Button></h2>
+      <div class="setting"><Input class="flex-1" value={sel.label} placeholder={sel.kind === "ref" ? "Place (e.g. an obelisk)" : "Note"} aria-label="Label" autocomplete="off"
+        onchange={(e) => commit(e, (v) => setPointLabel(ui.data, sel.id, v), () => sel.label)} />
+        <ToggleGroup.Root type="single" variant="outline" size="sm" aria-label="Kind" value={sel.kind} onValueChange={(v) => { if (v) { const id = sel!.id; act(() => setPointKind(ui.data, id, v as "cube" | "ref")); } }}><ToggleGroup.Item value="cube">Cube</ToggleGroup.Item><ToggleGroup.Item value="ref">Reference</ToggleGroup.Item></ToggleGroup.Root></div>
       {#if sel.kind === "cube"}<div class="swatches" role="group" aria-label="Spawn group">{#each GROUP_COLORS as c, i}
         <button class="swatch" class:on={sel.group === i} style:--c={c} aria-pressed={sel.group === i} aria-label="Group {i + 1}" title="Group {i + 1}"
           onclick={() => act(() => setPointGroup(ui.data, sel.id, i))}></button>{/each}</div>
       {:else}<div class="setting"><span>Game coordinates</span><span class="ctl">
-        <input class="num" inputmode="decimal" placeholder="x" aria-label="Game x" bind:value={gx} onchange={setGame}>
-        <input class="num" inputmode="decimal" placeholder="y" aria-label="Game y" bind:value={gy} onchange={setGame}></span></div>
-        {#if pos}<div class="btns"><button onclick={() => { gx = pos.x.toFixed(0); gy = pos.y.toFixed(0); setGame(); }}>Use my position ({pos.x.toFixed(0)}, {pos.y.toFixed(0)})</button></div>{/if}
+        <Input class="w-22 tabular-nums" inputmode="decimal" placeholder="x" aria-label="Game x" bind:value={gx} onchange={setGame} />
+        <Input class="w-22 tabular-nums" inputmode="decimal" placeholder="y" aria-label="Game y" bind:value={gy} onchange={setGame} /></span></div>
+        {#if pos}<div class="btns"><Button variant="outline" size="sm" onclick={() => { gx = pos.x.toFixed(0); gy = pos.y.toFixed(0); setGame(); }}>Use my position ({pos.x.toFixed(0)}, {pos.y.toFixed(0)})</Button></div>{/if}
         <p class="hint">Three or more references with game coordinates place you on this image{custom || !worldMap(current).fit ? "" : " instead of the bundled map's own fit"}.
           Stand on the spot in game, put the reference there and use your position.</p>{/if}
-      <div class="btns"><button onclick={() => { const id = sel.id; selected = ""; act(() => deletePoint(ui.data, id)); }}>Delete point</button></div>
+      <div class="btns"><Button variant="ghost" size="sm" class="text-destructive" onclick={() => { const id = sel.id; selected = ""; act(() => deletePoint(ui.data, id)); }}>Delete point</Button></div>
     </div>{/if}
 
     {#if selectedGather && layer === "gather"}{@const g = selectedGather}<div class="map-panel" role="dialog" aria-label="Gathering spot" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
       <h2>{#if itemIcons[String(g.item)]}<img class="mat-icon" src={ICON_BASE + itemIcons[String(g.item)]} alt="" width="22" height="22">{/if}{material(g.item)}
-        <button class="ghost" aria-label="Close" title="Close" onclick={() => { selectedGather = null; }}>{@html ICON.close}</button></h2>
+        <Button variant="ghost" size="icon-sm" aria-label="Close" title="Close" onclick={() => { selectedGather = null; }}><ICON.close /></Button></h2>
       {#if g.mine}<p>You gathered here {g.mine.count}× ({num(g.mine.amount)} in all), last {when(g.mine.lastMs)}.</p>{/if}
       {#if g.players}<p>{g.players} players reported it{g.mine ? " too" : ""}.</p>{/if}
       <p class="hint">Game x {g.x.toFixed(0)}, y {g.y.toFixed(0)} · map {g.mapId}{g.mine && !g.mine.exact ? " · placed where you stood (the node itself was not in view when the meter started)" : ""}</p>
@@ -516,21 +523,21 @@
 
     {#if selDrop}<div class="map-panel" role="dialog" aria-label="Soul points" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
       <h2>{soul(selDrop)} <span class="count">{selDrop.mob ? `from ${selDrop.mob}` : "soul points"}</span>
-        <button class="ghost" aria-label="Close" title="Close" onclick={() => { selectedDrop = ""; }}>{@html ICON.close}</button></h2>
+        <Button variant="ghost" size="icon-sm" aria-label="Close" title="Close" onclick={() => { selectedDrop = ""; }}><ICON.close /></Button></h2>
       {#if selPet}<div class="drop-pet"><b>{selPet.name}</b> <span class="dim num">#{selPet.id}</span>
         {#if !collection}<span class="hint">· no collection read yet: log in or change character in game</span>
         {:else if selPet.level >= MAX_LEVEL}<span class="pet-progress">Level {MAX_LEVEL} · done</span>
-        {:else}<span class="pet-progress">{selPet.level ? `Level ${selPet.level}` : "Not owned"}<span class="bar" style:--p={selPet.points / selPet.need}><i></i></span>
+        {:else}<span class="pet-progress">{selPet.level ? `Level ${selPet.level}` : "Not owned"}<Progress class="w-20" value={(selPet.points / selPet.need) * 100} />
           <span class="num">{selPet.points}/{selPet.need}</span></span>{/if}</div>
       {/if}
       {#if selDrop.item == null && selDrop.mob && (selDrop.kind == null || selDrop.linked)}{@const mob = selDrop.mob}
         <label class="drop-pet-set"><span class="hint">{ui.data.map.mobPets[mob.toLowerCase()] != null ? `Pet of every ${mob}, as you set it:` : selPet ? `Pet of every ${mob}, from its other kills. Wrong? Pick it:` : `Which pet do ${mob}'s soul points go to? Kills recorded before pet numbers don't say.`}</span>
-          <select value={String(ui.data.map.mobPets[mob.toLowerCase()] ?? "")} aria-label="Pet of {mob}"
+          <NativeSelect class="max-w-64" value={String(ui.data.map.mobPets[mob.toLowerCase()] ?? "")} aria-label="Pet of {mob}"
             onchange={(e) => { const v = e.currentTarget.value; act(() => setMobPet(ui.data, mob, v ? Number(v) : null)); }}>
-            <option value="">{selPet && ui.data.map.mobPets[mob.toLowerCase()] == null ? `${selPet.name} (from its other kills)` : "From its other kills / not known"}</option>
-            {#each PET_CHOICES as [id, n] (id)}<option value={id}>{n}</option>{/each}</select></label>{/if}
+            <NativeSelectOption value="">{selPet && ui.data.map.mobPets[mob.toLowerCase()] == null ? `${selPet.name} (from its other kills)` : "From its other kills / not known"}</NativeSelectOption>
+            {#each PET_CHOICES as [id, n] (id)}<NativeSelectOption value={id}>{n}</NativeSelectOption>{/each}</NativeSelect></label>{/if}
       <p class="hint">{when(selDrop.atMs)}{selDrop.by ? ` · recorded by ${selDrop.by}` : ""} · game x {selDrop.x}, y {selDrop.y}{selDrop.mapId != null ? ` · map ${selDrop.mapId}` : ""}</p>
-      <div class="btns"><button onclick={() => { const id = selDrop.id; selectedDrop = ""; act(() => deleteDrop(ui.data, id)); }}>Delete drop</button></div>
+      <div class="btns"><Button variant="ghost" size="sm" class="text-destructive" onclick={() => { const id = selDrop.id; selectedDrop = ""; act(() => deleteDrop(ui.data, id)); }}>Delete drop</Button></div>
     </div>{/if}
   </div>
 
@@ -542,8 +549,8 @@
       · {num(refs.length)} references{#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 with game coordinates{/if}
       · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if pos.mapId == null}<b>which map you are on is not known yet: open the game's map (M) once, or teleport</b>{:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{#if ui.meter?.travel?.gliding} · <b>gliding: your position updates when you land</b>{:else if ui.meter?.travel?.mounted} · <b>on a mount: your position updates each time you jump</b>{/if}{/if}</span>
     <span class="grow"></span>
-    <label class="btn act">{@html ICON.upload}Import your own {mapName(current)} map <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>
-    {#if custom && BUNDLED_IMAGE[current]}<button class="ghost" onclick={remove}>Back to the bundled map</button>{:else if custom}<button class="ghost" onclick={remove}>Remove the image</button>{/if}
+    <label class={buttonVariants({ variant: "outline", size: "sm" })}><ICON.upload />Import your own {mapName(current)} map <input type="file" accept="image/png,image/jpeg,image/webp" hidden onchange={pick}></label>
+    {#if custom && BUNDLED_IMAGE[current]}<Button variant="ghost" size="sm" onclick={remove}>Back to the bundled map</Button>{:else if custom}<Button variant="ghost" size="sm" onclick={remove}>Remove the image</Button>{/if}
   </div>
   {#if !custom && url}<p class="hint">Map: AION 2 © NCSOFT, from in-game screenshots (not covered by this app's license).</p>{/if}
-</section>
+</div>

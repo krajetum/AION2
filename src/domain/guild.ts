@@ -151,10 +151,10 @@ export function guildFight(r: FightRecord): FightRecord {
   const others = r.rows.filter((x) => !x.isYou).sort((a, b) => b.damage - a.damage)
     .slice(0, MAX_ROWS - (mine ? 1 : 0)).map((x) => ({ ...x, skills: [], healSkills: [], buffs: undefined }));
   let skills = [...(mine?.skills ?? [])].sort((a, b) => b.damage - a.damage);
-  // The timeline stays on this PC: the Worker keeps 8 KB a fight.
+  // The timeline and the chart's series stay on this PC: the Worker keeps 8 KB a fight.
   // Your buffs go too; dropped first when the fight is too big.
   let buffs = mine?.buffs;
-  const build = (s: SkillRow[]): FightRecord => ({ ...r, timeline: undefined, rows: mine ? [{ ...mine, skills: s, healSkills: [], buffs }, ...others] : others });
+  const build = (s: SkillRow[]): FightRecord => ({ ...r, timeline: undefined, series: undefined, hp: undefined, rows: mine ? [{ ...mine, skills: s, healSkills: [], buffs }, ...others] : others });
   let out = build(skills);
   if (JSON.stringify(out).length <= MAX_FIGHT) return out;
   buffs = undefined;

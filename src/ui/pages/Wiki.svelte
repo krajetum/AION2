@@ -1,4 +1,5 @@
 <script lang="ts">
+  import UnderlineTabs from "$lib/components/app/UnderlineTabs.svelte";
   import WikiDungeons from "./WikiDungeons.svelte";
   import WikiMechanics from "./WikiMechanics.svelte";
 
@@ -14,7 +15,5 @@
   }
 </script>
 
-<div class="seg wiki-section" role="group" aria-label="Wiki section">
-  {#each SECTIONS as [id, name] (id)}<button class:on={id === section} aria-pressed={id === section} onclick={() => pick(id)}>{name}</button>{/each}
-</div>
+<div class="mb-3"><UnderlineTabs label="Wiki section" items={SECTIONS} value={section} onchange={pick} /></div>
 {#if section === "rules"}<WikiMechanics />{:else}<WikiDungeons kind={section} />{/if}

@@ -85,6 +85,8 @@ pub struct Update {
     pub gathers: Vec<crate::gather::Gather>,
     /// Your pet collection, from the last time the game's Pets menu opened since the meter started.
     pub pets: Option<crate::pets::Collection>,
+    /// Your Genus Insight lines, from the same record as the pets, and the preset switched to since.
+    pub genus: Option<crate::genus::Genus>,
     /// Your currencies, on the character they are of.
     pub wallet: Option<crate::currencies::Wallet>,
     /// Every soul point gain since the meter started (the collection counts these; `souls` only the placed ones).
@@ -463,6 +465,7 @@ impl Engine {
                 })
                 .collect(),
             pets: crate::pets::latest(),
+            genus: crate::genus::latest(),
             soul_gains: crate::souls::gains(),
             loots: crate::souls::loots()
                 .into_iter()

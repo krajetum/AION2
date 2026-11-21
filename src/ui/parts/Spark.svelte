@@ -12,5 +12,5 @@
   <title>{label}</title><polyline {points} fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>{/if}
 
 <style>
-  .spark { flex: none; align-self: center; color: var(--accent); }
+  .spark { flex: none; align-self: center; color: var(--gold); }
 </style>

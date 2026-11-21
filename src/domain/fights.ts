@@ -24,6 +24,9 @@ export interface FightRecord {
   rows: PlayerRow[]; // as the meter had them at the end: skills for you (and the rows open on the DPS page)
   // ponytail: one number per second, ~1 KB a 3 min fight in fights.json; 2 s buckets if the file grows too big.
   timeline?: number[]; // your damage in each second (src/domain/timeline.ts); fights from before it: none
+  // ponytail: up to 10 rows x seconds (~10 KB a 2 min fight); keep them on the latest fights only if fights.json grows too big.
+  series?: Record<string, number[]>; // the biggest rows' damage in each second, by shown name (timeline.ts trackSeries); older fights: none
+  hp?: number[]; // the boss's HP left in each second, 0..100
 }
 
 /** The fight the meter had (`prev`, any target) is over in `next`: its time went back (idle reset, Reset button) or its target changed. */
@@ -48,6 +51,32 @@ export function toRecord(f: Fight, profile: Profile | null | undefined, mapId: n
     killed: hpLeft(t) === 0, hpLeft: hpLeft(t), mapId, char: profile?.name ?? "", gearScore: profile?.gearScore ?? null,
     combatPower: profile?.combatPower ?? null, rows: f.rows,
   };
+}
+
+/** fights.json's format: 2 = packed by `packFight` (none = as kept in memory, before it). */
+export const FIGHTS_FORMAT = 2;
+/** Packed series count thousands of damage: a chart can't tell 30 729 841 from 30 730 000. */
+const SERIES_UNIT = 1000;
+const r3 = (n: number) => Math.round(n * 1000) / 1000;
+const packSkill = (s: SkillRow): SkillRow => ({ ...s, share: r3(s.share), critRate: r3(s.critRate) });
+
+/**
+ * A fight as fights.json keeps it (~60% smaller with the compact store): rows without `dps` / `hps` (damage or heal
+ * over the fight's time, exactly), shares and rates to 3 decimals, series in SERIES_UNIT. `unpackFight` undoes it.
+ */
+export function packFight(r: FightRecord): unknown {
+  const rows = r.rows.map(({ dps: _d, hps: _h, ...x }) => ({
+    ...x, share: r3(x.share), ...(x.critRate != null ? { critRate: r3(x.critRate) } : {}),
+    skills: x.skills.map(packSkill), healSkills: x.healSkills.map(packSkill),
+  }));
+  const series = r.series && Object.fromEntries(Object.entries(r.series).map(([k, v]) => [k, v.map((n) => Math.round(n / SERIES_UNIT))]));
+  return { ...r, rows, ...(r.timeline ? { timeline: r.timeline.map(Math.round) } : {}), ...(series ? { series } : {}) };
+}
+
+export function unpackFight(x: FightRecord): FightRecord {
+  const secs = Math.max(1, x.battleTimeMs / 1000);
+  const series = x.series && Object.fromEntries(Object.entries(x.series).map(([k, v]) => [k, v.map((n) => n * SERIES_UNIT)]));
+  return { ...x, rows: x.rows.map((r) => ({ ...r, dps: r.damage / secs, hps: r.heal / secs })), ...(series ? { series } : {}) };
 }
 
 export const you = (r: FightRecord) => r.rows.find((x) => x.isYou);

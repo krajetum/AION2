@@ -2,6 +2,8 @@
   // One equipped piece as a card (Players page). Front: the piece and its bonus lines, ideal ones ticked.
   // The BiS button turns it over: the ideal lines for the player's class and this slot (domain/bis.ts), which of them
   // the piece has, and an editor for the player's own list.
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
   import type { ItemDetail, Piece } from "../../domain/armory.ts";
   import { checkBis, idealNames, isIdeal, slotLabel, type BisLine } from "../../domain/bis.ts";
 
@@ -28,7 +30,7 @@
 <div class="gcard grade-edge-{p.grade}" class:flipped>
   <div class="gcard-inner">
     <!-- Front: the piece -->
-    <section class="gface front" aria-hidden={flipped} inert={flipped}>
+    <div class="gface front" aria-hidden={flipped} inert={flipped}>
       <header>
         {#if p.icon}<img src={p.icon} alt="" width="44" height="44" loading="lazy">{:else}<span class="gicon"></span>{/if}
         <div class="gtitle"><b class="grade-{p.grade}">{plus} {p.name}</b>
@@ -46,25 +48,25 @@
         {#if detail.set}<p class="dim gset">{detail.set.name} · {detail.set.equipped} equipped</p>{/if}
       {/if}
       {#if check}<footer><span>{check.has} of {check.lines.length} ideal lines</span></footer>{/if}
-    </section>
+    </div>
 
     <!-- Back: best in slot -->
-    {#if lines}<section class="gface back" aria-hidden={!flipped} inert={!flipped}>
+    {#if lines}<div class="gface back" aria-hidden={!flipped} inert={!flipped}>
       <header>
         <span class="gstar">★</span>
         <div class="gtitle"><b>Ideal {className} {label}</b><small>Best in slot{custom ? " · your list" : ""}</small></div>
-        {#if !editing}<button class="ghost gedit" title="Edit this list" onclick={edit}>Edit</button>{/if}
+        {#if !editing}<Button variant="ghost" size="xs" class="gedit" title="Edit this list" onclick={edit}>Edit</Button>{/if}
       </header>
       {#if editing}
         <div class="gedit-rows">{#each draft as l, i}<div>
-          <input bind:value={l.stat} placeholder="Stat or skill" aria-label="Line {i + 1}">
-          <input bind:value={l.value} placeholder="Value" aria-label="Value {i + 1}" class="val">
-          <button class="ghost" aria-label="Remove line {i + 1}" onclick={() => { draft = draft.filter((_, k) => k !== i); }}>×</button></div>{/each}
-          <button class="ghost" onclick={() => { draft = [...draft, { stat: "", value: "" }]; }}>+ Add line</button></div>
+          <Input class="h-7" bind:value={l.stat} placeholder="Stat or skill" aria-label="Line {i + 1}" />
+          <Input class="val h-7" bind:value={l.value} placeholder="Value" aria-label="Value {i + 1}" />
+          <Button variant="ghost" size="icon-xs" aria-label="Remove line {i + 1}" onclick={() => { draft = draft.filter((_, k) => k !== i); }}>×</Button></div>{/each}
+          <Button variant="ghost" size="xs" onclick={() => { draft = [...draft, { stat: "", value: "" }]; }}>+ Add line</Button></div>
         <footer class="gedit-actions">
-          <button class="primary" onclick={() => done(draft)}>Save</button>
-          <button class="ghost" onclick={() => { editing = false; }}>Cancel</button>
-          {#if custom}<button class="ghost" title="Back to the bundled list" onclick={() => done(null)}>Reset</button>{/if}
+          <Button size="sm" onclick={() => done(draft)}>Save</Button>
+          <Button variant="ghost" size="sm" onclick={() => { editing = false; }}>Cancel</Button>
+          {#if custom}<Button variant="ghost" size="sm" title="Back to the bundled list" onclick={() => done(null)}>Reset</Button>{/if}
         </footer>
       {:else if check}
         <ul class="bis-lines">{#each check.lines as c (c.line.stat)}<li class:have={c.yours != null}>
@@ -73,8 +75,8 @@
           {#if c.line.pct != null}<span class="pct">{c.line.pct}%</span>{/if}
           <i class="bar" style:--w="{c.line.pct ?? 100}%"></i></li>{/each}</ul>
         <footer><span>Yours has {check.has} of {check.lines.length}</span>
-          <button class="ghost yours-btn" onclick={() => { flipped = false; }}>↻ Yours</button></footer>
+          <Button variant="ghost" size="xs" class="yours-btn" onclick={() => { flipped = false; }}>↻ Yours</Button></footer>
       {/if}
-    </section>{/if}
+    </div>{/if}
   </div>
 </div>

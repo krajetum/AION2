@@ -1,6 +1,9 @@
 <script lang="ts">
   // Two fights side by side: DPS, time, combat power, then the played character's skills per second (compareSkills).
   // Fight Log: two of your runs (Before / After); Guild page: two members' runs (their names).
+  import { Button } from "$lib/components/ui/button/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   import { compareSkills, yourDps, type FightRecord } from "../../domain/fights.ts";
   import { clock, short, skillIconUrl } from "../../domain/meter.ts";
 
@@ -8,27 +11,24 @@
     { a: FightRecord; b: FightRecord; title: string; labelA?: string; labelB?: string; dpsLabel?: string; onclear: () => void } = $props();
   const diff = $derived(compareSkills(a, b));
   const pct = (x: number, y: number) => (x ? `${y >= x ? "+" : ""}${Math.round((y / x - 1) * 100)}%` : "new");
+  const tone = (up: boolean) => (up ? "text-right text-hps" : "text-right text-taken");
 </script>
 
-<section class="dps-table"><h2>{title} <button class="ghost" onclick={onclear}>Clear</button></h2>
-  <div class="scroll"><table class="sheet">
-    <thead><tr><th></th><th class="n">{labelA}</th><th class="n">{labelB}</th><th class="n">Change</th></tr></thead>
-    <tbody>
-      <tr><td>{dpsLabel}</td><td class="n">{short(yourDps(a))}/s</td><td class="n">{short(yourDps(b))}/s</td><td class="n delta" class:up={yourDps(b) >= yourDps(a)}>{pct(yourDps(a), yourDps(b))}</td></tr>
-      <tr><td>Time</td><td class="n">{clock(a.battleTimeMs)}</td><td class="n">{clock(b.battleTimeMs)}</td><td class="n delta" class:up={b.battleTimeMs <= a.battleTimeMs}>{pct(a.battleTimeMs, b.battleTimeMs)}</td></tr>
-      <tr><td>Combat power</td><td class="n">{a.combatPower ? short(a.combatPower) : "—"}</td><td class="n">{b.combatPower ? short(b.combatPower) : "—"}</td><td></td></tr>
-    </tbody></table>
-  {#if diff.length}<table class="sheet">
-    <thead><tr><th>Skill</th><th class="n">{labelA} /s</th><th class="n">{labelB} /s</th><th class="n">Change</th><th class="n">Hits</th><th class="n">Crit</th></tr></thead>
-    <tbody>{#each diff as d (d.name)}<tr>
-      <td class="skill-name">{#if d.icon}<img class="skill-icon" src={skillIconUrl(d.icon)} alt="" loading="lazy" width="20" height="20">{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{d.name}{#if d.dot}<span class="dim">DoT</span>{/if}</td>
-      <td class="n">{short(d.dpsA)}</td><td class="n">{short(d.dpsB)}</td><td class="n delta" class:up={d.dpsB >= d.dpsA}>{pct(d.dpsA, d.dpsB)}</td>
-      <td class="n">{d.a?.hits ?? 0} → {d.b?.hits ?? 0}</td>
-      <td class="n">{d.dot ? "–" : `${Math.round((d.a?.critRate ?? 0) * 100)}% → ${Math.round((d.b?.critRate ?? 0) * 100)}%`}</td></tr>{/each}</tbody></table>
-  {:else}<p class="hint">No skill data in these fights.</p>{/if}</div></section>
-
-<style>
-  .delta { color: var(--negative); }
-  .delta.up { color: var(--positive); }
-  h2 button { margin-left: 8px; font-size: var(--fs-sm); }
-</style>
+<Panel {title}>
+  {#snippet actions()}<Button variant="ghost" size="sm" onclick={onclear}>Clear</Button>{/snippet}
+  <Table.Root>
+    <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head></Table.Head><Table.Head class="text-right">{labelA}</Table.Head><Table.Head class="text-right">{labelB}</Table.Head><Table.Head class="text-right">Change</Table.Head></Table.Row></Table.Header>
+    <Table.Body>
+      <Table.Row><Table.Cell>{dpsLabel}</Table.Cell><Table.Cell class="text-right">{short(yourDps(a))}/s</Table.Cell><Table.Cell class="text-right">{short(yourDps(b))}/s</Table.Cell><Table.Cell class={tone(yourDps(b) >= yourDps(a))}>{pct(yourDps(a), yourDps(b))}</Table.Cell></Table.Row>
+      <Table.Row><Table.Cell>Time</Table.Cell><Table.Cell class="text-right">{clock(a.battleTimeMs)}</Table.Cell><Table.Cell class="text-right">{clock(b.battleTimeMs)}</Table.Cell><Table.Cell class={tone(b.battleTimeMs <= a.battleTimeMs)}>{pct(a.battleTimeMs, b.battleTimeMs)}</Table.Cell></Table.Row>
+      <Table.Row><Table.Cell>Combat power</Table.Cell><Table.Cell class="text-right">{a.combatPower ? short(a.combatPower) : "—"}</Table.Cell><Table.Cell class="text-right">{b.combatPower ? short(b.combatPower) : "—"}</Table.Cell><Table.Cell></Table.Cell></Table.Row>
+    </Table.Body></Table.Root>
+  {#if diff.length}<Table.Root class="mt-3">
+    <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Skill</Table.Head><Table.Head class="text-right">{labelA} /s</Table.Head><Table.Head class="text-right">{labelB} /s</Table.Head><Table.Head class="text-right">Change</Table.Head><Table.Head class="text-right">Hits</Table.Head><Table.Head class="text-right">Crit</Table.Head></Table.Row></Table.Header>
+    <Table.Body>{#each diff as d (d.name)}<Table.Row>
+      <Table.Cell><span class="flex items-center gap-2">{#if d.icon}<img class="size-5 rounded" src={skillIconUrl(d.icon)} alt="" loading="lazy">{:else}<span class="size-5 rounded bg-secondary" aria-hidden="true"></span>{/if}{d.name}{#if d.dot}<span class="text-xs text-muted-foreground">DoT</span>{/if}</span></Table.Cell>
+      <Table.Cell class="text-right">{short(d.dpsA)}</Table.Cell><Table.Cell class="text-right">{short(d.dpsB)}</Table.Cell><Table.Cell class={tone(d.dpsB >= d.dpsA)}>{pct(d.dpsA, d.dpsB)}</Table.Cell>
+      <Table.Cell class="text-right">{d.a?.hits ?? 0} → {d.b?.hits ?? 0}</Table.Cell>
+      <Table.Cell class="text-right">{d.dot ? "–" : `${Math.round((d.a?.critRate ?? 0) * 100)}% → ${Math.round((d.b?.critRate ?? 0) * 100)}%`}</Table.Cell></Table.Row>{/each}</Table.Body></Table.Root>
+  {:else}<p class="hint">No skill data in these fights.</p>{/if}
+</Panel>

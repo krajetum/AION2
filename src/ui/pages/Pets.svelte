@@ -1,4 +1,11 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { Progress } from "$lib/components/ui/progress/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
+  import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
+  import Intro from "$lib/components/app/Intro.svelte";
+  import Panel from "$lib/components/app/Panel.svelte";
   import Empty from "../parts/Empty.svelte";
   // Pets page: your pet collection as the game sent it on entering the world (src-tauri/meter/src/pets.rs),
   // with the soul points gained since, and where each pet's soul points drop (the Map page's spots, by pet number).
@@ -73,44 +80,44 @@
   }
 </script>
 
-<details class="intro"><summary>How it works</summary><p class="hint">Your pets as the game sent them when you last entered the world (login or character select) with the companion
+<Intro><p>Your pets as the game sent them when you last entered the world (login or character select) with the companion
   running, plus the soul points your kills gave since. Changing character in game reads the whole collection again. The game sends numbers, not names:
-  names come from the gamers4.life database, else from the mob its soul points came from, and you can rename any. Level {MAX_LEVEL} is the last.</p></details>
+  names come from the gamers4.life database, else from the mob its soul points came from, and you can rename any. Level {MAX_LEVEL} is the last.</p></Intro>
+
+{#snippet seg(label: string, items: readonly (readonly [string, string])[], value: string, set: (v: string) => void, title = "")}
+  <ToggleGroup.Root type="single" variant="outline" size="sm" aria-label={label} {title} {value} onValueChange={(v) => v && set(v)}>
+    {#each items as [id, text]}<ToggleGroup.Item value={id}>{text}</ToggleGroup.Item>{/each}</ToggleGroup.Root>{/snippet}
 
 {#if !collection}<Empty>No collection read yet{me ? ` for ${me}` : ""}. Log in or change character in game with the companion running (desktop app).</Empty>
 {:else}
-{#if unlinked}<p class="hint">{num(unlinked)} spot{unlinked === 1 ? "" : "s"} on the map {unlinked === 1 ? "has" : "have"} no pet number
+{#if unlinked}<p class="hint mb-3">{num(unlinked)} spot{unlinked === 1 ? "" : "s"} on the map {unlinked === 1 ? "has" : "have"} no pet number
   (recorded with an app older than this page, in a friend's file or in the spots shared with the app): {unlinked === 1 ? "it shows" : "they show"} on the map but not here.
   A mob's name alone does not tell its pet (Young Slink and Slink are two); kills recorded from now on carry the number.</p>{/if}
-<section class="dps-table pets-page">
-  <h2>{me} <span class="count">{num(owned)} owned · {num(full)} at level {MAX_LEVEL} · read {hm(collection.atMs)}</span></h2>
-  <div class="toolbar start">
-    <div class="seg" role="group" aria-label="Show">{#each FILTERS as [f, label]}
-      <button class:on={filter === f} aria-pressed={filter === f} onclick={() => { filter = f; }}>{label}</button>{/each}</div>
-    <div class="seg" role="group" aria-label="Where it drops" title="Unknown: no spot on any map yet (chests, dungeons, events, or not found)">{#each WHERE as [w, label]}
-      <button class:on={where === w} aria-pressed={where === w} onclick={() => { where = w; }}>{label}</button>{/each}</div>
-    <div class="seg" role="group" aria-label="Type">{#each KINDS as [k, label]}
-      <button class:on={kind === k} aria-pressed={kind === k} onclick={() => { kind = k; }}>{label}</button>{/each}</div>
-    <input type="search" placeholder="Search a pet or a number" aria-label="Search a pet" autocomplete="off" bind:value={query}>
+<Panel title={me} count="{num(owned)} owned · {num(full)} at level {MAX_LEVEL} · read {hm(collection.atMs)}">
+  <div class="mb-3 flex flex-wrap items-center gap-2">
+    {@render seg("Show", FILTERS, filter, (v) => { filter = v as typeof filter; })}
+    {@render seg("Where it drops", WHERE, where, (v) => { where = v as typeof where; }, "Unknown: no spot on any map yet (chests, dungeons, events, or not found)")}
+    {@render seg("Type", KINDS, kind, (v) => { kind = v as typeof kind; })}
+    <Input class="h-8 w-56" type="search" placeholder="Search a pet or a number" aria-label="Search a pet" autocomplete="off" bind:value={query} />
   </div>
-  <table>
-    <thead><tr><th>Pet</th><th class="num">#</th><th>Type</th><th>Level</th><th>Soul points</th><th class="num">Spots</th><th>Maps</th><th></th></tr></thead>
-    <tbody>
+  <Table.Root>
+    <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Pet</Table.Head><Table.Head class="text-right">#</Table.Head><Table.Head>Type</Table.Head><Table.Head>Level</Table.Head><Table.Head>Soul points</Table.Head><Table.Head class="text-right">Spots</Table.Head><Table.Head>Maps</Table.Head><Table.Head></Table.Head></Table.Row></Table.Header>
+    <Table.Body>
       {#each rows as p (p.id)}{@const n = spots.get(p.id)?.length ?? 0}
-        <tr class:done={maxed(p)}>
-          <td><input class="pet-name" value={map.petNames[String(p.id)] ?? ""} placeholder={name(p.id)} aria-label="Name of pet {p.id}" autocomplete="off"
-            onchange={(e) => commit(e, (v) => setPetName(ui.data, p.id, v), () => map.petNames[String(p.id)] ?? "")}></td>
-          <td class="num dim">{p.id}</td>
-          <td class="dim">{typeName(p.id)}</td>
-          <td>{p.level ? `Level ${p.level}` : "Not owned"}</td>
-          <td>{#if maxed(p)}<span class="dim">done</span>{:else}<span class="pet-progress"><span class="bar" style:--p={share(p)}><i></i></span>
-            <span class="num">{p.points}/{needed(p)}</span></span>{/if}</td>
-          <td class="num">{n || ""}</td>
-          <td class="dim">{mapsOf(p.id).map((m) => worldMap(m).name).join(", ") || "—"}</td>
-          <td>{#if n}<button class="act" title="Open the map on this pet's spots" onclick={() => showOnMap(p.id)}>{@html ICON.map}Show on map</button>{/if}</td>
-        </tr>
-      {:else}<tr><td colspan="8" class="hint">{query.trim() ? "No pet matches." : filter === "wanted" ? "Every pet you own is at level 3." : "No pet at this level."}</td></tr>{/each}
-    </tbody>
-  </table>
-</section>
+        <Table.Row>
+          <Table.Cell><Input class="h-7 w-48 border-transparent bg-transparent px-1 font-medium hover:border-input dark:bg-transparent {maxed(p) ? 'text-hps' : ''}" value={map.petNames[String(p.id)] ?? ""} placeholder={name(p.id)} aria-label="Name of pet {p.id}" autocomplete="off"
+            onchange={(e) => commit(e, (v) => setPetName(ui.data, p.id, v), () => map.petNames[String(p.id)] ?? "")} /></Table.Cell>
+          <Table.Cell class="text-right text-muted-foreground">{p.id}</Table.Cell>
+          <Table.Cell class="text-muted-foreground">{typeName(p.id)}</Table.Cell>
+          <Table.Cell>{p.level ? `Level ${p.level}` : "Not owned"}</Table.Cell>
+          <Table.Cell>{#if maxed(p)}<span class="text-muted-foreground">done</span>{:else}<span class="flex items-center gap-2"><Progress class="w-24" value={share(p) * 100} />
+            <span class="tabular-nums">{p.points}/{needed(p)}</span></span>{/if}</Table.Cell>
+          <Table.Cell class="text-right">{n || ""}</Table.Cell>
+          <Table.Cell class="text-muted-foreground">{mapsOf(p.id).map((m) => worldMap(m).name).join(", ") || "—"}</Table.Cell>
+          <Table.Cell>{#if n}<Button variant="outline" size="sm" title="Open the map on this pet's spots" onclick={() => showOnMap(p.id)}><ICON.map />Show on map</Button>{/if}</Table.Cell>
+        </Table.Row>
+      {:else}<Table.Row><Table.Cell colspan={8} class="text-muted-foreground">{query.trim() ? "No pet matches." : filter === "wanted" ? "Every pet you own is at level 3." : "No pet at this level."}</Table.Cell></Table.Row>{/each}
+    </Table.Body>
+  </Table.Root>
+</Panel>
 {/if}

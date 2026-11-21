@@ -8,6 +8,7 @@ import { cleanHistory, emptyHistory } from "./history.ts";
 import { cleanAdvent, emptyAdvent } from "./holiday.ts";
 import { cleanMap, emptyMap } from "./map.ts";
 import { cleanCollections } from "./pets.ts";
+import { cleanGenusAll } from "./genus.ts";
 import { cleanGathering, emptyGathering } from "./gathering.ts";
 import { cleanWallets } from "./wallet.ts";
 import { patchTasks, SEED_VERSION, seedTasks } from "./seed.ts";
@@ -34,6 +35,7 @@ export function defaultData(): AppData {
     arena: { matches: [], maps: {}, kills: [] },
     map: emptyMap(),
     pets: {},
+    genus: {},
     gathering: emptyGathering(),
     wallets: {},
     crafting: emptyCrafting(),
@@ -122,6 +124,7 @@ export function normalize(raw: any): AppData {
       kills: Array.isArray(raw.arena?.kills) ? raw.arena.kills.filter((k: any) => k?.other && Number.isFinite(k.atMs)) : [] },
     map: cleanMap(raw.map),
     pets: cleanCollections(raw.pets),
+    genus: cleanGenusAll(raw.genus),
     gathering: cleanGathering(raw.gathering),
     wallets: cleanWallets(raw.wallets),
     crafting: cleanCrafting(raw.crafting),

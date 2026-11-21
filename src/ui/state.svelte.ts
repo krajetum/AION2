@@ -1,4 +1,5 @@
 // UI state. `ui.data` is a deep $state proxy of the save file: app/ use cases mutate it and the page updates.
+import { newTrack, type Track } from "../domain/timeline.ts";
 import { SvelteSet } from "svelte/reactivity";
 import type { FightRecord, RecentFight } from "../domain/fights.ts";
 import type { GuildView } from "../domain/guild.ts";
@@ -47,9 +48,14 @@ export const ui = $state({
 /** Tasks finished from the Planner page: kept on screen (ticked) so the tick is visible and can be undone. */
 export const doneHere = new SvelteSet<string>();
 /** Expanded news gids, kept when leaving the News page. */
-export const openNews = new Set<string>();
+export const openNews = new SvelteSet<string>();
 
 /** Plain copy of the save file for storage (the store plugin can't take a proxy). */
 export const snapshot = () => $state.snapshot(ui.data) as AppData;
 /** Plain copy of the Fight Log for storage. */
 export const fightsSnapshot = () => $state.snapshot(ui.fights) as FightRecord[];
+
+/** The running boss fight second by second (main.ts samples it each meter update) for the DPS page's chart.
+ *  Raw state, replaced (not mutated) on each update: no deep proxy over a few thousand numbers 5 times a second. */
+class Live { track = $state.raw<Track>(newTrack()); }
+export const live = new Live();

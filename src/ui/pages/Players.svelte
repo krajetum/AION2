@@ -1,11 +1,20 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
+  import { Progress } from "$lib/components/ui/progress/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   // Player search: the official character search and profiles (infra/armory.ts), as on NCSOFT's site.
-  import { profilePage, type Found, type Profile } from "../../domain/armory.ts";
+  import { pickFound, profilePage, type Found, type Profile } from "../../domain/armory.ts";
   import { gearUrl, REGIONS, regionOf, serversIn } from "../../domain/servers.ts";
   import { equipmentOf, profileOf, searchPlayers } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
   import { hm, num } from "../format.ts";
+  import DaevanionBoards from "../parts/DaevanionBoards.svelte";
   import Equipment from "../parts/Equipment.svelte";
+  import GenusInsight from "../parts/GenusInsight.svelte";
+  import PlayerCompare from "../parts/PlayerCompare.svelte";
   import Kpi from "../parts/Kpi.svelte";
   import { ui } from "../state.svelte.ts";
 
@@ -61,50 +70,79 @@
     void search();
   }
   $effect(() => { if (me && !touched) openMe(); });
+  // Compare: the character kept as the first side; the one opened next (searched, or yours) is the second.
+  let first = $state<Found | null>(null), compareError = $state("");
+  const comparing = $derived(!!first && !!open && open.characterId !== first.characterId);
+  const isMe = (c: Found | null) => !!c && !!me && c.serverId === me.serverId && c.name.toLowerCase() === me.name.toLowerCase();
+  function startCompare() { first = open; compareError = ""; }
+  async function compareWithMe() {
+    if (!me || !open) return;
+    compareError = "";
+    try {
+      const mine = pickFound(await searchPlayers(me.name, me.serverId), me.name, me.serverId);
+      if (!mine) { compareError = `${me.name} not found on the official search`; return; }
+      first = mine;
+    } catch (e) { compareError = e instanceof Error ? e.message : String(e); }
+  }
+  function swap() { if (first && open) { const was = first; first = open; void show(was); } }
+
+  // Your Genus Insight, read in game: only for your own characters (kept by name; the game sends no one else's).
+  const genus = $derived(open && profile ? ui.data.genus?.[open.name] ?? Object.entries(ui.data.genus ?? {}).find(([n]) => n.toLowerCase() === open!.name.toLowerCase())?.[1] ?? null : null);
 </script>
 
-<form class="toolbar start" onsubmit={(e) => { e.preventDefault(); void search(); }}>
-  <label>Name <input bind:value={name} placeholder="Character name" aria-label="Character name" autocomplete="off" required></label>
-  <label>Region <select bind:value={region}>{#each Object.values(REGIONS) as r}<option value={r}>{REGION_NAMES[r] ?? r}</option>{/each}</select></label>
-  <label>Server <select bind:value={serverId}>
+<form class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm" onsubmit={(e) => { e.preventDefault(); void search(); }}>
+  <label class="flex items-center gap-1.5 text-muted-foreground">Name <Input class="w-52" bind:value={name} placeholder="Character name" aria-label="Character name" autocomplete="off" required /></label>
+  <label class="flex items-center gap-1.5 text-muted-foreground">Region <NativeSelect bind:value={region}>{#each Object.values(REGIONS) as r}<NativeSelectOption value={r}>{REGION_NAMES[r] ?? r}</NativeSelectOption>{/each}</NativeSelect></label>
+  <label class="flex items-center gap-1.5 text-muted-foreground">Server <NativeSelect bind:value={serverId}>
     {#each ["Elyos", "Asmodian"] as side, k}<optgroup label={side}>{#each servers.filter((s) => Math.floor(s.id / 1000) === k + 1) as s (s.id)}<option value={s.id}>{s.name}</option>{/each}</optgroup>{/each}
-  </select></label>
-  <button disabled={searching} onclick={() => { touched = true; }}>{searching ? "Searching…" : "Search"}</button>
+  </NativeSelect></label>
+  <Button type="submit" disabled={searching} onclick={() => { touched = true; }}>{searching ? "Searching…" : "Search"}</Button>
   {#if me && !(open && open.serverId === me.serverId && open.name.toLowerCase() === me.name.toLowerCase())}
-    <button type="button" class="ghost" title="Back to the character you play in game" onclick={openMe}>← My character ({me.name})</button>{/if}
+    <Button type="button" variant="ghost" title="Back to the character you play in game" onclick={openMe}>← My character ({me.name})</Button>{/if}
 </form>
-<p class="hint">From the official character search: names containing what you type, on one server. Only Europe has been checked.</p>
-{#if error}<p class="hint">The search could not be read ({error}).</p>{/if}
+<p class="hint mt-0 mb-3">From the official character search: names containing what you type, on one server. Only Europe has been checked.</p>
+{#if error}<p class="hint error">The search could not be read ({error}).</p>{/if}
 
-{#if found}<section class="dps-table"><h2>Characters <span class="count">{found.length}</span></h2>
-  <div class="scroll"><table class="sheet">
-    <thead><tr><th>Name</th><th class="n">Level</th><th>Server</th></tr></thead>
-    <tbody>{#each found as c (c.characterId)}<tr class:on={open === c}>
-      <td><button class="ghost" onclick={() => show(c)}>{c.name}</button></td><td class="n">{c.level ?? "—"}</td><td>{c.serverName}</td>
-    </tr>{:else}<tr><td class="hint" colspan="3">No character with that name on this server.</td></tr>{/each}</tbody>
-  </table></div>
-</section>{/if}
+{#if found}<Panel title="Characters" count={found.length}>
+  <Table.Root>
+    <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Name</Table.Head><Table.Head class="text-right">Level</Table.Head><Table.Head>Server</Table.Head></Table.Row></Table.Header>
+    <Table.Body>{#each found as c (c.characterId)}<Table.Row data-state={open === c ? "selected" : undefined}>
+      <Table.Cell><Button variant="link" size="sm" class="px-0" onclick={() => show(c)}>{c.name}</Button></Table.Cell><Table.Cell class="text-right">{c.level ?? "—"}</Table.Cell><Table.Cell>{c.serverName}</Table.Cell>
+    </Table.Row>{:else}<Table.Row><Table.Cell class="text-muted-foreground" colspan={3}>No character with that name on this server.</Table.Cell></Table.Row>{/each}</Table.Body>
+  </Table.Root>
+</Panel>{/if}
 
-{#if open}<section class="dps-table"><h2>{#if profile && classIcon(profile.className)}<img class="cls-icon" src={classIcon(profile.className)} alt="" width="22" height="23">{/if}{open.name}
-  <span class="count">{profile?.className ?? ""} · {open.serverName}</span></h2>
-  {#if loading}<p class="hint">Reading the profile…</p>
-  {:else if profileError}<p class="hint">The profile could not be read ({profileError}).</p>
+{#if first && !comparing}<p class="hint mt-0 mb-3">Comparing with <b>{first.name}</b>: search and open the other character.
+  <Button size="sm" variant="ghost" onclick={() => { first = null; }}>Cancel</Button></p>{/if}
+{#if compareError}<p class="hint error">Compare: {compareError}</p>{/if}
+{#if comparing}<Panel title="Compare">
+  <PlayerCompare a={first!} b={open!} onswap={swap} onclose={() => { first = null; }} />
+</Panel>{/if}
+
+{#if open && !comparing}<Panel count="{profile?.className ?? ''} · {open.serverName}">
+  {#snippet actions()}{#if profile && !comparing}
+    {#if me && !isMe(open)}<Button size="sm" variant="outline" onclick={compareWithMe}>Compare with {me.name}</Button>{/if}
+    <Button size="sm" variant="outline" disabled={!!first} onclick={startCompare}>Compare with…</Button>{/if}{/snippet}
+  {#snippet head()}<span class="flex items-center gap-2">{#if profile && classIcon(profile.className)}<img class="size-6 object-contain" src={classIcon(profile.className)} alt="">{/if}{open!.name}</span>{/snippet}
+  {#if loading}<p class="hint mt-0">Reading the profile…</p>
+  {:else if profileError}<p class="hint error mt-0">The profile could not be read ({profileError}).</p>
   {:else if profile}
-    <div class="kpis">
+    <div class="mb-3 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
       <Kpi label="Combat power" value={profile.combatPower == null ? "—" : num(profile.combatPower)} cls="hero" sub={profile.title || " "} />
       <Kpi label="Item level" value={profile.itemLevel == null ? "—" : num(profile.itemLevel)} sub={profile.raceName || " "} />
       <Kpi label="Level" value={profile.level == null ? "—" : String(profile.level)} sub="read {hm(profile.atMs)}" />
     </div>
     <Equipment characterId={open.characterId} serverId={open.serverId} className={profile.className} />
-    <h3>Stats</h3>
-    {#if profile.stats?.length}<div class="scroll"><table class="sheet">
-      <thead><tr><th>Stat</th><th class="n">Value</th><th>Gives</th></tr></thead>
-      <tbody>{#each profile.stats as s (s.name)}<tr><td>{s.name}</td><td class="n">{num(s.value)}</td><td class="dim">{s.effects.join(" · ")}</td></tr>{/each}</tbody>
-    </table></div>{/if}
-    {#if profile.boards?.length}<h3>Daevanion</h3><div class="kpis">
-      {#each profile.boards as b (b.name)}<div class="kpi"><small>{b.name}</small><b>{b.open} / {b.total}</b>
-        <div class="bar"><i style:--p={String(b.total ? b.open / b.total : 0)}></i></div></div>{/each}</div>{/if}
+    <h3 class="mt-4 mb-2 text-sm font-semibold">Stats</h3>
+    {#if profile.stats?.length}<Table.Root>
+      <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Stat</Table.Head><Table.Head class="text-right">Value</Table.Head><Table.Head>Gives</Table.Head></Table.Row></Table.Header>
+      <Table.Body>{#each profile.stats as s (s.name)}<Table.Row><Table.Cell>{s.name}</Table.Cell><Table.Cell class="text-right">{num(s.value)}</Table.Cell><Table.Cell class="whitespace-normal text-muted-foreground">{s.effects.join(" · ")}</Table.Cell></Table.Row>{/each}</Table.Body>
+    </Table.Root>{/if}
+    <div class="mt-4 flex flex-col gap-2">
+      {#if profile.boards?.length}<DaevanionBoards characterId={open.characterId} serverId={open.serverId} boards={profile.boards} />{/if}
+      {#if genus}<GenusInsight g={genus} />{:else if me && open.name.toLowerCase() === me.name.toLowerCase()}<p class="hint m-0">Genus Insight: the game sends it when you enter the world. Log in (or change character) with the companion open to see it here.</p>{/if}
+    </div>
   {/if}
-  <p><a href={profilePage(open.characterId, open.serverId)} target="_blank" rel="noopener">Official profile ↗</a>
-    {#if gearUrl(open.name, open.serverId)} · <a href={gearUrl(open.name, open.serverId)} target="_blank" rel="noopener">shugo.gg ↗</a>{/if}</p>
-</section>{/if}
+  <p class="mt-3 mb-0 text-sm"><a class="text-primary hover:underline" href={profilePage(open.characterId, open.serverId)} target="_blank" rel="noopener">Official profile ↗</a>
+    {#if gearUrl(open.name, open.serverId)} · <a class="text-primary hover:underline" href={gearUrl(open.name, open.serverId)} target="_blank" rel="noopener">shugo.gg ↗</a>{/if}</p>
+</Panel>{/if}

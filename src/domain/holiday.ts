@@ -55,7 +55,7 @@ export function newYearShow(now: number): boolean {
   return d.getMonth() === 0 && d.getDate() === 1 && now - new Date(d.getFullYear(), 0, 1).getTime() < NEW_YEAR_MS;
 }
 
-/** The Halloween theme: 25 October 00:00 to 1 November 23:59, local time. Colours only (style.css `data-season="halloween"`). */
+/** The Halloween theme: 25 October 00:00 to 1 November 23:59, local time. Colours only (app.css `data-season="halloween"`). */
 export function halloweenActive(now: number): boolean {
   const d = new Date(now), m = d.getMonth(), day = d.getDate();
   return (m === 9 && day >= 25) || (m === 10 && day === 1);
