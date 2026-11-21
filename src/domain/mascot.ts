@@ -2,6 +2,8 @@
 // bottom of the companion's window. What it does: its mood from what the app knows (alerts, cubes, the rift), and the
 // physics of walking, being dragged, thrown and shaken. Pure: the Svelte part (ui/parts/Mascot.svelte) draws it.
 import { faction } from "./servers.ts";
+import { EVENTS, type GameEvent } from "../config.ts";
+import { nextEvent } from "./time.ts";
 
 /** One frame of a sheet, px. */
 export const FRAME = 48;
@@ -18,7 +20,11 @@ export const ANIMS = {
   dizzy: { row: 8, frames: 4, fps: 6 },
   land: { row: 9, frames: 3, fps: 8 },
   rift: { row: 10, frames: 4, fps: 10 },
+  fight: { row: 11, frames: 6, fps: 8 },
 } as const;
+/** The event companions (public/mascots/<name>.png, one row, drawn by scripts/mascot-extras.py): the foe it fights in the
+ *  Dimensional Invasion (same speed as `fight`: hit as it strikes), the lantern critter of the Shugo Festival. */
+export const EXTRAS = { foe: { frames: 6, fps: 8 }, festival: { frames: 6, fps: 8 } } as const;
 export type Anim = keyof typeof ANIMS;
 export const SHEET_COLS = Math.max(...Object.values(ANIMS).map((a) => a.frames));
 export const SHEET_ROWS = Object.keys(ANIMS).length;
@@ -42,23 +48,42 @@ export function sheetFor(job: string, gender: Gender, serverId: number): string 
 
 // --- mood: what the app tells it ---------------------------------------------------------------------------------
 
-/** How long it shouts after an alert, clings on after the rift's alert, and cheers or sulks after a cube is opened. */
+/** How long it shouts after an alert, and cheers or sulks after a cube is opened. */
 export const SHOUT_MS = 4_000;
-export const RIFT_MS = 10 * 60_000;
 export const CUBE_MS = 5_000;
+/** The events: it fights the Dimensional Invasion and the festival critter visits for this long from the event's start
+ *  (the player's choice, 2026-11-21); it clings on through the Spacetime Rift while it is open (config `duration`). */
+export const FIGHT_MS = 3 * 60_000;
+export const FESTIVAL_MS = 3 * 60_000;
+/** Cues older than this are dropped (the longest a cue lasts). */
+export const CUE_KEEP_MS = 60_000;
 /** With nothing going on and the companion's window untouched this long, it dozes off where it stands. */
 export const SLEEP_MS = 5 * 60_000;
 /** Asleep: free to wander (no mood), on the ground, and no input in the window for SLEEP_MS. */
 export const asleep = (b: Body, m: Anim | null, now: number, lastInput: number): boolean =>
   !m && (b.state === "idle" || b.state === "walk") && now - lastInput >= SLEEP_MS;
 
-/** shout / rift: an alert's sound (`cueOf`). cheer / sulk: the app's own moments (a list finished, a personal best,
+/** shout: an alert's sound (`cueOf`). cheer / sulk: the app's own moments (a list finished, a personal best,
  *  a PvP kill of yours / your death in PvP), for CUBE_MS. */
-export type Cue = { kind: "shout" | "rift" | "cheer" | "sulk"; atMs: number };
-/** The cue an alert's sound gives (its channel first): the rift's alert → rift, other event and field-boss alerts → shout. */
+export type Cue = { kind: "shout" | "cheer" | "sulk"; atMs: number };
+/** The cue an alert's sound gives (its channel first): event and field-boss alerts → shout. */
 export function cueOf(sound: string[]): Cue["kind"] | null {
-  if (sound[0] === "rift") return "rift";
   return sound.includes("event") || sound.includes("boss") ? "shout" : null;
+}
+
+/** The last start of an event at or before `now`. */
+export function lastStart(ev: GameEvent, now: number, zone: string): number {
+  const t = nextEvent(ev, now - ev.everyHours * 3_600_000, zone); // the one start in (now - period, now]
+  return t <= now ? t : nextEvent(ev, now - 2 * ev.everyHours * 3_600_000, zone); // a DST change in between
+}
+/** What the events ask of the mascot now, from their times (not their alerts, which are off by default):
+ *  the rift open, the invasion's first FIGHT_MS, the festival's first FESTIVAL_MS. */
+export function eventsNow(now: number, zone: string, events: GameEvent[] = EVENTS) {
+  const within = (id: string, ms: (ev: GameEvent) => number) => {
+    const ev = events.find((e) => e.id === id);
+    return !!ev && now - lastStart(ev, now, zone) < ms(ev);
+  };
+  return { rift: within("rift", (ev) => ev.duration * 60_000), fight: within("invasion", () => FIGHT_MS), festival: within("shugo", () => FESTIVAL_MS) };
 }
 
 export interface MoodInput {
@@ -66,6 +91,8 @@ export interface MoodInput {
   cues: Cue[];
   cubeInView: boolean;
   lastOpened: { byYou: boolean; atMs: number } | null;
+  /** `eventsNow`; none = no event. */
+  events?: { rift: boolean; fight: boolean };
 }
 /** What it is doing because of the game, most important first; null = free to wander. */
 export function mood(m: MoodInput): Anim | null {
@@ -74,7 +101,8 @@ export function mood(m: MoodInput): Anim | null {
   if (since("cheer") < CUBE_MS) return "celebrate";
   if (since("sulk") < CUBE_MS) return "sad";
   if (m.lastOpened && m.now - m.lastOpened.atMs >= 0 && m.now - m.lastOpened.atMs < CUBE_MS) return m.lastOpened.byYou ? "celebrate" : "sad";
-  if (since("rift") < RIFT_MS) return "rift";
+  if (m.events?.rift) return "rift";
+  if (m.events?.fight) return "fight";
   if (m.cubeInView) return "happy";
   return null;
 }

@@ -1,5 +1,5 @@
 // Overlay outside #app: the status line. Plus the sound on a tick.
-import { channelVolume } from "../domain/alerts.ts";
+import { channelVolume, themeFor } from "../domain/alerts.ts";
 import type { Settings } from "../domain/types.ts";
 import { playSound } from "../infra/notifier.ts";
 
@@ -17,5 +17,5 @@ export function showStatus(msg: string, err = false) {
 /** Sound on check. */
 export function react(s: Settings) {
   const vol = channelVolume(s, "check");
-  if (vol) playSound(["check"], vol, s.soundTheme);
+  if (vol) playSound(["check"], vol, themeFor(s, "check"));
 }
