@@ -3,6 +3,7 @@ import { logKills, logMatch } from "../domain/arena.ts";
 import { mergeBosses } from "../domain/bosses.ts";
 import { mobKind, takeCubes, takeLoots, takeSouls } from "../domain/map.ts";
 import { addSoulPoints, finishFromSilentKills, takeCollection } from "../domain/pets.ts";
+import { takeGenus } from "../domain/genus.ts";
 import { takeApCatchUp, takeApGains, takeOdyle, takeWallet } from "../domain/wallet.ts";
 import { lastBoundary } from "../domain/time.ts";
 import { RESET_CONFIG } from "../config.ts";
@@ -32,6 +33,7 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   // The collection read on entering the world, then the soul points gained since (per character).
   const me = u.profile?.name ?? "";
   const read = !!u.pets && takeCollection(data.pets, me, u.pets);
+  const genus = !!u.genus && takeGenus(data.genus, me, u.genus);
   // Every soul point counts, placed on the map or not (an older meter sends only the placed ones).
   if (me && me !== playing.name) {
     playing.sinceMs = playing.name ? Date.now() : 0;
@@ -47,7 +49,7 @@ export function takeMeterData(data: AppData, u: MeterUpdate): boolean {
   const wallet = takeWallet(data.wallets, u.wallet);
   const ap = takeApGains(data.wallets, u.wallet, u.kills ?? [], u.loots ?? [], Date.now(), u.pvpDeaths ?? []);
   const odyle = takeOdyle(data.wallets, u.odyle, Date.now());
-  return !!bosses || match || cubes || kills || souls || loots || read || gained || finished || wallet || odyle || ap || missed;
+  return !!bosses || match || cubes || kills || souls || loots || read || genus || gained || finished || wallet || odyle || ap || missed;
 }
 
 /** Names an arena map ("Arena of Solitude"); empty = unnamed. */

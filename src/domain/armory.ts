@@ -10,7 +10,7 @@ export interface Profile {
   name: string; className: string; level: number | null; itemLevel: number | null; combatPower: number | null; atMs: number;
   serverName?: string; raceName?: string; title?: string;
   stats?: { name: string; value: number; effects: string[] }[]; // primary and god stats, item level left out
-  boards?: { name: string; open: number; total: number }[];     // Daevanion boards: nodes open of total
+  boards?: { id: number; name: string; open: number; total: number }[]; // Daevanion boards: nodes open of total
 }
 
 /** `race`: 2 = Asmodian (seen); 1 = Elyos is inferred, not seen yet. */
@@ -66,8 +66,40 @@ export function parseInfo(json: any, now: number): Profile | null {
       .map((s) => ({ name: plain(s.name), value: s.value, effects: Array.isArray(s.statSecondList) ? s.statSecondList.map(plain) : [] })),
     boards: (Array.isArray(json?.daevanion?.boardList) ? json.daevanion.boardList : [])
       .filter((b: any) => b && typeof b.name === "string" && num(b.openNodeCount) != null && num(b.totalNodeCount) != null)
-      .map((b: any) => ({ name: plain(b.name), open: b.openNodeCount, total: b.totalNodeCount })),
+      .map((b: any) => ({ id: num(b.id) ?? 0, name: plain(b.name), open: b.openNodeCount, total: b.totalNodeCount })),
   };
+}
+
+export const DAEVANION_URL = "https://aion2.plaync.com/api/character/daevanion/detail";
+/** One Daevanion board's nodes and what its open nodes give (the site asks board by board, `boardId` = the profile's board id). */
+export const daevanionUrl = (characterId: string, serverId: number, boardId: number) =>
+  `${DAEVANION_URL}?region=${regionOf(serverId)}&lang=en-US&characterId=${encodeURIComponent(characterId)}&serverId=${serverId}&boardId=${boardId}`;
+
+/** A stat line as the site writes it ("Attack Bonus +30", "Combat Speed +3%", "Multi-hit Chance +4,5%"). */
+export interface StatLine { name: string; value: number; pct: boolean }
+export function parseStatLine(desc: string): StatLine | null {
+  const m = /^(.+?)\s*([+-]\d+(?:[.,]\d+)?)(%?)$/.exec(plain(desc));
+  return m ? { name: m[1].trim(), value: Number(m[2].replace(",", ".")), pct: m[3] === "%" } : null;
+}
+
+/** A board's totals as its Board Effect shows them: stats and skill levels from the open nodes, and how many are open. */
+export interface Board { stats: StatLine[]; skills: StatLine[]; open: number; total: number }
+export function parseBoard(json: any): Board | null {
+  const nodes: any[] = Array.isArray(json?.nodeList) ? json.nodeList : [];
+  if (!nodes.length && !Array.isArray(json?.openStatEffectList)) return null;
+  const lines = (v: unknown) => (Array.isArray(v) ? v : []).map((x: any) => parseStatLine(str(x?.desc))).filter((x): x is StatLine => !!x);
+  const real = nodes.filter((n) => n && n.type !== "None");
+  return { stats: lines(json?.openStatEffectList), skills: lines(json?.openSkillEffectList), open: real.filter((n) => n.open === 1).length, total: real.length };
+}
+
+/** Lines of several boards (or pieces) added up by name and kind, in the order they first appear. */
+export function addLines(lists: StatLine[][]): StatLine[] {
+  const out = new Map<string, StatLine>();
+  for (const l of lists.flat()) {
+    const k = `${l.name}|${l.pct}`, had = out.get(k);
+    out.set(k, had ? { ...had, value: Math.round((had.value + l.value) * 100) / 100 } : { ...l });
+  }
+  return [...out.values()];
 }
 
 /** The official profile page of a character (the site's own link). */
@@ -126,9 +158,9 @@ export const itemUrl = (p: Piece, characterId: string, serverId: number) =>
 
 export interface ItemDetail {
   name: string; grade: string; category: string; level: number | null; maxEnchant: number | null;
-  main: { name: string; value: string; extra: string; exceed: boolean }[]; // value + extra (the enchant's); exceed = from the levels past the cap
-  sub: { name: string; value: string }[];
-  manastones: { name: string; value: string; grade: string }[];
+  main: { id: string; name: string; value: string; extra: string; exceed: boolean }[]; // value + extra (the enchant's); exceed = from the levels past the cap
+  sub: { id: string; name: string; value: string }[];
+  manastones: { id: string; name: string; value: string; grade: string }[];
   godstones: { name: string; desc: string; grade: string }[];
   skills: { name: string; level: number | null }[]; // an arcana's skill levels
   set: { name: string; equipped: number; bonuses: { pieces: number; text: string[] }[] } | null;
@@ -141,9 +173,9 @@ export function parseItem(json: any): ItemDetail | null {
   const set = json.set;
   return {
     name: plain(json.name), grade: str(json.grade), category: plain(json.categoryName), level: num(json.level), maxEnchant: num(json.maxEnchantLevel),
-    main: arr(json.mainStats).map((s) => ({ name: plain(s.name), value: str(s.value), extra: str(s.extra), exceed: s.exceed === true })),
-    sub: arr(json.subStats).map((s) => ({ name: plain(s.name), value: str(s.value) })),
-    manastones: arr(json.magicStoneStat).map((s) => ({ name: plain(s.name), value: str(s.value), grade: str(s.grade) })),
+    main: arr(json.mainStats).map((s) => ({ id: str(s.id), name: plain(s.name), value: str(s.value), extra: str(s.extra), exceed: s.exceed === true })),
+    sub: arr(json.subStats).map((s) => ({ id: str(s.id), name: plain(s.name), value: str(s.value) })),
+    manastones: arr(json.magicStoneStat).map((s) => ({ id: str(s.id), name: plain(s.name), value: str(s.value), grade: str(s.grade) })),
     godstones: arr(json.godStoneStat).map((s) => ({ name: plain(s.name), desc: str(s.desc), grade: str(s.grade) })),
     skills: arr(json.subSkills).map((s) => ({ name: plain(s.name), level: num(s.level) })),
     set: set && typeof set.name === "string" ? { name: plain(set.name), equipped: num(set.equippedCount) ?? 0,

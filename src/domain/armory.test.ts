@@ -33,7 +33,7 @@ test("official profile: level, class, item level, combat power", () => {
   assert.deepEqual({ ...p, stats: undefined, boards: undefined },
     { name: "ImHopex", className: "Chanter", level: 45, combatPower: 146516, itemLevel: 2803, atMs: 5, serverName: "Baba", raceName: "", title: "", stats: undefined, boards: undefined });
   assert.deepEqual(p.stats, [{ name: "Might", value: 78, effects: ["Attack increase +7.8%"] }, { name: "Willpower", value: 0, effects: [] }]);
-  assert.deepEqual(p.boards, [{ name: "Nezekan", open: 63, total: 88 }]);
+  assert.deepEqual(p.boards, [{ id: 81, name: "Nezekan", open: 63, total: 88 }]);
   assert.equal(parseInfo({ error: "x" }, 5), null);
 });
 
@@ -74,12 +74,36 @@ test("official equipment: tabs, arcana, pet, wings, skills", () => {
 
 test("official item details: stats, manastones, an arcana's skills and set", () => {
   const h = parseItem(ITEM)!;
-  assert.deepEqual(h.main, [{ name: "Defense", value: "477", extra: "275", exceed: false }]);
-  assert.deepEqual(h.sub, [{ name: "Double Chance", value: "1.9%" }]);
-  assert.deepEqual(h.manastones, [{ name: "Critical Hit", value: "+15", grade: "Unique" }]);
+  assert.deepEqual(h.main, [{ id: "ArmorDefense", name: "Defense", value: "477", extra: "275", exceed: false }]);
+  assert.deepEqual(h.sub, [{ id: "HardHit", name: "Double Chance", value: "1.9%" }]);
+  assert.deepEqual(h.manastones, [{ id: "Critical", name: "Critical Hit", value: "+15", grade: "Unique" }]);
   assert.equal(h.set, null);
   const a = parseItem(ARCANA)!;
   assert.deepEqual(a.skills, [{ name: "Heat Wave Blow", level: 3 }]);
   assert.deepEqual(a.set, { name: "Primal Vigor", equipped: 3, bonuses: [{ pieces: 2, text: ["+60 PvE Attack when HP is 70% or more"] }] });
   assert.equal(parseItem(null), null);
+});
+
+test("a Daevanion board reads as its Board Effect (Nezekan, the player's, 2026-11-21)", async () => {
+  const { parseBoard, addLines, parseStatLine, daevanionUrl } = await import("./armory.ts");
+  const json = {
+    nodeList: [
+      { boardId: 21, type: "Stat", open: 1, effectList: [{ desc: "Attack Bonus +3" }] },
+      { boardId: 21, type: "Stat", open: 0, effectList: [{ desc: "HP +100" }] },
+      { boardId: 21, type: "None", open: 0, effectList: [] },
+    ],
+    openSkillEffectList: [{ desc: "Vicious Strike +1" }, { desc: "Ironclad Defense +2" }],
+    openStatEffectList: [{ desc: "HP +700" }, { desc: "Attack Bonus +30" }, { desc: "Combat Speed +3%" }],
+  };
+  const b = parseBoard(json)!;
+  assert.deepEqual(b.stats, [{ name: "HP", value: 700, pct: false }, { name: "Attack Bonus", value: 30, pct: false }, { name: "Combat Speed", value: 3, pct: true }]);
+  assert.deepEqual(b.skills[1], { name: "Ironclad Defense", value: 2, pct: false });
+  assert.equal(b.open, 1);
+  assert.equal(b.total, 2); // empty cells ("None") are not nodes
+  assert.deepEqual(parseStatLine("Multi-hit Chance +4,5%"), { name: "Multi-hit Chance", value: 4.5, pct: true });
+  assert.equal(parseStatLine("Opens the board"), null);
+  assert.deepEqual(addLines([b.stats, [{ name: "Attack Bonus", value: 33, pct: false }, { name: "Damage Boost", value: 3, pct: true }]]).map((l) => `${l.name} ${l.value}`),
+    ["HP 700", "Attack Bonus 63", "Combat Speed 3", "Damage Boost 3"]);
+  assert.equal(parseBoard({}), null);
+  assert.match(daevanionUrl("a=", 2318, 21), /daevanion\/detail\?region=eu&lang=en-US&characterId=a%3D&serverId=2318&boardId=21$/);
 });

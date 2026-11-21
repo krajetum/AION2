@@ -35,6 +35,8 @@ pub mod souls;
 pub mod abyss_bosses;
 /// Your pet collection (levels and soul points), when the Pets menu opens.
 pub mod pets;
+/// Your Genus Insight lines (from the pet collection) and the preset switched to.
+pub mod genus;
 /// Your currencies (Kina, Abyss Points, Nightmare and Shugo Coins).
 pub mod currencies;
 /// The arena's line-up (servers and levels of every player of the match).

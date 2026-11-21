@@ -72,7 +72,7 @@ teleports and your own buffs), `src/cubes.rs` (hidden cubes in view and opened),
 `DataStorage::pvp_ledger`, a read-only copy of the companion's PvP ledger),
 `src/souls.rs` (your mob kills that gave soul points, and where the mob died),
 `src/abyss_bosses.rs` (the Abyss's open-world bosses, for the Others row),
-`src/pets.rs` (your pet collection, sent on entering the world), `src/currencies.rs` (your currencies from the inventory), `src/roster.rs` (the arena's line-up),
+`src/pets.rs` (your pet collection, sent on entering the world), `src/genus.rs` (your Genus Insight lines, at the end of the same record), `src/currencies.rs` (your currencies from the inventory), `src/roster.rs` (the arena's line-up),
 `src/tap.rs` (all of them on A2Tools' frame tap), `src/capture/tcp_order.rs` (TCP segments in stream order), `src/netstats.rs` (packet loss),
 `src/lib.rs`, `examples/smoke.rs`. Same license (GPL-3.0).
 
