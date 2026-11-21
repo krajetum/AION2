@@ -163,6 +163,16 @@ struct ArenaWatch {
     zone_since_ms: i64,
 }
 
+/// What the engine reads of a boss fight at most once a second (copies every hit's time and buff segment).
+#[derive(Default)]
+struct BossDetails {
+    target: i32,
+    at: i64,
+    deaths: Vec<crate::entity::details_context::DeathPoint>,
+    active: HashMap<i32, i64>,
+    buffs: HashMap<i32, Vec<crate::buffs::BuffUp>>,
+}
+
 pub struct Engine {
     storage: Arc<DataStorage>,
     npcs: Arc<NpcLookup>,
@@ -183,6 +193,8 @@ pub struct Engine {
     game: Mutex<(i64, bool)>,
     /// (deaths read up to this time, the kills and deaths found)
     kills: Mutex<(i64, Vec<crate::kills::Kill>)>,
+    /// The boss's full details read at most once a second.
+    boss_details: Mutex<BossDetails>,
 }
 
 impl Engine {
@@ -228,6 +240,7 @@ impl Engine {
             bosses: Mutex::new((0, Vec::new())),
             arena: Mutex::new(ArenaWatch::default()),
             kills: Mutex::new((crate::clock::now_ms(), Vec::new())),
+            boss_details: Mutex::new(BossDetails { at: i64::MIN, ..Default::default() }),
             ports,
             ping,
             paused,
@@ -254,6 +267,7 @@ impl Engine {
             bosses: Mutex::new((0, Vec::new())),
             arena: Mutex::new(ArenaWatch::default()),
             kills: Mutex::new((i64::MIN, Vec::new())),
+            boss_details: Mutex::new(BossDetails { at: i64::MIN, ..Default::default() }),
             ports: Arc::new(CombatPortDetector::new()),
             ping,
             paused: Arc::new(AtomicBool::new(false)),
@@ -356,23 +370,41 @@ impl Engine {
                     }
                 }
             }
-            // On a boss, every row's totals (hits, crit rate, deaths) for the DPS Log's advanced stats:
-            // A2Tools' hover summary of everyone's skills, and its death marks in the target's details (no skills asked for).
+            // On a boss, every row's totals (hits, crit rate, deaths, active time) for the DPS Log's advanced stats:
+            // A2Tools' hover summary of everyone's skills; its full target details (death marks, every hit's time)
+            // at most once a second, they copy every hit's timestamp.
             let boss = fight.target.as_ref().is_some_and(|t| t.is_boss);
             let everyone: Vec<_> = if boss { targets.iter().flat_map(|&t| calc.get_hover_details(t, None).skills).collect() } else { Vec::new() };
             if boss {
                 fight.add_totals(&everyone);
                 if dps.target_id != 0 {
-                    if let Some(d) = calc.get_target_details(dps.target_id, Some(&[])).deaths {
-                        fight.add_deaths(&d);
+                    let mut cache = self.boss_details.lock();
+                    let now = crate::clock::now_ms();
+                    if cache.target != dps.target_id || now - cache.at >= 1_000 || now < cache.at {
+                        let d = calc.get_target_details(dps.target_id, None);
+                        let buffs = calc.live_fight_buffs(dps.target_id)
+                            .map(|b| crate::buffs::by_player(&b.buffs, dps.target_id, b.duration_ms))
+                            .unwrap_or_default();
+                        *cache = BossDetails {
+                            target: dps.target_id,
+                            at: now,
+                            deaths: d.deaths.unwrap_or_default(),
+                            // Hit times there are ms from the fight's first hit.
+                            active: crate::snapshot::active_by_actor(&d.skills, 0, d.battle_time),
+                            buffs,
+                        };
                     }
+                    fight.add_deaths(&cache.deaths);
+                    fight.add_active(&cache.active);
+                    fight.add_buffs(&cache.buffs);
                 }
             }
-            // Per-skill details for the rows opened in the UI, and always yours (the Fight Log keeps them):
+            // Per-skill details: on a boss everyone's (the DPS Log shows every player's skills), elsewhere the rows
+            // opened in the UI, and always yours (the Fight Log keeps them):
             // A2Tools' hover summary for damage; healing per skill is only in the full details.
             let watched: Vec<i32> = {
                 let w = self.watched.lock();
-                fight.rows.iter().filter(|r| r.is_you || w.contains(&r.id)).map(|r| r.id).collect()
+                fight.rows.iter().filter(|r| r.is_you || boss || w.contains(&r.id)).map(|r| r.id).collect()
             };
             if !watched.is_empty() {
                 if view == "healing" {

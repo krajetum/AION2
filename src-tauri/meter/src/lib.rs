@@ -44,5 +44,8 @@ pub mod tap;
 /// Companion: packet loss on the game connection (TCP resends).
 pub mod netstats;
 
+// Companion: each player's buffs with their uptime in a boss fight.
+pub mod buffs;
+
 #[cfg(feature = "live")]
 pub mod engine;

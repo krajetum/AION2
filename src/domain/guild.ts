@@ -2,7 +2,7 @@
 // Pure. The member code and officer key stay in the save file only; the Worker keeps their hashes.
 import { dueLeads } from "./alerts.ts";
 import { personalBests, yourDps, type Best, type FightRecord } from "./fights.ts";
-import type { PlayerRow, Profile, SkillRow } from "./meter.ts";
+import { BUFF_KINDS, type BuffUp, type PlayerRow, type Profile, type SkillRow } from "./meter.ts";
 
 export interface GuildShare { gear: boolean; fights: boolean }
 /** This install's guild (AppData.guild). memberCode = the code it joined with (to invite others), officerKey = officers only. */
@@ -149,12 +149,16 @@ const bareSkill = (s: SkillRow): SkillRow => ({ ...s, icon: null });
 export function guildFight(r: FightRecord): FightRecord {
   const mine = r.rows.find((x) => x.isYou);
   const others = r.rows.filter((x) => !x.isYou).sort((a, b) => b.damage - a.damage)
-    .slice(0, MAX_ROWS - (mine ? 1 : 0)).map((x) => ({ ...x, skills: [], healSkills: [] }));
+    .slice(0, MAX_ROWS - (mine ? 1 : 0)).map((x) => ({ ...x, skills: [], healSkills: [], buffs: undefined }));
   let skills = [...(mine?.skills ?? [])].sort((a, b) => b.damage - a.damage);
   // The timeline stays on this PC: the Worker keeps 8 KB a fight.
-  const build = (s: SkillRow[]): FightRecord => ({ ...r, timeline: undefined, rows: mine ? [{ ...mine, skills: s, healSkills: [] }, ...others] : others });
+  // Your buffs go too; dropped first when the fight is too big.
+  let buffs = mine?.buffs;
+  const build = (s: SkillRow[]): FightRecord => ({ ...r, timeline: undefined, rows: mine ? [{ ...mine, skills: s, healSkills: [], buffs }, ...others] : others });
   let out = build(skills);
   if (JSON.stringify(out).length <= MAX_FIGHT) return out;
+  buffs = undefined;
+  if (JSON.stringify((out = build(skills))).length <= MAX_FIGHT) return out;
   skills = skills.map(bareSkill);
   while ((out = build(skills)), JSON.stringify(out).length > MAX_FIGHT && skills.length) skills = skills.slice(0, -1);
   return out;
@@ -169,11 +173,16 @@ const cleanRow = (x: any): PlayerRow => ({
   share: num(x?.share) ?? 0, hps: num(x?.hps) ?? 0, heal: num(x?.heal) ?? 0, combatPower: num(x?.combatPower) ?? 0,
   gearScore: num(x?.gearScore) ?? 0, isYou: x?.isYou === true, inParty: x?.inParty === true, isOthers: x?.isOthers === true,
   damageTaken: num(x?.damageTaken) ?? 0, hitsTaken: num(x?.hitsTaken) ?? 0,
-  deaths: num(x?.deaths) ?? undefined,
+  deaths: num(x?.deaths) ?? undefined, activeMs: num(x?.activeMs) ?? undefined,
   deathTimes: Array.isArray(x?.deathTimes) ? x.deathTimes.map(num).filter((t: number | null): t is number => t !== null && t >= 0).slice(0, 50) : undefined,
   reviveTimes: Array.isArray(x?.reviveTimes) && Array.isArray(x?.deathTimes) && x.reviveTimes.length === x.deathTimes.length
     ? x.reviveTimes.map((t: unknown) => num(t)).slice(0, 50) : undefined, hits: num(x?.hits) ?? undefined, critRate: num(x?.critRate) ?? undefined,
   skills: Array.isArray(x?.skills) ? x.skills.map(cleanSkill) : [], healSkills: [],
+  buffs: Array.isArray(x?.buffs) ? x.buffs.slice(0, 40).filter(isObj).map((b: any): BuffUp => ({
+    id: num(b.id) ?? 0, name: str(b.name), upMs: num(b.upMs) ?? 0, own: b.own === true,
+    kind: (BUFF_KINDS as readonly string[]).includes(b.kind) ? b.kind : "buff",
+    icon: typeof b.icon === "string" && /^[A-Za-z0-9_]{1,80}$/.test(b.icon) ? b.icon : null,
+  })) : undefined,
 });
 
 /** GET /v1/guilds/:id/fights?boss=: other members' records, checked field by field (they come from other installs). */
@@ -182,6 +191,7 @@ export function parseGuildFights(j: any): FightRecord[] {
   return list.filter((f: any) => isObj(f) && typeof f.id === "string" && typeof f.boss === "string" && Array.isArray(f.rows)
     && num(f.battleTimeMs) && num(f.endMs)).map((f: any): FightRecord => ({
     id: f.id, endMs: f.endMs, battleTimeMs: f.battleTimeMs, boss: f.boss, maxHp: num(f.maxHp) ?? 0, killed: f.killed === true,
+    hpLeft: typeof f.hpLeft === "number" && f.hpLeft >= 0 && f.hpLeft <= 1 ? f.hpLeft : undefined,
     mapId: num(f.mapId), char: str(f.char), gearScore: num(f.gearScore), combatPower: num(f.combatPower), rows: f.rows.map(cleanRow),
   }));
 }
@@ -206,9 +216,11 @@ export const PULL_SLACK_MS = 30_000;
 
 export interface PullRow { key: string; row: PlayerRow; own: boolean } // own: from that player's own upload (with their skills and totals)
 /** One boss pull as several members recorded it. */
-export interface Pull { id: string; boss: string; startMs: number; endMs: number; battleTimeMs: number; killed: boolean; chars: string[]; rows: PullRow[] }
+export interface Pull { id: string; boss: string; startMs: number; endMs: number; battleTimeMs: number; killed: boolean; hpLeft?: number; chars: string[]; rows: PullRow[] }
 
 const startOf = (f: FightRecord) => f.endMs - f.battleTimeMs;
+/** The lowest HP any member saw the boss at (the last one to stop recording saw it lowest); none when no record has it. */
+const lowest = (v: (number | undefined)[]) => { const k = v.filter((x): x is number => x != null); return k.length ? Math.min(...k) : undefined; };
 
 /** Shared fights of the same pull grouped (same boss, their times overlapping within PULL_SLACK_MS, one record per member),
  *  newest first. Each player once: their own record's row when they shared it, else the biggest row another member saw of them.
@@ -236,7 +248,7 @@ export function groupPulls(fights: FightRecord[]): Pull[] {
     const end = Math.max(...g.map((f) => f.endMs));
     return {
       id: `${g[0].id}#${i}`, boss: g[0].boss, startMs: Math.min(...g.map(startOf)), endMs: end, battleTimeMs: Math.max(...g.map((f) => f.battleTimeMs)),
-      killed: g.some((f) => f.killed), chars: g.map((f) => f.char).filter(Boolean), rows,
+      killed: g.some((f) => f.killed), hpLeft: lowest(g.map((f) => f.hpLeft)), chars: g.map((f) => f.char).filter(Boolean), rows,
     };
   }).sort((a, b) => b.endMs - a.endMs);
 }

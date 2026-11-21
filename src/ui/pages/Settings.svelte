@@ -144,6 +144,9 @@
   <section><h2>System</h2>
     {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}
     {@render toggle("Update by itself when the app opens", s.autoUpdate, (e) => { s.autoUpdate = check(e); }, !isDesktop())}
+    {@render toggle("Get pre-release (beta) versions", s.betaUpdates, (e) => { s.betaUpdates = check(e); }, !isDesktop())}
+    <p class="hint">Beta versions get new features first and may break. Checked when the app opens and every 6 hours.
+      Turned off, you stay on your version until the next stable release.</p>
     {@render toggle("Send crash reports", s.crashReports, (e) => { s.crashReports = check(e); crashReports(s.crashReports); })}
     <p class="hint">Sends the app's errors, crashes, warnings and timings to Sentry so they can be fixed: where in the code, the app version
       and your Windows/WebView version, plus a screen recording of some sessions with every text, input and image hidden.

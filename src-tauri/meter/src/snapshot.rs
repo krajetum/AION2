@@ -114,6 +114,11 @@ pub struct PlayerRow {
     /// Hits dealt over all skills and the share of critical ones (DoT ticks left out of the rate), on boss fights; 0 elsewhere.
     pub hits: i32,
     pub crit_rate: f64,
+    /// Time spent hitting the boss (ms): each direct hit counts ACTIVE_WINDOW_MS after it, overlaps once,
+    /// within the fight; 0 elsewhere. Active time = this over the fight's length.
+    pub active_ms: i64,
+    /// Buffs on the player with their uptime, on boss fights (`crate::buffs`); none elsewhere.
+    pub buffs: Vec<crate::buffs::BuffUp>,
     pub skills: Vec<SkillRow>,
     /// Healing per skill (`damage` = amount healed, `hits` = ticks), for rows opened in the healing view.
     pub heal_skills: Vec<SkillRow>,
@@ -169,6 +174,8 @@ impl Fight {
                     revive_times: Vec::new(),
                     hits: 0,
                     crit_rate: 0.0,
+                    active_ms: 0,
+                    buffs: Vec::new(),
                     skills: Vec::new(),
                     heal_skills: Vec::new(),
                 }
@@ -210,6 +217,22 @@ impl Fight {
             if !skills.is_empty() {
                 row.skills = skills;
             }
+        }
+    }
+
+    /// Every row's buffs (`crate::buffs::by_player`).
+    pub fn add_buffs(&mut self, buffs: &std::collections::HashMap<i32, Vec<crate::buffs::BuffUp>>) {
+        for row in &mut self.rows {
+            if let Some(b) = buffs.get(&row.id) {
+                row.buffs = b.clone();
+            }
+        }
+    }
+
+    /// Every row's active time from its own active ms by actor (`active_by_actor`).
+    pub fn add_active(&mut self, active: &std::collections::HashMap<i32, i64>) {
+        for row in &mut self.rows {
+            row.active_ms = active.get(&row.id).copied().unwrap_or(0);
         }
     }
 
@@ -337,6 +360,23 @@ mod tests {
     }
 
     #[test]
+    fn active_time_is_the_union_of_hit_windows_within_the_fight_without_dots() {
+        let mut a = entry(7, 1, "Slash", 100, 4, 0, false);
+        a.hit_timestamps = vec![1_000, 1_500, 2_500, 10_000]; // 1.0-4.5 s, then 10-12 s
+        let mut b = entry(7, 2, "Bleed", 50, 3, 0, true);
+        b.hit_timestamps = vec![6_000, 7_000, 8_000]; // a DoT: not active
+        let mut c = entry(8, 1, "Bolt", 500, 2, 0, false);
+        c.hit_timestamps = vec![500, 11_500]; // 0.5-2.5 s clipped from 1 s, 11.5 s clipped at 12 s
+        let m = active_by_actor(&[a, b, c], 1_000, 12_000);
+        assert_eq!(m.get(&7), Some(&(3_500 + 2_000)));
+        assert_eq!(m.get(&8), Some(&(1_500 + 500)));
+        let mut f = Fight::from_dps(&dps());
+        f.add_active(&m);
+        let got: Vec<_> = f.rows.iter().map(|r| (r.id, r.active_ms)).collect();
+        assert_eq!(got, [(8, 2_000), (7, 5_500)]);
+    }
+
+    #[test]
     fn deaths_are_counted_per_row_and_unknown_ids_ignored() {
         use crate::entity::details_context::DeathPoint;
         let mut f = Fight::from_dps(&dps());
@@ -417,4 +457,26 @@ mod tests {
     fn no_target_without_one() {
         assert_eq!(Fight::from_dps(&DpsData::new()).target, None);
     }
+}
+
+/// A hit keeps its player "active" this long: a longer gap between two hits is time not hitting the boss.
+pub const ACTIVE_WINDOW_MS: i64 = 2_000;
+
+/// Per actor, the time spent hitting (ms) between `start` and `end` (A2Tools' details: ms from the fight's first hit): the union of [hit, hit + ACTIVE_WINDOW_MS]
+/// over every direct hit (DoT ticks left out: a DoT ticks on its own). From A2Tools' full target details.
+pub fn active_by_actor(skills: &[DetailSkillEntry], start: i64, end: i64) -> std::collections::HashMap<i32, i64> {
+    let mut by: std::collections::HashMap<i32, Vec<i64>> = std::collections::HashMap::new();
+    for s in skills.iter().filter(|s| !s.is_dot) {
+        by.entry(s.actor_id).or_default().extend(s.hit_timestamps.iter().copied());
+    }
+    by.into_iter().map(|(id, mut ts)| {
+        ts.sort_unstable();
+        let (mut total, mut covered_to) = (0i64, i64::MIN);
+        for t in ts {
+            let (a, b) = (t.max(start).max(covered_to), (t + ACTIVE_WINDOW_MS).min(end));
+            if b > a { total += b - a; }
+            covered_to = covered_to.max(t + ACTIVE_WINDOW_MS);
+        }
+        (id, total)
+    }).collect()
 }
