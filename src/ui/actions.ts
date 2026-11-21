@@ -2,6 +2,7 @@
 import { fetchCodes } from "../app/codes.ts";
 import { reminderText, shouldRemind, toRedeem } from "../domain/codes.ts";
 import { syncGuild } from "../app/guild.ts";
+import { flushGathers, syncGathers } from "../app/crowd.ts";
 import { trackProgress } from "../app/progress.ts";
 import { findTask } from "../app/tasks.ts";
 import { RIFT_MS, type Cue } from "../domain/mascot.ts";
@@ -94,6 +95,18 @@ export async function refreshNews() {
 }
 
 /** The shared redeem codes into ui.codes (startup, every 30 min, Home, entering the game). */
+/** Other players' gathering spots (the Worker), at most once a minute: the Map's Gathering layer asks when it opens.
+ *  `force` (its Refresh button): yours still queued are sent first, then the others' read now. False = not read. */
+let gathersAt = 0;
+export async function refreshGathers(force = false): Promise<boolean> {
+  if (!force && Date.now() - gathersAt < 60_000) return true;
+  gathersAt = Date.now();
+  if (force) await flushGathers(ui.data);
+  const ok = await syncGathers(ui.data);
+  if (ok) { ui.gathersAt = Date.now(); await save(); }
+  return ok;
+}
+
 export async function refreshCodes() {
   try {
     ui.codes = await fetchCodes();

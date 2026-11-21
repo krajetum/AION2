@@ -553,6 +553,8 @@ body.overlay .status { display: none; }
 .gather-dot img { width: 20px; height: 20px; border-radius: 50%; }
 .gather-dot.theirs { border-style: dashed; border-color: var(--grade-legend); }
 .gather-dot.sel { box-shadow: 0 0 0 3px var(--accent); }
+.gather-refresh { display: flex; align-items: center; gap: var(--s-2); margin: 0; }
+.gather-refresh button { flex: none; white-space: nowrap; }
 .mat-icon { vertical-align: middle; margin-right: 6px; border-radius: var(--r-sm); }
 .drop-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; }
 .map-view.gliding .drop-layer { transition: transform .6s linear; }
