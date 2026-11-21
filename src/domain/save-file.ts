@@ -66,6 +66,7 @@ export function defaultData(): AppData {
       cubePopup: false,
       cubePopupSize: 1,
       netOverlay: false,
+      soulPopup: true,
       radar: false,
       radarRange: 100,
       radarMap: true,

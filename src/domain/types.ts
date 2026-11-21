@@ -60,6 +60,7 @@ export interface Settings {
   cubePopup: boolean;         // small always-on-top popup while a hidden cube is in view
   cubePopupSize: number;      // its scale, 1 = 260 × 96 px
   netOverlay: boolean;        // small always-on-top window with the ping and packet loss
+  soulPopup: boolean;         // a few seconds over the game when a kill gives soul points to a pet still needed, or a shard drops (combo)
   radar: boolean;             // always-on-top radar of the cubes around you, to lay over the game's minimap
   radarRange: number;         // its radius, metres
   radarMap: boolean;          // the map under it (else only the dots)
