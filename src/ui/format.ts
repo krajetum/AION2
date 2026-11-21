@@ -13,7 +13,7 @@ export const PAGE: Record<Tab, [string, string]> = {
   crafting: ["Crafting", "Recipes, what to craft, what to buy and the Kina it costs."],
   enhance: ["Enhancement", "What taking a Unique piece to +15 costs, on average and when unlucky."],
   bosses: ["Field Bosses", "Respawn timers from the world map."],
-  map: ["Map", "Hidden cubes and where pets' soul points drop."],
+  map: ["Map", "Hidden cubes, where pets' soul points drop and where to gather."],
   pets: ["Pets", "Your pet collection: what is left to collect, and where."],
   dps: ["DPS Meter", "Live damage, healing and damage taken."],
   fights: ["DPS Log", "Every boss fight: personal bests and runs side by side."],

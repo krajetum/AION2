@@ -3,6 +3,7 @@
   import ChevronUp from "@lucide/svelte/icons/chevron-up";
   import Minus from "@lucide/svelte/icons/minus";
   import Plus from "@lucide/svelte/icons/plus";
+  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import X from "@lucide/svelte/icons/x";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Button, buttonVariants } from "$lib/components/ui/button/index.js";
@@ -27,23 +28,25 @@
   } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import { downloadJson } from "../../infra/storage.ts";
-  import { act, commit } from "../actions.ts";
-  import { num } from "../format.ts";
+  import { act, commit, refreshGathers } from "../actions.ts";
+  import { hm, num } from "../format.ts";
   import { ICON, TRAVEL_ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
   import { MAX_LEVEL, needed, petName as petNameOf, wanted } from "../../domain/pets.ts";
   import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
   const PET_CHOICES = Object.entries(KNOWN_PET_NAMES).sort((a, b) => a[1].localeCompare(b[1]));
   import { ui } from "../state.svelte.ts";
+  import { gatherMarks, materials, type GatherMark } from "../../domain/gathering.ts";
+  import { ICON_BASE } from "../../domain/crafting.ts";
 
-  type Layer = "cubes" | "pets";
+  type Layer = "cubes" | "pets" | "gather";
   type Mode = "move" | "add" | "ref";
   // The corner menu's choices are a per-PC convenience: remembered in this webview, safe to lose.
   const remembered = (k: string) => { try { return localStorage.getItem(`aion2-map-${k}`) ?? ""; } catch { return ""; } };
   const remember = (k: string, v: string) => { try { localStorage.setItem(`aion2-map-${k}`, v); } catch { /* not kept */ } };
 
   let current = $state<MapKey>(isMapKey(remembered("map")) ? (remembered("map") as MapKey) : "asmodian");
-  let layer = $state<Layer>(remembered("layer") === "pets" ? "pets" : "cubes");
+  let layer = $state<Layer>(remembered("layer") === "pets" ? "pets" : remembered("layer") === "gather" ? "gather" : "cubes");
   let menuOpen = $state(remembered("menu") !== "closed");
   $effect(() => { remember("map", current); remember("layer", layer); remember("menu", menuOpen ? "open" : "closed"); });
 
@@ -144,6 +147,37 @@
   const petDrops = $derived(size.w && layer === "pets"
     ? onThisMap.filter((d) => !active || isPet(d)).map((d) => ({ d, s: placed(d.x, d.y) })).filter((v) => v.s)
     : []);
+  // Gathering: your spots and other players' (src/domain/gathering.ts), named and drawn with the game's icon from the
+  // bundled recipes table (its materials), loaded once the layer opens.
+  let itemNames = $state<Record<string, string>>({}), itemIcons = $state<Record<string, string>>({});
+  $effect(() => {
+    if (layer !== "gather" || Object.keys(itemNames).length) return;
+    import("../../assets/recipes.json").then((m) => {
+      const g = m.default as unknown as { items: Record<string, string>; meta: Record<string, [string, ...unknown[]]> };
+      itemNames = g.items;
+      itemIcons = Object.fromEntries(Object.entries(g.meta).map(([k, v]) => [k, v[0]]));
+    }).catch(() => {});
+  });
+  const material = (item: number) => itemNames[String(item)] || `Item ${item}`;
+  let gatherItem = $state(0), onlyMine = $state(false), selectedGather = $state<GatherMark | null>(null), gatherQuery = $state("");
+  let refreshing = $state(false), refreshFailed = $state(false);
+  async function refreshSpots() {
+    refreshing = true;
+    refreshFailed = !(await refreshGathers(true));
+    refreshing = false;
+  }
+  // Others' spots, fresh when the layer opens (at most once a minute).
+  $effect(() => { if (layer === "gather") void refreshGathers(); });
+  const gatherHere = $derived(gatherMarks(ui.data.gathering).filter((m) => mapOf(m.mapId) === current && (!onlyMine || m.mine)));
+  // The search: a material's name (or its code) containing what is typed; the map shows only what matches.
+  const gq = $derived(gatherQuery.trim().toLowerCase());
+  const matches = (item: number) => !gq || material(item).toLowerCase().includes(gq) || String(item).includes(gq);
+  const gatherList = $derived(materials(gatherHere).filter(([item]) => matches(item)));
+  const gatherDots = $derived(size.w && layer === "gather"
+    ? gatherHere.filter((m) => (gatherItem ? m.item === gatherItem : matches(m.item))).map((m) => ({ m, s: placed(m.x, m.y) })).filter((v) => v.s) : []);
+  // Where a searched material is, when it is not on the open map: the other maps' counts.
+  const elsewhere = $derived(gq && !gatherList.length ? MAPS.filter((m) => m.key !== current)
+    .map((m) => ({ m, n: gatherMarks(ui.data.gathering).filter((g) => mapOf(g.mapId) === m.key && matches(g.item)).length })).filter((x) => x.n) : []);
   // Farming route: one stop per pet still to collect on this map (its busiest spot), in a good order from you.
   let showRoute = $state(remembered("route") === "1");
   $effect(() => remember("route", showRoute ? "1" : ""));
@@ -339,7 +373,9 @@
 </script>
 
 <Intro><p>Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
-  of yours that gives soul points is put where the mob died (desktop app with the meter running). Each map can use your own image
+  of yours that gives soul points is put where the mob died (desktop app with the meter running). Gathering: every gather of yours
+  is put where the node is (or where you stood, when the node came into view before the meter started), one spot per material,
+  with the spots other players gathered at (dashed). Each map can use your own image
   instead of the bundled one: it stays only on this PC. The gold dot is you: the game says where you are on teleports and whenever a
   buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running). On a mount it turns
   into a horse and moves only when you jump; gliding, into a wing, and moves when you land: the game sends no position meanwhile.</p></Intro>
@@ -383,6 +419,12 @@
     {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!active} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
       aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
       onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}</div>{/if}
+    {#if gatherDots.length}<div class="drop-layer" style:transform="translate({view.x}px, {view.y}px)">
+    {#each gatherDots as { m, s: at } (m.item + ":" + m.x + ":" + m.y)}<button class="gather-dot" class:theirs={!m.mine} class:sel={selectedGather === m}
+      style:left="{at!.x}px" style:top="{at!.y}px" aria-label={material(m.item)}
+      title="{material(m.item)}{m.mine ? ` · you gathered here ${m.mine.count}×` : ''}{m.players ? ` · ${m.players} players` : ''}"
+      onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedGather = m; selected = ""; selectedDrop = ""; }}>
+      {#if itemIcons[String(m.item)]}<img src={ICON_BASE + itemIcons[String(m.item)]} alt="" width="20" height="20" loading="lazy" onerror={(e) => e.currentTarget.remove()}>{/if}</button>{/each}</div>{/if}
     {#if you}{@const mode = travelIcon(ui.meter?.travel)}<div class="me" class:stale={age > 30} class:travel={mode} style:left="{you.x}px" style:top="{you.y}px"
       title="You · {ago(age)}{mode === 'wings' ? ' · gliding' : mode === 'mount' ? ' · on a mount' : ''}">{#if mode}{@html TRAVEL_ICON[mode]}{/if}</div>{/if}
 
@@ -394,7 +436,22 @@
           onclick={() => { menuOpen = !menuOpen; }}>{#if menuOpen}<ChevronUp />{:else}<ChevronDown />{/if}</Button>
       </div>
       {#if menuOpen}
-        <ToggleGroup.Root type="single" variant="outline" size="sm" class="flex" aria-label="Show" value={layer} onValueChange={(v) => { if (v) { layer = v as typeof layer; if (v === "cubes") selectedDrop = ""; else selected = ""; } }}><ToggleGroup.Item class="flex-1" value="cubes">Cubes</ToggleGroup.Item><ToggleGroup.Item class="flex-1" value="pets">Pets</ToggleGroup.Item></ToggleGroup.Root>
+        <ToggleGroup.Root type="single" variant="outline" size="sm" class="flex" aria-label="Show" value={layer} onValueChange={(v) => { if (v) { layer = v as typeof layer; if (v !== "pets") selectedDrop = ""; if (v !== "cubes") selected = ""; } }}><ToggleGroup.Item class="flex-1" value="cubes">Cubes</ToggleGroup.Item><ToggleGroup.Item class="flex-1" value="pets">Pets</ToggleGroup.Item><ToggleGroup.Item class="flex-1" value="gather">Gathering</ToggleGroup.Item></ToggleGroup.Root>
+        {#if layer === "gather"}
+          <Input type="search" placeholder="Search a material" aria-label="Search a material" autocomplete="off" bind:value={gatherQuery} oninput={() => { gatherItem = 0; selectedGather = null; }} />
+          <label class="toggle-line" title="Hides the spots only other players reported"><Checkbox bind:checked={onlyMine} /> Only where I gathered</label>
+          <p class="hint gather-refresh"><Button variant="ghost" size="sm" disabled={refreshing} title="Sends your new spots, then reads the other players' (the server's list can be up to 5 min old)" onclick={refreshSpots}><RefreshCw />{refreshing ? "Refreshing…" : "Refresh"}</Button>
+            {refreshFailed ? "The server could not be reached." : ui.gathersAt ? `Others' spots read at ${hm(ui.gathersAt)}.` : ""}</p>
+          {#if gatherItem}<Button variant="outline" size="sm" class="self-start border-gold text-gold" title="Show every material" onclick={() => { gatherItem = 0; selectedGather = null; }}>Showing: {material(gatherItem)} <X /></Button>{/if}
+          <ul class="pet-list" aria-label="Materials">
+            {#each gatherList as [item, n] (item)}<li><button class="plain" class:on={gatherItem === item} aria-pressed={gatherItem === item}
+              onclick={() => { gatherItem = gatherItem === item ? 0 : item; selectedGather = null; }}>
+              <span class="name">{#if itemIcons[String(item)]}<img class="mat-icon" src={ICON_BASE + itemIcons[String(item)]} alt="" width="18" height="18" loading="lazy">{/if}{material(item)}</span>
+              <span class="hint">{num(n)} spot{n === 1 ? "" : "s"}</span></button></li>
+            {:else}{#if gq}<li class="hint">No "{gatherQuery.trim()}" on the {mapName(current)} map{#if elsewhere.length}: {#each elsewhere as x, i}{i ? ", " : ""}<button class="link" onclick={() => { current = x.m.key; }}>{x.n} on the {mapName(x.m.key)} map</button>{/each}{/if}.</li>
+            {:else}<li class="hint">No gathering spot on the {mapName(current)} map yet: gather something with the meter running and it shows here. Other players' spots show up too (Settings › Other players: Share).</li>{/if}{/each}
+          </ul>
+        {/if}
         {#if layer === "pets"}
           <Input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query} />
           <label class="toggle-line" title={collection ? "Hides the spots of pets you have at level 3 (Pets page)" : "Log in or change character in game once, with the companion running"}>
@@ -456,6 +513,14 @@
       <div class="btns"><Button variant="ghost" size="sm" class="text-destructive" onclick={() => { const id = sel.id; selected = ""; act(() => deletePoint(ui.data, id)); }}>Delete point</Button></div>
     </div>{/if}
 
+    {#if selectedGather && layer === "gather"}{@const g = selectedGather}<div class="map-panel" role="dialog" aria-label="Gathering spot" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
+      <h2>{#if itemIcons[String(g.item)]}<img class="mat-icon" src={ICON_BASE + itemIcons[String(g.item)]} alt="" width="22" height="22">{/if}{material(g.item)}
+        <Button variant="ghost" size="icon-sm" aria-label="Close" title="Close" onclick={() => { selectedGather = null; }}><ICON.close /></Button></h2>
+      {#if g.mine}<p>You gathered here {g.mine.count}× ({num(g.mine.amount)} in all), last {when(g.mine.lastMs)}.</p>{/if}
+      {#if g.players}<p>{g.players} players reported it{g.mine ? " too" : ""}.</p>{/if}
+      <p class="hint">Game x {g.x.toFixed(0)}, y {g.y.toFixed(0)} · map {g.mapId}{g.mine && !g.mine.exact ? " · placed where you stood (the node itself was not in view when the meter started)" : ""}</p>
+    </div>{/if}
+
     {#if selDrop}<div class="map-panel" role="dialog" aria-label="Soul points" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
       <h2>{soul(selDrop)} <span class="count">{selDrop.mob ? `from ${selDrop.mob}` : "soul points"}</span>
         <Button variant="ghost" size="icon-sm" aria-label="Close" title="Close" onclick={() => { selectedDrop = ""; }}><ICON.close /></Button></h2>
@@ -479,6 +544,7 @@
   <div class="map-foot">
     <span class="hint">{mapName(current)} map ·
       {#if layer === "cubes"}{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(ui.data.map.found.filter((f) => foundOn(f, current)).length)} cubes found{#if sharedHere.length} · {num(sharedHere.length)} from other players{/if}{#if live.length}{" "}· <b class="live-count">{live.length} in view</b>{/if}
+      {:else if layer === "gather"}{num(gatherHere.length)} gathering spots here · {num(ui.data.gathering.spots.length)} of yours in all
       {:else}{num(onThisMap.length)} soul point spots here · {num(drops.length)} in all{/if}
       · {num(refs.length)} references{#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 with game coordinates{/if}
       · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if pos.mapId == null}<b>which map you are on is not known yet: open the game's map (M) once, or teleport</b>{:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{#if ui.meter?.travel?.gliding} · <b>gliding: your position updates when you land</b>{:else if ui.meter?.travel?.mounted} · <b>on a mount: your position updates each time you jump</b>{/if}{/if}</span>

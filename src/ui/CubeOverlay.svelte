@@ -23,15 +23,21 @@
 
   // Sound settings from the save file (refreshed, so a volume change in the main window applies).
   let pictures = $state<Record<Opener, string>>({ you: "", other: "" });
+  // The window is made on the first cube in view (src-tauri/src/meter.rs `set_visible`), so that cube's update comes
+  // before the save file is read: its chime waits for the settings (else it played the default theme, 2026-11-21).
+  let loaded: Promise<unknown> = Promise.resolve();
   const reload = () => {
-    loadData().then((d) => { settings = d.settings; }).catch(() => {});
+    loaded = loadData().then((d) => { settings = d.settings; }).catch(() => {});
     for (const who of ["you", "other"] as const) loadCubePicture(who).then((b) => {
       if (pictures[who]) URL.revokeObjectURL(pictures[who]);
       pictures[who] = b ? URL.createObjectURL(b) : "";
     }).catch(() => {});
   };
   // Sounds on the cube channel: a chime when one appears, a sad one when another player opens it.
-  const play = (name: string) => { const vol = settings ? channelVolume(settings, "cube") : 70; if (vol) playSound([name, "cube"], vol, settings?.soundTheme); };
+  const play = (name: string) => loaded.then(() => {
+    const vol = settings ? channelVolume(settings, "cube") : 70;
+    if (vol) playSound([name, "cube"], vol, settings?.soundTheme);
+  });
   // The newest opening already announced (-1 until the first update: what was opened before the
   // window opened is not announced).
   let lastHeard = -1;

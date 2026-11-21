@@ -5,6 +5,7 @@ import { bossesToShare, cubesToShare, MIN_EVERY, parseBosses, parseCubes } from 
 import type { MeterUpdate, OpenedCube } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
 import { crowd } from "../infra/crowd.ts";
+import { cleanSharedGathers, toSend } from "../domain/gathering.ts";
 
 /** Seconds between boss reads (the Worker can ask for slower). */
 export let bossEvery = MIN_EVERY;
@@ -49,6 +50,30 @@ export async function flushCubes(data: AppData) {
     codes.clear();
     await crowd("/v1/cubes", { install: data.install, sentMs: Date.now(), mapId, cubes: list.slice(-50), codes: sent }).catch(warn("cube upload"));
   }
+}
+
+/** Sends your spots not on the Worker yet (place, material, last time), saved ones included: spots from before sharing
+ *  or a restart go too. Returns true when it moved `sentMs` (save). Every 5 min and from the Map's Refresh. */
+export async function flushGathers(data: AppData): Promise<boolean> {
+  if (!data.settings.crowdShare) return false;
+  let moved = false;
+  for (const { mapId, spots } of toSend(data.gathering)) {
+    const gathers = spots.map((s) => ({ x: s.x, y: s.y, z: s.z, item: s.item, atMs: s.lastMs }));
+    try {
+      await crowd("/v1/gathers", { install: data.install, sentMs: Date.now(), mapId, gathers });
+    } catch (e) { warn("gather upload")(e); return moved; } // the rest next time, from where it stopped
+    data.gathering.sentMs = Math.max(data.gathering.sentMs, ...spots.map((s) => s.lastMs));
+    moved = true;
+  }
+  return moved;
+}
+
+/** Gathering spots other players reported into gathering.shared. Returns true if it changed data. */
+export async function syncGathers(data: AppData): Promise<boolean> {
+  try {
+    data.gathering.shared = cleanSharedGathers((await crowd("/v1/gathers"))?.spots);
+    return true;
+  } catch (e) { warn("gather download")(e); return false; }
 }
 
 /** Other players' timers for your server into data.bosses (newer reads win). Returns true if it changed data. */

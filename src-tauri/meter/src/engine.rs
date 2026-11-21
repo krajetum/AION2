@@ -81,6 +81,8 @@ pub struct Update {
     pub lost_packets: u64,
     /// Your mob kills that gave soul points since the meter started, with the mob's name.
     pub souls: Vec<SoulDrop>,
+    /// Your gathers since the meter started (the last 300): item, amount, where.
+    pub gathers: Vec<crate::gather::Gather>,
     /// Your pet collection, from the last time the game's Pets menu opened since the meter started.
     pub pets: Option<crate::pets::Collection>,
     /// Your Genus Insight lines, from the same record as the pets, and the preset switched to since.
@@ -453,6 +455,7 @@ impl Engine {
             },
             travel: crate::position::travel(),
             cubes: crate::cubes::snapshot(),
+            gathers: crate::gather::snapshot(),
             souls: crate::souls::snapshot()
                 .into_iter()
                 .map(|kill| {

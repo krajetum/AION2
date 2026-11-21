@@ -73,6 +73,7 @@ export interface SoulDrop { entity: number; x: number; y: number; z: number; map
 export interface LootDrop { entity: number; item: number; x: number; y: number; z: number; mapId: number | null; atMs: number; mobCode: number | null; mob: string }
 import type { PetCollection } from "./pets.ts";
 import type { GenusRead } from "./genus.ts";
+import type { Gather } from "./gathering.ts";
 import type { MeterWallet } from "./wallet.ts";
 export interface MeterUpdate {
   status: MeterStatus; message: string; port: number | null; device: string | null;
@@ -95,6 +96,7 @@ export interface MeterUpdate {
   loots?: LootDrop[];
   pets?: PetCollection | null; // from the last time you entered the world (login, character select)
   genus?: GenusRead | null; // your Genus Insight lines, from the same record, and the preset switched to since
+  gathers?: Gather[]; // your gathers since the meter started (the last 300)
   wallet?: MeterWallet | null; // your currencies, on their character (src/domain/wallet.ts)
   lostPackets?: number; // thrown away since the start: the parser fell behind (crowded fights)
   demo?: boolean; // browser preview only
