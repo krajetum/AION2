@@ -1,5 +1,5 @@
 //! Replays a packet recording (Settings > Diagnostics) through the meter, as the app would have read it:
-//! `cargo run -p aion2-meter --example replay -- <recording.txt>`. Prints the arena match, kills and
+//! `cargo run -p aion2-meter --example replay -- <recording.txt>`. Prints the arena match, gathers, kills and
 //! deaths whenever they change. Only `F` lines are fed (`E` lines are already inside them).
 //! `--map <id>`: the recording started on that map (its load came before); `--leave`: then a map load to the
 //! open world (1110) after the last frame, so a match still on ends as when the player leaves it.
@@ -27,6 +27,7 @@ fn main() {
     let base = path.rsplit("packets-").next().and_then(|s| s.split(|c: char| !c.is_ascii_digit()).next())
         .and_then(|s| s.parse::<i64>().ok()).map_or(1_800_000_000_000, |s| s * 1000);
     let (mut last_arena, mut last_kills, mut next_update, mut last_deaths) = (String::new(), String::new(), 0i64, 0usize);
+    let mut gathers = 0usize;
     let mut show = |engine: &aion2_meter::engine::Engine, at: i64| {
         aion2_meter::clock::set_override(Some(at));
         let u = engine.update();
@@ -48,6 +49,11 @@ fn main() {
             println!("[{:>7.1} s] enemy player deaths (last 10 min): {}", (at - base) as f64 / 1000.0, u.pvp_deaths.len());
             last_deaths = u.pvp_deaths.len();
         }
+        for g in u.gathers.iter().skip(gathers) {
+            println!("[{:>7.1} s] gathered: item {} x{} at ({:.0}, {:.0}, {:.0}) map {:?}{}", (at - base) as f64 / 1000.0, g.item, g.amount, g.x, g.y, g.z, g.map_id,
+                if g.exact { " (the node's place)" } else { " (your place)" });
+        }
+        gathers = u.gathers.len();
         let kills = serde_json::to_string(&u.kills).unwrap();
         if kills != last_kills {
             println!("[{:>7.1} s] kills: {kills}", (at - base) as f64 / 1000.0);

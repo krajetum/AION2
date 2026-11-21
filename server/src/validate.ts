@@ -79,6 +79,30 @@ export function parseCubePost(body: unknown, serverNow: number): CubePost | null
   return { install: body.install.toLowerCase(), mapId: body.mapId, cubes, codes };
 }
 
+export const MAX_GATHERS = 100;
+/** A gathering spot's cell (game units): one install counts once per material and cell. */
+export const GATHER_CELL = 500;
+export interface GatherReport { x: number; y: number; z: number; item: number; atMs: number }
+export interface GatherPost { install: string; mapId: number; gathers: GatherReport[] }
+
+/** POST /v1/gathers. Null = 400. Bad gathers are dropped. */
+export function parseGatherPost(body: unknown, serverNow: number): GatherPost | null {
+  if (!isObj(body) || typeof body.install !== "string" || !UUID.test(body.install) || !isId(body.mapId)) return null;
+  const offset = offsetOf(body.sentMs, serverNow);
+  if (offset === null || !Array.isArray(body.gathers) || body.gathers.length > MAX_GATHERS) return null;
+  const gathers: GatherReport[] = [];
+  for (const g of body.gathers) {
+    if (!isObj(g) || !isNum(g.x) || !isNum(g.y) || !isNum(g.z) || !isId(g.item) || !isNum(g.atMs) || g.atMs <= 0) continue;
+    if (Math.abs(g.x) > 1e6 || Math.abs(g.y) > 1e6 || Math.abs(g.z) > 1e6) continue;
+    const atMs = shift(g.atMs, offset, serverNow);
+    if (atMs === null) continue;
+    gathers.push({ x: g.x, y: g.y, z: g.z, item: g.item, atMs });
+  }
+  return { install: body.install.toLowerCase(), mapId: body.mapId, gathers };
+}
+
+export const gatherCellOf = (x: number, y: number) => `${Math.floor(x / GATHER_CELL)},${Math.floor(y / GATHER_CELL)}`;
+
 /** The spot a cube belongs to: one install counts once per cell. */
 // ponytail: fixed grid, two openings of one cube can straddle a cell edge; cluster by distance if spots come out split.
 export function cellOf(x: number, y: number): string {

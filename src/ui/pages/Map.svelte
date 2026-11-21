@@ -22,15 +22,17 @@
   import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
   const PET_CHOICES = Object.entries(KNOWN_PET_NAMES).sort((a, b) => a[1].localeCompare(b[1]));
   import { ui } from "../state.svelte.ts";
+  import { gatherMarks, materials, type GatherMark } from "../../domain/gathering.ts";
+  import { ICON_BASE } from "../../domain/crafting.ts";
 
-  type Layer = "cubes" | "pets";
+  type Layer = "cubes" | "pets" | "gather";
   type Mode = "move" | "add" | "ref";
   // The corner menu's choices are a per-PC convenience: remembered in this webview, safe to lose.
   const remembered = (k: string) => { try { return localStorage.getItem(`aion2-map-${k}`) ?? ""; } catch { return ""; } };
   const remember = (k: string, v: string) => { try { localStorage.setItem(`aion2-map-${k}`, v); } catch { /* not kept */ } };
 
   let current = $state<MapKey>(isMapKey(remembered("map")) ? (remembered("map") as MapKey) : "asmodian");
-  let layer = $state<Layer>(remembered("layer") === "pets" ? "pets" : "cubes");
+  let layer = $state<Layer>(remembered("layer") === "pets" ? "pets" : remembered("layer") === "gather" ? "gather" : "cubes");
   let menuOpen = $state(remembered("menu") !== "closed");
   $effect(() => { remember("map", current); remember("layer", layer); remember("menu", menuOpen ? "open" : "closed"); });
 
@@ -131,6 +133,23 @@
   const petDrops = $derived(size.w && layer === "pets"
     ? onThisMap.filter((d) => !active || isPet(d)).map((d) => ({ d, s: placed(d.x, d.y) })).filter((v) => v.s)
     : []);
+  // Gathering: your spots and other players' (src/domain/gathering.ts), named and drawn with the game's icon from the
+  // bundled recipes table (its materials), loaded once the layer opens.
+  let itemNames = $state<Record<string, string>>({}), itemIcons = $state<Record<string, string>>({});
+  $effect(() => {
+    if (layer !== "gather" || Object.keys(itemNames).length) return;
+    import("../../assets/recipes.json").then((m) => {
+      const g = m.default as unknown as { items: Record<string, string>; meta: Record<string, [string, ...unknown[]]> };
+      itemNames = g.items;
+      itemIcons = Object.fromEntries(Object.entries(g.meta).map(([k, v]) => [k, v[0]]));
+    }).catch(() => {});
+  });
+  const material = (item: number) => itemNames[String(item)] || `Item ${item}`;
+  let gatherItem = $state(0), onlyMine = $state(false), selectedGather = $state<GatherMark | null>(null);
+  const gatherHere = $derived(gatherMarks(ui.data.gathering).filter((m) => mapOf(m.mapId) === current && (!onlyMine || m.mine)));
+  const gatherList = $derived(materials(gatherHere));
+  const gatherDots = $derived(size.w && layer === "gather"
+    ? gatherHere.filter((m) => !gatherItem || m.item === gatherItem).map((m) => ({ m, s: placed(m.x, m.y) })).filter((v) => v.s) : []);
   // Farming route: one stop per pet still to collect on this map (its busiest spot), in a good order from you.
   let showRoute = $state(remembered("route") === "1");
   $effect(() => remember("route", showRoute ? "1" : ""));
@@ -326,7 +345,9 @@
 </script>
 
 <details class="intro"><summary>How it works</summary><p class="hint">Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
-  of yours that gives soul points is put where the mob died (desktop app with the meter running). Each map can use your own image
+  of yours that gives soul points is put where the mob died (desktop app with the meter running). Gathering: every gather of yours
+  is put where the node is (or where you stood, when the node came into view before the meter started), one spot per material,
+  with the spots two or more other players gathered at (dashed). Each map can use your own image
   instead of the bundled one: it stays only on this PC. The gold dot is you: the game says where you are on teleports and whenever a
   buff or skill of yours lands, so it follows you with a few seconds' lag (desktop app with the meter running). On a mount it turns
   into a horse and moves only when you jump; gliding, into a wing, and moves when you land: the game sends no position meanwhile.</p></details>
@@ -371,6 +392,12 @@
     {#each petDrops as { d, s: at } (d.id)}<button class="pet-drop" class:dim={!active} class:sel={d.id === selectedDrop} style:left="{at!.x}px" style:top="{at!.y}px"
       aria-label="{soul(d)} soul points" title="{soul(d)}{d.mob && d.mob !== soul(d) ? ` · from ${d.mob}` : ''} · {when(d.atMs)}{d.by ? ` · ${d.by}` : ''}"
       onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedDrop = d.id; selected = ""; }}></button>{/each}</div>{/if}
+    {#if gatherDots.length}<div class="drop-layer" style:transform="translate({view.x}px, {view.y}px)">
+    {#each gatherDots as { m, s: at } (m.item + ":" + m.x + ":" + m.y)}<button class="gather-dot" class:theirs={!m.mine} class:sel={selectedGather === m}
+      style:left="{at!.x}px" style:top="{at!.y}px" aria-label={material(m.item)}
+      title="{material(m.item)}{m.mine ? ` · you gathered here ${m.mine.count}×` : ''}{m.players ? ` · ${m.players} players` : ''}"
+      onpointerdown={(e) => e.stopPropagation()} onclick={() => { selectedGather = m; selected = ""; selectedDrop = ""; }}>
+      {#if itemIcons[String(m.item)]}<img src={ICON_BASE + itemIcons[String(m.item)]} alt="" width="20" height="20" loading="lazy" onerror={(e) => e.currentTarget.remove()}>{/if}</button>{/each}</div>{/if}
     {#if you}{@const mode = travelIcon(ui.meter?.travel)}<div class="me" class:stale={age > 30} class:travel={mode} style:left="{you.x}px" style:top="{you.y}px"
       title="You · {ago(age)}{mode === 'wings' ? ' · gliding' : mode === 'mount' ? ' · on a mount' : ''}">{#if mode}{@html TRAVEL_ICON[mode]}{/if}</div>{/if}
 
@@ -385,7 +412,19 @@
       {#if menuOpen}
         <div class="seg" role="group" aria-label="Show">
           <button class:on={layer === "cubes"} aria-pressed={layer === "cubes"} onclick={() => { layer = "cubes"; selectedDrop = ""; }}>Cubes</button>
-          <button class:on={layer === "pets"} aria-pressed={layer === "pets"} onclick={() => { layer = "pets"; selected = ""; }}>Pets</button></div>
+          <button class:on={layer === "pets"} aria-pressed={layer === "pets"} onclick={() => { layer = "pets"; selected = ""; }}>Pets</button>
+          <button class:on={layer === "gather"} aria-pressed={layer === "gather"} onclick={() => { layer = "gather"; selected = ""; selectedDrop = ""; }}>Gathering</button></div>
+        {#if layer === "gather"}
+          <label class="toggle-line" title="Hides the spots only other players reported"><input type="checkbox" bind:checked={onlyMine}> Only where I gathered</label>
+          {#if gatherItem}<button class="ghost showing" title="Show every material" onclick={() => { gatherItem = 0; selectedGather = null; }}>Showing: {material(gatherItem)} ✕</button>{/if}
+          <ul class="pet-list" aria-label="Materials">
+            {#each gatherList as [item, n] (item)}<li><button class="plain" class:on={gatherItem === item} aria-pressed={gatherItem === item}
+              onclick={() => { gatherItem = gatherItem === item ? 0 : item; selectedGather = null; }}>
+              <span class="name">{#if itemIcons[String(item)]}<img class="mat-icon" src={ICON_BASE + itemIcons[String(item)]} alt="" width="18" height="18" loading="lazy">{/if}{material(item)}</span>
+              <span class="hint">{num(n)} spot{n === 1 ? "" : "s"}</span></button></li>
+            {:else}<li class="hint">No gathering spot on the {mapName(current)} map yet: gather something with the meter running and it shows here. Spots two or more players gathered at come from the others too (Settings › Other players).</li>{/each}
+          </ul>
+        {/if}
         {#if layer === "pets"}
           <input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query}>
           <label class="toggle-line" title={collection ? "Hides the spots of pets you have at level 3 (Pets page)" : "Log in or change character in game once, with the companion running"}>
@@ -449,6 +488,14 @@
       <div class="btns"><button onclick={() => { const id = sel.id; selected = ""; act(() => deletePoint(ui.data, id)); }}>Delete point</button></div>
     </div>{/if}
 
+    {#if selectedGather && layer === "gather"}{@const g = selectedGather}<div class="map-panel" role="dialog" aria-label="Gathering spot" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
+      <h2>{#if itemIcons[String(g.item)]}<img class="mat-icon" src={ICON_BASE + itemIcons[String(g.item)]} alt="" width="22" height="22">{/if}{material(g.item)}
+        <button class="ghost" aria-label="Close" title="Close" onclick={() => { selectedGather = null; }}>{@html ICON.close}</button></h2>
+      {#if g.mine}<p>You gathered here {g.mine.count}× ({num(g.mine.amount)} in all), last {when(g.mine.lastMs)}.</p>{/if}
+      {#if g.players}<p>{g.players} players reported it{g.mine ? " too" : ""}.</p>{/if}
+      <p class="hint">Game x {g.x.toFixed(0)}, y {g.y.toFixed(0)} · map {g.mapId}{g.mine && !g.mine.exact ? " · placed where you stood (the node itself was not in view when the meter started)" : ""}</p>
+    </div>{/if}
+
     {#if selDrop}<div class="map-panel" role="dialog" aria-label="Soul points" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
       <h2>{soul(selDrop)} <span class="count">{selDrop.mob ? `from ${selDrop.mob}` : "soul points"}</span>
         <button class="ghost" aria-label="Close" title="Close" onclick={() => { selectedDrop = ""; }}>{@html ICON.close}</button></h2>
@@ -472,6 +519,7 @@
   <div class="map-foot">
     <span class="hint">{mapName(current)} map ·
       {#if layer === "cubes"}{num(points.filter((p) => p.kind === "cube").length)} cube spots · {num(ui.data.map.found.filter((f) => foundOn(f, current)).length)} cubes found{#if sharedHere.length} · {num(sharedHere.length)} from other players{/if}{#if live.length}{" "}· <b class="live-count">{live.length} in view</b>{/if}
+      {:else if layer === "gather"}{num(gatherHere.length)} gathering spots here · {num(ui.data.gathering.spots.length)} of yours in all
       {:else}{num(onThisMap.length)} soul point spots here · {num(drops.length)} in all{/if}
       · {num(refs.length)} references{#if ownFit} · your fit off by up to {fitError(ownFit, refs).toFixed(0)} px{:else if refs.length} · {refs.length}/3 with game coordinates{/if}
       · {#if !pos}your position: waiting for the game (a teleport or a skill sends it){:else if pos.mapId == null}<b>which map you are on is not known yet: open the game's map (M) once, or teleport</b>{:else if !here}you are on another map ({pos.mapId}){:else if !fit}your position: this map needs 3 references{:else}you: {ago(age)}{#if ui.meter?.travel?.gliding} · <b>gliding: your position updates when you land</b>{:else if ui.meter?.travel?.mounted} · <b>on a mount: your position updates each time you jump</b>{/if}{/if}</span>

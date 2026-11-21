@@ -1,4 +1,4 @@
-// Cloudflare Worker: players' apps share the field-boss timers and hidden-cube openings they see.
+// Cloudflare Worker: players' apps share the field-boss timers, hidden-cube openings and gathering spots they see.
 // Players also share the game's redeem codes (Home > Codes).
 // No player names, only a random install id, except in guilds (the members' character names, item level and CP,
 // shared fights, by consent). The app works the same when this is down.
@@ -8,6 +8,7 @@ import {
   mergeWeeks, parseAdmin, parseAuth, parseAvailability, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
   type Ping, POSTED_FOR, rank, type Role, SLOTS_HEX,
   MAX_REDEEM_LISTED, parseRedeemPost, REDEEM_EXPIRED_VOTES, REDEEM_KEEP, REDEEM_TTL,
+  gatherCellOf, parseGatherPost,
 } from "./validate.ts";
 
 // Minimal Workers types (no @cloudflare/workers-types).
@@ -29,6 +30,8 @@ const DAY = 24 * HOUR;
 const WRITES_PER_HOUR = 60;
 const SPOT_INSTALLS = 3;
 const CODE_INSTALLS = 2;
+/** A gathering spot is published once this many installs gathered that material there. */
+const GATHER_INSTALLS = 2;
 const BOSS_CACHE_S = 30;
 const CUBE_CACHE_S = 3600;
 
@@ -63,6 +66,7 @@ async function cached<T>(key: string, seconds: number, load: () => Promise<T>): 
 }
 const bossKey = (url: URL, serverId: number) => `${url.origin}/v1/bosses/${serverId}`;
 const cubeKey = (url: URL) => `${url.origin}/v1/cubes`;
+const gatherKey = (url: URL) => `${url.origin}/v1/gathers`;
 
 async function getBosses(env: Env, url: URL, serverId: number) {
   const maps = await cached(bossKey(url, serverId), BOSS_CACHE_S, async () => {
@@ -118,6 +122,26 @@ async function postCubes(env: Env, req: Request) {
     ...p.codes.map((code) => env.DB.prepare("INSERT OR IGNORE INTO cube_codes (code, install) VALUES (?, ?)").bind(code, p.install)),
   ];
   if (stmts.length) await env.DB.batch(stmts);
+  return json({ ok: true, every: everyOf(env) });
+}
+
+async function getGathers(env: Env, url: URL) {
+  const spots = await cached(gatherKey(url), CUBE_CACHE_S, async () => (await env.DB.prepare(
+    `SELECT map_id AS mapId, item, AVG(x) AS x, AVG(y) AS y, AVG(z) AS z, COUNT(*) AS n
+     FROM gather_reports GROUP BY map_id, item, cell HAVING COUNT(*) >= ? LIMIT 5000`,
+  ).bind(GATHER_INSTALLS).all<{ mapId: number; item: number; x: number; y: number; z: number; n: number }>()).results);
+  return json({ serverNow: Date.now(), every: everyOf(env), spots });
+}
+
+async function postGathers(env: Env, req: Request) {
+  const now = Date.now();
+  const p = parseGatherPost(await readBody(req), now);
+  if (!p) return fail(400, "bad request");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  if (p.gathers.length) await env.DB.batch(p.gathers.map((g) => env.DB.prepare(
+    `INSERT INTO gather_reports (map_id, item, cell, install, x, y, z, at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (map_id, item, cell, install) DO UPDATE SET x = excluded.x, y = excluded.y, z = excluded.z, at_ms = excluded.at_ms`,
+  ).bind(p.mapId, g.item, gatherCellOf(g.x, g.y), p.install, g.x, g.y, g.z, g.atMs)));
   return json({ ok: true, every: everyOf(env) });
 }
 
@@ -562,6 +586,8 @@ export default {
       if (req.method === "POST" && url.pathname === "/v1/bosses") return await postBosses(env, url, req);
       if (req.method === "GET" && url.pathname === "/v1/cubes") return await getCubes(env, url);
       if (req.method === "POST" && url.pathname === "/v1/cubes") return await postCubes(env, req);
+      if (req.method === "GET" && url.pathname === "/v1/gathers") return await getGathers(env, url);
+      if (req.method === "POST" && url.pathname === "/v1/gathers") return await postGathers(env, req);
       if (req.method === "GET" && url.pathname === "/v1/codes") return await getRedeem(env);
       if (req.method === "POST" && url.pathname === "/v1/codes") return await postRedeem(env, req);
       if (req.method === "POST" && url.pathname === "/v1/codes/expired") return await postRedeemExpired(env, req);
@@ -599,6 +625,7 @@ export default {
     ctx.waitUntil(env.DB.batch([
       env.DB.prepare("DELETE FROM boss_maps WHERE seen_ms < ?").bind(now - 7 * DAY),
       env.DB.prepare("DELETE FROM cube_reports WHERE at_ms < ?").bind(now - 30 * DAY),
+      env.DB.prepare("DELETE FROM gather_reports WHERE at_ms < ?").bind(now - 90 * DAY),
       env.DB.prepare("DELETE FROM writes WHERE hour < ?").bind(Math.floor(now / HOUR) - 2),
       env.DB.prepare("DELETE FROM guild_posts WHERE at_ms < ?").bind(now - 2 * DAY),
       env.DB.prepare("DELETE FROM guild_fights WHERE end_ms < ?").bind(now - 90 * DAY),

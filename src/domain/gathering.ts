@@ -1,0 +1,75 @@
+// Map page's gathering spots: what you gathered and where (the meter's `gathers`, src-tauri/meter/src/gather.rs), one
+// spot per material and place, and the spots other players shared (the Worker, src/app/crowd.ts). Pure.
+
+/** A gather as the meter sends it (game units; `exact` = the node's own place, else yours at the gather). */
+export interface Gather { node: number | null; item: number; amount: number; x: number; y: number; z: number; exact: boolean; mapId: number | null; atMs: number }
+/** Your spot of one material: `count` gathers, `amount` items in all. */
+export interface GatherSpot { mapId: number; item: number; x: number; y: number; z: number; exact: boolean; count: number; amount: number; lastMs: number }
+/** A spot other players reported: `n` = how many installs. */
+export interface SharedGather { mapId: number; item: number; x: number; y: number; z: number; n: number }
+export interface GatherData { spots: GatherSpot[]; seenMs: number; shared: SharedGather[] }
+
+/** Two gathers of one material closer than this (game units) are one spot: a node, with your place a few metres off. */
+export const GATHER_SPOT = 500;
+const MAX_SPOTS = 3000;
+
+export const emptyGathering = (): GatherData => ({ spots: [], seenMs: 0, shared: [] });
+
+const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+const id = (n: unknown): n is number => Number.isInteger(n) && (n as number) > 0;
+
+export function cleanGathering(raw: any): GatherData {
+  const spots = (Array.isArray(raw?.spots) ? raw.spots : [])
+    .filter((s: any) => s && id(s.mapId) && id(s.item) && ok(s.x) && ok(s.y) && ok(s.z) && id(s.count) && ok(s.amount) && ok(s.lastMs))
+    .map((s: any): GatherSpot => ({ mapId: s.mapId, item: s.item, x: s.x, y: s.y, z: s.z, exact: !!s.exact, count: s.count, amount: s.amount, lastMs: s.lastMs }));
+  return { spots, seenMs: ok(raw?.seenMs) ? raw.seenMs : 0, shared: cleanSharedGathers(raw?.shared) };
+}
+
+/** Shared spots, cleaned (saved data and the Worker's answer alike). */
+export function cleanSharedGathers(raw: unknown): SharedGather[] {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((s: any) => s && id(s.mapId) && id(s.item) && ok(s.x) && ok(s.y) && ok(s.z) && id(s.n))
+    .map((s: any): SharedGather => ({ mapId: s.mapId, item: s.item, x: s.x, y: s.y, z: s.z, n: s.n }));
+}
+
+/** The meter's gathers not taken yet, with a map (one without waits: the meter fills it at the next map load). */
+export const newGathers = (g: GatherData, list: Gather[]) =>
+  list.filter((x) => x.mapId != null && x.atMs > g.seenMs && id(x.item) && x.amount > 0 && ok(x.x) && ok(x.y) && ok(x.z));
+
+/** Adds the meter's new gathers to your spots; returns the ones taken (to share). */
+export function takeGathers(g: GatherData, list: Gather[]): Gather[] {
+  const fresh = newGathers(g, list);
+  for (const x of fresh) {
+    const spot = g.spots.find((s) => s.mapId === x.mapId && s.item === x.item && Math.hypot(s.x - x.x, s.y - x.y) < GATHER_SPOT);
+    if (spot) {
+      spot.count++;
+      spot.amount += x.amount;
+      spot.lastMs = Math.max(spot.lastMs, x.atMs);
+      if (x.exact && !spot.exact) Object.assign(spot, { x: x.x, y: x.y, z: x.z, exact: true }); // the node's own place wins
+    } else {
+      g.spots.push({ mapId: x.mapId!, item: x.item, x: x.x, y: x.y, z: x.z, exact: x.exact, count: 1, amount: x.amount, lastMs: x.atMs });
+    }
+    g.seenMs = Math.max(g.seenMs, x.atMs);
+  }
+  if (g.spots.length > MAX_SPOTS) g.spots.splice(0, g.spots.length - MAX_SPOTS);
+  return fresh;
+}
+
+/** One marker per material and place: yours, and others' not near one of yours of the same material. */
+export interface GatherMark { mapId: number; item: number; x: number; y: number; mine: GatherSpot | null; players: number }
+export function gatherMarks(g: GatherData): GatherMark[] {
+  const out: GatherMark[] = g.spots.map((s) => ({ mapId: s.mapId, item: s.item, x: s.x, y: s.y, mine: s, players: 0 }));
+  for (const s of g.shared) {
+    const near = out.find((m) => m.mapId === s.mapId && m.item === s.item && Math.hypot(m.x - s.x, m.y - s.y) < GATHER_SPOT);
+    if (near) near.players = Math.max(near.players, s.n);
+    else out.push({ mapId: s.mapId, item: s.item, x: s.x, y: s.y, mine: null, players: s.n });
+  }
+  return out;
+}
+
+/** The materials on a set of marks, most spots first: [item, spots]. */
+export function materials(marks: GatherMark[]): [number, number][] {
+  const n = new Map<number, number>();
+  for (const m of marks) n.set(m.item, (n.get(m.item) ?? 0) + 1);
+  return [...n].sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+}
