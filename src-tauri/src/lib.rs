@@ -4,6 +4,7 @@ mod links;
 mod meter;
 mod places;
 mod telemetry;
+mod updates;
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -58,6 +59,7 @@ pub fn run() {
             crash::crash_log,
             links::open_url,
             armory::armory_get,
+            updates::update_check_beta,
             meter::meter_cube_codes,
             meter::meter_item_codes,
         ])

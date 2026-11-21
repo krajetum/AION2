@@ -64,6 +64,7 @@ export interface Settings {
   radarRound: boolean;        // round (else square)
   crashReports: boolean;      // send errors and crashes to Sentry (opt-in)
   autoUpdate: boolean;        // install a newer release by itself when the app opens (else the banner offers it)
+  betaUpdates: boolean;       // also take pre-release (beta) builds: the beta manifest (src-tauri/src/updates.rs), off by default
   mascot: boolean;            // the mascot of the class you play, walking along the bottom of the window
   mascotGender: "m" | "f";   // its gender
   crowdShare: boolean;       // send the boss timers and cube openings the meter sees to the crowd Worker
