@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   // At a glance: the next field bosses on the guild's server, the next call-up, who is online.
   import { bossesByMap, bossLabel, bossState } from "../../../domain/bosses.ts";
   import { can, ONLINE_MS, type GuildLink, type GuildView } from "../../../domain/guild.ts";
@@ -17,34 +20,26 @@
   const online = $derived(view.members.filter((m) => ui.now - m.seenMs < ONLINE_MS));
 </script>
 
-<div class="overview">
-  <section class="wide"><h2>Next field bosses</h2>
-    {#if !sameServer}<p class="hint">Timers come from the boss maps players on {serverName(g.serverId) || "the static's server"} share. Play a character there with the companion open to see them.</p>
-    {:else if !nextBosses.length}<p class="hint">No respawn time known. Anyone with the companion open can refresh them by opening the world map in game.</p>
-    {:else}<div class="scroll"><table class="sheet"><thead><tr><th>Boss</th><th class="n">Respawns</th></tr></thead>
-      <tbody>{#each nextBosses as b (`${b.mapId}:${b.bossId}`)}<tr><td><span class="name">{bossLabel(b, ui.data.bossNames)}</span></td>
-        <td class="n num">{formatCountdown(b.timeMs - ui.now)} · {hm(b.timeMs)}</td></tr>{/each}</tbody></table></div>{/if}
+<div class="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
+  <Panel title="Next field bosses" class="col-span-full mb-0">
+    {#if !sameServer}<p class="hint mt-0">Timers come from the boss maps players on {serverName(g.serverId) || "the static's server"} share. Play a character there with the companion open to see them.</p>
+    {:else if !nextBosses.length}<p class="hint mt-0">No respawn time known. Anyone with the companion open can refresh them by opening the world map in game.</p>
+    {:else}<Table.Root><Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Boss</Table.Head><Table.Head class="text-right">Respawns</Table.Head></Table.Row></Table.Header>
+      <Table.Body>{#each nextBosses as b (`${b.mapId}:${b.bossId}`)}<Table.Row><Table.Cell class="font-medium">{bossLabel(b, ui.data.bossNames)}</Table.Cell>
+        <Table.Cell class="text-right">{formatCountdown(b.timeMs - ui.now)} · {hm(b.timeMs)}</Table.Cell></Table.Row>{/each}</Table.Body></Table.Root>{/if}
     <p class="hint">{view.hasWebhook && view.bossAlerts ? `Posted to the static's Discord ${view.leadMin} min before each respawn.` : "Not posted to the static's Discord."}
-      {#if can(view, g, "manage.discord")}<button class="link" onclick={() => go("discord")}>Discord settings</button>{/if}
-      Your own alerts: <a href="#bosses">Field Bosses</a>.</p>
-  </section>
+      {#if can(view, g, "manage.discord")}<Button variant="link" size="xs" class="h-auto px-0" onclick={() => go("discord")}>Discord settings</Button>{/if}
+      Your own alerts: <a class="underline" href="#bosses">Field Bosses</a>.</p>
+  </Panel>
 
-  {#if can(view, g, "view.callups")}<section><h2>Next call-up</h2>
-    {#if next}<p class="big">{when(next.atMs)}</p><p class="dim">in {formatCountdown(next.atMs - ui.now)}</p><p class="msg">{next.message}</p>
-    {:else}<p class="hint">No raid planned.</p>{/if}
-    <button class="link" onclick={() => go("callups")}>All call-ups ({view.callups.length})</button>
-  </section>{/if}
+  {#if can(view, g, "view.callups")}<Panel title="Next call-up" class="mb-0">
+    {#if next}<p class="m-0 text-base font-semibold">{when(next.atMs)}</p><p class="m-0 text-sm text-muted-foreground">in {formatCountdown(next.atMs - ui.now)}</p><p class="mb-0 line-clamp-3 text-sm whitespace-pre-wrap break-words">{next.message}</p>
+    {:else}<p class="hint mt-0">No raid planned.</p>{/if}
+    <Button variant="link" size="xs" class="mt-2 px-0" onclick={() => go("callups")}>All call-ups ({view.callups.length})</Button>
+  </Panel>{/if}
 
-  {#if can(view, g, "view.members")}<section><h2>Online now <span class="count">{online.length}/{view.memberCount}</span></h2>
-    {#if online.length}<p>{online.map((m) => m.name).join(" · ")}</p>{:else}<p class="hint">Nobody is playing with the companion open.</p>{/if}
-    <button class="link" onclick={() => go("members")}>All members</button>
-  </section>{/if}
+  {#if can(view, g, "view.members")}<Panel title="Online now" count="{online.length}/{view.memberCount}" class="mb-0">
+    {#if online.length}<p class="m-0 text-sm">{online.map((m) => m.name).join(" · ")}</p>{:else}<p class="hint mt-0">Nobody is playing with the companion open.</p>{/if}
+    <Button variant="link" size="xs" class="mt-2 px-0" onclick={() => go("members")}>All members</Button>
+  </Panel>{/if}
 </div>
-
-<style>
-  .overview { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-  .overview section { margin: 0; }
-  .wide { grid-column: 1 / -1; }
-  .big { margin: 0; font-size: var(--fs-xl); font-weight: 600; }
-  .msg { white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-</style>

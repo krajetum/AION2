@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
   // The ping and packet loss window (index.html#net, opened by src-tauri/src/meter.rs): one small line to lay
   // anywhere over the game. Ping = the game's own (A2Tools' ping tracker); loss = segments TCP resent on the game
   // connection over the last minute (netstats.rs), so at most the real loss. Drag it anywhere.
@@ -16,5 +17,5 @@
 <div class="net-ov" data-tauri-drag-region title="Ping: the game's own. Loss: packets resent on the game connection in the last minute (at most the real loss).">
   <span class="num {pingCls}" data-tauri-drag-region>{u?.pingMs != null ? `${u.pingMs} ms` : "— ms"}</span>
   <span class="num {lossCls}" data-tauri-drag-region>{u?.lossPct != null ? `${u.lossPct.toFixed(1)}% loss` : "— loss"}</span>
-  <button class="ghost" aria-label="Close the ping overlay" title="Close (turn on again in Settings or on the DPS page)" onclick={() => netOverlay(false)}>{@html ICON.close}</button>
+  <Button variant="ghost" size="icon-xs" aria-label="Close the ping overlay" title="Close (turn on again in Settings or on the DPS page)" onclick={() => netOverlay(false)}><ICON.close /></Button>
 </div>

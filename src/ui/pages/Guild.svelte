@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   // Guild page: create or join with a code; in a guild, a side menu of sections (pages/guild/*), each shown only to
   // the roles the guild allows (domain/guild.ts `can`): what members see, what Officers and Leaders manage, your own settings.
   import { createGuild, joinGuild } from "../../app/guild.ts";
@@ -66,42 +70,43 @@
 </script>
 
 {#if !g}
-  <p class="hint intro">A static shares field-boss alerts (in your Discord channel), planned raids, the members' gear and the boss fights they choose to share.
+  <p class="hint mt-0 mb-3">A static shares field-boss alerts (in your Discord channel), planned raids, the members' gear and the boss fights they choose to share.
     One member creates it and gets an invite code for the others, plus a leader key. No account needed.</p>
-  {#if profile}<p class="hint">You'll appear as <b>{profile.name}</b> ({serverName(profile.serverId) || `server ${profile.serverId}`}), as the meter sees you.</p>
-  {:else}<div class="toolbar start"><label>Your character <input bind:value={charName} placeholder="Character name" autocomplete="off"></label>
-      <select bind:value={region} aria-label="Region">{#each Object.values(REGIONS) as r}<option value={r}>{r.toUpperCase()}</option>{/each}</select>
-      <select bind:value={serverId} aria-label="Your server">{#each servers as s (s.id)}<option value={s.id}>{s.name}</option>{/each}</select></div>
-    <p class="hint">Or start the game with the companion open: the meter fills in your character, item level and CP.</p>{/if}
-  <div class="cards">
-    <section class="dps-table"><h2>Join a static</h2>
-      <form class="toolbar start" onsubmit={(e) => { e.preventDefault(); join(); }}>
-        <input bind:value={code} placeholder="Invite code (XXXX-XXXX-XXXX-XXXX)" aria-label="Invite code" autocomplete="off" required>
-        <button class="primary" disabled={gs.busy || !me}>Join</button></form></section>
-    <section class="dps-table"><h2>Create a static</h2>
-      <form class="toolbar start" onsubmit={(e) => { e.preventDefault(); create(); }}>
-        <input bind:value={guildName} placeholder="Static name" aria-label="Static name" maxlength="32" autocomplete="off" required>
-        {#if !profile}<span class="dim">on {serverName(serverId) || "your server"}</span>{/if}
-        <button class="primary" disabled={gs.busy || !me}>Create</button></form></section>
+  {#if profile}<p class="hint mb-3">You'll appear as <b>{profile.name}</b> ({serverName(profile.serverId) || `server ${profile.serverId}`}), as the meter sees you.</p>
+  {:else}<div class="mb-2 flex flex-wrap items-center gap-2 text-sm"><label class="flex items-center gap-1.5 text-muted-foreground">Your character <Input class="w-48" bind:value={charName} placeholder="Character name" autocomplete="off" /></label>
+      <NativeSelect bind:value={region} aria-label="Region">{#each Object.values(REGIONS) as r}<NativeSelectOption value={r}>{r.toUpperCase()}</NativeSelectOption>{/each}</NativeSelect>
+      <NativeSelect bind:value={serverId} aria-label="Your server">{#each servers as s (s.id)}<NativeSelectOption value={s.id}>{s.name}</NativeSelectOption>{/each}</NativeSelect></div>
+    <p class="hint mb-3">Or start the game with the companion open: the meter fills in your character, item level and CP.</p>{/if}
+  <div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
+    <Panel title="Join a static" class="mb-0">
+      <form class="flex flex-wrap gap-2" onsubmit={(e) => { e.preventDefault(); join(); }}>
+        <Input class="min-w-0 flex-1" bind:value={code} placeholder="Invite code (XXXX-XXXX-XXXX-XXXX)" aria-label="Invite code" autocomplete="off" required />
+        <Button type="submit" disabled={gs.busy || !me}>Join</Button></form></Panel>
+    <Panel title="Create a static" class="mb-0">
+      <form class="flex flex-wrap items-center gap-2" onsubmit={(e) => { e.preventDefault(); create(); }}>
+        <Input class="min-w-0 flex-1" bind:value={guildName} placeholder="Static name" aria-label="Static name" maxlength={32} autocomplete="off" required />
+        {#if !profile}<span class="text-xs text-muted-foreground">on {serverName(serverId) || "your server"}</span>{/if}
+        <Button type="submit" disabled={gs.busy || !me}>Create</Button></form></Panel>
   </div>
-  {#if gs.error}<p class="hint">{gs.error}</p>{/if}
+  {#if gs.error}<p class="hint error">{gs.error}</p>{/if}
 {:else}
-  <div class="toolbar start guild-head">
-    <h2>{g.name} <span class="count">{serverName(g.serverId) || `server ${g.serverId}`} · {view ? `${view.memberCount} member${view.memberCount === 1 ? "" : "s"}` : "…"}</span></h2>
-    {#if g.memberCode && view && can(view, g, "manage.invite")}<button class="ghost" title="Invite code: give it to new members" onclick={() => copy(pretty(g.memberCode!))}>Copy invite code</button>{/if}
+  <div class="mb-3 flex flex-wrap items-baseline gap-3">
+    <h2 class="m-0 text-lg font-semibold">{g.name}</h2>
+    <span class="text-sm text-muted-foreground">{serverName(g.serverId) || `server ${g.serverId}`} · {view ? `${view.memberCount} member${view.memberCount === 1 ? "" : "s"}` : "…"}</span>
+    {#if g.memberCode && view && can(view, g, "manage.invite")}<Button variant="outline" size="sm" class="ml-auto" title="Invite code: give it to new members" onclick={() => copy(pretty(g.memberCode!))}>Copy invite code</Button>{/if}
   </div>
-  {#if gs.error}<p class="hint">{gs.error}</p>{/if}
+  {#if gs.error}<p class="hint error">{gs.error}</p>{/if}
   {#if !view}<p class="hint">Reading the static…</p>
   {:else}<div class="guild">
     <nav class="guild-menu" aria-label="Static sections">
-      {#each groups as [name, items] (name)}{#if name}<span class="label">{name}</span>{:else}<hr>{/if}
+      {#each groups as [name, items] (name)}{#if name}<span class="px-2 pt-2 pb-1 text-xs font-semibold tracking-wider text-faint-foreground uppercase first:pt-0.5">{name}</span>{:else}<hr class="my-2 w-full border-0 border-t">{/if}
         {#each items as i (i.id)}<button class="tab" aria-current={i.id === section ? "page" : undefined} onclick={() => go(i.id)}>
           <span class="lbl">{i.label}</span>{#if i.count}<span class="count">{i.count}</span>{/if}</button>{/each}{/each}
     </nav>
-    <div class="guild-section">
+    <div class="min-w-0">
       {#if section === "callups"}<Callups {g} {view} {go} />{:else if section === "raidplan"}<RaidPlan {g} {view} />{:else if section === "members"}<Members {g} {view} />{:else if section === "fights"}<svelte:boundary onerror={(e) => console.error("Static fights failed", e)}><Fights {g} {view} />
-        {#snippet failed(e, reset)}<section><h2>Shared fights</h2><p class="error">This section failed to show: {e instanceof Error ? e.message : String(e)}</p>
-          <button type="button" onclick={reset}>Try again</button></section>{/snippet}</svelte:boundary>
+        {#snippet failed(e, reset)}<Panel title="Shared fights"><p class="hint error mt-0">This section failed to show: {e instanceof Error ? e.message : String(e)}</p>
+          <Button class="mt-2" variant="outline" size="sm" onclick={reset}>Try again</Button></Panel>{/snippet}</svelte:boundary>
       {:else if section === "discord"}<Discord {view} />{:else if section === "invite"}<Invite {g} />{:else if section === "roles"}<Roles {view} />
       {:else if section === "mine"}<Mine {g} {view} />{:else}<Overview {g} {view} {go} />{/if}
     </div>
@@ -109,21 +114,13 @@
 {/if}
 
 <style>
-  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-  .guild-head h2 { margin: 0; }
   .guild { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: var(--gap); align-items: start; }
-  .guild-menu { position: sticky; top: 8px; display: flex; flex-direction: column; gap: 2px; padding: 8px; background: var(--surface); border-radius: var(--r-card); }
-  .guild-menu .label { padding: 8px 10px 4px; }
-  .guild-menu .label:first-child { padding-top: 2px; }
-  .guild-menu hr { width: 100%; margin: 8px 0; border: 0; border-top: 1px solid var(--rule); }
-  .guild-menu .tab { padding-left: 14px; }
-  .guild-menu .tab[aria-current="page"]::before { left: 4px; }
-  .guild-section { min-width: 0; }
+  .guild-menu { position: sticky; top: 64px; display: flex; flex-direction: column; gap: 2px; padding: 8px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
   /* Narrow: the menu becomes a row of sections above the page. */
   @media (max-width: 760px) {
     .guild { grid-template-columns: minmax(0, 1fr); }
     .guild-menu { position: static; flex-direction: row; overflow-x: auto; }
-    .guild-menu .label, .guild-menu hr { display: none; }
+    .guild-menu span, .guild-menu hr { display: none; }
     .guild-menu .tab { width: auto; flex: none; }
   }
 </style>

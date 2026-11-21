@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Checkbox } from "$lib/components/ui/checkbox/index.js";
+  import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
   import { EVENTS, RESET_CONFIG as C } from "../config.ts";
   import { activePlan, planLeft } from "../app/planner.ts";
   import { seasonOf } from "../app/season.ts";
@@ -57,7 +60,7 @@
   $effect.pre(() => { seasonOf(ui.data, ui.charId); });
 
   const s = $derived(ui.data.settings);
-  // The winter theme (1 December to 6 January): the palette in style.css follows `data-season` on <html>.
+  // The winter theme (1 December to 6 January): the palette in app.css follows `data-season` on <html>.
   const winter = $derived(s.winterTheme && winterActive(winterNow(ui.now)));
   // Halloween (25 October to 1 November): colours only.
   const season = $derived(winter ? "winter" : s.halloween && halloweenActive(winterNow(ui.now)) ? "halloween" : "");
@@ -80,6 +83,7 @@
   const plan = $derived(activePlan(ui.data, ui.charId, ui.now));
   const bosses = $derived(bossBoard(ui.data.bosses, ui.now));
   const meter = $derived(ui.meter?.status);
+  const METER_TEXT = { connected: "Aion 2 is running", searching: "Looking for the game", "waiting-game": "Waiting for the game", "no-capture": "Meter off: Npcap needed" } as const;
   // Sidebar groups: the open page's group is open; others only if the player opened them (remembered, this browser only).
   // The right column (wallet, timers) can be hidden for pages that want the width (remembered, this browser only).
   const WIDE_KEY = "aion2-wide";
@@ -196,47 +200,50 @@
 <div class="shell" class:no-inspector={wide}>
   <nav class="side" aria-label="Pages">
     <div class="brand" translate="no"><span class="logo">A2</span><b>AION 2</b><span>Companion</span></div>
-    <button class="tab" title="Open a page, switch character or tick a task (Ctrl+K)" onclick={() => palette?.open()}>{@html ICON.search}<span class="lbl">Go to…</span><span class="count">Ctrl K</span></button>
     {@render tab("home")}
-    {#each GROUPS as [name, tabs]}<details open={isOpen(name, tabs)} ontoggle={(e) => toggled(name, tabs, e)}><summary class="label">{@html ICON.chevron}{name}</summary>
+    {#each GROUPS as [name, tabs]}<details open={isOpen(name, tabs)} ontoggle={(e) => toggled(name, tabs, e)}><summary class="label"><ICON.chevron />{name}</summary>
       {#each tabs as t}{@render tab(t)}{/each}
     </details>{/each}
     {@render tab("wiki")}
     {@render tab("trophies")}
     <div class="side-foot">{@render tab("news")}{@render tab("settings")}</div>
   </nav>
-  {#snippet tab(t: Tab)}{@const b = badge(t)}<button class="tab" title={PAGE[t][0]} aria-current={t === ui.tab ? "page" : undefined} onclick={() => go(t)}>
-    {@html ICON[t]}<span class="lbl">{PAGE[t][0]}</span>{#if t === "news"}{#if unread}<span class="badge">{unread}</span>{/if}{:else if b}<span class="count">{b}</span>{/if}</button>{/snippet}
+  {#snippet tab(t: Tab)}{@const b = badge(t)}{@const I = ICON[t]}<button class="tab" title={PAGE[t][0]} aria-current={t === ui.tab ? "page" : undefined} onclick={() => go(t)}>
+    <I /><span class="lbl">{PAGE[t][0]}</span>{#if t === "news"}{#if unread}<span class="badge">{unread}</span>{/if}{:else if b}<span class="count">{b}</span>{/if}</button>{/snippet}
 
   <main>
+    <header class="topbar">
+      <button class="search-btn" data-slot="search" title="Open a page, switch character or tick a task (Ctrl+K)" onclick={() => palette?.open()}>
+        <ICON.search /><span>Go to a page, character or task…</span><kbd>Ctrl K</kbd></button>
+      {#if meter}<span class="status-pill {meter}"><span class="dot"></span>{METER_TEXT[meter]}</span>{/if}
+    </header>
     <div class="page-head"><h1>{PAGE[ui.tab][0]}</h1><p>{PAGE[ui.tab][1]}</p>
-      <button class="ghost side-toggle" aria-pressed={!wide} title={wide ? "Show the wallet and timers" : "Hide the wallet and timers: more room for the page"}
-        aria-label="Wallet and timers column" onclick={toggleWide}>{@html ICON.panel}</button></div>
+      <Button variant="ghost" size="icon-sm" class="side-toggle" aria-pressed={!wide} title={wide ? "Show the wallet and timers" : "Hide the wallet and timers: more room for the page"}
+        aria-label="Wallet and timers column" onclick={toggleWide}><ICON.panel /></Button></div>
     {#if ui.update && ui.update.version !== updateHidden}<div class="banner update"><span class="grow">{#if ui.updating}{ui.updating}{:else}<b>AION 2 Companion {ui.update.version}</b> is ready.{/if}</span>
       <a class="whats-new" href="https://github.com/krajetum/AION2/releases/tag/v{ui.update.version}" target="_blank" rel="noopener">What's new</a>
-      <button disabled={ui.updating.startsWith("Downloading") || ui.updating.startsWith("Updating")} onclick={install}>{gameActive(ui.now) ? "Install & restart (stops the meter)" : "Install & restart"}</button>
-      <button class="ghost" aria-label="Later" title="Later" onclick={() => { updateHidden = ui.update!.version; }}>{@html ICON.close}</button></div>{/if}
+      <Button size="sm" disabled={ui.updating.startsWith("Downloading") || ui.updating.startsWith("Updating")} onclick={install}>{gameActive(ui.now) ? "Install & restart (stops the meter)" : "Install & restart"}</Button>
+      <Button variant="ghost" size="icon-sm" aria-label="Later" title="Later" onclick={() => { updateHidden = ui.update!.version; }}><ICON.close /></Button></div>{/if}
     <!-- The birthday strip: on Home while it counts down, on every page on the day. -->
     {#if ui.tab === "home" || !bday}<div class="bday"><img src={balloons} alt="" /><img src={cake} alt="" />
       <div class="grow"><b>Hopex's Birthday</b><span>{bday ? `in ${bday}` : "Happy birthday, Hopex!"}</span></div>
       <img src={gift} alt="" /><img src={confetti} alt="" /></div>{/if}
     {#if ui.suggest && suggested}<div class="banner info"><span class="grow">Tick <b>{suggested.name}</b> by itself next time you:</span>
-      {#each ui.suggest.triggers as tr}<button onclick={() => learn(tr)}>{triggerLabel(tr, ui.data.arena.maps)}</button>{/each}
-      <button class="ghost" aria-label="Not now" title="Not now" onclick={() => { ui.suggest = null; }}>{@html ICON.close}</button></div>{/if}
+      {#each ui.suggest.triggers as tr}<Button variant="outline" size="sm" onclick={() => learn(tr)}>{triggerLabel(tr, ui.data.arena.maps)}</Button>{/each}
+      <Button variant="ghost" size="icon-sm" aria-label="Not now" title="Not now" onclick={() => { ui.suggest = null; }}><ICON.close /></Button></div>{/if}
     {#each ui.data.news.filter((n) => !n.read && isImportant(n)) as n (n.gid)}<div class="banner info"><a href={n.url} target="_blank" rel="noopener" onclick={() => markRead(n.gid)}>{n.title}</a>
-      <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => markRead(n.gid)}>{@html ICON.close}</button></div>{/each}
+      <Button variant="ghost" size="icon-sm" aria-label="Dismiss" title="Dismiss" onclick={() => markRead(n.gid)}><ICON.close /></Button></div>{/each}
     <!-- A page fades in when it opens (not with "reduce motion"). -->
     {#key ui.tab}<div in:fade={{ duration: still ? 0 : 120 }}>{#if ui.tab === "home"}<Home />{:else if ui.tab === "settings"}<Settings />{:else if ui.tab === "news"}<News />{:else if ui.tab === "season"}<Season />{:else if ui.tab === "crafting"}<Crafting />{:else if ui.tab === "enhance"}<Enhance />{:else if ui.tab === "dps"}<Dps />{:else if ui.tab === "fights"}<Fights />{:else if ui.tab === "arena"}<Arena />{:else if ui.tab === "players"}<Players />{:else if ui.tab === "guild"}<Guild />{:else if ui.tab === "bosses"}<Bosses />{:else if ui.tab === "map"}<MapPage />{:else if ui.tab === "pets"}<Pets />{:else if ui.tab === "plan"}<Planner />{:else if ui.tab === "wiki"}<Wiki />{:else if ui.tab === "trophies"}<Trophies />{:else}<TaskList cad={ui.tab} />{/if}</div>{/key}
   </main>
 
   <aside class="inspector" aria-label="Timers">
-    <label class="char"><span class="label">Character</span><select id="char" value={ui.charId} onchange={(e) => { ui.charId = e.currentTarget.value; doneHere.clear(); }}>
-      {#each ui.data.characters as c (c.id)}<option value={c.id}>{c.name}</option>{/each}</select></label>
-    {#if offer}<span class="chip"><span class="grow">Playing <b>{offer}</b></span><button onclick={switchTo}>{detected ? "Switch" : "Add"}</button>
-      <button class="ghost" aria-label="Dismiss" title="Dismiss" onclick={() => { dismissed = offer; }}>{@html ICON.close}</button></span>{/if}
-    {#if s.mutedUntil > ui.now}<span class="chip">Muted until {hm(s.mutedUntil)}<button onclick={() => act(() => unmute(ui.data))}>Unmute</button></span>{/if}
-    {#if meter}<div class="meter-dot {meter}"><span class="dot"></span>Meter {meter === "connected" ? "connected" : meter === "searching" ? "searching" : meter === "waiting-game" ? "waiting for the game" : "no capture"}</div>{/if}
-    {#if wallet}<details open title="As the game last sent them{wallet.atMs ? ` (${hm(wallet.atMs)})` : ""}: currencies when you enter the world and whenever one changes, Odyle energy when the game sends it"><summary class="label">{@html ICON.chevron}Wallet{#if picked && !sameName(picked.name, selName)}<span class="wallet-of"> · {picked.name}</span>{/if}</summary>
+    <label class="char"><span class="label">Character</span><NativeSelect class="w-full" id="char" value={ui.charId} onchange={(e) => { ui.charId = e.currentTarget.value; doneHere.clear(); }}>
+      {#each ui.data.characters as c (c.id)}<NativeSelectOption value={c.id}>{c.name}</NativeSelectOption>{/each}</NativeSelect></label>
+    {#if offer}<span class="chip"><span class="grow">Playing <b>{offer}</b></span><Button variant="secondary" size="xs" onclick={switchTo}>{detected ? "Switch" : "Add"}</Button>
+      <Button variant="ghost" size="icon-xs" aria-label="Dismiss" title="Dismiss" onclick={() => { dismissed = offer; }}><ICON.close /></Button></span>{/if}
+    {#if s.mutedUntil > ui.now}<span class="chip">Muted until {hm(s.mutedUntil)}<Button variant="secondary" size="xs" onclick={() => act(() => unmute(ui.data))}>Unmute</Button></span>{/if}
+    {#if wallet}<details open title="As the game last sent them{wallet.atMs ? ` (${hm(wallet.atMs)})` : ""}: currencies when you enter the world and whenever one changes, Odyle energy when the game sends it"><summary class="label"><ICON.chevron />Wallet{#if picked && !sameName(picked.name, selName)}<span class="wallet-of"> · {picked.name}</span>{/if}</summary>
       {#each walletRows(wallet, s.sumKina) as r ((picked?.name ?? "") + r.name)}<div class="timer event"><small>{r.name}</small>{#if r.name.startsWith("Kina")}<Spark values={kinaDays} label="Kina and bound Kina, the last {kinaDays.length} days" />{/if}<Amount value={r.value} /></div>{/each}
       {#if apToday}<button class="plain timer event ap-today" aria-expanded={apOpen} title="Abyss Points gained since the daily reset: click for where they came from"
         onclick={() => { apOpen = !apOpen; }}><small>AP today</small><Spark values={apDays} label="Abyss Points gained per day, the last 7 days" /><span>{num(apToday.total)}</span></button>
@@ -248,17 +255,17 @@
             <div class="sub"><small>Other</small><span>{num(t.other)}</span></div>{/each}
           <p class="hint">By timing: points within 5 s of a PvP kill or assist of yours, or of a mob you killed. Counted while the companion runs; the first change after it starts in game is "other".</p></div>{/if}{/if}
       {#if wallet.odyle}<div class="timer event" title="Basic · charged"><small>Odyle energy</small><span>{num(wallet.odyle.basic)} · {num(wallet.odyle.charged)}</span></div>{/if}
-      {#if wallet.values[930_100_001] != null}<label class="toggle-line wallet-sum"><input type="checkbox" checked={s.sumKina}
-        onchange={(e) => { const on = e.currentTarget.checked; act(() => { ui.data.settings.sumKina = on; }); }}> Kina and bound Kina together</label>{/if}
-    </details>{:else if meter}<details open><summary class="label">{@html ICON.chevron}Wallet</summary>
+      {#if wallet.values[930_100_001] != null}<label class="toggle-line wallet-sum"><Checkbox checked={s.sumKina}
+        onCheckedChange={(on) => act(() => { ui.data.settings.sumKina = on; })} /> Kina and bound Kina together</label>{/if}
+    </details>{:else if meter}<details open><summary class="label"><ICON.chevron />Wallet</summary>
       <p class="hint wallet-hint">Your currencies come when you log in or change character in game, and whenever one changes.</p></details>{/if}
-    <details open><summary class="label">{@html ICON.chevron}Resets</summary>
+    <details open><summary class="label"><ICON.chevron />Resets</summary>
       {#each CADENCES as c}{@const cy = cycle(c)}<div class="timer" class:soon={cy.left < 3600_000} style:--p={String(cy.p)}><small>{LABEL[c]}</small><span>{formatCountdown(cy.left)}</span></div>{/each}
     </details>
-    <details open><summary class="label">{@html ICON.chevron}Events</summary>
+    <details open><summary class="label"><ICON.chevron />Events</summary>
       {#each EVENTS as ev}<div class="timer event"><small>{ev.name}</small><span>{formatCountdown(nextEvent(ev, ui.now, C.timeZone) - ui.now)}</span></div>{/each}
     </details>
-    {#if bosses.length}<details open title="From the maps you opened in game: open the map again to refresh"><summary class="label">{@html ICON.chevron}Field bosses</summary>
+    {#if bosses.length}<details open title="From the maps you opened in game: open the map again to refresh"><summary class="label"><ICON.chevron />Field bosses</summary>
       {#each bosses as b (b.mapId + ":" + b.bossId)}<div class="timer event" class:up={b.up} class:soon={!b.up && b.timeMs - ui.now < 600_000}><small>{bossLabel(b, ui.data.bossNames)}</small>
         <span>{b.up ? `Up · seen ${hm(b.seenMs)}` : formatCountdown(b.timeMs - ui.now)}</span></div>{/each}
     </details>{/if}

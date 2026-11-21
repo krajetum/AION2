@@ -43,7 +43,7 @@
     lines={linesOf(slot)} custom={customOf(slot)} {className} save={saveOf(slot)} />{/each}</div>{/snippet}
 
 {#snippet skills(title: string, list: Skill[], stigma = false)}
-  {#if list.length}<h3>{title}</h3><div class="eq-skills">
+  {#if list.length}<h3 class="mt-4 mb-2 text-sm font-semibold">{title}</h3><div class="eq-skills">
     {#each list as s (s.id)}<span class="eq-skill" class:locked={s.level === 0} title="{s.name}{s.level ? ` · level ${s.level}` : ' · not learned'}{stigma && s.equipped ? ' · equipped' : ''}">
       {#if s.icon}<img src={s.icon} alt="" width="40" height="40" loading="lazy">{/if}
       {#if stigma && s.equipped}<i class="eq-e">E</i>{/if}{#if s.level}<small>Lv {s.level}</small>{:else}<small>🔒</small>{/if}</span>{/each}
@@ -52,11 +52,11 @@
 {#if loading}<p class="hint">Reading the equipment…</p>
 {:else if failed}<p class="hint">Equipment not read ({failed}).</p>
 {:else if eq}
-  <h3>Gear</h3>{@render cards(eq.gear)}
-  <h3>Accessories</h3>{@render cards(eq.accessories)}
-  <h3>Arcana</h3>{#if eq.arcana.length}{@render cards(eq.arcana)}{:else}<p class="hint">No arcana equipped: the official profile lists none for this character.</p>{/if}
-  <p class="hint">Best-in-slot lines from <a href={BIS.sourceUrl} target="_blank" rel="noopener">{BIS.source}</a> ({BIS.captured}), with its % per line; Edit on a card's back keeps your own list.</p>
-  {#if eq.pet || eq.wing}<h3>Pet / Wings</h3><ul class="eq-list eq-cols">
+  <h3 class="mt-4 mb-2 text-sm font-semibold">Gear</h3>{@render cards(eq.gear)}
+  <h3 class="mt-4 mb-2 text-sm font-semibold">Accessories</h3>{@render cards(eq.accessories)}
+  <h3 class="mt-4 mb-2 text-sm font-semibold">Arcana</h3>{#if eq.arcana.length}{@render cards(eq.arcana)}{:else}<p class="hint">No arcana equipped: the official profile lists none for this character.</p>{/if}
+  <p class="hint">Best-in-slot lines from <a class="underline" href={BIS.sourceUrl} target="_blank" rel="noopener">{BIS.source}</a> ({BIS.captured}), with its % per line; Edit on a card's back keeps your own list.</p>
+  {#if eq.pet || eq.wing}<h3 class="mt-4 mb-2 text-sm font-semibold">Pet / Wings</h3><ul class="eq-list eq-cols">
     {#if eq.pet}<li class="eq-row">{#if eq.pet.icon}<img src={eq.pet.icon} alt="" width="32" height="32" loading="lazy">{/if}{eq.pet.name}{eq.pet.level != null ? ` Lv ${eq.pet.level}` : ""}</li>{/if}
     {#if eq.wing}<li class="eq-row">{#if eq.wing.icon}<img src={eq.wing.icon} alt="" width="32" height="32" loading="lazy">{/if}<span class="grade-{eq.wing.grade}">{eq.wing.name}</span></li>{/if}
   </ul>{/if}

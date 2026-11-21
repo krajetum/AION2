@@ -1,4 +1,10 @@
 <script lang="ts">
+  import ChevronRight from "@lucide/svelte/icons/chevron-right";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
+  import Intro from "$lib/components/app/Intro.svelte";
+  import Panel from "$lib/components/app/Panel.svelte";
+  import UnderlineTabs from "$lib/components/app/UnderlineTabs.svelte";
   import Empty from "../parts/Empty.svelte";
   import { classIcon } from "../classes.ts";
   import { labelMap } from "../../app/arena.ts";
@@ -48,61 +54,62 @@
   const offOf = (p: { name: string; serverId: number | null }) => (p.name && p.serverId ? official[okey(p.name, p.serverId)] ?? null : null);
 </script>
 
-<details class="intro"><summary>How it works</summary><p class="hint">PvP on an instance map is logged when you leave it. Name a map once (e.g. “Arena of Solitude”) and its matches get that name.
+<Intro><p>PvP on an instance map is logged when you leave it. Name a map once (e.g. “Arena of Solitude”) and its matches get that name.
   Yours and your party's gear come from the game; opponents' GS (item level) and CP come from their official profile when you open the match.
-  Click a player, then "Gear and stats" for their whole official profile.</p></details>
+  Click a player, then "Gear and stats" for their whole official profile.</p></Intro>
+
+{#snippet cls(job: string)}<span class="flex items-center gap-1.5">{#if classIcon(job)}<img class="size-5 object-contain" src={classIcon(job)} alt="">{/if}{job || "—"}</span>{/snippet}
+{#snippet chev(on: boolean)}<ChevronRight class="size-4 text-muted-foreground transition-transform {on ? 'rotate-90' : ''}" />{/snippet}
 
 {#if !log.matches.length}<Empty>No match yet. Keep the companion open while you play an arena match.</Empty>
-{:else}<section class="dps-table"><div class="scroll"><table class="sheet">
-  <thead><tr><th>When</th><th>Map</th><th class="n">Time</th><th class="n">Dealt</th><th class="n">Taken</th><th class="n">Deaths</th></tr></thead>
-  <tbody>{#each log.matches as m (key(m))}{@const t = matchTotals(m)}{@const k = key(m)}
-    <tr class="prow" tabindex="0" style:--p={String(t.dealt + t.taken ? t.dealt / (t.dealt + t.taken) : 0)} aria-expanded={open === k} onclick={() => { open = open === k ? "" : k; }}>
-      <td>{when(m.startMs)}</td>
-      <td><span class="name">{mapLabel(log.maps, m.mapId)}</span><small>{t.opponents} {t.opponents === 1 ? "opponent" : "opponents"}{#if m.rounds}{" "}· {m.rounds.length} rounds{/if}</small></td>
-      <td class="n">{clock(t.ms)}</td><td class="n">{short(t.dealt)}</td><td class="n">{short(t.taken)}</td>
-      <td class="n">{t.ourDeaths} : {t.theirDeaths}</td></tr>
-    {#if open === k}<tr class="skills"><td colspan="6">
-      <label class="arena-map">Map {m.mapId} name <input value={log.maps[m.mapId] ?? ""} placeholder="Arena of Solitude"
-        onchange={(e) => commit(e, (v) => labelMap(ui.data, m.mapId, v), () => log.maps[m.mapId])}></label>
-      <table class="sheet">
-        <thead><tr><th>Player</th><th>Class</th><th class="n">Server</th><th class="n">Lv</th><th class="n">GS</th><th class="n">CP</th>
-          <th class="n">Dealt</th><th class="n">Taken</th><th class="n">Deaths</th></tr></thead>
-        <tbody>{#each m.players as p (p.id)}{@const pk = `${k}:${p.id}`}{@const o = offOf(p)}
-          <tr class="prow {p.side}" class:you={p.side === "you"} style:--p="0" aria-expanded={player === pk} title="Gear and stats"
-            onclick={() => { player = player === pk ? "" : pk; }}>
-          <td><span class="name">{p.name || (p.side === "you" ? "You" : `#${p.id}`)}</span><small>{p.side}</small></td>
-          <td class="cls">{#if classIcon(p.job)}<img class="cls-icon" src={classIcon(p.job)} alt="" width="22" height="23">{/if}{p.job || "—"}</td><td class="n" title={p.serverId ? `Server ${p.serverId}` : ""}>{serverName(p.serverId) || p.serverId || "—"}</td><td class="n">{gear(p.level ?? o?.level ?? null)}</td>
-          <td class="n" title={p.gearScore == null && o ? "Item level, official profile" : ""}>{gear(p.gearScore ?? o?.itemLevel ?? null)}</td>
-          <td class="n" title={p.combatPower == null && o ? "Official profile" : ""}>{gear(p.combatPower ?? o?.combatPower ?? null, short)}</td><td class="n">{short(p.dealt)}</td><td class="n">{short(p.taken)}</td><td class="n">{p.deaths}</td></tr>
-          {#if player === pk}<tr class="skills"><td colspan="9"><PlayerCard {p} /></td></tr>{/if}{/each}</tbody>
-      </table></td></tr>{/if}
-  {/each}</tbody></table></div><p class="hint">Deaths: your side : theirs. Click a match for its players.</p></section>{/if}
+{:else}<Panel title="Matches" count={log.matches.length}><Table.Root>
+  <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head class="w-8"></Table.Head><Table.Head>When</Table.Head><Table.Head>Map</Table.Head><Table.Head class="text-right">Time</Table.Head><Table.Head class="text-right">Dealt</Table.Head><Table.Head class="text-right">Taken</Table.Head><Table.Head class="text-right">Deaths</Table.Head></Table.Row></Table.Header>
+  <Table.Body>{#each log.matches as m (key(m))}{@const t = matchTotals(m)}{@const k = key(m)}
+    <Table.Row class="bar-row cursor-pointer border-0" tabindex={0} style="--p: {t.dealt + t.taken ? t.dealt / (t.dealt + t.taken) : 0}" aria-expanded={open === k} onclick={() => { open = open === k ? "" : k; }}>
+      <Table.Cell>{@render chev(open === k)}</Table.Cell>
+      <Table.Cell class="text-muted-foreground">{when(m.startMs)}</Table.Cell>
+      <Table.Cell><span class="font-medium">{mapLabel(log.maps, m.mapId)}</span> <span class="text-xs text-muted-foreground">{t.opponents} {t.opponents === 1 ? "opponent" : "opponents"}{#if m.rounds}{" "}· {m.rounds.length} rounds{/if}</span></Table.Cell>
+      <Table.Cell class="text-right">{clock(t.ms)}</Table.Cell><Table.Cell class="text-right">{short(t.dealt)}</Table.Cell><Table.Cell class="text-right">{short(t.taken)}</Table.Cell>
+      <Table.Cell class="text-right font-semibold">{t.ourDeaths} : {t.theirDeaths}</Table.Cell></Table.Row>
+    {#if open === k}<Table.Row class="hover:bg-transparent"><Table.Cell colspan={7} class="bg-muted/40 p-3 whitespace-normal">
+      <label class="mb-2 flex items-center gap-2 text-sm text-muted-foreground">Map {m.mapId} name <Input class="h-7 w-56" value={log.maps[m.mapId] ?? ""} placeholder="Arena of Solitude"
+        onchange={(e) => commit(e, (v) => labelMap(ui.data, m.mapId, v), () => log.maps[m.mapId])} /></label>
+      <Table.Root>
+        <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Player</Table.Head><Table.Head>Class</Table.Head><Table.Head class="text-right">Server</Table.Head><Table.Head class="text-right">Lv</Table.Head><Table.Head class="text-right">GS</Table.Head><Table.Head class="text-right">CP</Table.Head>
+          <Table.Head class="text-right">Dealt</Table.Head><Table.Head class="text-right">Taken</Table.Head><Table.Head class="text-right">Deaths</Table.Head></Table.Row></Table.Header>
+        <Table.Body>{#each m.players as p (p.id)}{@const pk = `${k}:${p.id}`}{@const o = offOf(p)}
+          <Table.Row class="cursor-pointer" tabindex={0} aria-expanded={player === pk} title="Gear and stats" onclick={() => { player = player === pk ? "" : pk; }}>
+          <Table.Cell><span class="font-medium {p.side === 'you' ? 'text-primary' : p.side === 'opponent' ? 'text-taken' : ''}">{p.name || (p.side === "you" ? "You" : `#${p.id}`)}</span> <span class="text-xs text-muted-foreground">{p.side}</span></Table.Cell>
+          <Table.Cell>{@render cls(p.job)}</Table.Cell><Table.Cell class="text-right" title={p.serverId ? `Server ${p.serverId}` : ""}>{serverName(p.serverId) || p.serverId || "—"}</Table.Cell><Table.Cell class="text-right">{gear(p.level ?? o?.level ?? null)}</Table.Cell>
+          <Table.Cell class="text-right" title={p.gearScore == null && o ? "Item level, official profile" : ""}>{gear(p.gearScore ?? o?.itemLevel ?? null)}</Table.Cell>
+          <Table.Cell class="text-right" title={p.combatPower == null && o ? "Official profile" : ""}>{gear(p.combatPower ?? o?.combatPower ?? null, short)}</Table.Cell><Table.Cell class="text-right">{short(p.dealt)}</Table.Cell><Table.Cell class="text-right">{short(p.taken)}</Table.Cell><Table.Cell class="text-right">{p.deaths}</Table.Cell></Table.Row>
+          {#if player === pk}<Table.Row class="hover:bg-transparent"><Table.Cell colspan={9} class="whitespace-normal"><PlayerCard {p} /></Table.Cell></Table.Row>{/if}{/each}</Table.Body>
+      </Table.Root></Table.Cell></Table.Row>{/if}
+  {/each}</Table.Body></Table.Root><p class="hint">Deaths: your side : theirs. Click a match for its players.</p></Panel>{/if}
 
-<section class="dps-table kill-history"><h2>Kill history
-    <span class="count">{count("kill")} {count("kill") === 1 ? "kill" : "kills"} · {count("assist")} {count("assist") === 1 ? "assist" : "assists"} · {count("death")} {count("death") === 1 ? "death" : "deaths"}</span></h2>
-  <div class="seg" role="group" aria-label="Show">
-    {#each KILL_VIEWS as [v, label]}<button class:on={killView === v} aria-pressed={killView === v} onclick={() => { killView = v; killOpen = ""; }}>{label}</button>{/each}</div>
+<Panel title="Kill history" count="{count('kill')} {count('kill') === 1 ? 'kill' : 'kills'} · {count('assist')} {count('assist') === 1 ? 'assist' : 'assists'} · {count('death')} {count('death') === 1 ? 'death' : 'deaths'}">
+  <div class="mb-3"><UnderlineTabs label="Show" items={KILL_VIEWS} value={killView} onchange={(v) => { killView = v; killOpen = ""; }} /></div>
   {#if !kills.length}<p class="hint">{killView === "kill" ? "No kill yet." : killView === "assist" ? "No assist yet." : "Nobody has killed you yet."} PvP kills, assists and deaths are logged while the companion runs, anywhere.</p>
-  {:else}<div class="scroll"><table class="sheet">
-    <thead><tr><th>When</th><th>Player</th><th>Class</th><th class="n">Server</th><th>Where</th>
-      <th class="n">{killView === "death" ? "They dealt" : "You dealt"}</th><th class="n">{killView === "death" ? "You dealt" : "They dealt"}</th></tr></thead>
-    <tbody>{#each kills as k (killKey(k))}{@const o = k.other}{@const kk = killKey(k)}
-      <tr class="prow" tabindex="0" aria-expanded={killOpen === kk} title="Gear and stats" style:--p="0" onclick={() => { killOpen = killOpen === kk ? "" : kk; }}>
-        <td>{when(k.atMs)}</td>
-        <td><span class="name">{o.name || `#${o.id}`}</span></td>
-        <td class="cls">{#if classIcon(o.job)}<img class="cls-icon" src={classIcon(o.job)} alt="" width="22" height="23">{/if}{o.job || "—"}</td>
-        <td class="n">{serverName(o.serverId) || o.serverId || "—"}</td>
-        <td>{#if k.mapId == null}<span class="hint" title="No map load since the app started: after the next teleport or zone change the map is known">Unknown</span>
-          {:else}{mapLabel(log.maps, k.mapId)}{/if}</td>
-        <td class="n">{short(killView === "death" ? o.dealt : o.taken)}</td><td class="n">{short(killView === "death" ? o.taken : o.dealt)}</td></tr>
-      {#if killOpen === kk}<tr class="skills"><td colspan="7"><PlayerCard p={o} /></td></tr>{/if}
-    {/each}</tbody></table></div>
+  {:else}<Table.Root>
+    <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>When</Table.Head><Table.Head>Player</Table.Head><Table.Head>Class</Table.Head><Table.Head class="text-right">Server</Table.Head><Table.Head>Where</Table.Head>
+      <Table.Head class="text-right">{killView === "death" ? "They dealt" : "You dealt"}</Table.Head><Table.Head class="text-right">{killView === "death" ? "You dealt" : "They dealt"}</Table.Head></Table.Row></Table.Header>
+    <Table.Body>{#each kills as k (killKey(k))}{@const o = k.other}{@const kk = killKey(k)}
+      <Table.Row class="cursor-pointer" tabindex={0} aria-expanded={killOpen === kk} title="Gear and stats" onclick={() => { killOpen = killOpen === kk ? "" : kk; }}>
+        <Table.Cell class="text-muted-foreground">{when(k.atMs)}</Table.Cell>
+        <Table.Cell class="font-medium">{o.name || `#${o.id}`}</Table.Cell>
+        <Table.Cell>{@render cls(o.job)}</Table.Cell>
+        <Table.Cell class="text-right">{serverName(o.serverId) || o.serverId || "—"}</Table.Cell>
+        <Table.Cell>{#if k.mapId == null}<span class="text-muted-foreground" title="No map load since the app started: after the next teleport or zone change the map is known">Unknown</span>
+          {:else}{mapLabel(log.maps, k.mapId)}{/if}</Table.Cell>
+        <Table.Cell class="text-right">{short(killView === "death" ? o.dealt : o.taken)}</Table.Cell><Table.Cell class="text-right">{short(killView === "death" ? o.taken : o.dealt)}</Table.Cell></Table.Row>
+      {#if killOpen === kk}<Table.Row class="hover:bg-transparent"><Table.Cell colspan={7} class="whitespace-normal"><PlayerCard p={o} /></Table.Cell></Table.Row>{/if}
+    {/each}</Table.Body></Table.Root>
     <p class="hint">The killer is the last player who hit before the death (the game sends no "killed by"); an assist is your hit in the
       15 s before someone else's last one. Damage is since the map was loaded. "Unknown" map: the app started after you entered it,
       so the next teleport or zone change tells.</p>{/if}
-  {#if unnamed.length}<div class="map-names"><b>Name your maps</b>
-    {#each unnamed as id (id)}<label>Map {id} <input list="map-presets" placeholder="e.g. Lower Abyss" autocomplete="off"
-      onchange={(e) => commit(e, (v) => labelMap(ui.data, id, v), () => log.maps[id] ?? "")}></label>{/each}
+  {#if unnamed.length}<div class="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-sm"><b>Name your maps</b>
+    {#each unnamed as id (id)}<label class="flex items-center gap-1.5 text-muted-foreground">Map {id} <Input class="h-7 w-44" list="map-presets" placeholder="e.g. Lower Abyss" autocomplete="off"
+      onchange={(e) => commit(e, (v) => labelMap(ui.data, id, v), () => log.maps[id] ?? "")} /></label>{/each}
     <datalist id="map-presets">{#each MAP_PRESETS as n}<option value={n}></option>{/each}</datalist>
-    <span class="hint">Named once, every match and kill on that map shows it. Map ids are per game map, so a faction's whole world is one map.</span></div>{/if}
-</section>
+    <span class="text-xs text-muted-foreground">Named once, every match and kill on that map shows it. Map ids are per game map, so a faction's whole world is one map.</span></div>{/if}
+</Panel>

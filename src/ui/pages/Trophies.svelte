@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Progress } from "$lib/components/ui/progress/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   // Trophies (domain/trophies.ts): badges counted from what the app already keeps. Nothing to tick here.
   import { nextTier, progress, stars, tally, trophies } from "../../domain/trophies.ts";
   import { num } from "../format.ts";
@@ -12,33 +14,21 @@
   const char = $derived(ui.data.characters.find((c) => c.id === ui.charId)?.name ?? "");
 </script>
 
-<div class="kpis">
+<div class="mb-3 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
   <Kpi label="Stars" value="{total.earned}/{total.total}" sub="one for every tier reached" cls="hero" />
   <Kpi label="Trophies complete" value="{list.filter((t) => nextTier(t) === null).length}/{list.length}" sub="every tier earned" />
 </div>
 
-<div class="trophies">
+<div class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
   {#each list as t (t.id)}{@const s = stars(t)}{@const next = nextTier(t)}
-    <section class:full={next === null}>
-      <h2>{t.name} <span class="count">{num(t.value)}{next === null ? "" : ` / ${num(next)}`}</span></h2>
-      <p class="what">{t.what}</p>
-      <div class="tiers" role="img" aria-label="{s} of {t.tiers.length} stars">
-        {#each t.tiers as n, i}<span class="tier" class:on={i < s}>★<small>{num(n)}</small></span>{/each}
+    <Panel title={t.name} count="{num(t.value)}{next === null ? '' : ` / ${num(next)}`}" class="mb-0">
+      <p class="m-0 text-xs text-muted-foreground">{t.what}</p>
+      <div class="mt-3 mb-2 flex gap-3" role="img" aria-label="{s} of {t.tiers.length} stars">
+        {#each t.tiers as n, i}<span class="grid justify-items-center text-xl leading-none {i < s ? 'text-star' : 'text-input'}">★<small class="mt-1 text-xs text-muted-foreground tabular-nums">{num(n)}</small></span>{/each}
       </div>
-      <div class="bar"><i style:--p={String(progress(t))}></i></div>
-    </section>
+      <Progress value={progress(t) * 100} class={next === null ? "[&>[data-slot=progress-indicator]]:bg-hps" : ""} />
+    </Panel>
   {/each}
 </div>
 <p class="hint">Counted from what the companion keeps on this PC: the DPS Log, the arena log, your pets and cubes. Oath keeper and
   Perfect days are {char || "the selected character"}'s.</p>
-
-<style>
-  .trophies { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--gap); }
-  .trophies section { margin: 0; }
-  .what { margin: 0; color: var(--faint); font-size: var(--fs-sm); }
-  .tiers { display: flex; gap: var(--s-3); margin: var(--s-3) 0 var(--s-2); }
-  .tier { display: grid; justify-items: center; color: var(--control); font-size: var(--fs-2xl); line-height: 1; }
-  .tier small { margin-top: var(--s-1); color: var(--faint); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
-  .tier.on { color: var(--star); }
-  .full .bar i { background: var(--teal); }
-</style>

@@ -2,7 +2,7 @@
 import { mount } from "svelte";
 import { clock, short, type Fight, type MeterUpdate } from "./domain/meter.ts";
 import { addFight, addRecent, fightEnded, newBests, targetEnded, toRecord, yourDps } from "./domain/fights.ts";
-import { perSecond, sample } from "./domain/timeline.ts";
+import { newTrack, perSecond, sample, sampleTrack, trackSeries } from "./domain/timeline.ts";
 import { allDone } from "./domain/tasks.ts";
 import { CADENCES } from "./domain/types.ts";
 import { charFor, eventsFrom, SUGGEST_MS, type MeterEvent } from "./domain/triggers.ts";
@@ -32,7 +32,7 @@ import { uploadFight } from "./app/guild.ts";
 import { crashReports } from "./infra/sentry.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, meterItemCodes, radarOverlay, meterOverlay, netOverlay, onEventsOverlay, onNetOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
-import { fightsSnapshot, ui } from "./ui/state.svelte.ts";
+import { fightsSnapshot, live, ui } from "./ui/state.svelte.ts";
 
 const app = document.getElementById("app")!;
 
@@ -83,6 +83,7 @@ async function main() {
   let pending: MeterUpdate | null = null;
   let last: MeterUpdate | undefined; // the previous update: a fight that ended (Fight Log), events for auto-tracked tasks
   let cum: number[] = []; // the running boss fight's samples (domain/timeline.ts)
+  let track = newTrack(); // the same for every row and the boss HP: the fight chart
   onMeter((u) => {
     const first = !pending;
     pending = u;
@@ -96,6 +97,7 @@ async function main() {
       if (fightEnded(lastFight, latest.fight)) {
         const rec = toRecord(lastFight, latest.profile, latest.position?.mapId ?? null, Date.now());
         if (cum.length > 1) rec.timeline = perSecond(cum);
+        if (track.hp.length > 1) Object.assign(rec, trackSeries(track, lastFight.rows));
         // A personal best on a boss fought before: said out loud (the demo fight never counts).
         const beat = latest.demo ? [] : newBests(ui.fights, rec);
         if (beat.length) celebrate(`Personal best on ${rec.boss}: ${beat.map((b) => (b === "dps" ? `${short(yourDps(rec))}/s` : `killed in ${clock(rec.battleTimeMs)}`)).join(" · ")}`);
@@ -104,8 +106,9 @@ async function main() {
         if (!latest.demo) uploadFight(ui.data, rec, latest.profile?.serverId);
       }
       // Your damage second by second, for the fight's timeline: a new one for each target.
-      if (targetEnded(lastFight, latest.fight)) cum = [];
+      if (targetEnded(lastFight, latest.fight)) { cum = []; track = newTrack(); }
       cum = sample(cum, latest.fight);
+      live.track = { ...sampleTrack(track, latest.fight) };
       autoTrack(eventsFrom(last, latest, Date.now()), latest);
       // Entering the game or another character: the shared redeem codes still to use, and who gets the rewards.
       if (!latest.demo) remindCodes(latest.profile?.name);

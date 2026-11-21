@@ -1,6 +1,8 @@
 <script lang="ts">
   // The Advent calendar (domain/holiday.ts): 24 doors, today's and the ones before it can be opened, each hides a
   // Christmas cracker joke (domain/advent.ts): the question first, the answer when you pull the cracker.
+  import { Button } from "$lib/components/ui/button/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   import { openAdventDoor } from "../../app/holiday.ts";
   import { JOKES } from "../../domain/advent.ts";
   import { ADVENT_DAYS, adventToday, canOpen, openedNow } from "../../domain/holiday.ts";
@@ -28,8 +30,7 @@
   }
 </script>
 
-<section class="advent" aria-label="Advent calendar">
-  <h2>Advent calendar <span class="count">{opened.size} / {ADVENT_DAYS} opened</span></h2>
+<Panel title="Advent calendar" count="{opened.size} / {ADVENT_DAYS} opened" class="advent">
   <div class="advent-body">
     <div class="doors">
       {#each days as d (d)}{@const ok = canOpen(d, now)}{@const isOpen = opened.has(d)}
@@ -44,10 +45,10 @@
         <small>{shown} December</small>
         <p class="setup">{joke.setup}</p>
         {#if pulled}<p class="punch">{joke.punchline}</p>
-        {:else}<button onclick={() => { pulled = true; }}>Pull the cracker</button>{/if}
+        {:else}<Button size="sm" onclick={() => { pulled = true; }}>Pull the cracker</Button>{/if}
         <p class="credit">{#if joke.url}<a href={joke.url} target="_blank" rel="noopener">{joke.credit}</a>{:else}{joke.credit}{/if}</p>
       {:else if today}<p class="hint">Door {today} is waiting. Open it for today's Christmas cracker joke.</p>
       {:else}<p class="hint">Every door can be opened now: pick one to read its joke again.</p>{/if}
     </div>
   </div>
-</section>
+</Panel>
