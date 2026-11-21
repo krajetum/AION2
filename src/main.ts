@@ -18,7 +18,7 @@ import petDropsUrl from "./assets/pet-drops.json?url";
 import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
 import { loadFights, saveFights } from "./infra/fights.ts";
-import { findUpdate, getAutostart, isDesktop, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
+import { findUpdate, getAutostart, isDesktop, mcpServer, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
 import { act, celebrate, cue, refreshCodes, refreshGathers, refreshGuild, refreshNews, remindCodes, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
@@ -125,6 +125,7 @@ async function main() {
   if (isDesktop()) await onTrayMute(() => act(() => muteForAnHour(ui.data, Date.now())));
 
   crashReports(data.settings.crashReports).catch((e) => console.warn("Crash reports not started", e));
+  mcpServer(data.settings.mcpServer).catch((e) => console.warn("MCP server not started", e));
   if (isDesktop()) checkUpdate(true);
   refreshNews();
   refreshCodes();

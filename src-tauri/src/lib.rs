@@ -1,6 +1,7 @@
 mod crash;
 mod armory;
 mod links;
+mod mcp;
 mod meter;
 mod places;
 mod telemetry;
@@ -67,6 +68,7 @@ pub fn run() {
             links::open_url,
             armory::armory_get,
             updates::update_check_beta,
+            mcp::mcp_server,
             meter::meter_cube_codes,
             meter::meter_item_codes,
         ])

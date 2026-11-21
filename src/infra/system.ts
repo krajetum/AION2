@@ -35,3 +35,7 @@ export function openLinksInBrowser() {
     invoke("open_url", { url: a.href }).catch((err) => console.warn("Could not open the link", err));
   });
 }
+
+/** The local MCP server for Claude (src-tauri/src/mcp.rs). Rejects when its port is taken. */
+export const MCP_URL = "http://127.0.0.1:47821/mcp";
+export const mcpServer = (on: boolean) => (isTauri() ? invoke<void>("mcp_server", { on }) : Promise.resolve());
