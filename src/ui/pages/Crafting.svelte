@@ -133,7 +133,7 @@
   <span class="text-xs text-muted-foreground">{inv?.items && inv.itemsAt ? `${char}'s bag${inv.stored ? " and warehouse" : ""}, read ${new Date(inv.itemsAt).toLocaleString()}. Replaces the owned count of every game item.`
     : "Desktop app: enter the world with the game's recipes loaded, and the meter reads your bag and warehouse."}</span></div>
 
-<Panel title="Targets">
+<Panel title="Targets" class="overflow-visible"><!-- the item picker's list drops below the card -->
   <Table.Root>
     <Table.Body>{#each c.targets as t (t.item)}<Table.Row>
       <Table.Cell>{@render pic(c.items[t.item])}<b>{c.items[t.item].name}</b></Table.Cell>

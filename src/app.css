@@ -5,7 +5,7 @@
    The old stylesheet (style.css) sits in the `legacy` layer while pages move over: above Tailwind's reset, below its
    utilities, so a shadcn component always wins over a global legacy rule. */
 @layer theme, base, legacy, components, utilities;
-@import "tailwindcss";
+@import "tailwindcss" source("."); /* scan src/ only: .claude/worktrees holds whole checkouts */
 @import "tw-animate-css";
 @import "./style.css" layer(legacy);
 
