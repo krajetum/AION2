@@ -119,7 +119,7 @@
   <PlayerCompare a={first!} b={open!} onswap={swap} onclose={() => { first = null; }} />
 </Panel>{/if}
 
-{#if open}<Panel count="{profile?.className ?? ''} · {open.serverName}">
+{#if open && !comparing}<Panel count="{profile?.className ?? ''} · {open.serverName}">
   {#snippet actions()}{#if profile && !comparing}
     {#if me && !isMe(open)}<Button size="sm" variant="outline" onclick={compareWithMe}>Compare with {me.name}</Button>{/if}
     <Button size="sm" variant="outline" disabled={!!first} onclick={startCompare}>Compare with…</Button>{/if}{/snippet}
