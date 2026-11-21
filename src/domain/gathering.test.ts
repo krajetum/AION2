@@ -41,3 +41,16 @@ test("a saved section is cleaned", () => {
   assert.equal(d.seenMs, 0);
   assert.equal(d.shared.length, 0);
 });
+
+test("spots to send: every one not sent yet (saved ones too), per map in batches, again once gathered again", async () => {
+  const { toSend, SEND_BATCH } = await import("./gathering.ts");
+  const d = emptyGathering();
+  takeGathers(d, [g(5), g(6, { item: 610670044 }), g(7, { mapId: 20, x: 0, y: 0 })]);
+  assert.deepEqual(toSend(d).map((b) => [b.mapId, b.spots.length]), [[1110, 2], [20, 1]]);
+  d.sentMs = 7;
+  assert.deepEqual(toSend(d), []);
+  takeGathers(d, [g(9)]); // gathered there again: its spot goes again
+  assert.deepEqual(toSend(d).map((b) => [b.mapId, b.spots.map((s) => s.item)]), [[1110, [610680050]]]);
+  for (let i = 0; i < SEND_BATCH + 5; i++) d.spots.push({ mapId: 1, item: 1, x: i * 1000, y: 0, z: 0, exact: true, count: 1, amount: 1, lastMs: 100 + i });
+  assert.deepEqual(toSend(d).filter((b) => b.mapId === 1).map((b) => b.spots.length), [SEND_BATCH, 5]);
+});

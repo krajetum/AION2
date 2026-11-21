@@ -141,7 +141,7 @@ async function main() {
     if (ticks % 3600 === 0 && gameActive(ui.now)) crowdCubes();
     if (ticks % 600 === 0) flushCubes(ui.data);
     // Gathering spots: yours sent every 5 min, the others' read every 10 min while you play (and when the Map's layer opens).
-    if (ticks % 300 === 0) flushGathers(ui.data);
+    if (ticks % 300 === 0) flushGathers(ui.data).then((moved) => { if (moved) save(); });
     if (ticks % 600 === 0 && gameActive(ui.now)) refreshGathers();
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();

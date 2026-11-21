@@ -101,9 +101,10 @@ let gathersAt = 0;
 export async function refreshGathers(force = false): Promise<boolean> {
   if (!force && Date.now() - gathersAt < 60_000) return true;
   gathersAt = Date.now();
-  if (force) await flushGathers(ui.data);
+  const sent = force && await flushGathers(ui.data);
   const ok = await syncGathers(ui.data);
-  if (ok) { ui.gathersAt = Date.now(); await save(); }
+  if (ok) ui.gathersAt = Date.now();
+  if (ok || sent) await save();
   return ok;
 }
 

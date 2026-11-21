@@ -94,8 +94,8 @@ export function parseGatherPost(body: unknown, serverNow: number): GatherPost | 
   for (const g of body.gathers) {
     if (!isObj(g) || !isNum(g.x) || !isNum(g.y) || !isNum(g.z) || !isId(g.item) || !isNum(g.atMs) || g.atMs <= 0) continue;
     if (Math.abs(g.x) > 1e6 || Math.abs(g.y) > 1e6 || Math.abs(g.z) > 1e6) continue;
-    const atMs = shift(g.atMs, offset, serverNow);
-    if (atMs === null) continue;
+    // A spot gathered days ago is still a spot (apps send their saved ones): out of range = now.
+    const atMs = shift(g.atMs, offset, serverNow) ?? serverNow;
     gathers.push({ x: g.x, y: g.y, z: g.z, item: g.item, atMs });
   }
   return { install: body.install.toLowerCase(), mapId: body.mapId, gathers };

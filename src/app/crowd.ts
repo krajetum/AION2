@@ -5,7 +5,7 @@ import { bossesToShare, cubesToShare, MIN_EVERY, parseBosses, parseCubes } from 
 import type { MeterUpdate, OpenedCube } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
 import { crowd } from "../infra/crowd.ts";
-import { cleanSharedGathers, newGathers, type Gather } from "../domain/gathering.ts";
+import { cleanSharedGathers, toSend } from "../domain/gathering.ts";
 
 /** Seconds between boss reads (the Worker can ask for slower). */
 export let bossEvery = MIN_EVERY;
@@ -13,7 +13,6 @@ let playedMs = 0; // last time the meter placed you in game
 // ponytail: queued in memory, an app close drops up to 10 min of openings; persist it if that ever matters.
 const cubes = new Map<number, OpenedCube[]>(); // map id → openings to send
 const codes = new Set<number>();
-const gathers = new Map<number, Gather[]>(); // map id → gathers to send (same ponytail as the cubes)
 
 const warn = (what: string) => (e: unknown) => console.warn(`Crowd ${what} failed`, e);
 
@@ -39,7 +38,6 @@ export function shareFromMeter(data: AppData, u: MeterUpdate): boolean {
     if (mapId && news.cubes.length) cubes.set(mapId, [...(cubes.get(mapId) ?? []), ...news.cubes]);
     for (const c of news.codes) codes.add(c);
   }
-  for (const g of newGathers(data.gathering, u.gathers ?? [])) gathers.set(g.mapId!, [...(gathers.get(g.mapId!) ?? []), g]);
   return changed;
 }
 
@@ -54,14 +52,20 @@ export async function flushCubes(data: AppData) {
   }
 }
 
-/** Sends the queued gathers (every 10 min, with the cubes): place, material and time only. */
-export async function flushGathers(data: AppData) {
-  if (!data.settings.crowdShare) return void gathers.clear();
-  for (const [mapId, list] of [...gathers]) {
-    gathers.delete(mapId);
-    const sent = list.slice(-100).map((g) => ({ x: g.x, y: g.y, z: g.z, item: g.item, atMs: g.atMs }));
-    await crowd("/v1/gathers", { install: data.install, sentMs: Date.now(), mapId, gathers: sent }).catch(warn("gather upload"));
+/** Sends your spots not on the Worker yet (place, material, last time), saved ones included: spots from before sharing
+ *  or a restart go too. Returns true when it moved `sentMs` (save). Every 5 min and from the Map's Refresh. */
+export async function flushGathers(data: AppData): Promise<boolean> {
+  if (!data.settings.crowdShare) return false;
+  let moved = false;
+  for (const { mapId, spots } of toSend(data.gathering)) {
+    const gathers = spots.map((s) => ({ x: s.x, y: s.y, z: s.z, item: s.item, atMs: s.lastMs }));
+    try {
+      await crowd("/v1/gathers", { install: data.install, sentMs: Date.now(), mapId, gathers });
+    } catch (e) { warn("gather upload")(e); return moved; } // the rest next time, from where it stopped
+    data.gathering.sentMs = Math.max(data.gathering.sentMs, ...spots.map((s) => s.lastMs));
+    moved = true;
   }
+  return moved;
 }
 
 /** Gathering spots other players reported into gathering.shared. Returns true if it changed data. */
