@@ -12,6 +12,12 @@
   import { boardOf, equipmentOf, itemOf, profileOf } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
   import { ui } from "../state.svelte.ts";
+  import bundled from "../../assets/bis.json";
+  import { bisLines, bisSlot, type BisLine, type BisTable } from "../../domain/bis.ts";
+  import { setBis } from "../../app/bis.ts";
+  import { act } from "../actions.ts";
+  import type { Piece, Skill } from "../../domain/armory.ts";
+  import GearCard from "./GearCard.svelte";
 
   let { a, b, onswap, onclose }: { a: Found; b: Found; onswap: () => void; onclose: () => void } = $props();
 
@@ -54,12 +60,29 @@
   const genusRows = $derived(gA && gB ? diffRows(
     genusTotal(gA, shownPreset(gA)).map((r) => ({ key: String(r.stat), name: statName(r.stat), value: isPct(r.stat) ? r.value / 100 : r.value, pct: isPct(r.stat) })),
     genusTotal(gB, shownPreset(gB)).map((r) => ({ key: String(r.stat), name: statName(r.stat), value: isPct(r.stat) ? r.value / 100 : r.value, pct: isPct(r.stat) }))) : []);
+  // Side by side: each slot's two cards on one row (your BiS lists per class, as on the profile).
+  const BIS = (bundled as { classes: BisTable }).classes;
+  const linesOf = (cls: string, slot: string | null) => (slot ? bisLines(BIS, ui.data.bis, cls, slot) : null);
+  const saveOf = (cls: string, slot: string | null) => (lines: BisLine[] | null) => { if (slot) act(() => setBis(ui.data, cls, slot, lines)); };
+  const skillsOf = (e: Equipment) => [["Active skills", e.active, false], ["Passive skills", e.passive, false], ["Stigma", e.stigma, true]] as [string, Skill[], boolean][];
   const val = (v: number | null, pct: boolean) => (v == null ? "—" : pct ? `${Math.round(v * 100) / 100}%` : v.toLocaleString("en-US"));
   const tone = (d: number) => (d > 0 ? "text-[var(--ok-ink)]" : d < 0 ? "text-[var(--negative)]" : "text-muted-foreground");
 </script>
 
 {#snippet who(c: Found, s: Side)}<span class="inline-flex items-center gap-1.5">{#if s.profile && classIcon(s.profile.className)}<img class="size-5 object-contain" src={classIcon(s.profile.className)} alt="">{/if}{c.name}
   <span class="text-xs font-normal text-muted-foreground">{c.serverName}</span></span>{/snippet}
+
+{#snippet card(s: Side, p: Piece | null, cls: string)}
+  {#if p}{@const slot = bisSlot(p.slotName)}<GearCard {p} {slot} detail={p.slot in s.details ? s.details[p.slot] : undefined} failed=""
+    lines={linesOf(cls, slot)} custom={!!slot && !!ui.data.bis[cls]?.[slot]} className={cls} save={saveOf(cls, slot)} />
+  {:else}<div class="grid place-items-center rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Nothing in this slot</div>{/if}
+{/snippet}
+
+{#snippet icons(list: Skill[], stigma: boolean)}<div class="eq-skills">
+  {#each list as s (s.id)}<span class="eq-skill" class:locked={s.level === 0} title="{s.name}{s.level ? ` · level ${s.level}` : ' · not learned'}{stigma && s.equipped ? ' · equipped' : ''}">
+    {#if s.icon}<img src={s.icon} alt="" width="40" height="40" loading="lazy">{/if}
+    {#if stigma && s.equipped}<i class="eq-e">E</i>{/if}{#if s.level}<small>Lv {s.level}</small>{:else}<small>🔒</small>{/if}</span>{/each}
+</div>{/snippet}
 
 {#snippet rows(list: DiffRow[], empty = "Nothing to compare.")}
   {#if list.length}<Table.Root>
@@ -79,9 +102,9 @@
   {#if A.error || B.error}<p class="hint error m-0">Some of it could not be read ({A.error || B.error}).</p>{/if}
   {#if !ready}<p class="hint m-0">Reading both profiles…</p>
   {:else}
-    <Fold title="Overview" open>{@render rows(profileRows(A.profile!, B.profile!))}</Fold>
-    <Fold title="Stats" note="primary and god stats" open>{@render rows(statRows(A.profile!, B.profile!))}</Fold>
-    <Fold title="Stats from gear" note={piecesRead(A) < pieces(A).length || piecesRead(B) < pieces(B).length ? `reading pieces ${piecesRead(A) + piecesRead(B)} / ${pieces(A).length + pieces(B).length}…` : "every piece's lines added up"} open>
+    <Fold title="Overview">{@render rows(profileRows(A.profile!, B.profile!))}</Fold>
+    <Fold title="Stats" note="primary and god stats">{@render rows(statRows(A.profile!, B.profile!))}</Fold>
+    <Fold title="Stats from gear" note={piecesRead(A) < pieces(A).length || piecesRead(B) < pieces(B).length ? `reading pieces ${piecesRead(A) + piecesRead(B)} / ${pieces(A).length + pieces(B).length}…` : "every piece's lines added up"}>
       {@render rows(gearRows(pieces(A), pieces(B)))}</Fold>
     <Fold title="Daevanion" note="all boards added up">
       {@render rows(boardRows(boardsOf(A), boardsOf(B)))}
@@ -100,6 +123,26 @@
       <Fold title="Skills" note="levels, 0 = not learned">
         {#if A.profile!.className !== B.profile!.className}<p class="hint mt-0">{A.profile!.className} and {B.profile!.className}: different classes, different skills.</p>{/if}
         {@render rows(skillRows(A.eq, B.eq))}</Fold>
+    {/if}
+    {#if A.eq && B.eq}
+      <Fold title="Side by side" note="gear, arcana, pet and wings, skills: {a.name} left, {b.name} right" open>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+          <div class="text-sm font-semibold">{@render who(a, A)}</div><div class="text-sm font-semibold">{@render who(b, B)}</div>
+          {#each slotPairs(A.eq, B.eq) as s (s.slot)}
+            {@render card(A, s.a, A.profile!.className)}{@render card(B, s.b, B.profile!.className)}
+          {/each}
+          {#if A.eq.pet || A.eq.wing || B.eq.pet || B.eq.wing}
+            {#each [A.eq, B.eq] as e}<ul class="eq-list m-0">
+              {#if e.pet}<li class="eq-row">{#if e.pet.icon}<img src={e.pet.icon} alt="" width="32" height="32" loading="lazy">{/if}{e.pet.name}{e.pet.level != null ? ` Lv ${e.pet.level}` : ""}</li>{/if}
+              {#if e.wing}<li class="eq-row">{#if e.wing.icon}<img src={e.wing.icon} alt="" width="32" height="32" loading="lazy">{/if}<span class="grade-{e.wing.grade}">{e.wing.name}</span></li>{/if}
+              {#if !e.pet && !e.wing}<li class="hint">No pet or wings.</li>{/if}</ul>{/each}
+          {/if}
+          {#each skillsOf(A.eq) as [title, list, stigma], i (title)}
+            <div><h3 class="mt-2 mb-2 text-sm font-semibold">{title}</h3>{@render icons(list, stigma)}</div>
+            <div><h3 class="mt-2 mb-2 text-sm font-semibold">{title}</h3>{@render icons(skillsOf(B.eq!)[i][1], stigma)}</div>
+          {/each}
+        </div>
+      </Fold>
     {/if}
     {#if gA && gB}<Fold title="Genus Insight" note="both yours, as read in game">{@render rows(genusRows)}</Fold>
     {:else}<p class="hint m-0">Genus Insight: only between your own characters (the game sends no one else's).</p>{/if}
