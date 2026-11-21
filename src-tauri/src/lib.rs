@@ -11,6 +11,13 @@ use tauri::{
     Emitter, Manager, WindowEvent,
 };
 
+/// JSON without indentation, for big stores (fights.json: the indentation alone doubled it).
+fn compact_json(
+    cache: &std::collections::HashMap<String, serde_json::Value>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+    Ok(serde_json::to_vec(cache)?)
+}
+
 fn show_main(app: &tauri::AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.unminimize();
@@ -25,7 +32,7 @@ pub fn run() {
         // Must be the first plugin: a second launch exits and brings the running window to the front.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_store::Builder::new().register_serialize_fn("compact".into(), compact_json).build())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(

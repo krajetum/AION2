@@ -52,6 +52,32 @@ export function toRecord(f: Fight, profile: Profile | null | undefined, mapId: n
   };
 }
 
+/** fights.json's format: 2 = packed by `packFight` (none = as kept in memory, before it). */
+export const FIGHTS_FORMAT = 2;
+/** Packed series count thousands of damage: a chart can't tell 30 729 841 from 30 730 000. */
+const SERIES_UNIT = 1000;
+const r3 = (n: number) => Math.round(n * 1000) / 1000;
+const packSkill = (s: SkillRow): SkillRow => ({ ...s, share: r3(s.share), critRate: r3(s.critRate) });
+
+/**
+ * A fight as fights.json keeps it (~60% smaller with the compact store): rows without `dps` / `hps` (damage or heal
+ * over the fight's time, exactly), shares and rates to 3 decimals, series in SERIES_UNIT. `unpackFight` undoes it.
+ */
+export function packFight(r: FightRecord): unknown {
+  const rows = r.rows.map(({ dps: _d, hps: _h, ...x }) => ({
+    ...x, share: r3(x.share), ...(x.critRate != null ? { critRate: r3(x.critRate) } : {}),
+    skills: x.skills.map(packSkill), healSkills: x.healSkills.map(packSkill),
+  }));
+  const series = r.series && Object.fromEntries(Object.entries(r.series).map(([k, v]) => [k, v.map((n) => Math.round(n / SERIES_UNIT))]));
+  return { ...r, rows, ...(r.timeline ? { timeline: r.timeline.map(Math.round) } : {}), ...(series ? { series } : {}) };
+}
+
+export function unpackFight(x: FightRecord): FightRecord {
+  const secs = Math.max(1, x.battleTimeMs / 1000);
+  const series = x.series && Object.fromEntries(Object.entries(x.series).map(([k, v]) => [k, v.map((n) => n * SERIES_UNIT)]));
+  return { ...x, rows: x.rows.map((r) => ({ ...r, dps: r.damage / secs, hps: r.heal / secs })), ...(series ? { series } : {}) };
+}
+
 export const you = (r: FightRecord) => r.rows.find((x) => x.isYou);
 /** Your DPS in a fight, 0 when you are not in it. */
 export const yourDps = (r: FightRecord) => you(r)?.dps ?? 0;

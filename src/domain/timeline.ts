@@ -91,3 +91,33 @@ export function trackSeries(t: Track, rows: PlayerRow[], max = 10): { series: Re
   }
   return { series, hp: t.hp.slice() };
 }
+
+/** Each series' damage in seconds [from, to), biggest first: the fight chart's picked window. */
+export function windowTotals(series: Record<string, number[]>, from: number, to: number): { name: string; damage: number }[] {
+  return Object.entries(series).map(([name, v]) => ({ name, damage: sum(v.slice(from, to)) }))
+    .filter((x) => x.damage > 0).sort((a, b) => b.damage - a.damage);
+}
+
+/** A piece of a boss fight between two HP marks: seconds [from, to), the HP it started and ended at, party and your DPS. */
+export interface Phase { from: number; to: number; hpFrom: number; hpTo: number; party: number; you: number }
+
+/** The fight cut at the second the boss's HP first falls to each of `cuts` (%); a mark never reached ends the cutting.
+ *  The last phase ends with the fight, at the HP left. */
+export function phases(hp: number[], series: Record<string, number[]>, me: string | undefined, cuts = [75, 50, 25]): Phase[] {
+  const marks: { at: number; hp: number }[] = [{ at: 0, hp: 100 }];
+  for (const c of cuts) {
+    const last = marks.at(-1)!.at, at = hp.findIndex((v, i) => i >= last && v <= c);
+    if (at < 0) break;
+    if (at > last) marks.push({ at, hp: c }); // two marks passed in one second: one phase across both
+  }
+  marks.push({ at: hp.length, hp: hp.at(-1) ?? 100 });
+  const out: Phase[] = [];
+  for (let i = 0; i + 1 < marks.length; i++) {
+    const from = marks[i].at, to = marks[i + 1].at;
+    if (to <= from) continue;
+    const t = windowTotals(series, from, to), secs = to - from;
+    out.push({ from, to, hpFrom: marks[i].hp, hpTo: marks[i + 1].hp, party: sum(t.map((x) => x.damage)) / secs,
+      you: (t.find((x) => x.name === me)?.damage ?? 0) / secs });
+  }
+  return out;
+}

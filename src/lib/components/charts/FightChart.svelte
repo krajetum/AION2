@@ -16,8 +16,11 @@
   import { clock, short } from "../../../domain/meter.ts";
   import { smooth } from "../../../domain/timeline.ts";
 
-  let { lines, party = false, hp, deaths = [], height = 240, smoothing = 5, label = "Damage per second over the fight" }: {
+  // With `onrange`, a drag across the plot picks seconds [from, to) (shaded; `range` is the parent's, so it can clear it);
+  // a double click hands back null.
+  let { lines, party = false, hp, deaths = [], height = 240, smoothing = 5, label = "Damage per second over the fight", range = null, onrange }: {
     lines: ChartLine[]; party?: boolean; hp?: number[]; deaths?: ChartDeath[]; height?: number; smoothing?: number; label?: string;
+    range?: [number, number] | null; onrange?: (r: [number, number] | null) => void;
   } = $props();
 
   let box = $state<HTMLDivElement>()!;
@@ -59,7 +62,7 @@
     const axis = { stroke: muted, font, grid: { stroke: grid, width: 1 }, ticks: { show: false } };
     return {
       width, height, legend: { show: false },
-      cursor: { points: { size: 6 }, drag: { x: false, y: false } },
+      cursor: { points: { size: 6 }, drag: { x: !!onrange, y: false, setScale: false } },
       scales: { x: { time: false }, y: { range: (_u, _min, max) => [0, max > 0 ? max * 1.1 : 1] }, hp: { range: [0, 100] } },
       axes: [
         { ...axis, space: 60, incrs: [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1200], values: (_u, v) => v.map((s) => clock(s * 1000)) },
@@ -74,9 +77,22 @@
       ],
       hooks: {
         setCursor: [(u) => { cur = u.cursor.idx == null ? null : { idx: u.cursor.idx, left: u.cursor.left ?? 0 }; }],
+        setSelect: [(u) => {
+          const { left, width } = u.select;
+          if (!onrange || width < 2) return;
+          const len = u.data[0].length;
+          const from = Math.max(0, Math.round(u.posToVal(left, "x"))), to = Math.min(len, Math.round(u.posToVal(left + width, "x")));
+          u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false); // the range is drawn below, from the prop
+          if (to > from) onrange([from, to]);
+        }],
         draw: [(u) => {
           const { ctx, bbox } = u, dpr = devicePixelRatio || 1;
           ctx.save();
+          if (range) {
+            const a = u.valToPos(range[0], "x", true), b = u.valToPos(range[1], "x", true);
+            ctx.fillStyle = alpha("--primary", 0.14);
+            ctx.fillRect(a, bbox.top, b - a, bbox.height);
+          }
           ctx.strokeStyle = taken; ctx.fillStyle = taken; ctx.lineWidth = dpr;
           ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `${10 * dpr}px sans-serif`;
           for (const d of deaths) {
@@ -102,6 +118,7 @@
     plot = new uPlot(options(box.clientWidth || 600), d, box);
     plotKey = key;
   });
+  $effect(() => { void range; plot?.redraw(false); });
   $effect(() => {
     const ro = new ResizeObserver(() => plot?.setSize({ width: box.clientWidth, height }));
     ro.observe(box);
@@ -122,7 +139,8 @@
 </script>
 
 <figure class="relative m-0" aria-label={label}>
-  <div bind:this={box} class="w-full" style:height="{height}px" role="img" aria-label={label} onmouseleave={() => { cur = null; }}></div>
+  <div bind:this={box} class="w-full" style:height="{height}px" role="img" aria-label={label} onmouseleave={() => { cur = null; }}
+    ondblclick={() => onrange?.(null)}></div>
   {#if tip && cur}
     <div class="pointer-events-none absolute top-2 z-10 min-w-40 rounded-md border bg-popover px-2.5 py-2 text-xs shadow-lg"
       style:left="{cur.left + 72}px" style:transform={cur.left > (box?.clientWidth ?? 0) / 2 ? "translateX(calc(-100% - 24px))" : ""}>

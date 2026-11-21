@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Fight, PlayerRow } from "./meter.ts";
-import { burst, downtime, MAX_SECONDS, newTrack, opener, perSecond, sample, sampleTrack, smooth, trackSeries } from "./timeline.ts";
+import { burst, downtime, MAX_SECONDS, newTrack, opener, perSecond, sample, sampleTrack, phases, smooth, trackSeries, windowTotals } from "./timeline.ts";
 
 const fight = (ms: number, damage: number, isBoss = true): Fight =>
   ({ target: { name: "Boss", isBoss, maxHp: 1, currentHp: -1, damageDealt: 0 }, targetMode: "", battleTimeMs: ms, rows: [{ isYou: true, damage } as PlayerRow] });
@@ -48,4 +48,17 @@ test("the track keeps every row and the boss HP; the series are the biggest rows
   assert.deepEqual(trackSeries(t, rows), { series: { B: [0, 0, 40], A: [10, 0, 20] }, hp: [90, 90, 50] });
   assert.deepEqual(Object.keys(trackSeries(t, rows, 1).series), ["B"], "only the biggest rows");
   assert.deepEqual(sampleTrack(newTrack(), { ...f(500, 90, [[1, "A", 1]]), target: null }), newTrack(), "no boss: nothing");
+});
+
+test("a window sums each series over its seconds, biggest first", () => {
+  assert.deepEqual(windowTotals({ A: [1, 2, 3], B: [5, 5, 0], C: [0, 0, 9] }, 0, 2), [{ name: "B", damage: 10 }, { name: "A", damage: 3 }]);
+});
+
+test("HP phases cut at the first second under each mark, the last one to the end", () => {
+  const hp = [100, 90, 74, 60, 49, 49, 30, 30];
+  const p = phases(hp, { Me: [2, 2, 4, 4, 6, 6, 6, 6], Bob: [2, 2, 0, 0, 0, 0, 0, 0] }, "Me");
+  assert.deepEqual(p.map((x) => [x.from, x.to, x.hpFrom, x.hpTo]), [[0, 2, 100, 75], [2, 4, 75, 50], [4, 8, 50, 30]]);
+  assert.deepEqual(p.map((x) => [x.party, x.you]), [[4, 2], [4, 4], [6, 6]]);
+  // past two marks in one second: one phase across both, no empty one
+  assert.deepEqual(phases([100, 40, 10], {}, undefined).map((x) => [x.from, x.to, x.hpFrom, x.hpTo]), [[0, 1, 100, 75], [1, 2, 75, 25], [2, 3, 25, 10]]);
 });

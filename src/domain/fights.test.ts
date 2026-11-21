@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addFight, addRecent, compareSkills, fightEnded, MAX_FIGHTS, MAX_RECENT, newBests, targetEnded, personalBests, toRecord, type FightRecord } from "./fights.ts";
+import { addFight, addRecent, compareSkills, fightEnded, MAX_FIGHTS, MAX_RECENT, newBests, packFight, targetEnded, personalBests, toRecord, unpackFight, type FightRecord } from "./fights.ts";
 import type { Fight, PlayerRow, SkillRow } from "./meter.ts";
 
 const skill = (name: string, damage: number): SkillRow => ({ name, damage, hits: 1, critRate: 0, share: 0, dot: false, icon: null });
@@ -70,4 +70,14 @@ test("a new fight beats the bests of the log before it, never on a boss's first 
   assert.deepEqual(newBests(log, rec("x", "B", 50, 60_000)), ["fastest"]);
   assert.deepEqual(newBests(log, rec("x", "B", 400, 60_000)), ["dps", "fastest"]);
   assert.deepEqual(newBests(log, rec("x", "B", 300, 60_000, false)), []); // a tie, and not a kill
+});
+
+test("a packed fight comes back with dps/hps, rounded shares and series to the thousand", () => {
+  const r: FightRecord = { ...rec("a", "Boss", 1000, 60_000), series: { Me: [30_729_841, 400] }, timeline: [12.6] };
+  r.rows[0].share = 33.33333333; r.rows[0].heal = 120;
+  const packed = JSON.parse(JSON.stringify(packFight(r)));
+  assert.equal("dps" in packed.rows[0], false);
+  const back = unpackFight(packed);
+  assert.deepEqual([back.rows[0].dps, back.rows[0].hps, back.rows[0].share], [1000, 2, 33.333]);
+  assert.deepEqual([back.series!.Me, back.timeline], [[30_730_000, 0], [13]]);
 });
