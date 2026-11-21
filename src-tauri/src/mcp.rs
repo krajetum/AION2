@@ -197,7 +197,7 @@ fn get_fight(f: &Value) -> Value {
         let (d, h) = (r["damage"].as_f64().unwrap_or(0.0), r["heal"].as_f64().unwrap_or(0.0));
         r["dps"] = json!((d / s).round());
         r["hps"] = json!((h / s).round());
-        for k in ["skills", "healSkills"] {
+        for k in ["skills", "healSkills", "buffs"] {
             if let Some(list) = r[k].as_array_mut() {
                 list.iter_mut().filter_map(Value::as_object_mut).for_each(|x| { x.remove("icon"); });
             }
@@ -229,7 +229,8 @@ mod tests {
 
     fn fights() -> Vec<Value> {
         let row = |name: &str, you: bool, damage: f64| json!({ "id": 1, "name": name, "isYou": you, "damage": damage, "heal": 0,
-            "skills": [{ "name": "Slash", "icon": "x", "damage": damage }], "healSkills": [] });
+            "skills": [{ "name": "Slash", "icon": "x", "damage": damage }], "healSkills": [],
+            "buffs": [{ "name": "Courage Scroll", "icon": "y", "upMs": 1000 }] });
         vec![
             json!({ "id": "b", "endMs": 1_763_756_103_000i64, "battleTimeMs": 100_000, "boss": "Gartua", "char": "Me", "killed": true,
                 "rows": [row("Me", true, 1_000_000.0), row("Them", false, 3_000_000.0)], "series": {}, "timeline": [1] }),
@@ -264,6 +265,7 @@ mod tests {
         let f = call("get_fight", json!({ "id": "b" }));
         assert_eq!((f["rows"][0]["name"].as_str(), f["rows"][0]["dps"].as_f64()), (Some("Them"), Some(30_000.0)));
         assert!(f.get("series").is_none() && f.get("timeline").is_none() && f["rows"][0]["skills"][0].get("icon").is_none());
+        assert_eq!(f["rows"][0]["buffs"][0], json!({ "name": "Courage Scroll", "upMs": 1000 }));
         assert_eq!(call("get_fight", json!({ "id": "zz" }))["result"]["isError"], true);
     }
 
