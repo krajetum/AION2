@@ -75,6 +75,7 @@ export function defaultData(): AppData {
       crashReports: false,
       autoUpdate: true,
       betaUpdates: false,
+      mcpServer: false,
       mascot: true,
       mascotGender: "m",
       soundTheme: "default",
