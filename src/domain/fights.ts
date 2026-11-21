@@ -23,6 +23,9 @@ export interface FightRecord {
   rows: PlayerRow[]; // as the meter had them at the end: skills for you (and the rows open on the DPS page)
   // ponytail: one number per second, ~1 KB a 3 min fight in fights.json; 2 s buckets if the file grows too big.
   timeline?: number[]; // your damage in each second (src/domain/timeline.ts); fights from before it: none
+  // ponytail: up to 10 rows x seconds (~10 KB a 2 min fight); keep them on the latest fights only if fights.json grows too big.
+  series?: Record<string, number[]>; // the biggest rows' damage in each second, by shown name (timeline.ts trackSeries); older fights: none
+  hp?: number[]; // the boss's HP left in each second, 0..100
 }
 
 /** The fight the meter had (`prev`, any target) is over in `next`: its time went back (idle reset, Reset button) or its target changed. */

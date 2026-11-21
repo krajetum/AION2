@@ -9,6 +9,7 @@
   import { classIcon } from "../classes.ts";
   import { hm, num } from "../format.ts";
   import { ui } from "../state.svelte.ts";
+  import { Button } from "$lib/components/ui/button/index.js";
 
   let { p }: { p: ArenaPlayer } = $props();
   const gear = (v: number | null, f: (n: number) => string = String) => (v == null ? "—" : f(v));
@@ -25,16 +26,16 @@
   });
 </script>
 
-<div class="arena-gear">
-  <span>{#if classIcon(p.job)}<img class="cls-icon" src={classIcon(p.job)} alt="" width="22" height="23">{/if}<b>{p.name || "Unknown name"}</b>
+<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1.5 px-1 py-1.5 text-sm">
+  <span>{#if classIcon(p.job)}<img class="mr-1.5 inline-block size-5 object-contain align-[-5px]" src={classIcon(p.job)} alt="">{/if}<b>{p.name || "Unknown name"}</b>
     · {p.job || "class not known"} · {serverName(p.serverId) || "server not known"}{faction(p.serverId) ? ` (${faction(p.serverId)})` : ""}</span>
   {#if official.state === "done" && official.v}{@const o = official.v}
     <span title="From the official character profile ({hm(o.atMs)}), as the game last saved it">{o.className || p.job} · Level {gear(o.level)}
       · Item level {gear(o.itemLevel, num)} · Combat power {gear(o.combatPower, num)}</span>
   {:else}<span>Level {gear(p.level)} · Gear score {gear(p.gearScore)} · Combat power {gear(p.combatPower, short)}</span>
-    {#if official.state === "loading"}<span class="hint">Reading the official profile…</span>
-    {:else if official.state === "done"}<span class="hint">Not found in the official character search.</span>
-    {:else if official.state === "failed"}<span class="hint">Official profile not read ({official.why}).</span>{/if}{/if}
-  {#if p.name && p.serverId}<button onclick={() => { ui.lookup = { name: p.name, serverId: p.serverId }; ui.tab = "players"; history.replaceState(null, "", "#players"); }}>Gear and stats</button>
-  {:else}<span class="hint">No profile: {p.name ? "the server is not known" : "the game has not sent this player's name"}.</span>{/if}
+    {#if official.state === "loading"}<span class="text-xs text-muted-foreground">Reading the official profile…</span>
+    {:else if official.state === "done"}<span class="text-xs text-muted-foreground">Not found in the official character search.</span>
+    {:else if official.state === "failed"}<span class="text-xs text-muted-foreground">Official profile not read ({official.why}).</span>{/if}{/if}
+  {#if p.name && p.serverId}<Button variant="outline" size="sm" onclick={() => { ui.lookup = { name: p.name, serverId: p.serverId }; ui.tab = "players"; history.replaceState(null, "", "#players"); }}>Gear and stats</Button>
+  {:else}<span class="text-xs text-muted-foreground">No profile: {p.name ? "the server is not known" : "the game has not sent this player's name"}.</span>{/if}
 </div>

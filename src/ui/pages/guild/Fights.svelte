@@ -1,4 +1,11 @@
 <script lang="ts">
+  import ChevronRight from "@lucide/svelte/icons/chevron-right";
+  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Checkbox } from "$lib/components/ui/checkbox/index.js";
+  import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   // Boss fights the members shared: per boss, each member's best DPS and fastest kill; two runs side by side;
   // the pulls several members recorded, as one fight with everyone's own numbers.
   import { untrack } from "svelte";
@@ -41,51 +48,53 @@
   const pick = (id: string) => { picked = picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id].slice(-2); };
 </script>
 
-{#if !g.share.fights}<section class="notice"><h2>You don't share your boss fights</h2>
-  <p class="hint">The others can't see your fights, and your pulls don't merge with theirs. Sharing sends each boss fight your meter logs
+{#snippet chev(on: boolean)}<ChevronRight class="size-4 text-muted-foreground transition-transform {on ? 'rotate-90' : ''}" />{/snippet}
+
+{#if !g.share.fights}<Panel title="You don't share your boss fights" class="border-gold/30 bg-gold/5">
+  <p class="hint mt-0">The others can't see your fights, and your pulls don't merge with theirs. Sharing sends each boss fight your meter logs
     (DPS, skills, deaths; not the second-by-second timeline) when at least {STATIC_MIN_MEMBERS} of the static's members were in it,
     {me ? `starting with those of the past week as ${me}` : "starting with those of the past week"}. Your other fights stay on your PC. You can stop in My settings.</p>
-  <button type="button" class="primary" disabled={gs.busy} onclick={share}>Share my boss fights</button></section>{/if}
+  <Button class="mt-3" size="sm" disabled={gs.busy} onclick={share}>Share my boss fights</Button></Panel>{/if}
 
-<section><h2>Shared fights</h2>
-  {#if !bosses.length}<p class="hint">No static fight shared yet: a boss fight with at least {STATIC_MIN_MEMBERS} of the static's members in it, from a member who shares
+<Panel title="Shared fights">
+  {#if !bosses.length}<p class="hint mt-0">No static fight shared yet: a boss fight with at least {STATIC_MIN_MEMBERS} of the static's members in it, from a member who shares
     their boss fights (My settings, or the button above). The same fight from several members becomes one pull below.</p>
   {:else}
-    <label class="toolbar start">Boss <select bind:value={boss}>{#each bosses as b (b.boss)}<option value={b.boss}>{b.boss} ({b.n})</option>{/each}</select></label>
-    <div class="scroll"><table class="sheet">
-      <thead><tr><th>Member</th><th class="n">Fights</th><th class="n">Best DPS</th><th class="n">Fastest kill</th></tr></thead>
-      <tbody>{#each bests as b (b.char)}<tr>
-        <td><span class="name">{b.char || "Unknown"}</span></td><td class="n">{b.fights}</td>
-        <td class="n">{#if b.dps}<label><input type="checkbox" aria-label="Compare" checked={picked.includes(b.dps.id)} onchange={() => pick(b.dps!.id)}> {short(yourDps(b.dps))}/s</label>{:else}—{/if}</td>
-        <td class="n">{b.fastest ? clock(b.fastest.battleTimeMs) : "—"}</td></tr>{/each}</tbody></table></div>
+    <label class="mb-2 flex items-center gap-2 text-sm text-muted-foreground">Boss <NativeSelect size="sm" bind:value={boss}>{#each bosses as b (b.boss)}<NativeSelectOption value={b.boss}>{b.boss} ({b.n})</NativeSelectOption>{/each}</NativeSelect></label>
+    <Table.Root>
+      <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Member</Table.Head><Table.Head class="text-right">Fights</Table.Head><Table.Head class="text-right">Best DPS</Table.Head><Table.Head class="text-right">Fastest kill</Table.Head></Table.Row></Table.Header>
+      <Table.Body>{#each bests as b (b.char)}<Table.Row>
+        <Table.Cell class="font-medium">{b.char || "Unknown"}</Table.Cell><Table.Cell class="text-right">{b.fights}</Table.Cell>
+        <Table.Cell class="text-right">{#if b.dps}<label class="inline-flex cursor-pointer items-center gap-2"><Checkbox aria-label="Compare" checked={picked.includes(b.dps.id)} onCheckedChange={() => pick(b.dps!.id)} /> {short(yourDps(b.dps))}/s</label>{:else}—{/if}</Table.Cell>
+        <Table.Cell class="text-right">{b.fastest ? clock(b.fastest.battleTimeMs) : "—"}</Table.Cell></Table.Row>{/each}</Table.Body></Table.Root>
     <p class="hint">Tick two best runs to compare their skills.</p>
   {/if}
-</section>
+</Panel>
 {#if pair.length === 2}{@const [a, b] = pair}<SkillCompare {a} {b} title="{boss}: {a.char} vs {b.char}" labelA={a.char} labelB={b.char} dpsLabel="DPS"
   onclear={() => { picked = []; }} />{/if}
 
-{#if pulls.length}<section class="dps-table"><h2>Pulls <span class="count">{pulls.length}</span></h2><div class="scroll"><table class="sheet">
-  <thead><tr><th>When</th><th class="n">Time</th><th>Recorded by</th><th class="n">Players</th></tr></thead>
-  <tbody>{#each pulls as p (p.id)}
-    <tr class="prow" tabindex="0" aria-expanded={open === p.id} onclick={() => { open = open === p.id ? "" : p.id; who = ""; }}
-      onkeydown={(e) => { if (e.key === "Enter") { open = open === p.id ? "" : p.id; who = ""; } }}>
-      <td>{when(p.endMs)}<small>{p.killed ? "killed" : "not killed"}</small></td><td class="n">{clock(p.battleTimeMs)}</td>
-      <td>{p.chars.join(", ") || "Unknown"}</td><td class="n">{p.rows.length}</td></tr>
-    {#if open === p.id}<tr class="skills"><td colspan="4"><table class="sheet">
-      <thead><tr><th>Player</th><th class="n">DPS</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Deaths</th></tr></thead>
-      <tbody>{#each p.rows as { key, row: r, own } (key)}
-        <tr class="prow" tabindex="0" class:you={own} style:--cls={classColor(r.job) || null} aria-expanded={who === key}
-          onclick={() => { who = who === key ? "" : key; }} onkeydown={(e) => { if (e.key === "Enter") who = who === key ? "" : key; }}>
-          <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{/if}<span class="name">{displayName(r)}</span>
-            <small>{[r.job, own ? "own record" : "as a member saw them"].filter(Boolean).join(" · ")}</small></td>
-          <td class="n">{short(r.dps)}/s</td><td class="n">{short(r.damage)}</td><td class="n">{r.share.toFixed(1)}%</td><td class="n">{r.deaths ?? "—"}</td></tr>
-        {#if who === key}<tr class="skills"><td colspan="5"><PlayerStats row={r} ms={p.battleTimeMs} />
-          {#if r.skills.length}<table class="sheet">
-            <thead><tr><th>Skill</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Hits</th><th class="n">Used</th><th class="n">Crit</th></tr></thead>
-            <tbody>{#each r.skills as s (s.name)}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20">{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">DoT</span>{/if}</td>
-              <td class="n">{short(s.damage)}</td><td class="n">{(s.share * 100).toFixed(1)}%</td><td class="n">{s.hits}</td><td class="n">{s.dot || s.casts == null ? "–" : s.casts}</td><td class="n">{s.dot ? "–" : Math.round(s.critRate * 100) + "%"}</td></tr>{/each}</tbody></table>
-          {:else}<p class="hint">Skills only from a player's own record: they did not share this fight.</p>{/if}</td></tr>{/if}
-      {/each}</tbody></table></td></tr>{/if}
-  {/each}</tbody></table></div>
+{#if pulls.length}<Panel title="Pulls" count={pulls.length}><Table.Root>
+  <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head class="w-8"></Table.Head><Table.Head>When</Table.Head><Table.Head class="text-right">Time</Table.Head><Table.Head>Recorded by</Table.Head><Table.Head class="text-right">Players</Table.Head></Table.Row></Table.Header>
+  <Table.Body>{#each pulls as p (p.id)}
+    <Table.Row class="cursor-pointer" tabindex={0} aria-expanded={open === p.id} onclick={() => { open = open === p.id ? "" : p.id; who = ""; }}>
+      <Table.Cell>{@render chev(open === p.id)}</Table.Cell>
+      <Table.Cell>{when(p.endMs)} {#if p.killed}<Badge variant="secondary" class="ml-1 text-hps">Killed</Badge>{:else}<span class="text-xs text-muted-foreground">not killed</span>{/if}</Table.Cell><Table.Cell class="text-right">{clock(p.battleTimeMs)}</Table.Cell>
+      <Table.Cell class="whitespace-normal">{p.chars.join(", ") || "Unknown"}</Table.Cell><Table.Cell class="text-right">{p.rows.length}</Table.Cell></Table.Row>
+    {#if open === p.id}<Table.Row class="hover:bg-transparent"><Table.Cell colspan={5} class="bg-muted/40 p-3 whitespace-normal"><Table.Root>
+      <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Player</Table.Head><Table.Head class="text-right">DPS</Table.Head><Table.Head class="text-right">Damage</Table.Head><Table.Head class="text-right">Share</Table.Head><Table.Head class="text-right">Deaths</Table.Head></Table.Row></Table.Header>
+      <Table.Body>{#each p.rows as { key, row: r, own } (key)}
+        <Table.Row class="bar-row cursor-pointer border-0" style="--p: {Math.min(1, r.share / 100)}; {classColor(r.job) ? `--cls: ${classColor(r.job)}` : ''}" tabindex={0} aria-expanded={who === key}
+          onclick={() => { who = who === key ? "" : key; }}>
+          <Table.Cell><span class="flex items-center gap-2">{#if classIcon(r.job)}<img class="size-5 object-contain" src={classIcon(r.job)} alt={r.job} title={r.job}>{/if}<span class="font-medium {own ? 'text-primary' : ''}">{displayName(r)}</span>
+            <span class="text-xs text-muted-foreground">{[r.job, own ? "own record" : "as a member saw them"].filter(Boolean).join(" · ")}</span></span></Table.Cell>
+          <Table.Cell class="text-right font-semibold">{short(r.dps)}/s</Table.Cell><Table.Cell class="text-right">{short(r.damage)}</Table.Cell><Table.Cell class="text-right">{r.share.toFixed(1)}%</Table.Cell><Table.Cell class="text-right">{r.deaths ?? "—"}</Table.Cell></Table.Row>
+        {#if who === key}<Table.Row class="hover:bg-transparent"><Table.Cell colspan={5} class="p-3 whitespace-normal"><PlayerStats row={r} ms={p.battleTimeMs} />
+          {#if r.skills.length}<Table.Root>
+            <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Skill</Table.Head><Table.Head class="text-right">Damage</Table.Head><Table.Head class="text-right">Share</Table.Head><Table.Head class="text-right">Hits</Table.Head><Table.Head class="text-right">Used</Table.Head><Table.Head class="text-right">Crit</Table.Head></Table.Row></Table.Header>
+            <Table.Body>{#each r.skills as s (s.name)}<Table.Row><Table.Cell><span class="flex items-center gap-2">{#if s.icon}<img class="size-5 rounded" src={skillIconUrl(s.icon)} alt="" loading="lazy">{:else}<span class="size-5 rounded bg-secondary" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="text-xs text-muted-foreground">DoT</span>{/if}</span></Table.Cell>
+              <Table.Cell class="text-right">{short(s.damage)}</Table.Cell><Table.Cell class="text-right">{(s.share * 100).toFixed(1)}%</Table.Cell><Table.Cell class="text-right">{s.hits}</Table.Cell><Table.Cell class="text-right">{s.dot || s.casts == null ? "–" : s.casts}</Table.Cell><Table.Cell class="text-right">{s.dot ? "–" : Math.round(s.critRate * 100) + "%"}</Table.Cell></Table.Row>{/each}</Table.Body></Table.Root>
+          {:else}<p class="hint">Skills only from a player's own record: they did not share this fight.</p>{/if}</Table.Cell></Table.Row>{/if}
+      {/each}</Table.Body></Table.Root></Table.Cell></Table.Row>{/if}
+  {/each}</Table.Body></Table.Root>
   <p class="hint">Fights of the same boss that members recorded at the same time are one pull. Each player's numbers come from their own record when they shared it.
-    Click a player for hits, crits, healing, deaths (and when) and damage taken.</p></section>{/if}
+    Click a player for hits, crits, healing, deaths (and when) and damage taken.</p></Panel>{/if}

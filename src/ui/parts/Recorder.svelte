@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Switch } from "$lib/components/ui/switch/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
+  const ROW = "flex min-h-11 flex-wrap items-center justify-between gap-3 border-b py-1.5 text-sm last:border-0";
   // Settings > Diagnostics: the packet recorder, to find new records in the game's traffic (hidden cubes, items)
   // (src-tauri/meter/src/recorder.rs). The player picks what to keep, records, sets marks in game moments, and sends
   // the file for analysis.
@@ -43,24 +47,24 @@
   }
 </script>
 
-<section><h2>Diagnostics</h2>
-  {#each KINDS as [k, label, what] (k)}<label class="setting switch"><span>{label} <small class="dim">{what}</small></span>
-    <input type="checkbox" bind:checked={kinds[k]} disabled={st?.recording}></label>{/each}
-  <div class="btns">
-    {#if st?.recording}<button onclick={async () => { st = await recorderStop(); }}>Stop recording</button>
-    {:else}<button disabled={!isDesktop() || !(kinds.combat || kinds.items || kinds.other)} onclick={start}>Record game packets</button>{/if}
+<Panel title="Diagnostics">
+  {#each KINDS as [k, label, what] (k)}<label class="{ROW} cursor-pointer"><span>{label} <small class="text-xs text-muted-foreground">{what}</small></span>
+    <Switch bind:checked={kinds[k]} disabled={st?.recording} /></label>{/each}
+  <div class="flex flex-wrap gap-2 pt-3">
+    {#if st?.recording}<Button variant="destructive" size="sm" onclick={async () => { st = await recorderStop(); }}>Stop recording</Button>
+    {:else}<Button variant="outline" size="sm" disabled={!isDesktop() || !(kinds.combat || kinds.items || kinds.other)} onclick={start}>Record game packets</Button>{/if}
   </div>
-  {#if st?.recording}<div class="btns">{#each MARKS as m}<button onclick={async () => { st = await recorderMark(m); }}>Mark: {m}</button>{/each}</div>{/if}
+  {#if st?.recording}<div class="flex flex-wrap gap-2 pt-2">{#each MARKS as m}<Button variant="secondary" size="sm" onclick={async () => { st = await recorderMark(m); }}>Mark: {m}</Button>{/each}</div>{/if}
   {#if st?.path}<p class="hint">
     {st.recording ? "Recording" : "Recorded"} {clock(st.ms)} · {st.frames.toLocaleString("en-US")} frames · {fileSize(st.bytes)} · {st.marks} marks{#if st.connections} · {st.connections} other connections{/if}{#if st.ended} · stopped: {st.ended}{/if}<br>
-    <code>{st.path}</code></p>{/if}
+    <code class="break-all">{st.path}</code></p>{/if}
   {#if error}<p class="hint error">{error}</p>{/if}
   <p class="hint">Finds new things in the game's traffic (a hidden cube near, an item you get). Pick what to keep, start
     recording, do the thing in game and press a mark at each moment (or note the time), then stop and send the file.
     With the game connection it holds everything the game sends you (names and chat included); it stays on your PC.
     Only the game's own connections are read, never other programs'. Stops by itself after 15 minutes or 200 MB.{#if !isDesktop()}{" "}<b>Desktop app only.</b>{/if}</p>
-  <div class="setting"><span>Crash log</span><span class="ctl">{crash?.text ? "Has entries" : isDesktop() ? "No crash recorded" : "Desktop app only"}</span></div>
-  {#if crash?.path}<p class="hint">If the app closes by itself, send this file: <code>{crash.path}</code>. A freeze ("not responding")
+  <div class={ROW}><span>Crash log</span><span class="text-muted-foreground">{crash?.text ? "Has entries" : isDesktop() ? "No crash recorded" : "Desktop app only"}</span></div>
+  {#if crash?.path}<p class="hint">If the app closes by itself, send this file: <code class="break-all">{crash.path}</code>. A freeze ("not responding")
     is not written here: Windows' Event Viewer has it (Windows Logs → Application).</p>{/if}
-  {#if crash?.text}<details class="crash"><summary>Last entries</summary><pre>{crash.text}</pre></details>{/if}
-</section>
+  {#if crash?.text}<details class="mt-2"><summary class="cursor-pointer text-sm">Last entries</summary><pre class="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-2 text-xs">{crash.text}</pre></details>{/if}
+</Panel>

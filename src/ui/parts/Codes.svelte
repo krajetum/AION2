@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   // Home > Codes: the game's redeem codes players share (crowd Worker, a week each for everyone).
   // Redeemed: your own tick (kept in the save file). Expired: your vote; 5 votes remove the code for everyone.
   import { shareCode, toggleRedeemed, voteExpired } from "../../app/codes.ts";
@@ -48,37 +51,25 @@
   const copy = (code: string) => navigator.clipboard?.writeText(code).then(() => showStatus(`${code} copied`), () => {});
 </script>
 
-<section class="codes"><h2>Codes <span class="count">{left.length ? `${left.length} to redeem` : "all redeemed"}</span></h2>
-  {#if live.length}<ul>
+<Panel title="Codes" count={left.length ? `${left.length} to redeem` : "all redeemed"}>
+  {#if live.length}<ul class="m-0 list-none p-0">
     {#each live as c (c.key)}{@const done = marks.redeemed.includes(c.key)}{@const dead = marks.expired.includes(c.key)}
-      <li class:done={done || dead}>
-        <button class="ghost code" title="Copy the code" onclick={() => copy(c.code)}>{c.code}</button>
-        <small>{leftText(c.expiresMs - ui.now)}{c.votes ? ` · ${c.votes}/${EXPIRED_VOTES} marked expired` : ""}</small>
-        <span class="acts">
-          <button class:on={done} aria-pressed={done} onclick={() => act(() => toggleRedeemed(ui.data, c.code))}>{done ? "Redeemed" : "Redeem"}</button>
-          <button class="ghost" disabled={busy || dead} title={dead ? "You marked it expired" : `It no longer works: ${EXPIRED_VOTES} players saying so remove it for everyone`}
-            onclick={() => expired(c)}>{dead ? "Marked expired" : "Expired"}</button>
+      <li class="flex flex-wrap items-center gap-2 border-b py-1.5 {done || dead ? 'opacity-55' : ''}">
+        <Button variant="ghost" size="sm" class="font-mono font-semibold tracking-wide" title="Copy the code" onclick={() => copy(c.code)}>{c.code}</Button>
+        <small class="text-xs text-muted-foreground">{leftText(c.expiresMs - ui.now)}{c.votes ? ` · ${c.votes}/${EXPIRED_VOTES} marked expired` : ""}</small>
+        <span class="ml-auto flex gap-1.5">
+          <Button variant={done ? "secondary" : "outline"} size="sm" aria-pressed={done} onclick={() => act(() => toggleRedeemed(ui.data, c.code))}>{done ? "Redeemed" : "Redeem"}</Button>
+          <Button variant="ghost" size="sm" disabled={busy || dead} title={dead ? "You marked it expired" : `It no longer works: ${EXPIRED_VOTES} players saying so remove it for everyone`}
+            onclick={() => expired(c)}>{dead ? "Marked expired" : "Expired"}</Button>
         </span>
       </li>{/each}
   </ul>{:else}<p class="hint">{ui.codesError || "No code shared right now."}</p>{/if}
 
-  <form onsubmit={send}>
-    <input bind:value={draft} placeholder="Share a new code with the others" aria-label="New code" maxlength="40" autocomplete="off" spellcheck="false" />
-    <button class="primary" disabled={busy || !draft.trim()}>Send to others</button>
+  <form class="mt-2.5 flex gap-2" onsubmit={send}>
+    <Input class="min-w-0 flex-1" bind:value={draft} placeholder="Share a new code with the others" aria-label="New code" maxlength={40} autocomplete="off" spellcheck="false" />
+    <Button type="submit" disabled={busy || !draft.trim()}>Send to others</Button>
   </form>
-  {#if error}<p class="error">{error}</p>{/if}
+  {#if error}<p class="hint error">{error}</p>{/if}
   <p class="hint">A shared code stays a week for everyone; a code already listed isn't added again. Redeemed is only yours.
     Entering the game or another character reminds you of the codes left (Settings › Notifications).</p>
-</section>
-
-<style>
-  ul { list-style: none; margin: 0; padding: 0; }
-  li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--rule); }
-  li.done { opacity: 0.55; }
-  .acts button.on { background: var(--active); color: var(--text); }
-  .code { font-family: ui-monospace, monospace; font-weight: 600; letter-spacing: 0.03em; padding: 2px 4px; }
-  li small { color: var(--muted); }
-  .acts { margin-left: auto; display: flex; gap: 6px; }
-  form { display: flex; gap: 8px; margin-top: 10px; }
-  form input { flex: 1; min-width: 0; }
-</style>
+</Panel>

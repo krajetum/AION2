@@ -1,4 +1,10 @@
 <script lang="ts">
+  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
+  import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   // Planned raids: the list for everyone allowed to see it, the form and Cancel for whoever may plan them.
   import { tick } from "svelte";
   import { cancelCallup, createCallup, sendCallup } from "../../../app/guild.ts";
@@ -61,22 +67,22 @@
   }, "Call-up planned");
 </script>
 
-<section><h2>Planned <span class="count">{view.callups.length}</span></h2>
+<Panel title="Planned" count={view.callups.length}>
   {#each view.callups as c (c.id)}<div class="callup" class:past={c.atMs <= ui.now}>
     <div><b>{when(c.atMs)}</b> <span class="dim">{c.atMs > ui.now ? `in ${formatCountdown(c.atMs - ui.now)}` : "now"}</span>
-      {#if c.ping !== "none"}<span class="tag">@{c.ping}</span>{/if}</div>
+      {#if c.ping !== "none"}<Badge variant="secondary" class="text-gold">@{c.ping}</Badge>{/if}</div>
     <p>{@html discordHtml(c.message)}</p>
     <small class="dim">Reminders: {c.leads.map((l) => leadText(l) + (l ? " before" : "")).join(" · ")}</small>
-    {#if plans}<div class="acts"><button class="ghost" disabled={gs.busy || !view.hasWebhook} title={view.hasWebhook ? "" : "Set a Discord webhook first"} onclick={() => { if (confirm("Post this call-up to Discord now?")) run(() => sendCallup(ui.data, c.id), "Posted to Discord"); }}>Send to Discord now</button>
-    <button class="ghost" disabled={gs.busy} onclick={() => { if (confirm("Cancel this call-up? No more reminders are sent.")) run(() => cancelCallup(ui.data, c.id).then(() => refreshGuild(false)), "Call-up cancelled"); }}>Cancel</button></div>{/if}
+    {#if plans}<div class="acts"><Button variant="ghost" size="sm" disabled={gs.busy || !view.hasWebhook} title={view.hasWebhook ? "" : "Set a Discord webhook first"} onclick={() => { if (confirm("Post this call-up to Discord now?")) run(() => sendCallup(ui.data, c.id), "Posted to Discord"); }}>Send to Discord now</Button>
+    <Button variant="ghost" size="sm" disabled={gs.busy} onclick={() => { if (confirm("Cancel this call-up? No more reminders are sent.")) run(() => cancelCallup(ui.data, c.id).then(() => refreshGuild(false)), "Call-up cancelled"); }}>Cancel</Button></div>{/if}
   </div>{:else}<p class="hint">No raid planned.{plans ? "" : " You get a \"Static reminder\" here and in Discord when one is."}</p>{/each}
-</section>
+</Panel>
 
-{#if plans}<section><h2>New call-up</h2>
+{#if plans}<Panel title="New call-up">
   <form class="composer" onsubmit={(e) => { e.preventDefault(); void addCallup(); }}>
     <div class="fields">
       <div class="field"><label for="cu-when">When</label>
-        <div class="row"><input id="cu-when" type="datetime-local" bind:value={cuWhen} min={minWhen} required>
+        <div class="row"><Input class="w-auto" id="cu-when" type="datetime-local" bind:value={cuWhen} min={minWhen} required />
           {#if atMs > ui.now}<span class="dim">in {formatCountdown(atMs - ui.now)}</span>{:else if cuWhen}<span class="bad">in the past</span>{/if}</div>
         <small>Your local time. Discord shows it in each reader's own zone.</small>
       </div>
@@ -85,8 +91,8 @@
         <div class="editor">
           <div class="tools" role="toolbar" aria-label="Formatting">
             {#each MARKS as [mark, name, glyph, key]}
-              <button type="button" class="ghost m-{name.toLowerCase()}" title={key ? `${name} (Ctrl+${key.toUpperCase()})` : name} aria-label={name} onclick={() => edit(mark)}>{glyph}</button>{/each}
-            <button type="button" class="ghost" title="Bullet" aria-label="Bullet" onclick={bullet}>•</button>
+              <Button type="button" variant="ghost" size="icon-xs" class="m-{name.toLowerCase()}" title={key ? `${name} (Ctrl+${key.toUpperCase()})` : name} aria-label={name} onclick={() => edit(mark)}>{glyph}</Button>{/each}
+            <Button type="button" variant="ghost" size="icon-xs" title="Bullet" aria-label="Bullet" onclick={bullet}>•</Button>
             <span class="count" class:bad={cuMessage.length >= 500}>{cuMessage.length} / 500</span>
           </div>
           <textarea id="cu-msg" bind:this={ta} bind:value={cuMessage} onkeydown={keys} maxlength="500" rows="5" placeholder="Raid Gartua: meet at the portal, bring potions" required></textarea>
@@ -94,26 +100,25 @@
       </div>
 
       <div class="field"><span class="lbl" id="cu-ping">Ping in Discord</span>
-        <div class="seg" role="group" aria-labelledby="cu-ping">
-          {#each [["none", "No ping"], ["here", "@here"], ["everyone", "@everyone"]] as [v, label]}
-            <button type="button" class:on={cuPing === v} aria-pressed={cuPing === v} onclick={() => { cuPing = v as Ping; }}>{label}</button>{/each}
-        </div>
+        <ToggleGroup.Root type="single" variant="outline" size="sm" aria-labelledby="cu-ping" value={cuPing} onValueChange={(v) => { if (v) cuPing = v as Ping; }}>
+          {#each [["none", "No ping"], ["here", "@here"], ["everyone", "@everyone"]] as [v, label]}<ToggleGroup.Item value={v}>{label}</ToggleGroup.Item>{/each}
+        </ToggleGroup.Root>
       </div>
 
       <div class="field"><span class="lbl" id="cu-leads">Reminders <span class="count">{cuLeads.length} / 5</span></span>
-        <div class="pills" role="group" aria-labelledby="cu-leads">
+        <div class="flex flex-wrap gap-1.5" role="group" aria-labelledby="cu-leads">
           {#each options as l (l)}
-            <button type="button" class="pill" class:on={cuLeads.includes(l)} aria-pressed={cuLeads.includes(l)}
-              disabled={!cuLeads.includes(l) && cuLeads.length >= 5} onclick={() => toggleLead(l)}>{leadLabel(l)}</button>{/each}
+            <Button type="button" size="sm" class="rounded-full" variant={cuLeads.includes(l) ? "secondary" : "outline"} aria-pressed={cuLeads.includes(l)}
+              disabled={!cuLeads.includes(l) && cuLeads.length >= 5} onclick={() => toggleLead(l)}>{leadLabel(l)}</Button>{/each}
         </div>
         {#if cuLeads.length < 5}<div class="row">
-          <input class="amount" type="number" min="1" max={leadUnit === "days" ? 14 : leadUnit === "hours" ? 336 : 20160} bind:value={leadAmount} aria-label="Reminder amount">
-          <select bind:value={leadUnit} aria-label="Reminder unit"><option value="minutes">minutes</option><option value="hours">hours</option><option value="days">days</option></select>
+          <Input class="w-18" type="number" min="1" max={leadUnit === "days" ? 14 : leadUnit === "hours" ? 336 : 20160} bind:value={leadAmount} aria-label="Reminder amount" />
+          <NativeSelect size="sm" bind:value={leadUnit} aria-label="Reminder unit"><NativeSelectOption value="minutes">minutes</NativeSelectOption><NativeSelectOption value="hours">hours</NativeSelectOption><NativeSelectOption value="days">days</NativeSelectOption></NativeSelect>
           <span class="dim">before</span>
-          <button type="button" class="ghost" onclick={addLead}>+ Add</button></div>{/if}
+          <Button type="button" variant="ghost" size="sm" onclick={addLead}>+ Add</Button></div>{/if}
       </div>
 
-      <button class="primary" disabled={gs.busy || !cuLeads.length}>Plan call-up</button>
+      <Button type="submit" class="min-w-40" disabled={gs.busy || !cuLeads.length}>Plan call-up</Button>
     </div>
 
     <div class="preview" role="group" aria-label="Preview">
@@ -140,46 +145,39 @@
           <li class:gone={t <= ui.now}><span>{when(t)}</span><span class="dim">{t <= ui.now ? "already passed" : leadLabel(l).toLowerCase()}</span></li>{/each}
       </ul>{/if}
       <small>Members get a "Static reminder" at each time: in the app, and in Discord
-        {#if view.hasWebhook}(the static's webhook).{:else}once a webhook is set{#if can(view, g, "manage.discord")} (<button type="button" class="link" onclick={() => go("discord")}>Discord</button>){/if}. Until then, only members' apps.{/if}</small>
+        {#if view.hasWebhook}(the static's webhook).{:else}once a webhook is set{#if can(view, g, "manage.discord")} (<Button type="button" variant="link" size="xs" class="h-auto px-0" onclick={() => go("discord")}>Discord</Button>){/if}. Until then, only members' apps.{/if}</small>
     </div>
   </form>
-</section>{/if}
+</Panel>{/if}
 
 <style>
   .callup { border-top: 1px solid var(--rule); padding: 8px 0; display: grid; gap: 4px; }
   .callup.past { opacity: 0.6; }
   .callup p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
   .acts { display: flex; gap: 8px; }
-  .tag { font-size: var(--fs-sm); padding: 0 6px; border-radius: 8px; background: var(--gold-bg); color: var(--gold-ink); }
 
   .composer { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 24px; align-items: start; margin-top: 10px; }
   .fields, .preview { display: grid; gap: 16px; min-width: 0; }
   .preview { gap: 8px; }
   .field { display: grid; gap: 6px; justify-items: start; }
-  label, .lbl { display: flex; gap: 8px; align-items: baseline; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+  label, .lbl { display: flex; gap: 8px; align-items: baseline; font-size: var(--fs-sm); font-weight: 600; color: var(--muted-foreground); }
   .preview .lbl:not(:first-child) { margin-top: 10px; }
   small { color: var(--faint); font-size: var(--fs-sm); }
   .bad { color: var(--neg-ink); }
   .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .amount { width: 72px; }
-  .primary { justify-self: start; min-width: 160px; }
 
   .editor { width: 100%; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--ground); overflow: hidden; }
   .editor:focus-within { border-color: var(--primary); }
   .tools { display: flex; align-items: center; gap: 2px; padding: 4px; border-bottom: 1px solid var(--rule); }
-  .tools button { min-width: 28px; height: 26px; padding: 0 6px; border: 0; }
   .tools .count { margin-left: auto; padding-right: 6px; }
-  .m-bold { font-weight: 700; }
-  .m-italic { font-style: italic; }
-  .m-underline { text-decoration: underline; }
-  .m-strikethrough { text-decoration: line-through; }
-  .m-code { font-family: ui-monospace, Consolas, monospace; font-size: var(--fs-xs); }
+  .tools :global(.m-bold) { font-weight: 700; }
+  .tools :global(.m-italic) { font-style: italic; }
+  .tools :global(.m-underline) { text-decoration: underline; }
+  .tools :global(.m-strikethrough) { text-decoration: line-through; }
+  .tools :global(.m-code) { font-family: ui-monospace, Consolas, monospace; font-size: var(--fs-xs); }
   textarea { display: block; width: 100%; box-sizing: border-box; padding: 8px 10px; border: 0; outline: 0; resize: vertical; background: transparent; color: var(--text); font: inherit; line-height: 1.45; }
   textarea::placeholder { color: var(--faint); }
 
-  .pills { display: flex; flex-wrap: wrap; gap: 6px; }
-  .pill { height: 28px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid var(--border); background: transparent; color: var(--muted); }
-  .pill.on { border-color: transparent; background: var(--gold-bg); color: var(--gold-ink); }
 
   /* Discord's own dark colours: this box shows the post as it lands there. */
   .discord { display: flex; gap: 12px; padding: 14px; border-radius: var(--r-card); background: #313338; color: #dbdee1; font-size: var(--fs-lg); }

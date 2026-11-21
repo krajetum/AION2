@@ -1,0 +1,263 @@
+/* The design system: Tailwind v4 + shadcn-svelte (components in src/lib/components/ui, added with
+   `npx shadcn-svelte add <name>`), flat dark surfaces with 1px borders, no shadows except what floats.
+   Colours are the tokens below: shadcn's names (--background, --card, --primary, --muted-foreground…) plus the
+   meter's (--dps, --hps, --taken, --chart-*). src/ui/design.test.ts keeps raw colours out of everything else.
+   The old stylesheet (style.css) sits in the `legacy` layer while pages move over: above Tailwind's reset, below its
+   utilities, so a shadcn component always wins over a global legacy rule. */
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./style.css" layer(legacy);
+
+/* The app is dark only: `dark:` variants apply everywhere. */
+@custom-variant dark (&:where(:root, :root *));
+/* The shadcn-svelte 1.8 components style states as data-checked:, data-open:… (attributes newer bits-ui sets); bits-ui
+   2.21 marks them with data-state / data-orientation instead. These map one onto the other. */
+@custom-variant data-checked (&[data-state="checked"]);
+@custom-variant data-unchecked (&[data-state="unchecked"]);
+@custom-variant data-open (&[data-state="open"]);
+@custom-variant data-closed (&[data-state="closed"]);
+@custom-variant data-active (&[data-state="active"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+
+:root {
+  color-scheme: dark;
+  --radius: 0.5rem;
+  --background: #0e0e10;
+  --foreground: #ececee;
+  --card: #161618;
+  --card-foreground: #ececee;
+  --popover: #18181b;
+  --popover-foreground: #ececee;
+  --primary: #4f8cff;
+  --primary-foreground: #fff;
+  --primary-fill: #2563eb; /* filled controls: white label at 5.2:1 */
+  --secondary: #1f1f23;
+  --secondary-foreground: #ececee;
+  --muted: #1c1c20;
+  --muted-foreground: #a1a1aa;
+  --faint-foreground: #8b8b94;
+  --accent: #26262b; /* hover / current row background (shadcn's meaning, not a hue) */
+  --accent-foreground: #ececee;
+  --destructive: #f05252;
+  --border: #26262b;
+  --input: #2e2e34;
+  --ring: #4f8cff;
+  /* The meter's three numbers, as the stat tiles colour them. */
+  --dps: #4f8cff;
+  --hps: #4ade80;
+  --taken: #f87171;
+  --chart-1: #4f8cff;
+  --chart-2: #4ade80;
+  --chart-3: #f5b942;
+  --chart-4: #c084fc;
+  --chart-5: #22d3ee;
+  --sidebar: #111113;
+  --sidebar-foreground: #c4c4cc;
+  --sidebar-primary: #4f8cff;
+  --sidebar-primary-foreground: #fff;
+  --sidebar-accent: #1f1f23;
+  --sidebar-accent-foreground: #ececee;
+  --sidebar-border: #1f1f23;
+  --sidebar-ring: #4f8cff;
+}
+
+/* Winter (domain/holiday.ts, data-season set in App.svelte): night blue, ice accent, candlelight gold. */
+:root[data-season="winter"] {
+  --background: #0f1624; --card: #162034; --popover: #182338; --sidebar: #111a2b;
+  --secondary: #1d2a42; --muted: #1a2640; --accent: #24324d; --sidebar-accent: #1d2a42;
+  --border: #22304a; --input: #2f405e; --sidebar-border: #1d2a42;
+  --foreground: #eaf1fb; --card-foreground: #eaf1fb; --popover-foreground: #eaf1fb;
+  --muted-foreground: #b4c2d7; --faint-foreground: #9babc3;
+  --primary: #8fd3ff; --primary-fill: #2a6fa8; --ring: #8fd3ff; --sidebar-primary: #8fd3ff;
+  --gold: #f2b84b; --gold-bg: #3d2c0d; --gold-ink: #f3cb8a;
+}
+/* Halloween: dusk purple, pumpkin orange. Colours only. */
+:root[data-season="halloween"] {
+  --background: #161119; --card: #201828; --popover: #231a2c; --sidebar: #1a1420;
+  --secondary: #2a2033; --muted: #261d2e; --accent: #33273f; --sidebar-accent: #2a2033;
+  --border: #2f2438; --input: #45354f; --sidebar-border: #2a2033;
+  --foreground: #f1ebf5; --card-foreground: #f1ebf5; --popover-foreground: #f1ebf5;
+  --muted-foreground: #c4b6cf; --faint-foreground: #a898b5;
+  --primary: #ff9a3c; --primary-fill: #b3560f; --ring: #ff9a3c; --sidebar-primary: #ff9a3c;
+  --season-glow: linear-gradient(172deg, rgb(255 140 40 / .10), rgb(150 80 220 / .08) 30%, transparent 60%);
+}
+
+@theme inline {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-faint-foreground: var(--faint-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-dps: var(--dps);
+  --color-hps: var(--hps);
+  --color-taken: var(--taken);
+  --color-gold: var(--gold);
+  --color-star: var(--star);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground font-sans; }
+}
+
+@layer components {
+  /* A table row whose background is a bar as long as its share (--p, 0..1) in its class colour (--cls): the meter's
+     players. --p is registered in style.css (@property) so the bar slides. */
+  .bar-row {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--cls, var(--primary)) 22%, transparent) calc(var(--p, 0) * 100%), transparent 0);
+    transition: --p 300ms ease-out;
+  }
+  .bar-row.heal { --cls: var(--hps); }
+  .bar-row.taken { --cls: var(--taken); }
+}
+
+/* ---------- shell: nav · main · inspector (App.svelte) ---------- */
+@layer components {
+  .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr) 280px; min-height: 100dvh; }
+  .side, .inspector { position: sticky; top: 0; height: 100dvh; overflow-y: auto; background-color: var(--sidebar); scrollbar-width: thin; }  /* the seasons add an image (style.css) */
+  .side > * { flex: none; } /* never squeezed when the nav is taller than the window: it scrolls */
+  .side { display: flex; flex-direction: column; gap: 1px; padding: 12px 10px; border-right: 1px solid var(--sidebar-border); }
+  .inspector { padding: 12px 14px 24px; border-left: 1px solid var(--sidebar-border); }
+  main { min-width: 0; padding: 0 24px 48px; }
+
+  .brand { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px; margin-bottom: 10px; }
+  .brand .logo { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--radius-md); background: var(--primary); color: var(--primary-foreground); font-size: var(--fs-xs); font-weight: 700; }
+  .brand b { font-size: var(--fs-lg); font-weight: 600; }
+  .brand span:last-child { color: var(--muted-foreground); font-size: var(--fs-sm); }
+
+  /* Group labels (sidebar, inspector): small capitals, quieter than the items under them; <details> folds the group. */
+  details > summary.label {
+    display: flex; align-items: center; gap: 6px; height: 28px; margin-top: 12px; padding: 0 8px; cursor: pointer; list-style: none; user-select: none;
+    font-size: var(--fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint-foreground);
+  }
+  details > summary.label::-webkit-details-marker { display: none; }
+  details > summary.label:hover { color: var(--foreground); }
+  summary.label svg { order: 2; width: 12px; height: 12px; margin-left: auto; flex: none; opacity: .7; transition: transform 160ms ease; }
+  details[open] > summary.label svg { transform: rotate(90deg); }
+
+  /* A page in a menu (sidebar, the Static page's sections). */
+  .tab {
+    position: relative; display: flex; align-items: center; gap: 10px; width: 100%; height: 30px; padding: 0 8px; text-align: left;
+    border: 0; border-radius: var(--radius-md); background: transparent; color: var(--sidebar-foreground); font-weight: 500;
+  }
+  .tab svg { flex: none; width: 16px; height: 16px; color: var(--muted-foreground); }
+  .tab .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tab:hover { color: var(--foreground); background: var(--sidebar-accent); }
+  .tab[aria-current="page"] { color: var(--foreground); background: var(--sidebar-accent); }
+  .tab[aria-current="page"] svg { color: var(--primary); }
+  .side-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--sidebar-border); }
+
+  /* The bar over every page: search (the palette) in the middle, the meter's status on the right. */
+  .topbar {
+    position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr minmax(0, 440px) 1fr; align-items: center; gap: 12px;
+    height: 52px; margin: 0 -24px 20px; padding: 0 24px; background: color-mix(in srgb, var(--background) 85%, transparent);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  .search-btn {
+    grid-column: 2; display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--input);
+    border-radius: var(--radius-lg); background: var(--secondary); color: var(--muted-foreground); font-size: var(--fs-md); cursor: pointer;
+  }
+  .search-btn:hover { border-color: var(--ring); color: var(--foreground); }
+  .search-btn svg { width: 16px; height: 16px; }
+  .search-btn kbd { margin-left: auto; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); font: inherit; font-size: var(--fs-xs); }
+  .status-pill {
+    justify-self: end; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border: 1px solid var(--border);
+    border-radius: 999px; background: var(--card); color: var(--muted-foreground); font-size: var(--fs-sm); white-space: nowrap;
+  }
+  .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint-foreground); }
+  .status-pill.connected .dot { background: var(--hps); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hps) 25%, transparent); }
+  .status-pill.searching .dot, .status-pill.waiting-game .dot { background: var(--gold); }
+  .status-pill.no-capture .dot { background: var(--destructive); }
+
+  .page-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 16px; }
+  .page-head h1 { margin: 0; font-size: var(--fs-2xl); font-weight: 600; line-height: 1.2; }
+  .page-head p { margin: 0; color: var(--muted-foreground); }
+  /* Hides the right column (wallet, timers): more room for the page. */
+  .page-head .side-toggle { width: 30px; height: 30px; margin-left: auto; padding: 0; }
+  .side-toggle[aria-pressed="true"] { color: var(--foreground); }
+  .shell.no-inspector .inspector { display: none; }
+
+  /* inspector */
+  .char { display: flex; flex-direction: column; gap: 6px; padding: 0 8px; }
+  .char select { width: 100%; }
+  .chip {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 8px 0; padding: 4px 4px 4px 10px;
+    font-size: var(--fs-sm); color: var(--gold-ink); background: var(--gold-bg); border-radius: var(--radius-md);
+  }
+  .chip button { height: 24px; padding: 0 8px; font-size: var(--fs-sm); }
+  .chip .ghost { padding: 0 4px; color: inherit; }
+  .timer { position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 8px 9px; }
+  .timer + .timer { border-top: 1px solid var(--sidebar-border); }
+  .timer small { color: var(--muted-foreground); font-size: var(--fs-sm); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .timer span { font-size: var(--fs-md); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .timer::after { /* elapsed share of the period, via --p */
+    content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px; height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--primary) calc(var(--p, 0) * 100%), var(--secondary) 0);
+  }
+  .timer.event::after { display: none; }
+  .timer.soon span { color: var(--gold); }
+  .timer.up span { color: var(--hps); }
+  button.timer.ap-today { width: 100%; height: auto; border: 0; border-radius: 0; background: none; }
+  button.timer.ap-today:hover small { color: var(--foreground); }
+
+  @media (min-width: 1201px) { .shell.no-inspector { grid-template-columns: 232px minmax(0, 1fr); } }
+  /* Narrow: the inspector becomes a strip above the page; then the nav becomes an icon rail. */
+  @media (max-width: 1200px) {
+    .shell { grid-template-columns: 232px minmax(0, 1fr); }
+    .inspector { position: static; height: auto; grid-column: 2; grid-row: 1; border-left: 0; border-bottom: 1px solid var(--border);
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 16px; align-items: start; }
+    .inspector details > summary.label { margin-top: 4px; }
+    main { grid-column: 2; grid-row: 2; }
+    .side { grid-row: 1 / span 2; }
+  }
+  @media (max-width: 760px) {
+    .shell { grid-template-columns: 52px minmax(0, 1fr); }
+    .side { padding: 8px 4px; }
+    .brand b, .brand span:last-child, .side details > summary.label { display: none; }
+    .brand { justify-content: center; padding: 0; }
+    /* Icon rail: every group's icons, open or closed. */
+    .side details::details-content { content-visibility: visible; }
+    .side > details { margin-top: 8px; border-top: 1px solid var(--sidebar-border); padding-top: 8px; }
+    .side .tab { justify-content: center; padding: 0; height: 40px; }
+    .side .tab .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .side .tab .count { display: none; }
+    .side .tab .badge { position: absolute; top: 0; right: 0; min-width: 16px; line-height: 16px; padding: 0 4px; }
+    main { padding: 0 16px 40px; }
+    .topbar { margin: 0 -16px 16px; padding: 0 16px; grid-template-columns: minmax(0, 1fr) auto; }
+    .search-btn { grid-column: 1; }
+  }
+}

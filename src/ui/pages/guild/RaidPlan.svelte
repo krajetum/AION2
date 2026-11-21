@@ -1,4 +1,9 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
+  import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
+  import { Switch } from "$lib/components/ui/switch/index.js";
+  import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   // Raid plan: each member paints the hours they are free (every week, or only one week); with view.raidsummary,
   // everyone's hours added up: how many are free each hour, who, which classes, and each day's best stretch.
   import { cancelCallup, createCallup, getAvailability, saveAvailability, testCallup } from "../../../app/guild.ts";
@@ -142,36 +147,31 @@
   const range = (d: { day: number; from: number; to: number }) => `${DAY_NAMES[d.day]} ${dateOf(d.day).getUTCDate()}, ${hourLabel(d.from)}–${hourLabel(d.to)}`;
 </script>
 
-<section>
-  <div class="head">
-    <h2>Raid plan</h2>
-    <div class="seg" role="group" aria-label="Week">
-      <button class:on={offset === 0} aria-pressed={offset === 0} onclick={() => { offset = 0; picked = null; }}>This week <small>{weekLabel(thisWeek)}</small></button>
-      <button class:on={offset === 1} aria-pressed={offset === 1} onclick={() => { offset = 1; picked = null; }}>Next week <small>{weekLabel(addWeeks(thisWeek, 1))}</small></button>
-    </div>
-    {#if summary}<div class="seg" role="group" aria-label="View">
-      <button class:on={tab === "mine"} aria-pressed={tab === "mine"} onclick={() => (tab = "mine")}>My hours</button>
-      <button class:on={tab === "guild"} aria-pressed={tab === "guild"} onclick={() => (tab = "guild")}>Everyone (summary)</button>
-    </div>{/if}
-  </div>
+<Panel title="Raid plan">
+  {#snippet actions()}
+    <ToggleGroup.Root type="single" variant="outline" size="sm" aria-label="Week" value={String(offset)} onValueChange={(v) => { if (v) { offset = Number(v); picked = null; } }}>
+      <ToggleGroup.Item value="0">This week <small class="text-muted-foreground">{weekLabel(thisWeek)}</small></ToggleGroup.Item><ToggleGroup.Item value="1">Next week <small class="text-muted-foreground">{weekLabel(addWeeks(thisWeek, 1))}</small></ToggleGroup.Item>
+    </ToggleGroup.Root>
+    {#if summary}<ToggleGroup.Root type="single" variant="outline" size="sm" aria-label="View" value={tab} onValueChange={(v) => { if (v) { tab = v as typeof tab; } }}>
+      <ToggleGroup.Item value="mine">My hours</ToggleGroup.Item><ToggleGroup.Item value="guild">Everyone (summary)</ToggleGroup.Item>
+    </ToggleGroup.Root>{/if}{/snippet}
   <p class="hint">Times are server time ({zoneName}){localDiffers ? ", which may differ from your clock" : ""}. Hatched hours are
     blocked for everyone: {RAID_PLAN.blocked.map((b) => `${DAYS[b.day]} ${hourLabel(b.from)}–${hourLabel(b.to)} ${b.label.toLowerCase()}`).join(", ")}.</p>
-  {#if loadError}<p class="hint error">{loadError} <button class="ghost" onclick={() => { loaded = false; void load(); }}>Try again</button></p>{/if}
-</section>
+  {#if loadError}<p class="hint error">{loadError} <Button variant="ghost" size="sm" onclick={() => { loaded = false; void load(); }}>Try again</Button></p>{/if}
+</Panel>
 
 {#if !loaded}<p class="hint">Loading…</p>
 {:else if tab === "mine" || !summary}
-<section>
+<Panel>
   <div class="tools">
-    <div class="seg" role="group" aria-label="Save for">
-      <button class:on={scope === "every"} aria-pressed={scope === "every"} onclick={() => { scope = "every"; dirty = true; }}>Every week</button>
-      <button class:on={scope === "week"} aria-pressed={scope === "week"} onclick={() => { scope = "week"; dirty = true; }}>Only {offset ? "next" : "this"} week</button>
-    </div>
+    <ToggleGroup.Root type="single" variant="outline" size="sm" aria-label="Save for" value={scope} onValueChange={(v) => { if (v) { scope = v as typeof scope; dirty = true; } }}>
+      <ToggleGroup.Item value="every">Every week</ToggleGroup.Item><ToggleGroup.Item value="week">Only {offset ? "next" : "this"} week</ToggleGroup.Item>
+    </ToggleGroup.Root>
     <span class="dim">{hoursCount} h free{own ? ` · this week has its own hours` : mine ? " · your usual hours" : ""}</span>
     <span class="grow"></span>
-    {#if own}<button class="ghost" disabled={gs.busy} onclick={backToEvery} title="Forget this week's own hours: your every-week hours count again">Use my usual hours</button>{/if}
-    <button class="ghost" disabled={!dirty || gs.busy} onclick={reset}>Undo changes</button>
-    <button class="primary" disabled={!dirty || gs.busy} onclick={save}>Save</button>
+    {#if own}<Button variant="ghost" size="sm" disabled={gs.busy} onclick={backToEvery} title="Forget this week's own hours: your every-week hours count again">Use my usual hours</Button>{/if}
+    <Button variant="ghost" size="sm" disabled={!dirty || gs.busy} onclick={reset}>Undo changes</Button>
+    <Button size="sm" disabled={!dirty || gs.busy} onclick={save}>Save</Button>
   </div>
   <p class="hint small">{scope === "every"
     ? "Your usual week: it counts for every week that has no hours of its own."
@@ -186,18 +186,20 @@
   </div>
 
   <form class="range" onsubmit={(e) => { e.preventDefault(); applyRange(); }}>
-    <select bind:value={rDay} aria-label="Day">{#each DAY_NAMES as d, i}<option value={i}>{d}</option>{/each}</select>
-    <label>from <select bind:value={rFrom}>{#each Array(24) as _, h}<option value={h}>{hourLabel(h)}</option>{/each}</select></label>
-    <label>to <select bind:value={rTo}>{#each Array(24) as _, h}<option value={h + 1}>{hourLabel(h + 1)}</option>{/each}</select></label>
-    <div class="seg" role="group" aria-label="Free or not"><button type="button" class:on={rFree} onclick={() => (rFree = true)}>Free</button><button type="button" class:on={!rFree} onclick={() => (rFree = false)}>Not free</button></div>
-    <button class="ghost" disabled={rTo <= rFrom}>Apply</button>
+    <NativeSelect size="sm" bind:value={rDay} aria-label="Day">{#each DAY_NAMES as d, i}<NativeSelectOption value={i}>{d}</NativeSelectOption>{/each}</NativeSelect>
+    <label>from <NativeSelect size="sm" bind:value={rFrom}>{#each Array(24) as _, h}<NativeSelectOption value={h}>{hourLabel(h)}</NativeSelectOption>{/each}</NativeSelect></label>
+    <label>to <NativeSelect size="sm" bind:value={rTo}>{#each Array(24) as _, h}<NativeSelectOption value={h + 1}>{hourLabel(h + 1)}</NativeSelectOption>{/each}</NativeSelect></label>
+    <ToggleGroup.Root type="single" variant="outline" size="sm" aria-label="Free or not" value={rFree ? "free" : "busy"} onValueChange={(v) => { if (v) { rFree = v === "free"; } }}>
+      <ToggleGroup.Item value="free">Free</ToggleGroup.Item><ToggleGroup.Item value="busy">Not free</ToggleGroup.Item>
+    </ToggleGroup.Root>
+    <Button type="submit" variant="outline" size="sm" disabled={rTo <= rFrom}>Apply</Button>
   </form>
 
   <div class="grid" role="group" aria-label="My free hours" onpointerup={() => (painting = null)} onpointerleave={() => (painting = null)}>
     <div class="corner"></div>
     {#each DAYS as d, day}<div class="day">
       <b>{d}</b> <span class="dim">{dateOf(day).getUTCDate()}</span>
-      <button class="ghost tiny" title={dayFull(day) ? `Clear ${DAY_NAMES[day]}` : `Free all ${DAY_NAMES[day]}`} onclick={() => change(setDay(draft, day, !dayFull(day)))}>{dayFull(day) ? "Clear" : "All day"}</button>
+      <Button variant="ghost" size="xs" class="h-5 px-1.5 text-xs" title={dayFull(day) ? `Clear ${DAY_NAMES[day]}` : `Free all ${DAY_NAMES[day]}`} onclick={() => change(setDay(draft, day, !dayFull(day)))}>{dayFull(day) ? "Clear" : "All day"}</Button>
     </div>{/each}
     {#each Array(24) as _, h}
       <div class="hour">{hourLabel(h)}</div>
@@ -210,12 +212,12 @@
     {/each}
   </div>
   {#if dirty}<p class="hint warn">Not saved yet.</p>{/if}
-</section>
+</Panel>
 {:else}
-<section>
+<Panel>
   <p class="dim">{members?.length ?? 0} of {view.memberCount} members marked their hours{notMarked ? ` · ${notMarked} not yet` : ""}.</p>
   {#if days.length}
-    <h3>Best times, {offset ? "next" : "this"} week</h3>
+    <h3 class="mt-4 mb-2 text-sm font-semibold">Best times, {offset ? "next" : "this"} week</h3>
     <ol class="best">{#each days.slice(0, 4) as d (d.day)}
       <li><div class="what"><b>{range(d)}</b> · {d.count} free · {d.classes.map(([c, n]) => `${c} ${n}`).join(", ")}
         <div class="dim">{d.who.map((w) => w.name).join(", ")}</div></div>
@@ -223,14 +225,13 @@
           <div class="callup">
           {#if !c}<span class="dim">Already begun</span>
           {:else}{@const on = planned(c.atMs)}
-            <label class="switch"
+            <label class="flex cursor-pointer items-center gap-2 text-sm"
               title={on ? "On: reminders now, 3 h and 1 h before. Switch off to cancel the raid and post \"Raid cancelled\" (@everyone)"
                 : "@everyone, the names of those free, 'Your spot is not guaranteed': posted now, 3 h and 1 h before"}>
               <!-- The app's switch; it shows what is planned, so it moves once the Worker has it. -->
-              <input type="checkbox" role="switch" checked={!!on} disabled={gs.busy}
-                onchange={(e) => { e.currentTarget.checked = !!on; if (on) cancelIt(d, on.id); else makeCallup(d); }}>{on ? "Call-up on" : "Make a call-up"}</label>
-            <button class="ghost" disabled={gs.busy || !view.hasWebhook} onclick={() => testIt(d)}
-              title={view.hasWebhook ? "Post it once to Discord with @everyone, to check the ping: nothing planned" : "Set a Discord webhook first"}>Test ping</button>{/if}
+              <Switch checked={!!on} disabled={gs.busy} onCheckedChange={() => { if (on) cancelIt(d, on.id); else makeCallup(d); }} />{on ? "Call-up on" : "Make a call-up"}</label>
+            <Button variant="ghost" size="sm" disabled={gs.busy || !view.hasWebhook} onclick={() => testIt(d)}
+              title={view.hasWebhook ? "Post it once to Discord with @everyone, to check the ping: nothing planned" : "Set a Discord webhook first"}>Test ping</Button>{/if}
           </div>
         {/if}
       </li>{/each}</ol>
@@ -249,27 +250,23 @@
     {/each}
   </div>
   {#if picked !== null}
-    <h3>{DAY_NAMES[Math.floor(picked / 24)]} {hourLabel(picked % 24)}–{hourLabel(picked % 24 + 1)} · {pickedWho.length} free</h3>
+    <h3 class="mt-4 mb-2 text-sm font-semibold">{DAY_NAMES[Math.floor(picked / 24)]} {hourLabel(picked % 24)}–{hourLabel(picked % 24 + 1)} · {pickedWho.length} free</h3>
     {#if pickedWho.length}<p>{classesOf(pickedWho).map(([c, n]) => `${c} ${n}`).join(" · ")}</p>
       <ul class="who">{#each pickedWho as w (w.name)}<li>{w.name} <span class="dim">{w.className || NO_CLASS}</span></li>{/each}</ul>
     {:else}<p class="hint">Nobody free at this hour.</p>{/if}
   {:else}<p class="hint small">Click an hour to see who is free and their classes.</p>{/if}
-</section>
+</Panel>
 {/if}
 
 <style>
-  .head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
-  .head h2 { margin-right: auto; }
-  .seg small { color: var(--faint); margin-left: 4px; }
   .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 4px; }
   .grow { flex: 1; }
   .small { font-size: var(--fs-sm); }
   .warn { color: var(--warn-ink); }
   .range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 12px; }
-  .range label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+  .range label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted-foreground); }
   .grid { display: grid; grid-template-columns: 48px repeat(7, minmax(36px, 1fr)); gap: 2px; user-select: none; touch-action: none; max-width: 760px; }
   .day { display: flex; flex-direction: column; align-items: center; font-size: var(--fs-sm); padding-bottom: 4px; }
-  .tiny { height: 20px; padding: 0 6px; font-size: var(--fs-xs); }
   .hour { font-size: var(--fs-xs); color: var(--faint); text-align: right; padding-right: 6px; line-height: 18px; font-variant-numeric: tabular-nums; }
   .cell { height: 18px; border-radius: 3px; background: var(--ground); cursor: pointer; border: 1px solid transparent; padding: 0; }
   /* My hours: free / not free every week (dark green / red), or only this week (light green / orange). */
@@ -278,7 +275,7 @@
   .cell.busy, .legend .busy { background: color-mix(in srgb, #c0392b 55%, var(--ground)); }
   .cell.busyWeek, .legend .busyWeek { background: #ec8a2f; }
   .legend .blocked { background: repeating-linear-gradient(135deg, var(--raised) 0 3px, var(--ground) 3px 6px); }
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; font-size: var(--fs-sm); color: var(--muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; font-size: var(--fs-sm); color: var(--muted-foreground); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend i { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
   .cell.now { border-color: var(--gold-ink); }
@@ -291,8 +288,6 @@
   .best li { margin-bottom: 6px; }
   .best li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; }
   .callup { display: flex; gap: 6px; justify-content: flex-end; }
-  .callup .switch { font-size: var(--fs-sm); }
-  .callup button { height: 26px; padding: 0 10px; font-size: var(--fs-sm); }
   .who { columns: 2; padding-left: 18px; margin: 4px 0; }
   h3 { font-size: var(--fs-lg); margin: 14px 0 6px; }
 </style>

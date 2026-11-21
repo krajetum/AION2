@@ -1,4 +1,10 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
+  import * as Card from "$lib/components/ui/card/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   import Empty from "../parts/Empty.svelte";
   import { EVENTS, RESET_CONFIG as C } from "../../config.ts";
   import { activePlan, planLeft, startPlan, stopPlan } from "../../app/planner.ts";
@@ -49,34 +55,36 @@
   }
 </script>
 
-<div class="toolbar start plan-bar">
-  {#each [20, 40, 60, 90] as m}<button class={!view.pl && view.s.planMinutes === m ? "primary" : ""} disabled={!!view.pl}
-      onclick={() => act(() => { ui.data.settings.planMinutes = m; })}>{m} min</button>{/each}
-  <label>Custom <input type="number" inputmode="numeric" min="5" max="600" step="5" value={view.s.planMinutes} disabled={!!view.pl} aria-label="Session minutes"
-    onchange={(e) => commit(e, (v) => setPlanMinutes(ui.data, v), () => ui.data.settings.planMinutes)}> min</label>
-  <label>Next session in <input type="number" inputmode="numeric" min="1" max="168" value={view.s.planNextHours} aria-label="Hours until the next session"
-    onchange={(e) => commit(e, (v) => setPlanNextHours(ui.data, v), () => ui.data.settings.planNextHours)}> h</label>
-  <UndoButton />
-  {#if view.pl}<button onclick={() => act(() => stopPlan(ui.data))}>Stop session</button>{:else}<button class="primary" onclick={() => act(() => startPlan(ui.data, ui.charId, Date.now()))}>Start session</button>{/if}
+<div class="mb-3 flex flex-wrap items-center gap-2 text-sm">
+  {#each [20, 40, 60, 90] as m}<Button size="sm" variant={!view.pl && view.s.planMinutes === m ? "default" : "outline"} disabled={!!view.pl}
+      onclick={() => act(() => { ui.data.settings.planMinutes = m; })}>{m} min</Button>{/each}
+  <label class="flex items-center gap-1.5 text-muted-foreground">Custom <Input class="h-7 w-18" type="number" inputmode="numeric" min="5" max="600" step="5" value={view.s.planMinutes} disabled={!!view.pl} aria-label="Session minutes"
+    onchange={(e) => commit(e, (v) => setPlanMinutes(ui.data, v), () => ui.data.settings.planMinutes)} /> min</label>
+  <label class="flex items-center gap-1.5 text-muted-foreground">Next session in <Input class="h-7 w-18" type="number" inputmode="numeric" min="1" max="168" value={view.s.planNextHours} aria-label="Hours until the next session"
+    onchange={(e) => commit(e, (v) => setPlanNextHours(ui.data, v), () => ui.data.settings.planNextHours)} /> h</label>
+  <span class="grow"></span><UndoButton />
+  {#if view.pl}<Button size="sm" variant="outline" onclick={() => act(() => stopPlan(ui.data))}>Stop session</Button>{:else}<Button size="sm" onclick={() => act(() => startPlan(ui.data, ui.charId, Date.now()))}>Start session</Button>{/if}
 </div>
-<div class="kpis">
+<div class="mb-3 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
   <Kpi label={view.pl ? "Session left" : "Preview"} value={mins(view.left)} sub={view.pl ? `started ${hm(view.pl.start)} · learning your timings` : "start to learn your timings"} cls="hero" />
   <Kpi label="Planned" value="{planned}/{view.r.candidates}" sub="unfinished tasks" />
   <Kpi label="Ends around" value={hm(view.r.end)} sub={view.r.steps.some((x) => x.kind === "event") ? "events included" : "no events in the window"} />
-  <Kpi label="Left out" value={String(view.r.skipped.length)}>{#if urgentOut}<span class="neg">{urgentOut} reset before next session</span>{:else}nothing urgent lost{/if}</Kpi>
+  <Kpi label="Left out" value={String(view.r.skipped.length)}>{#if urgentOut}<span class="text-taken">{urgentOut} reset before next session</span>{:else}nothing urgent lost{/if}</Kpi>
 </div>
-{#if view.r.steps.length}<section><h2>Plan <span class="count">{view.r.steps.length} steps</span></h2>{#each view.r.steps as st (st.kind + st.id + st.start)}{#if st.kind === "event"}<div class="step event"><time>{hm(st.start)}</time><div class="task"><span class="text">
-      <span class="name">{st.name}</span><small class="plan-hint">Event · {mins(st.minutes)} reserved</small></span></div></div>{:else}<div class="step {st.urgent ? 'urgent' : ''}"><time>{hm(st.start)}</time><TaskRow t={findTask(ui.data, st.id)} hint={hint(st)} /></div>{/if}{/each}</section>
+{#if view.r.steps.length}<Panel title="Plan" count="{view.r.steps.length} steps">{#each view.r.steps as st (st.kind + st.id + st.start)}<div class="grid grid-cols-[52px_1fr] items-start gap-x-3 border-b last:border-0 [&>div]:border-0">
+    <time class="pt-3 tabular-nums {st.kind !== 'event' && st.urgent ? 'text-gold' : 'text-muted-foreground'}">{hm(st.start)}</time>
+    {#if st.kind === "event"}<div class="flex flex-col py-2.5"><span class="font-medium text-muted-foreground">{st.name}</span><small class="text-xs text-muted-foreground">Event · {mins(st.minutes)} reserved</small></div>
+    {:else}<TaskRow t={findTask(ui.data, st.id)} hint={hint(st)} />{/if}</div>{/each}</Panel>
 {:else if view.r.candidates}<Empty>Nothing fits in {mins(view.left)}.</Empty>
-{:else}<section class="win"><div><h2>Nothing left to plan</h2><p>Every task is done.</p></div></section>{/if}
-{#if done.length}<section><h2>Done just now <span class="count">ticked in your Daily / Weekly / Monthly lists too</span></h2>{#each done as id (id)}<TaskRow t={findTask(ui.data, id)} />{/each}</section>{/if}
-{#if view.r.skipped.length}<section><h2>Doesn't fit <span class="count">{view.r.skipped.length}</span></h2>{#each view.r.skipped as x}<div class="task"><span class="text"><span class="name">{x.name}</span>
-      <small>{mins(x.minutes)}{#if x.urgent}{" · "}<span class="neg">resets before your next session</span>{/if}</small></span></div>{/each}</section>{/if}
-{#if estimates.length}<section><h2>Estimates <span class="count">minutes for the whole task</span></h2><div class="scroll"><table class="sheet">
-      <thead><tr><th>Cadence</th><th>Task</th><th class="n">Minutes</th><th class="c">Priority</th></tr></thead>
-      <tbody>{#each estimates as t (t.id)}<tr><td class="dim">{LABEL[t.cadence]}</td><td><span class="name">{t.name}</span></td>
-        <td class="n"><input type="number" inputmode="decimal" min="0.5" max="600" step="0.5" value={t.minutes ?? DEFAULT_MINUTES} aria-label="{t.name} minutes"
-          onchange={(e) => commit(e, (v) => setTaskMinutes(ui.data, t.id, v), () => t.minutes ?? DEFAULT_MINUTES)}></td>
-        <td class="c"><select value={String(t.priority ?? DEFAULT_PRIORITY)} aria-label="{t.name} priority"
-          onchange={(e) => commit(e, (v) => setTaskPriority(ui.data, t.id, v), () => t.priority ?? DEFAULT_PRIORITY)}>{#each PRIO as l, i}<option value={String(i + 1)}>{l}</option>{/each}</select></td></tr>{/each}</tbody></table></div>
-    <p class="hint">During a session, the time between two ticks updates the estimate. Events count only if their alert is on in Settings.</p></section>{/if}
+{:else}<Card.Root class="mb-3 border-hps/30 bg-hps/10 px-4 py-3"><h2 class="m-0 text-base font-semibold text-hps">Nothing left to plan</h2><p class="m-0 text-sm text-muted-foreground">Every task is done.</p></Card.Root>{/if}
+{#if done.length}<Panel title="Done just now" count="ticked in your Daily / Weekly / Monthly lists too">{#each done as id (id)}<TaskRow t={findTask(ui.data, id)} />{/each}</Panel>{/if}
+{#if view.r.skipped.length}<Panel title="Doesn't fit" count={view.r.skipped.length}>{#each view.r.skipped as x}<div class="flex flex-col border-b py-2.5 last:border-0"><span class="font-medium">{x.name}</span>
+      <small class="text-xs text-muted-foreground">{mins(x.minutes)}{#if x.urgent}{" · "}<span class="text-taken">resets before your next session</span>{/if}</small></div>{/each}</Panel>{/if}
+{#if estimates.length}<Panel title="Estimates" count="minutes for the whole task"><Table.Root>
+      <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Cadence</Table.Head><Table.Head>Task</Table.Head><Table.Head class="text-right">Minutes</Table.Head><Table.Head class="text-center">Priority</Table.Head></Table.Row></Table.Header>
+      <Table.Body>{#each estimates as t (t.id)}<Table.Row><Table.Cell class="text-muted-foreground">{LABEL[t.cadence]}</Table.Cell><Table.Cell class="font-medium">{t.name}</Table.Cell>
+        <Table.Cell class="text-right"><Input class="ml-auto h-7 w-20" type="number" inputmode="decimal" min="0.5" max="600" step="0.5" value={t.minutes ?? DEFAULT_MINUTES} aria-label="{t.name} minutes"
+          onchange={(e) => commit(e, (v) => setTaskMinutes(ui.data, t.id, v), () => t.minutes ?? DEFAULT_MINUTES)} /></Table.Cell>
+        <Table.Cell class="text-center"><NativeSelect size="sm" class="mx-auto" value={String(t.priority ?? DEFAULT_PRIORITY)} aria-label="{t.name} priority"
+          onchange={(e) => commit(e, (v) => setTaskPriority(ui.data, t.id, v), () => t.priority ?? DEFAULT_PRIORITY)}>{#each PRIO as l, i}<NativeSelectOption value={String(i + 1)}>{l}</NativeSelectOption>{/each}</NativeSelect></Table.Cell></Table.Row>{/each}</Table.Body></Table.Root>
+    <p class="hint">During a session, the time between two ticks updates the estimate. Events count only if their alert is on in Settings.</p></Panel>{/if}

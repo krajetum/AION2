@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button/index.js";
   // The event countdown window (index.html#events, opened by src-tauri/src/meter.rs): the next start of
   // every recurring event, counted down (times are the TO VERIFY ones in config.ts), and the next field-boss
   // respawn: every boss due in that same minute. Drag it by the header.
@@ -37,7 +38,7 @@
 <div bind:this={box}>
 <div class="ov-head" data-tauri-drag-region>
   <b data-tauri-drag-region>Next events</b>
-  <button class="ghost" aria-label="Close the event overlay" title="Close (turn on again in Settings)" onclick={() => eventsOverlay(false)}>{@html ICON.close}</button>
+  <Button variant="ghost" size="icon-xs" aria-label="Close the event overlay" title="Close (turn on again in Settings)" onclick={() => eventsOverlay(false)}><ICON.close /></Button>
 </div>
 <ol class="ev-rows">{#each list as { ev, at } (ev.id)}
   <li class:soon={at - now < 5 * 60_000}><span class="name" data-tauri-drag-region>{ev.name}</span>

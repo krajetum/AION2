@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { Badge } from "$lib/components/ui/badge/index.js";
+  import { Button } from "$lib/components/ui/button/index.js";
+  import * as Table from "$lib/components/ui/table/index.js";
+  import Panel from "$lib/components/app/Panel.svelte";
   // The roster: role, gear (shared, else the official profile), last seen; Remove for whoever may, on lower roles only.
   import { untrack } from "svelte";
   import { adminGuild } from "../../../app/guild.ts";
@@ -44,23 +48,17 @@
   const ago = (t: number) => { const m = Math.max(0, Math.round((ui.now - t) / 60_000)); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m / 60)} h ago` : `${Math.floor(m / 1440)} d ago`; };
 </script>
 
-<section><h2>Members <span class="count">{view.memberCount}</span></h2>
-  <div class="scroll"><table class="sheet">
-    <thead><tr><th>Name</th><th>Role</th><th class="n">Item level</th><th class="n">CP</th><th>Seen</th><th></th></tr></thead>
-    <tbody>{#each roster as m (m.name)}{@const role = roleOf.get(m.name) ?? "member"}<tr style:--cls={classColor(m.className) || null}>
-      <td>{#if classIcon(m.className)}<img class="cls-icon" src={classIcon(m.className)} alt={m.className} title={m.className} width="22" height="23">{/if}
-        <button class="ghost" title="Profile, gear and best-in-slot check" onclick={() => openPlayer(m.name)}>{m.name}</button>{#if m.className}<small>{m.className}</small>{/if}{#if m.serverId && m.serverId !== g.serverId}<small title="Plays on another server">{serverName(m.serverId) || `server ${m.serverId}`}</small>{/if}</td>
-      <td><span class="role {role}">{ROLE_LABEL[role]}</span></td>
-      <td class="n">{m.itemLevel == null ? "—" : num(m.itemLevel)}{#if m.official}<small class="dim" title="From the official profile"> official</small>{/if}</td>
-      <td class="n">{m.combatPower == null ? "—" : short(m.combatPower)}</td>
-      <td>{ui.now - m.seenMs < ONLINE_MS ? "Online" : ago(m.seenMs)}</td>
-      <td>{#if mayRemove(m.name)}<button class="ghost" disabled={gs.busy} onclick={() => remove(m.name)}>Remove</button>{/if}</td>
-    </tr>{/each}</tbody></table></div>
+<Panel title="Members" count={view.memberCount}>
+  <Table.Root>
+    <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Name</Table.Head><Table.Head>Role</Table.Head><Table.Head class="text-right">Item level</Table.Head><Table.Head class="text-right">CP</Table.Head><Table.Head>Seen</Table.Head><Table.Head></Table.Head></Table.Row></Table.Header>
+    <Table.Body>{#each roster as m (m.name)}{@const role = roleOf.get(m.name) ?? "member"}<Table.Row>
+      <Table.Cell><span class="flex flex-wrap items-center gap-2">{#if classIcon(m.className)}<img class="size-5 object-contain" src={classIcon(m.className)} alt={m.className} title={m.className}>{/if}
+        <Button variant="link" size="sm" class="h-auto px-0 text-foreground" title="Profile, gear and best-in-slot check" onclick={() => openPlayer(m.name)}>{m.name}</Button>{#if m.className}<span class="text-xs text-muted-foreground">{m.className}</span>{/if}{#if m.serverId && m.serverId !== g.serverId}<span class="text-xs text-muted-foreground" title="Plays on another server">{serverName(m.serverId) || `server ${m.serverId}`}</span>{/if}</span></Table.Cell>
+      <Table.Cell><Badge variant="secondary" class={role === "leader" ? "text-gold" : role === "officer" ? "text-primary" : "text-muted-foreground"}>{ROLE_LABEL[role]}</Badge></Table.Cell>
+      <Table.Cell class="text-right">{m.itemLevel == null ? "—" : num(m.itemLevel)}{#if m.official}<span class="text-xs text-muted-foreground" title="From the official profile"> official</span>{/if}</Table.Cell>
+      <Table.Cell class="text-right">{m.combatPower == null ? "—" : short(m.combatPower)}</Table.Cell>
+      <Table.Cell class={ui.now - m.seenMs < ONLINE_MS ? "text-hps" : "text-muted-foreground"}>{ui.now - m.seenMs < ONLINE_MS ? "Online" : ago(m.seenMs)}</Table.Cell>
+      <Table.Cell class="text-right">{#if mayRemove(m.name)}<Button variant="ghost" size="sm" disabled={gs.busy} onclick={() => remove(m.name)}>Remove</Button>{/if}</Table.Cell>
+    </Table.Row>{/each}</Table.Body></Table.Root>
   <p class="hint">Click a member for their whole profile and which best-in-slot lines each piece has.{#if !isDesktop()} Official profiles are read in the desktop app only.{/if}</p>
-</section>
-
-<style>
-  .role { font-size: var(--fs-sm); padding: 1px 8px; border-radius: var(--r-pill); color: var(--muted); background: var(--raised); }
-  .role.leader { color: var(--gold-ink); background: var(--gold-bg); }
-  .role.officer { color: var(--primary-ink); background: var(--primary-fill); }
-</style>
+</Panel>
