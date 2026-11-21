@@ -6,7 +6,7 @@
   import * as Table from "$lib/components/ui/table/index.js";
   import Panel from "$lib/components/app/Panel.svelte";
   // Player search: the official character search and profiles (infra/armory.ts), as on NCSOFT's site.
-  import { profilePage, type Found, type Profile } from "../../domain/armory.ts";
+  import { pickFound, profilePage, type Found, type Profile } from "../../domain/armory.ts";
   import { gearUrl, REGIONS, regionOf, serversIn } from "../../domain/servers.ts";
   import { equipmentOf, profileOf, searchPlayers } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
@@ -14,6 +14,7 @@
   import DaevanionBoards from "../parts/DaevanionBoards.svelte";
   import Equipment from "../parts/Equipment.svelte";
   import GenusInsight from "../parts/GenusInsight.svelte";
+  import PlayerCompare from "../parts/PlayerCompare.svelte";
   import Kpi from "../parts/Kpi.svelte";
   import { ui } from "../state.svelte.ts";
 
@@ -69,6 +70,22 @@
     void search();
   }
   $effect(() => { if (me && !touched) openMe(); });
+  // Compare: the character kept as the first side; the one opened next (searched, or yours) is the second.
+  let first = $state<Found | null>(null), compareError = $state("");
+  const comparing = $derived(!!first && !!open && open.characterId !== first.characterId);
+  const isMe = (c: Found | null) => !!c && !!me && c.serverId === me.serverId && c.name.toLowerCase() === me.name.toLowerCase();
+  function startCompare() { first = open; compareError = ""; }
+  async function compareWithMe() {
+    if (!me || !open) return;
+    compareError = "";
+    try {
+      const mine = pickFound(await searchPlayers(me.name, me.serverId), me.name, me.serverId);
+      if (!mine) { compareError = `${me.name} not found on the official search`; return; }
+      first = mine;
+    } catch (e) { compareError = e instanceof Error ? e.message : String(e); }
+  }
+  function swap() { if (first && open) { const was = first; first = open; void show(was); } }
+
   // Your Genus Insight, read in game: only for your own characters (kept by name; the game sends no one else's).
   const genus = $derived(open && profile ? ui.data.genus?.[open.name] ?? Object.entries(ui.data.genus ?? {}).find(([n]) => n.toLowerCase() === open!.name.toLowerCase())?.[1] ?? null : null);
 </script>
@@ -95,7 +112,17 @@
   </Table.Root>
 </Panel>{/if}
 
+{#if first && !comparing}<p class="hint mt-0 mb-3">Comparing with <b>{first.name}</b>: search and open the other character.
+  <Button size="sm" variant="ghost" onclick={() => { first = null; }}>Cancel</Button></p>{/if}
+{#if compareError}<p class="hint error">Compare: {compareError}</p>{/if}
+{#if comparing}<Panel title="Compare">
+  <PlayerCompare a={first!} b={open!} onswap={swap} onclose={() => { first = null; }} />
+</Panel>{/if}
+
 {#if open}<Panel count="{profile?.className ?? ''} · {open.serverName}">
+  {#snippet actions()}{#if profile && !comparing}
+    {#if me && !isMe(open)}<Button size="sm" variant="outline" onclick={compareWithMe}>Compare with {me.name}</Button>{/if}
+    <Button size="sm" variant="outline" disabled={!!first} onclick={startCompare}>Compare with…</Button>{/if}{/snippet}
   {#snippet head()}<span class="flex items-center gap-2">{#if profile && classIcon(profile.className)}<img class="size-6 object-contain" src={classIcon(profile.className)} alt="">{/if}{open!.name}</span>{/snippet}
   {#if loading}<p class="hint mt-0">Reading the profile…</p>
   {:else if profileError}<p class="hint error mt-0">The profile could not be read ({profileError}).</p>
