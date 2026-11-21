@@ -15,7 +15,7 @@
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import { downloadJson } from "../../infra/storage.ts";
   import { act, commit, refreshGathers } from "../actions.ts";
-  import { num } from "../format.ts";
+  import { hm, num } from "../format.ts";
   import { ICON, TRAVEL_ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
   import { MAX_LEVEL, needed, petName as petNameOf, wanted } from "../../domain/pets.ts";
@@ -146,6 +146,12 @@
   });
   const material = (item: number) => itemNames[String(item)] || `Item ${item}`;
   let gatherItem = $state(0), onlyMine = $state(false), selectedGather = $state<GatherMark | null>(null), gatherQuery = $state("");
+  let refreshing = $state(false), refreshFailed = $state(false);
+  async function refreshSpots() {
+    refreshing = true;
+    refreshFailed = !(await refreshGathers(true));
+    refreshing = false;
+  }
   // Others' spots, fresh when the layer opens (at most once a minute).
   $effect(() => { if (layer === "gather") void refreshGathers(); });
   const gatherHere = $derived(gatherMarks(ui.data.gathering).filter((m) => mapOf(m.mapId) === current && (!onlyMine || m.mine)));
@@ -425,6 +431,8 @@
         {#if layer === "gather"}
           <input type="search" placeholder="Search a material" aria-label="Search a material" autocomplete="off" bind:value={gatherQuery} oninput={() => { gatherItem = 0; selectedGather = null; }}>
           <label class="toggle-line" title="Hides the spots only other players reported"><input type="checkbox" bind:checked={onlyMine}> Only where I gathered</label>
+          <p class="hint gather-refresh"><button class="ghost" disabled={refreshing} title="Sends your new spots, then reads the other players' (the server's list can be up to 5 min old)" onclick={refreshSpots}>{refreshing ? "Refreshing…" : "↻ Refresh"}</button>
+            {refreshFailed ? "The server could not be reached." : ui.gathersAt ? `Others' spots read at ${hm(ui.gathersAt)}.` : ""}</p>
           {#if gatherItem}<button class="ghost showing" title="Show every material" onclick={() => { gatherItem = 0; selectedGather = null; }}>Showing: {material(gatherItem)} ✕</button>{/if}
           <ul class="pet-list" aria-label="Materials">
             {#each gatherList as [item, n] (item)}<li><button class="plain" class:on={gatherItem === item} aria-pressed={gatherItem === item}

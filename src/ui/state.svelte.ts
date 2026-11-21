@@ -36,6 +36,7 @@ export const ui = $state({
   lookup: null as { name: string; serverId: number } | null, // a player card's "Full profile": the Players page searches it
   mascotCues: [] as Cue[], // what the mascot reacts to (main.ts alerts, actions.ts `cue`), latest last
   party: 0, // when the last celebration started (actions.ts `celebrate`): parts/Confetti.svelte fires on each change
+  gathersAt: 0, // when the others' gathering spots were last read (actions.ts refreshGathers), 0 = not this session
   codes: [] as import("../domain/codes.ts").RedeemCode[], // the shared redeem codes as the Worker last answered (actions.ts refreshCodes), not saved
   codesError: "",
   guild: null as GuildView | null, // the guild as the Worker last answered (main.ts syncs it while playing), not saved
