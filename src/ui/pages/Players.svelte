@@ -11,7 +11,9 @@
   import { equipmentOf, profileOf, searchPlayers } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
   import { hm, num } from "../format.ts";
+  import DaevanionBoards from "../parts/DaevanionBoards.svelte";
   import Equipment from "../parts/Equipment.svelte";
+  import GenusInsight from "../parts/GenusInsight.svelte";
   import Kpi from "../parts/Kpi.svelte";
   import { ui } from "../state.svelte.ts";
 
@@ -67,6 +69,8 @@
     void search();
   }
   $effect(() => { if (me && !touched) openMe(); });
+  // Your Genus Insight, read in game: only for your own characters (kept by name; the game sends no one else's).
+  const genus = $derived(open && profile ? ui.data.genus?.[open.name] ?? Object.entries(ui.data.genus ?? {}).find(([n]) => n.toLowerCase() === open!.name.toLowerCase())?.[1] ?? null : null);
 </script>
 
 <form class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm" onsubmit={(e) => { e.preventDefault(); void search(); }}>
@@ -107,8 +111,10 @@
       <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Stat</Table.Head><Table.Head class="text-right">Value</Table.Head><Table.Head>Gives</Table.Head></Table.Row></Table.Header>
       <Table.Body>{#each profile.stats as s (s.name)}<Table.Row><Table.Cell>{s.name}</Table.Cell><Table.Cell class="text-right">{num(s.value)}</Table.Cell><Table.Cell class="whitespace-normal text-muted-foreground">{s.effects.join(" · ")}</Table.Cell></Table.Row>{/each}</Table.Body>
     </Table.Root>{/if}
-    {#if profile.boards?.length}<h3 class="mt-4 mb-2 text-sm font-semibold">Daevanion</h3><div class="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
-      {#each profile.boards as b (b.name)}<Kpi label={b.name} value="{b.open} / {b.total}"><Progress class="mt-1.5" value={b.total ? (b.open / b.total) * 100 : 0} /></Kpi>{/each}</div>{/if}
+    <div class="mt-4 flex flex-col gap-2">
+      {#if profile.boards?.length}<DaevanionBoards characterId={open.characterId} serverId={open.serverId} boards={profile.boards} />{/if}
+      {#if genus}<GenusInsight g={genus} />{:else if me && open.name.toLowerCase() === me.name.toLowerCase()}<p class="hint m-0">Genus Insight: the game sends it when you enter the world. Log in (or change character) with the companion open to see it here.</p>{/if}
+    </div>
   {/if}
   <p class="mt-3 mb-0 text-sm"><a class="text-primary hover:underline" href={profilePage(open.characterId, open.serverId)} target="_blank" rel="noopener">Official profile ↗</a>
     {#if gearUrl(open.name, open.serverId)} · <a class="text-primary hover:underline" href={gearUrl(open.name, open.serverId)} target="_blank" rel="noopener">shugo.gg ↗</a>{/if}</p>

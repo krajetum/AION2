@@ -2,6 +2,7 @@ import type { ArenaLog } from "./arena.ts";
 import type { MapData } from "./map.ts";
 import type { CraftData } from "./crafting.ts";
 import type { PetCollection } from "./pets.ts";
+import type { GenusRead } from "./genus.ts";
 import type { Wallet } from "./wallet.ts";
 import type { BossTimer } from "./meter.ts";
 import type { Trigger } from "./triggers.ts";
@@ -116,6 +117,7 @@ export interface AppData {
   arena: ArenaLog;                    // arena matchup log (src/domain/arena.ts)
   map: MapData;                       // points on the player's own map image (src/domain/map.ts); the image stays out
   pets: Record<string, PetCollection>; // character name → its pet collection as last read (src/domain/pets.ts)
+  genus: Record<string, GenusRead>; // character name → its Genus Insight lines as last read (src/domain/genus.ts)
   wallets: Record<string, Wallet>;     // character name → its currencies and Odyle energy as last seen (src/domain/wallet.ts)
   crafting: CraftData;                 // recipes, targets, pieces owned per character, market prices (src/domain/crafting.ts)
   plan?: ActivePlan;

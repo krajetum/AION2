@@ -4,8 +4,8 @@
 // a failure a minute.
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
-  equipmentUrl, infoUrl, itemUrl, parseEquipment, parseInfo, parseItem, parseSearch, pickFound, searchUrl,
-  type Equipment, type Found, type ItemDetail, type Piece, type Profile,
+  daevanionUrl, equipmentUrl, infoUrl, itemUrl, parseBoard, parseEquipment, parseInfo, parseItem, parseSearch, pickFound, searchUrl,
+  type Board, type Equipment, type Found, type ItemDetail, type Piece, type Profile,
 } from "../domain/armory.ts";
 
 const SEARCH_MS = 60_000, PROFILE_MS = 10 * 60_000, FAILED_MS = 60_000;
@@ -74,4 +74,9 @@ export function equipmentOf(characterId: string, serverId: number): Promise<Equi
 /** A piece's details (stats, manastones, godstones, an arcana's skills and set). */
 export function itemOf(p: Piece, characterId: string, serverId: number): Promise<ItemDetail | null> {
   return kept(`i|${serverId}|${characterId}|${p.slot}|${p.id}|${p.enchant + p.exceed}`, PROFILE_MS, async () => parseItem(await getJson(itemUrl(p, characterId, serverId))));
+}
+
+/** One Daevanion board's open nodes and what they give, by the profile's board id. */
+export function boardOf(characterId: string, serverId: number, boardId: number): Promise<Board | null> {
+  return kept(`d|${serverId}|${characterId}|${boardId}`, PROFILE_MS, async () => parseBoard(await getJson(daevanionUrl(characterId, serverId, boardId))));
 }
