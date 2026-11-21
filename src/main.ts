@@ -23,6 +23,7 @@ import { act, celebrate, cue, refreshCodes, refreshGathers, refreshGuild, refres
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import EventsOverlay from "./ui/EventsOverlay.svelte";
+import SoulsOverlay from "./ui/SoulsOverlay.svelte";
 import NetOverlay from "./ui/NetOverlay.svelte";
 import CubeOverlay from "./ui/CubeOverlay.svelte";
 import RadarOverlay from "./ui/RadarOverlay.svelte";
@@ -30,6 +31,8 @@ import { takeMeterData } from "./app/arena.ts";
 import { bossEvery, flushCubes, flushGathers, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
 import { uploadFight } from "./app/guild.ts";
 import { crashReports } from "./infra/sentry.ts";
+import { soulsPopup } from "./infra/meter.ts";
+import { COMBO_MS, freshGains, popGains, type SoulPop } from "./domain/soul-pop.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, meterItemCodes, radarOverlay, meterOverlay, netOverlay, onEventsOverlay, onNetOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { fightsSnapshot, live, ui } from "./ui/state.svelte.ts";
@@ -74,6 +77,7 @@ async function main() {
     await meterCubeCodes(data.map.cubeCodes).catch(() => {});
     await meterItemCodes(data.crafting.items).catch(() => {});
     if (data.settings.cubePopup) await cubePopup(true, data.settings.cubePopupSize).catch(() => {});
+    if (data.settings.soulPopup) await soulsPopup(true).catch(() => {});
     if (data.settings.radar) await radarOverlay(true).catch(() => {});
   }
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
@@ -84,6 +88,8 @@ async function main() {
   let last: MeterUpdate | undefined; // the previous update: a fight that ended (Fight Log), events for auto-tracked tasks
   let cum: number[] = []; // the running boss fight's samples (domain/timeline.ts)
   let track = newTrack(); // the same for every row and the boss HP: the fight chart
+  // The soul points popup's combo, and the gains already shown (none from before the app started).
+  let soulPop: SoulPop | null = null, soulsSeen = Date.now();
   onMeter((u) => {
     const first = !pending;
     pending = u;
@@ -116,6 +122,16 @@ async function main() {
       if (last && ui.data.settings.celebrate) {
         const seen = Math.max(0, ...(last.kills ?? []).map((k) => k.atMs));
         for (const k of latest.kills ?? []) if (k.atMs > seen && k.kind !== "assist") cue(k.kind === "kill" ? "cheer" : "sulk");
+      }
+      // Soul points for a pet still needed, or a shard: the popup over the game (before takeMeterData adds them to the collection).
+      if (!latest.demo) {
+        const fresh = freshGains(ui.data.pets[latest.profile?.name ?? ""], latest.soulGains ?? latest.souls ?? [], latest.loots ?? [], soulsSeen);
+        soulsSeen = fresh.lastMs;
+        const next = popGains(soulPop, fresh, ui.data.map);
+        if (next) {
+          soulPop = next;
+          if (ui.data.settings.soulPopup) soulsPopup(true, next, next.lastMs + COMBO_MS).catch(() => {});
+        }
       }
       last = latest;
       const shared = shareFromMeter(ui.data, latest); // before takeMeterData: it compares with the saved data
@@ -212,5 +228,5 @@ function overlay(page: typeof Overlay) {
   onOpacity((o) => document.documentElement.style.setProperty("--ov-alpha", `${o}%`));
 }
 
-const page = { "#overlay": Overlay, "#events": EventsOverlay, "#cube": CubeOverlay, "#radar": RadarOverlay, "#net": NetOverlay }[location.hash];
+const page = { "#overlay": Overlay, "#events": EventsOverlay, "#cube": CubeOverlay, "#radar": RadarOverlay, "#net": NetOverlay, "#souls": SoulsOverlay }[location.hash];
 (page ? Promise.resolve(overlay(page)) : main()).catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });

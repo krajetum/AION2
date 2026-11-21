@@ -1,0 +1,37 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { addGain, COMBO_MS, freshGains, isCombo, onFire, ON_FIRE, popGains, popText } from "./soul-pop.ts";
+
+const names = { petNames: { "7": "Fluffy" }, kinds: {} };
+const coll = { pets: [{ id: 7, level: 1, points: 3 }, { id: 9, level: 3, points: 0 }], atMs: 0 };
+
+test("soul pop: only new points of pets still needed, and crystals", () => {
+  const gains = [{ kind: 7, points: 2, atMs: 100 }, { kind: 9, points: 2, atMs: 200 }, { kind: 7, points: 1, atMs: 50 }];
+  const loots = [{ item: 610530014, atMs: 300 }, { item: 534660061, atMs: 310 }];
+  const f = freshGains(coll, gains, loots, 60);
+  assert.deepEqual(f.points.map((g) => g.atMs), [100]);
+  assert.deepEqual(f.shards.map((l) => l.atMs), [300]);
+  assert.equal(f.lastMs, 310);
+  // No collection read yet: every pet counts.
+  assert.equal(freshGains(undefined, gains, [], 60).points.length, 2);
+});
+
+test("soul pop: gains within 3 s add up as a combo, on fire from the 10th, a new combo after a pause", () => {
+  let p = addGain(null, 2, 0, "Fluffy", 1000);
+  assert.deepEqual(p, { points: 2, shards: 0, hits: 1, lastMs: 1000, label: "Fluffy" });
+  assert.equal(isCombo(p), false);
+  p = addGain(p, 3, 0, "", 1000 + COMBO_MS);
+  assert.equal(p.points, 5); assert.equal(p.hits, 2); assert.equal(isCombo(p), true); assert.equal(p.label, "Fluffy");
+  for (let i = 0; i < ON_FIRE - 2; i++) p = addGain(p, 1, 0, "Fluffy", p.lastMs + 500);
+  assert.equal(p.hits, ON_FIRE); assert.equal(onFire(p), true);
+  p = addGain(p, 1, 1, "Other", p.lastMs + COMBO_MS + 1);
+  assert.deepEqual(p, { points: 1, shards: 1, hits: 1, lastMs: p.lastMs, label: "Other" });
+  assert.equal(popText(p), "+1 soul point · +1 shard");
+});
+
+test("soul pop: one update's gains in time order, named", () => {
+  const f = freshGains(coll, [{ kind: 7, points: 2, atMs: 2000 }], [{ item: 610530014, atMs: 1500 }], 0);
+  const p = popGains(null, f, names)!;
+  assert.deepEqual(p, { points: 2, shards: 1, hits: 2, lastMs: 2000, label: "Fluffy" });
+  assert.equal(popGains(p, freshGains(coll, [], [], 0), names), null);
+});
