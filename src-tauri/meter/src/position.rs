@@ -133,6 +133,7 @@ pub fn observe(frame: &[u8]) {
             p.map_id.get_or_insert(id);
         }
         crate::souls::fill_map(id);
+        crate::gather::fill_map(id);
     }
 }
 

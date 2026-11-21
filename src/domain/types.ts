@@ -2,6 +2,7 @@ import type { ArenaLog } from "./arena.ts";
 import type { MapData } from "./map.ts";
 import type { CraftData } from "./crafting.ts";
 import type { PetCollection } from "./pets.ts";
+import type { GatherData } from "./gathering.ts";
 import type { Wallet } from "./wallet.ts";
 import type { BossTimer } from "./meter.ts";
 import type { Trigger } from "./triggers.ts";
@@ -67,7 +68,7 @@ export interface Settings {
   betaUpdates: boolean;       // also take pre-release (beta) builds: the beta manifest (src-tauri/src/updates.rs), off by default
   mascot: boolean;            // the mascot of the class you play, walking along the bottom of the window
   mascotGender: "m" | "f";   // its gender
-  crowdShare: boolean;       // send the boss timers and cube openings the meter sees to the crowd Worker
+  crowdShare: boolean;       // send the boss timers, cube openings and gathering spots the meter sees to the crowd Worker
   winterTheme: boolean;      // the winter theme and Advent calendar, 1 December to 6 January (src/domain/holiday.ts)
   snow: boolean;             // its falling snow and New Year fireworks
   halloween: boolean;        // the Halloween theme, 25 October to 1 November (colours only)
@@ -116,6 +117,7 @@ export interface AppData {
   arena: ArenaLog;                    // arena matchup log (src/domain/arena.ts)
   map: MapData;                       // points on the player's own map image (src/domain/map.ts); the image stays out
   pets: Record<string, PetCollection>; // character name → its pet collection as last read (src/domain/pets.ts)
+  gathering: GatherData; // your gathering spots and the ones other players shared (src/domain/gathering.ts)
   wallets: Record<string, Wallet>;     // character name → its currencies and Odyle energy as last seen (src/domain/wallet.ts)
   crafting: CraftData;                 // recipes, targets, pieces owned per character, market prices (src/domain/crafting.ts)
   plan?: ActivePlan;
