@@ -4,7 +4,7 @@
   import { addLead, muteForAnHour, removeLead, setChannelOn, setDpsIdleSeconds, setOverlayOpacity, setLead, setChannelVolume, setVolume, setBirthdayVolume, setWarnHours, toggleChannelMute, unmute } from "../../app/settings.ts";
   import { applyResets } from "../../domain/resets.ts";
   import { nextEvent } from "../../domain/time.ts";
-  import { CHANNELS, SOUND_THEMES } from "../../domain/alerts.ts";
+  import { CHANNELS, isTheme, SOUND_THEMES, themeFor } from "../../domain/alerts.ts";
   import { CADENCES } from "../../domain/types.ts";
   import { playBirthday, playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
@@ -21,13 +21,13 @@
   import { ui } from "../state.svelte.ts";
 
   const s = $derived(ui.data.settings);
-  let newChar: HTMLInputElement;
+  let newChar = $state<HTMLInputElement>();
 
   function add() {
-    const name = newChar.value.trim();
+    const name = newChar?.value.trim();
     if (!name) return;
     addCharacter(ui.data, name);
-    newChar.value = "";
+    newChar!.value = "";
     act(() => {});
   }
   function del(id: string) {
@@ -66,37 +66,113 @@
   }
   async function dropCubePicture(who: Opener) { await clearCubePicture(who); await showCubePicture(who); }
   const check = (e: Event) => (e.currentTarget as HTMLInputElement).checked;
+
+  // Tabs and sub-tabs, like the game's settings; the last one opened is remembered (this browser only).
+  const TABS = [
+    { id: "general", name: "General", subs: [["characters", "Characters"], ["times", "Reset times"]] },
+    { id: "alerts", name: "Notifications", subs: [["alerts", "Alerts"], ["sounds", "Sounds"], ["warnings", "Reset warnings"]] },
+    { id: "display", name: "Display", subs: [["mascot", "Mascot"], ["themes", "Themes"]] },
+    { id: "overlays", name: "Overlays", subs: [["windows", "Overlays"], ["cube", "Cube popup & radar"]] },
+    { id: "game", name: "Game data", subs: [["meter", "DPS meter"], ["sharing", "Other players"], ["diagnostics", "Diagnostics"]] },
+    { id: "system", name: "System", subs: [["system", "System"], ["backup", "Backup"]] },
+  ] as const;
+  const KEY = "aion2-settings-tab";
+  let open = $state<string[]>(["general", "characters"]);
+  $effect(() => { try { const v = JSON.parse(localStorage.getItem(KEY) ?? "null"); const t = TABS.find((t) => t.id === v?.[0]); if (t?.subs.some(([id]) => id === v[1])) open = v; } catch { /* default */ } });
+  function pick(tab: string, sub?: string) {
+    const t = TABS.find((x) => x.id === tab)!;
+    open = [tab, sub ?? t.subs[0][0]];
+    try { localStorage.setItem(KEY, JSON.stringify(open)); } catch { /* not kept */ }
+  }
+  const tab = $derived(TABS.find((t) => t.id === open[0]) ?? TABS[0]);
+  const sub = $derived(open[1]);
+  const setPreset = (v: string) => act(() => { s.soundTheme = v === "custom" ? "custom" : isTheme(v) ? v : "default"; });
+  const setChannelTheme = (id: string, v: string) => act(() => { if (isTheme(v)) s.channelThemes = { ...s.channelThemes, [id]: v }; });
 </script>
 
 {#snippet toggle(label: string, on: boolean, change: (e: Event) => unknown, disabled = false)}<label class="setting switch"><span>{label}</span><input type="checkbox" checked={on} {disabled}
   onchange={(e) => act(() => change(e))}></label>{/snippet}
 
-<div class="settings"><div>
+<nav class="settings-tabs" aria-label="Settings">
+  {#each TABS as t (t.id)}<button class:on={t.id === tab.id} aria-current={t.id === tab.id ? "page" : undefined} onclick={() => pick(t.id)}>{t.name}</button>{/each}
+</nav>
+{#if tab.subs.length > 1}<div class="seg settings-sub" role="group" aria-label="{tab.name} section">
+  {#each tab.subs as [id, name] (id)}<button class:on={id === sub} aria-pressed={id === sub} onclick={() => pick(tab.id, id)}>{name}</button>{/each}
+</div>{/if}
+
+<div class="settings">
+{#if sub === "characters"}
   <section><h2>Characters</h2>
     {#each ui.data.characters as c (c.id)}<div class="setting"><input value={c.name} aria-label="Character name" autocomplete="off"
       onchange={(e) => commit(e, (v) => renameCharacter(ui.data, c.id, v), () => c.name)}>{#if ui.data.characters.length > 1}<button onclick={() => del(c.id)}>Delete</button>{/if}</div>{/each}
     <div class="setting"><input id="new-char" placeholder="New character name…" aria-label="New character name" autocomplete="off" bind:this={newChar}><button class="primary" onclick={add}>Add</button></div>
   </section>
+{:else if sub === "times"}
+  <section><h2>Reset times <span class="count">TO VERIFY</span></h2>
+    <dl>
+      <dt>Time zone</dt><dd>{C.timeZone}</dd>
+      <dt>Daily</dt><dd>{pad(C.daily.hour)}:{pad(C.daily.minute)}</dd>
+      <dt>Weekly</dt><dd>{WEEKDAYS[C.weekly.weekday]} {pad(C.weekly.hour)}:{pad(C.weekly.minute)}</dd>
+      <dt>Monthly</dt><dd>Day {C.monthly.day} at {pad(C.monthly.hour)}:{pad(C.monthly.minute)}</dd>
+      <dt>Cloud Merchant</dt><dd>Minute {C.cloudMerchantMinute} of every hour</dd>
+      {#each EVENTS as ev}<dt>{ev.name}</dt><dd>Every {ev.everyHours} h at :{pad(ev.minute)}{ev.everyHours > 1 ? ` from ${pad(ev.firstHour)}:00` : ""}{ev.timeZone ? ` (${ev.timeZone})` : ""}, {ev.duration} min</dd>{/each}
+    </dl>
+    <p class="hint">Edit in src/config.ts</p>
+  </section>
+{:else if sub === "alerts"}
+  <section class="wide"><h2>Alerts</h2>
+    {#each CHANNELS as c}{@const ch = s.channels[c.id]}<div class="setting chan">
+      {#if c.id === "check"}<span>{c.name}</span>{:else}<label class="switch"><input type="checkbox" checked={ch.on}
+        onchange={(e) => act(() => setChannelOn(ui.data, c.id, check(e)))}><span>{c.name}</span></label>{/if}
+      <span class="ctl"><input type="range" min="0" max="100" value={ch.volume} aria-label="{c.name} volume" disabled={ch.muted}
+        onchange={(e) => commit(e, (v) => setChannelVolume(ui.data, c.id, v), () => ch.volume)}>
+        <button class="ghost" aria-pressed={ch.muted} aria-label="Mute {c.name} sound" title="{ch.muted ? 'Unmute' : 'Mute'} sound"
+          onclick={() => act(() => toggleChannelMute(ui.data, c.id))}>{@html ch.muted ? ICON.muted : ICON.sound}</button>
+        <button class="ghost" aria-label="Play {c.name} sound" title="sounds/{c.sound[0]}.wav"
+          onclick={() => playSound(c.sound, s.volume * ch.volume / 100, themeFor(s, c.id))}>{@html ICON.play}</button></span>
+      {#if ch.leads}{@const ev = EVENTS.find((e) => e.id === c.id)}<LeadsRow label={ev?.name ?? c.name} leads={ch.leads}
+        next={ch.on && ev ? nextEvent(ev, ui.now, C.timeZone) : undefined}
+        onadd={() => addLead(ui.data, c.id)} onremove={(i) => removeLead(ui.data, c.id, i)} onset={(i, v) => setLead(ui.data, c.id, i, v)} />{/if}</div>{/each}
+    <div class="setting"><span>Quiet hours</span><span class="ctl">
+      <input type="time" value={s.quietStart} aria-label="Quiet hours start" onchange={(e) => commit(e, (v) => { s.quietStart = v; }, () => s.quietStart)}> to
+      <input type="time" value={s.quietEnd} aria-label="Quiet hours end" onchange={(e) => commit(e, (v) => { s.quietEnd = v; }, () => s.quietEnd)}></span></div>
+    <div class="btns"><button onclick={() => act(() => muteForAnHour(ui.data, Date.now()))}>Mute 1 h</button><button class="ghost" onclick={() => act(() => unmute(ui.data))}>Unmute</button><button class="ghost"
+      onclick={() => toast(s, "AION 2 Companion", "Notifications are working.")}>Test notification</button></div>
+  </section>
+{:else if sub === "sounds"}
+  <section><h2>Sounds</h2>
+    {@render toggle("Sound", s.sound, (e) => { s.sound = check(e); })}
+    <label class="setting"><span>Master volume</span><input type="range" min="0" max="100" value={s.volume}
+      onchange={(e) => commit(e, (v) => setVolume(ui.data, v), () => s.volume)}></label>
+    <label class="setting"><span>Sound theme</span><select value={s.soundTheme} onchange={(e) => setPreset(e.currentTarget.value)}>
+      {#each SOUND_THEMES as t}<option value={t.id}>{t.name}</option>{/each}<option value="custom">Custom: one per sound</option></select></label>
+    <div class="setting"><span>Hopex's birthday song</span><span class="ctl"><input type="range" min="5" max="100" value={s.birthdayVolume}
+      aria-label="Birthday song volume" onchange={(e) => commit(e, (v) => setBirthdayVolume(ui.data, v), () => s.birthdayVolume)}>
+      <button class="ghost" aria-label="Play the birthday song" title="sounds/happy-birthday.mp3" onclick={() => playBirthday(s.birthdayVolume)}>{@html ICON.play}</button></span></div>
+    <p class="hint">A theme plays its own version of every sound; a sound it doesn't have plays the Default one. Custom: pick the theme of each sound below.</p>
+  </section>
+  {#if s.soundTheme === "custom"}<section><h2>Theme per sound</h2>
+    {#each CHANNELS as c}{@const ch = s.channels[c.id]}<div class="setting"><span>{c.name}</span><span class="ctl">
+      <select value={themeFor(s, c.id)} aria-label="{c.name} theme" onchange={(e) => setChannelTheme(c.id, e.currentTarget.value)}>
+        {#each SOUND_THEMES as t}<option value={t.id}>{t.name}</option>{/each}</select>
+      <button class="ghost" aria-label="Play {c.name} sound" onclick={() => playSound(c.sound, s.volume * ch.volume / 100, themeFor(s, c.id))}>{@html ICON.play}</button></span></div>{/each}
+  </section>{/if}
+{:else if sub === "warnings"}
   <section><h2>Reset warnings</h2>
     {#each CADENCES as c}<label class="setting"><span>{LABEL[c]} reset</span>
       <span class="ctl"><input type="number" inputmode="numeric" min="0" max="168" value={s.warnHours[c]}
         onchange={(e) => commit(e, (v) => setWarnHours(ui.data, c, v), () => s.warnHours[c])}> h before</span></label>{/each}
   </section>
-  <section><h2>DPS meter</h2>
-    <label class="setting"><span>Reset after inactivity</span>
-      <span class="ctl"><input type="number" inputmode="numeric" min="0" max="3600" value={s.dpsIdleSeconds}
-        onchange={(e) => { commit(e, (v) => setDpsIdleSeconds(ui.data, v), () => s.dpsIdleSeconds); meterIdle(s.dpsIdleSeconds); }}> s</span></label>
-    {@render toggle("Overlay during fights", s.dpsOverlay, (e) => { s.dpsOverlay = check(e); meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
-    <p class="hint">Without damage, healing or damage taken for this long, the meter resets and the overlay hides until the next fight. 0 = never.</p>
-  </section>
+{:else if sub === "mascot"}
   <section><h2>Mascot</h2>
     {@render toggle("Show the mascot", s.mascot, (e) => { s.mascot = check(e); })}
     {@render toggle("Confetti and cheers (a list finished, a personal best, a PvP kill)", s.celebrate, (e) => { s.celebrate = check(e); })}
     <label class="setting"><span>Gender</span><select value={s.mascotGender} disabled={!s.mascot}
       onchange={(e) => act(() => { s.mascotGender = e.currentTarget.value === "f" ? "f" : "m"; })}>
       <option value="m">Male</option><option value="f">Female</option></select></label>
-    <p class="hint">The little character of the class you play walks along the bottom of the window once the game says who you are (white wings for Elyos, black for Asmodians). It shouts with the alerts, clings on for 10 minutes after the Spacetime Rift's alert, hops when a hidden cube is in view, cheers when you open it and sulks when someone else does. Drag it, throw it, shake it.</p>
+    <p class="hint">The little character of the class you play walks along the bottom of the window once the game says who you are (white wings for Elyos, black for Asmodians). It shouts with the alerts, clings on while the Spacetime Rift is open, fights a wisp for the Dimensional Invasion's first 3 minutes, gets a lantern critter's visit for the Shugo Festival's first 3 minutes (event times: General › Reset times), hops when a hidden cube is in view, cheers when you open it and sulks when someone else does. Drag it, throw it, shake it.</p>
   </section>
+{:else if sub === "themes"}
   <section><h2>Themes</h2>
     {@render toggle("Accent colour of the class you play", s.classAccent, (e) => { s.classAccent = check(e); })}
     {@render toggle("Halloween theme (25 Oct – 1 Nov)", s.halloween, (e) => { s.halloween = check(e); })}
@@ -107,40 +183,58 @@
       at midnight on New Year's Eve. "Reduce motion" in Windows stops the snow and fireworks. The class accent takes the colour of
       your class's emblem once the game says who you play; Halloween is a week of dusk purple and pumpkin orange.</p>
   </section>
+{:else if sub === "windows"}
   <section><h2>Overlays</h2>
     {@render toggle("Event countdown overlay", s.eventsOverlay, (e) => { s.eventsOverlay = check(e); eventsOverlay(s.eventsOverlay); }, !isDesktop())}
     {@render toggle("Ping and packet loss overlay", s.netOverlay, (e) => { s.netOverlay = check(e); netOverlay(s.netOverlay); }, !isDesktop())}
+    {@render toggle("DPS overlay during fights", s.dpsOverlay, (e) => { s.dpsOverlay = check(e); meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
+    {@render toggle("Hide when the game is not in front", s.overlayFollowGame, (e) => { s.overlayFollowGame = check(e); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, !isDesktop())}
+    <label class="setting"><span>Opacity</span><span class="ctl"><input type="range" min="20" max="100" step="5" value={s.overlayOpacity} aria-label="Overlay opacity"
+      onchange={(e) => { commit(e, (v) => setOverlayOpacity(ui.data, v), () => s.overlayOpacity); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }}> {s.overlayOpacity}%</span></label>
+    <p class="hint">Overlays remember where you put them and never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
+  </section>
+{:else if sub === "cube"}
+  <section><h2>Cube popup</h2>
     {@render toggle("Hidden cube popup", s.cubePopup, (e) => { s.cubePopup = check(e); cubePopup(s.cubePopup, s.cubePopupSize); }, !isDesktop())}
     <label class="setting"><span>Cube popup size</span><select value={String(s.cubePopupSize)} disabled={!isDesktop() || !s.cubePopup}
       onchange={(e) => act(() => { s.cubePopupSize = +e.currentTarget.value; cubePopup(s.cubePopup, s.cubePopupSize); })}>
       {#each CUBE_SIZES as [k, label]}<option value={String(k)}>{label}</option>{/each}</select></label>
+    {#each OPENERS as [who, label]}<div class="setting"><span>{label}</span><span class="ctl">
+      {#if cubePictures[who]}<img class="cube-thumb" src={cubePictures[who]} alt="Chosen: {label}">{/if}
+      <label class="btn">{cubePictures[who] ? "Change" : "Choose"} <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onchange={(e) => pickCubePicture(who, e)}></label>
+      {#if cubePictures[who]}<button class="ghost" onclick={() => dropCubePicture(who)}>Remove</button>{/if}</span></div>{/each}
+    <p class="hint">The cube popup (top centre at first; drag it anywhere) shows while a hidden cube the app knows is in view, with
+      its distance and direction, chimes when one appears (sound: Notifications › Alerts), turns green when you open one (red, with a sad sound, when someone else does) or shows your picture for it instead
+      (pictures stay only on this PC). It learns cubes as they are opened near you; the first one is built in.</p>
+  </section>
+  <section><h2>Cube radar</h2>
     {@render toggle("Cube radar", s.radar, (e) => { s.radar = check(e); radarOverlay(s.radar); }, !isDesktop())}
     {#if s.radar}<label class="setting"><span>Radar range</span><select value={String(s.radarRange)}
         onchange={(e) => act(() => { s.radarRange = +e.currentTarget.value; })}>
         {#each [50, 100, 200, 400] as m}<option value={String(m)}>{m} m</option>{/each}</select></label>
       {@render toggle("Map under the radar", s.radarMap, (e) => { s.radarMap = check(e); })}
       {@render toggle("Round radar", s.radarRound, (e) => { s.radarRound = check(e); })}{/if}
-    {#each OPENERS as [who, label]}<div class="setting"><span>{label}</span><span class="ctl">
-      {#if cubePictures[who]}<img class="cube-thumb" src={cubePictures[who]} alt="Chosen: {label}">{/if}
-      <label class="btn">{cubePictures[who] ? "Change" : "Choose"} <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onchange={(e) => pickCubePicture(who, e)}></label>
-      {#if cubePictures[who]}<button class="ghost" onclick={() => dropCubePicture(who)}>Remove</button>{/if}</span></div>{/each}
-    {@render toggle("Hide when the game is not in front", s.overlayFollowGame, (e) => { s.overlayFollowGame = check(e); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, !isDesktop())}
-    <label class="setting"><span>Opacity</span><span class="ctl"><input type="range" min="20" max="100" step="5" value={s.overlayOpacity} aria-label="Overlay opacity"
-      onchange={(e) => { commit(e, (v) => setOverlayOpacity(ui.data, v), () => s.overlayOpacity); overlayStyle(s.overlayFollowGame, s.overlayOpacity); }}> {s.overlayOpacity}%</span></label>
-    <p class="hint">The cube popup (top centre at first; drag it anywhere) shows while a hidden cube the app knows is in view, with
-      its distance and direction, chimes when one appears (sound: Notifications), turns green when you open one (red, with a sad sound, when someone else does) or shows your picture for it instead
-      (pictures stay only on this PC).
-      It learns cubes as they are opened near you; the first one is built in.
-      The cube radar shows the cubes around you, north up, centred on you, while a cube is in view (as the cube popup):
-      drag it over the game's minimap, size it by its edges and set the range to match. It cannot turn with the camera, so it matches only a north-up minimap. Overlays remember where you put them.
-      The overlays never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
+    <p class="hint">The cube radar shows the cubes around you, north up, centred on you, while a cube is in view (as the cube popup):
+      drag it over the game's minimap, size it by its edges and set the range to match. It cannot turn with the camera, so it matches only a north-up minimap.</p>
   </section>
+{:else if sub === "meter"}
+  <section><h2>DPS meter</h2>
+    <label class="setting"><span>Reset after inactivity</span>
+      <span class="ctl"><input type="number" inputmode="numeric" min="0" max="3600" value={s.dpsIdleSeconds}
+        onchange={(e) => { commit(e, (v) => setDpsIdleSeconds(ui.data, v), () => s.dpsIdleSeconds); meterIdle(s.dpsIdleSeconds); }}> s</span></label>
+    {@render toggle("Overlay during fights", s.dpsOverlay, (e) => { s.dpsOverlay = check(e); meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
+    <p class="hint">Without damage, healing or damage taken for this long, the meter resets and the overlay hides until the next fight. 0 = never.</p>
+  </section>
+{:else if sub === "sharing"}
   <section><h2>Other players</h2>
     {@render toggle("Share boss timers, cube spots and gathering spots", s.crowdShare, (e) => { s.crowdShare = check(e); })}
     <p class="hint">The app shows the field-boss timers other players on your server read, the hidden cubes three or more
       players saw opened and the spots other players gathered at. Sharing sends what your meter sees: server, map and boss ids with their times,
       where cubes were opened, and where you gathered what (material and time). Never names, yours or anyone's. Turn it off and you still get the others'.</p>
   </section>
+{:else if sub === "diagnostics"}
+  <Recorder />
+{:else if sub === "system"}
   <section><h2>System</h2>
     {@render toggle("Start with Windows", ui.autostart, async (e) => { ui.autostart = await setAutostart(check(e)); }, !isDesktop())}
     {@render toggle("Update by itself when the app opens", s.autoUpdate, (e) => { s.autoUpdate = check(e); }, !isDesktop())}
@@ -151,48 +245,12 @@
     <p class="hint">Sends the app's errors, crashes, warnings and timings to Sentry so they can be fixed: where in the code, the app version
       and your Windows/WebView version, plus a screen recording of some sessions with every text, input and image hidden.
       No names, servers, positions or save data. For the app's core the switch applies at the next start.</p>
+  </section>
+{:else if sub === "backup"}
+  <section><h2>Backup</h2>
+    <p class="hint">Everything the app keeps (characters, tasks, settings, maps…) as one JSON file; the DPS Log and pictures stay apart.</p>
     <div class="btns"><button onclick={() => exportJson(ui.data)}>Export JSON</button>
       <label class="btn">Import JSON <input type="file" accept=".json,application/json" hidden onchange={importFile}></label></div>
   </section>
-  <Recorder />
-</div><div>
-  <section><h2>Notifications</h2>
-    {@render toggle("Sound", s.sound, (e) => { s.sound = check(e); })}
-    <label class="setting"><span>Master volume</span><input type="range" min="0" max="100" value={s.volume}
-      onchange={(e) => commit(e, (v) => setVolume(ui.data, v), () => s.volume)}></label>
-    <label class="setting"><span>Sound theme</span><select value={s.soundTheme}
-      onchange={(e) => act(() => { s.soundTheme = SOUND_THEMES.find((t) => t.id === e.currentTarget.value)?.id ?? "default"; })}>
-      {#each SOUND_THEMES as t}<option value={t.id}>{t.name}</option>{/each}</select></label>
-    <div class="setting"><span>Hopex's birthday song</span><span class="ctl"><input type="range" min="5" max="100" value={s.birthdayVolume}
-      aria-label="Birthday song volume" onchange={(e) => commit(e, (v) => setBirthdayVolume(ui.data, v), () => s.birthdayVolume)}>
-      <button class="ghost" aria-label="Play the birthday song" title="sounds/happy-birthday.mp3" onclick={() => playBirthday(s.birthdayVolume)}>{@html ICON.play}</button></span></div>
-    {#each CHANNELS as c}{@const ch = s.channels[c.id]}<div class="setting chan">
-      {#if c.id === "check"}<span>{c.name}</span>{:else}<label class="switch"><input type="checkbox" checked={ch.on}
-        onchange={(e) => act(() => setChannelOn(ui.data, c.id, check(e)))}><span>{c.name}</span></label>{/if}
-      <span class="ctl"><input type="range" min="0" max="100" value={ch.volume} aria-label="{c.name} volume" disabled={ch.muted}
-        onchange={(e) => commit(e, (v) => setChannelVolume(ui.data, c.id, v), () => ch.volume)}>
-        <button class="ghost" aria-pressed={ch.muted} aria-label="Mute {c.name} sound" title="{ch.muted ? 'Unmute' : 'Mute'} sound"
-          onclick={() => act(() => toggleChannelMute(ui.data, c.id))}>{@html ch.muted ? ICON.muted : ICON.sound}</button>
-        <button class="ghost" aria-label="Play {c.name} sound" title="sounds/{c.sound[0]}.wav"
-          onclick={() => playSound(c.sound, s.volume * ch.volume / 100, s.soundTheme)}>{@html ICON.play}</button></span>
-      {#if ch.leads}{@const ev = EVENTS.find((e) => e.id === c.id)}<LeadsRow label={ev?.name ?? c.name} leads={ch.leads}
-        next={ch.on && ev ? nextEvent(ev, ui.now, C.timeZone) : undefined}
-        onadd={() => addLead(ui.data, c.id)} onremove={(i) => removeLead(ui.data, c.id, i)} onset={(i, v) => setLead(ui.data, c.id, i, v)} />{/if}</div>{/each}
-    <div class="setting"><span>Quiet hours</span><span class="ctl">
-      <input type="time" value={s.quietStart} aria-label="Quiet hours start" onchange={(e) => commit(e, (v) => { s.quietStart = v; }, () => s.quietStart)}> to
-      <input type="time" value={s.quietEnd} aria-label="Quiet hours end" onchange={(e) => commit(e, (v) => { s.quietEnd = v; }, () => s.quietEnd)}></span></div>
-    <div class="btns"><button onclick={() => act(() => muteForAnHour(ui.data, Date.now()))}>Mute 1 h</button><button class="ghost" onclick={() => act(() => unmute(ui.data))}>Unmute</button><button class="ghost"
-      onclick={() => toast(s, "AION 2 Companion", "Notifications are working.")}>Test notification</button></div>
-  </section>
-  <section><h2>Reset times <span class="count">TO VERIFY</span></h2>
-    <dl>
-      <dt>Time zone</dt><dd>{C.timeZone}</dd>
-      <dt>Daily</dt><dd>{pad(C.daily.hour)}:{pad(C.daily.minute)}</dd>
-      <dt>Weekly</dt><dd>{WEEKDAYS[C.weekly.weekday]} {pad(C.weekly.hour)}:{pad(C.weekly.minute)}</dd>
-      <dt>Monthly</dt><dd>Day {C.monthly.day} at {pad(C.monthly.hour)}:{pad(C.monthly.minute)}</dd>
-      <dt>Cloud Merchant</dt><dd>Minute {C.cloudMerchantMinute} of every hour</dd>
-      {#each EVENTS as ev}<dt>{ev.name}</dt><dd>Every {ev.everyHours} h at :{pad(ev.minute)}{ev.everyHours > 1 ? ` from ${pad(ev.firstHour)}:00` : ""}{ev.timeZone ? ` (${ev.timeZone})` : ""}</dd>{/each}
-    </dl>
-    <p class="hint">Edit in src/config.ts</p>
-  </section>
-</div></div>
+{/if}
+</div>

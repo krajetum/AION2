@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { animOf, ANIMS, asleep, SLEEP_MS, countShakes, cueOf, frameAt, grab, mood, newBody, release, RIFT_MS, sheetFor, SHEET_COLS, SHEET_ROWS, step, throwVelocity, type Body } from "./mascot.ts";
+import { EVENTS } from "../config.ts";
+import { animOf, ANIMS, asleep, SLEEP_MS, countShakes, cueOf, eventsNow, FIGHT_MS, frameAt, grab, lastStart, mood, newBody, release, sheetFor, SHEET_COLS, SHEET_ROWS, step, throwVelocity, type Body } from "./mascot.ts";
 
 const T = 1_000_000;
 
@@ -10,7 +11,7 @@ test("the sheet: class, gender and the server's faction", () => {
   assert.equal(sheetFor("Cleric", "f", 0), "cleric-f-elyos"); // faction unknown: white wings
   assert.equal(sheetFor("Brawler", "m", 1304), null); // no mascot drawn for it
   assert.equal(SHEET_COLS, 6);
-  assert.equal(SHEET_ROWS, 11);
+  assert.equal(SHEET_ROWS, 12);
 });
 
 test("frames loop, the landing stops on its last", () => {
@@ -19,8 +20,8 @@ test("frames loop, the landing stops on its last", () => {
   assert.equal(frameAt("land", 10_000), ANIMS.land.frames - 1);
 });
 
-test("cues: the rift's alert, other alerts shout, the rest nothing", () => {
-  assert.equal(cueOf(["rift", "event"]), "rift");
+test("cues: event and boss alerts shout, the rest nothing", () => {
+  assert.equal(cueOf(["rift", "event"]), "shout");
   assert.equal(cueOf(["shugo", "event"]), "shout");
   assert.equal(cueOf(["gartua", "boss", "event"]), "shout");
   assert.equal(cueOf(["boss", "event"]), "shout");
@@ -28,19 +29,21 @@ test("cues: the rift's alert, other alerts shout, the rest nothing", () => {
   assert.equal(cueOf(["auto", "check"]), null);
 });
 
-test("mood: shout, then a cube opened, then the rift for 10 minutes, then a cube in view", () => {
+test("mood: shout, then a cube opened, then the rift, then the invasion's fight, then a cube in view", () => {
   const base = { now: T, cues: [], cubeInView: false, lastOpened: null };
+  const rift = { rift: true, fight: false }, fight = { rift: false, fight: true };
   assert.equal(mood(base), null);
   assert.equal(mood({ ...base, cubeInView: true }), "happy");
-  assert.equal(mood({ ...base, cues: [{ kind: "rift", atMs: T - 60_000 }], cubeInView: true }), "rift");
-  assert.equal(mood({ ...base, cues: [{ kind: "rift", atMs: T - RIFT_MS }] }), null);
-  assert.equal(mood({ ...base, lastOpened: { byYou: true, atMs: T - 1000 }, cues: [{ kind: "rift", atMs: T }] }), "celebrate");
+  assert.equal(mood({ ...base, events: rift, cubeInView: true }), "rift");
+  assert.equal(mood({ ...base, events: fight, cubeInView: true }), "fight");
+  assert.equal(mood({ ...base, events: { rift: true, fight: true } }), "rift");
+  assert.equal(mood({ ...base, lastOpened: { byYou: true, atMs: T - 1000 }, events: rift }), "celebrate");
   assert.equal(mood({ ...base, lastOpened: { byYou: false, atMs: T - 1000 } }), "sad");
   assert.equal(mood({ ...base, lastOpened: { byYou: false, atMs: T - 6000 } }), null);
   assert.equal(mood({ ...base, cues: [{ kind: "shout", atMs: T - 1000 }], lastOpened: { byYou: true, atMs: T } }), "shout");
   assert.equal(mood({ ...base, cues: [{ kind: "shout", atMs: T + 5000 }] }), null); // a cue from the future (clock change)
   // The app's own moments: a cheer or a sulk for 5 s, over the rift.
-  assert.equal(mood({ ...base, cues: [{ kind: "rift", atMs: T - 60_000 }, { kind: "cheer", atMs: T - 1000 }] }), "celebrate");
+  assert.equal(mood({ ...base, events: rift, cues: [{ kind: "cheer", atMs: T - 1000 }] }), "celebrate");
   assert.equal(mood({ ...base, cues: [{ kind: "sulk", atMs: T - 1000 }] }), "sad");
   assert.equal(mood({ ...base, cues: [{ kind: "cheer", atMs: T - 6000 }] }), null);
   // It dozes off after 5 quiet minutes on the ground, never with something going on or in the air.
@@ -91,4 +94,25 @@ test("animation: handling, then the mood, then walking", () => {
   assert.equal(animOf({ ...b, state: "walk" }, null), "walk");
   assert.equal(animOf({ ...b, state: "walk" }, "rift"), "rift");
   assert.equal(animOf({ ...b, state: "idle" }, null), "idle");
+});
+
+test("events: the rift while it is open, the invasion's first 3 minutes, the festival's first 3 minutes", () => {
+  const Z = "Europe/Paris";
+  const at = (h: number, m: number, s = 0) => Date.UTC(2026, 10, 21, h - 1, m, s); // Paris = UTC+1 in November
+  // Rift at 02:00, 05:00 … Paris (config), open `duration` minutes.
+  const rift = EVENTS.find((e) => e.id === "rift")!;
+  assert.equal(lastStart(rift, at(20, 4), Z), at(20, 0));
+  assert.equal(lastStart(rift, at(20, 0), Z), at(20, 0));
+  assert.equal(eventsNow(at(20, 0), Z).rift, true);
+  assert.equal(eventsNow(at(20, rift.duration - 1, 59), Z).rift, true);
+  assert.equal(eventsNow(at(20, rift.duration), Z).rift, false);
+  assert.equal(eventsNow(at(19, 59), Z).rift, false);
+  // Invasion at :30, Shugo at :00 every hour (config, reset zone).
+  const inv = EVENTS.find((e) => e.id === "invasion")!, shugo = EVENTS.find((e) => e.id === "shugo")!;
+  const t0 = lastStart(inv, at(15, 40), Z);
+  assert.equal(eventsNow(t0 + FIGHT_MS - 1, Z).fight, true);
+  assert.equal(eventsNow(t0 + FIGHT_MS, Z).fight, false);
+  const s0 = lastStart(shugo, at(15, 40), Z);
+  assert.equal(eventsNow(s0 + 1000, Z).festival, true);
+  assert.equal(eventsNow(s0 + 3 * 60_000, Z).festival, false);
 });
