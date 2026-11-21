@@ -31,6 +31,8 @@ pub mod kills;
 pub mod cubes;
 /// Your mob kills that gave soul points, and where.
 pub mod souls;
+/// Your gathering: what you gathered and where.
+pub mod gather;
 /// The Abyss's open-world bosses (the Others row on them).
 pub mod abyss_bosses;
 /// Your pet collection (levels and soul points), when the Pets menu opens.

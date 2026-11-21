@@ -273,3 +273,18 @@ test("redeem codes: trimmed, 4-40 letters/digits/dashes/underscores, one key per
   assert.equal(parseRedeemPost({ install: "nope", code: "GOODCODE" }), null);
   assert.equal(redeemKey("abCD-1"), redeemKey("ABcd-1"));
 });
+
+test("gather post: shifted, bad gathers dropped, the cell per material", async () => {
+  const { parseGatherPost, gatherCellOf, MAX_GATHERS } = await import("./validate.ts");
+  const p = parseGatherPost({ install: ID, sentMs: NOW - MIN, mapId: 1110, gathers: [
+    { x: -185265, y: -56783, z: 35382, item: 610680050, atMs: NOW - 2 * MIN },
+    { x: 1, y: 2, z: 3, item: 0, atMs: NOW },
+    { x: 1, y: 2, z: 3, item: 610670044, atMs: 0 },
+    { x: 2e6, y: 2, z: 3, item: 610670044, atMs: NOW },
+    { x: 5, y: 6, z: 7, item: 610670044, atMs: NOW - 30 * 24 * 3600_000 }, // a saved spot from a month ago: kept, as now
+  ] }, NOW);
+  assert.deepEqual(p, { install: ID.toLowerCase(), mapId: 1110, gathers: [{ x: -185265, y: -56783, z: 35382, item: 610680050, atMs: NOW - MIN }, { x: 5, y: 6, z: 7, item: 610670044, atMs: NOW }] });
+  assert.equal(parseGatherPost({ install: ID, sentMs: NOW, mapId: 1, gathers: Array(MAX_GATHERS + 1).fill({}) }, NOW), null);
+  assert.equal(parseGatherPost({ install: "x", sentMs: NOW, mapId: 1, gathers: [] }, NOW), null);
+  assert.equal(gatherCellOf(-185265, -56783), "-371,-114");
+});

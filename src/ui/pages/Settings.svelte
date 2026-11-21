@@ -144,10 +144,10 @@
       The overlays never take the focus from the game. Over the game they need borderless or windowed fullscreen.</p>
   </Panel>
   <Panel title="Other players">
-    {@render toggle("Share boss timers and cube spots", s.crowdShare, (on) => { s.crowdShare = on; })}
-    <p class="hint">The app shows the field-boss timers other players on your server read, and the hidden cubes three or more
-      players saw opened. Sharing sends what your meter sees: server, map and boss ids with their times, and where cubes were
-      opened. Never names, yours or anyone's. Turn it off and you still get the others' timers and cubes.</p>
+    {@render toggle("Share boss timers, cube spots and gathering spots", s.crowdShare, (on) => { s.crowdShare = on; })}
+    <p class="hint">The app shows the field-boss timers other players on your server read, the hidden cubes three or more
+      players saw opened and the spots other players gathered at. Sharing sends what your meter sees: server, map and boss ids with their times,
+      where cubes were opened, and where you gathered what (material and time). Never names, yours or anyone's. Turn it off and you still get the others'.</p>
   </Panel>
   <Panel title="System">
     {@render toggle("Start with Windows", ui.autostart, async (on) => { ui.autostart = await setAutostart(on); }, !isDesktop())}
