@@ -167,3 +167,13 @@ test("fightsToShare: static fights of the static character, the past week, newes
   const many = Array.from({ length: BACKFILL_FIGHTS + 5 }, (_, i) => at("Ann", 1000 + i, i));
   assert.equal(fightsToShare(many, "Ann", names, now).length, BACKFILL_FIGHTS);
 });
+
+test("guildFight: your buffs go with your row, the others' stay home; parsed back field by field", () => {
+  const buff = { id: 22101071, name: "Critical Hit Scroll", upMs: 60_000, own: true, kind: "scroll" as const };
+  const f = fight("Ann", 10, 60_000, true, [row("Ann", 10, { isYou: true, buffs: [buff] }), row("Bob", 5, { buffs: [buff] })]);
+  const out = guildFight(f);
+  assert.deepEqual(out.rows[0].buffs, [buff]);
+  assert.equal(out.rows[1].buffs, undefined);
+  const [back] = parseGuildFights({ fights: [{ ...out, rows: [{ ...out.rows[0], buffs: [buff, { name: "x", kind: "weird", upMs: "no" }] }] }] });
+  assert.deepEqual(back.rows[0].buffs, [buff, { id: 0, name: "x", upMs: 0, own: false, kind: "buff" }]);
+});

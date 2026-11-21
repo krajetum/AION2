@@ -1,5 +1,6 @@
 <script lang="ts">
   import Empty from "../parts/Empty.svelte";
+  import BuffList from "../parts/BuffList.svelte";
   import PlayerStats from "../parts/PlayerStats.svelte";
   import { SvelteSet } from "svelte/reactivity";
   import { activeText, clock, displayName, hpLeft, short, STATUS_TEXT, TARGET_MODES, viewRows, VIEWS, type MeterUpdate, classColor, skillIconUrl } from "../../domain/meter.ts";
@@ -121,7 +122,7 @@
           <tbody>{#each list as s}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20"
                 onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")}>{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">{view === "healing" ? "HoT" : "DoT"}</span>{/if}</td><td class="n">{short(s.damage)}</td>
               <td class="n">{(s.share * 100).toFixed(1)}%</td><td class="n">{s.hits}</td><td class="n">{s.dot || view === "healing" || s.casts == null ? "–" : s.casts}</td><td class="n">{s.dot || view === "healing" ? "–" : Math.round(s.critRate * 100) + "%"}</td></tr>
-            {:else}<tr><td colspan="6" class="dim">{past ? "Skills kept only for you and the players open during the fight." : "No skill data yet."}</td></tr>{/each}</tbody></table></td></tr>{/if}
+            {:else}<tr><td colspan="6" class="dim">{past ? "Skills kept only for you and the players open during the fight." : "No skill data yet."}</td></tr>{/each}</tbody></table>{#if f.target?.isBoss && view === "damage"}<BuffList row={r} ms={f.battleTimeMs} />{/if}</td></tr>{/if}
       {/each}</tbody></table></div><p class="hint">{view === "taken" ? "Damage taken from the fight's monsters." : "Click a player for the skill breakdown (on a boss: hits, deaths and damage taken too)."}{#if unnamed}&nbsp;Players shown as #number: the game sends
         names on loading screens (teleport, zone change, dungeon), so start the companion before you enter.{/if}</p></section>
   {:else}<Empty>{view === "healing" ? "No healing yet." : view === "taken" ? "No damage taken yet." : u.partyOnly ? "No damage from your party yet." : "No fight yet. Hit something."}</Empty>{/if}

@@ -2,7 +2,7 @@
 // Pure. The member code and officer key stay in the save file only; the Worker keeps their hashes.
 import { dueLeads } from "./alerts.ts";
 import { personalBests, yourDps, type Best, type FightRecord } from "./fights.ts";
-import type { PlayerRow, Profile, SkillRow } from "./meter.ts";
+import { BUFF_KINDS, type BuffUp, type PlayerRow, type Profile, type SkillRow } from "./meter.ts";
 
 export interface GuildShare { gear: boolean; fights: boolean }
 /** This install's guild (AppData.guild). memberCode = the code it joined with (to invite others), officerKey = officers only. */
@@ -149,12 +149,16 @@ const bareSkill = (s: SkillRow): SkillRow => ({ ...s, icon: null });
 export function guildFight(r: FightRecord): FightRecord {
   const mine = r.rows.find((x) => x.isYou);
   const others = r.rows.filter((x) => !x.isYou).sort((a, b) => b.damage - a.damage)
-    .slice(0, MAX_ROWS - (mine ? 1 : 0)).map((x) => ({ ...x, skills: [], healSkills: [] }));
+    .slice(0, MAX_ROWS - (mine ? 1 : 0)).map((x) => ({ ...x, skills: [], healSkills: [], buffs: undefined }));
   let skills = [...(mine?.skills ?? [])].sort((a, b) => b.damage - a.damage);
   // The timeline stays on this PC: the Worker keeps 8 KB a fight.
-  const build = (s: SkillRow[]): FightRecord => ({ ...r, timeline: undefined, rows: mine ? [{ ...mine, skills: s, healSkills: [] }, ...others] : others });
+  // Your buffs go too; dropped first when the fight is too big.
+  let buffs = mine?.buffs;
+  const build = (s: SkillRow[]): FightRecord => ({ ...r, timeline: undefined, rows: mine ? [{ ...mine, skills: s, healSkills: [], buffs }, ...others] : others });
   let out = build(skills);
   if (JSON.stringify(out).length <= MAX_FIGHT) return out;
+  buffs = undefined;
+  if (JSON.stringify((out = build(skills))).length <= MAX_FIGHT) return out;
   skills = skills.map(bareSkill);
   while ((out = build(skills)), JSON.stringify(out).length > MAX_FIGHT && skills.length) skills = skills.slice(0, -1);
   return out;
@@ -174,6 +178,10 @@ const cleanRow = (x: any): PlayerRow => ({
   reviveTimes: Array.isArray(x?.reviveTimes) && Array.isArray(x?.deathTimes) && x.reviveTimes.length === x.deathTimes.length
     ? x.reviveTimes.map((t: unknown) => num(t)).slice(0, 50) : undefined, hits: num(x?.hits) ?? undefined, critRate: num(x?.critRate) ?? undefined,
   skills: Array.isArray(x?.skills) ? x.skills.map(cleanSkill) : [], healSkills: [],
+  buffs: Array.isArray(x?.buffs) ? x.buffs.slice(0, 40).filter(isObj).map((b: any): BuffUp => ({
+    id: num(b.id) ?? 0, name: str(b.name), upMs: num(b.upMs) ?? 0, own: b.own === true,
+    kind: (BUFF_KINDS as readonly string[]).includes(b.kind) ? b.kind : "buff",
+  })) : undefined,
 });
 
 /** GET /v1/guilds/:id/fights?boss=: other members' records, checked field by field (they come from other installs). */

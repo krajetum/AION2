@@ -34,6 +34,7 @@ export interface PlayerRow {
   hits?: number; // hits dealt, DoT ticks included
   critRate?: number; // 0..1 of direct hits
   activeMs?: number; // time spent hitting the boss: each direct hit counts 2 s after it (the meter's ACTIVE_WINDOW_MS)
+  buffs?: BuffUp[]; // buffs on the player with their time up, scrolls and food first (the meter's buffs.rs); boss fights only
   skills: SkillRow[];
   healSkills: SkillRow[]; // damage = amount healed, hits = ticks
 }
@@ -159,6 +160,12 @@ export function clock(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/** A buff on a player in a boss fight: its time up (ms), put on by themself or not, scroll / food / potion / buff. */
+export interface BuffUp { id: number; name: string; upMs: number; own: boolean; kind: "scroll" | "food" | "potion" | "buff" }
+export const BUFF_KINDS = ["scroll", "food", "potion", "buff"] as const;
+/** Uptime 0..1 over the fight's length. */
+export const buffShare = (b: BuffUp, ms: number) => (ms > 0 ? Math.min(1, b.upMs / ms) : 0);
 
 export interface Stat { label: string; value: string; sub: string }
 
