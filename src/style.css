@@ -147,6 +147,13 @@ section h2 .count { margin-left: auto; }
 @media (max-width: 760px) { .task.edit { grid-template-columns: auto 1fr 1fr; } }
 
 /* ---------- settings ---------- */
+/* Tabs like the game's settings: a row of tabs with an underline, the open tab's sections as a segmented row below. */
+.settings-tabs { display: flex; flex-wrap: wrap; gap: 2px 18px; margin-bottom: 10px; border-bottom: 1px solid var(--rule); }
+.settings-tabs button { height: 38px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--muted); font-weight: 600; }
+.settings-tabs button:hover { color: var(--text); background: transparent; }
+.settings-tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+.settings-sub { margin-bottom: var(--gap); }
+.settings > section.wide { grid-column: 1 / -1; }
 .settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 0 var(--gap); align-items: start; }
 .setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; min-height: 44px; padding: 6px 0; }
 .setting + .setting { border-top: 1px solid var(--rule); }
@@ -564,13 +571,21 @@ li.eq-row { cursor: default; }
 .mascot.asleep { filter: brightness(.7); }
 .mascot-zzz { position: absolute; font-style: normal; font-weight: 700; font-size: var(--fs-lg); color: var(--muted-foreground); pointer-events: none; animation: mascot-zzz 2.4s ease-in-out infinite; }
 @keyframes mascot-zzz { from { opacity: 0; transform: scale(.6); } 30% { opacity: 1; } to { opacity: 0; transform: translate(12px, -24px) scale(1.2); } }
-.mascot-vortex { position: absolute; width: 76px; height: 76px; border-radius: 50%; pointer-events: none;
-  background: conic-gradient(from 0deg, #2a1846, #7b4fd6, #1b1030, #b28cff, #2a1846, #5b33b0, #1b1030);
-  -webkit-mask: radial-gradient(circle, transparent 6px, var(--black) 8px, var(--black) 60%, transparent 71%);
-  mask: radial-gradient(circle, transparent 6px, var(--black) 8px, var(--black) 60%, transparent 71%);
-  box-shadow: 0 0 18px #7b4fd6aa; animation: mascot-vortex 0.9s linear infinite; }
+/* The Spacetime Rift's portal (while the rift is open): a bright spiral pulling the mascot in, with a glow around it. */
+.mascot-vortex { position: absolute; width: 132px; height: 132px; pointer-events: none; filter: drop-shadow(0 0 14px #b28cff) drop-shadow(0 0 30px #5b33b0);
+  animation: mascot-vortex-pulse 1.6s ease-in-out infinite; }
+.mascot-vortex::before, .mascot-vortex::after { content: ""; position: absolute; inset: 0; border-radius: 50%; }
+.mascot-vortex::before {
+  background: repeating-conic-gradient(from 0deg, #c9b3ff 0 14deg, #b28cff 14deg 40deg, #5b33b0 40deg 90deg);
+  -webkit-mask: radial-gradient(circle, transparent 9px, var(--black) 12px, var(--black) 58%, transparent 70%);
+  mask: radial-gradient(circle, transparent 9px, var(--black) 12px, var(--black) 58%, transparent 70%);
+  animation: mascot-vortex 0.8s linear infinite; }
+.mascot-vortex::after { inset: 34%; background: radial-gradient(circle, #c9b3ff, #b28cff 35%, #7b4fd6 70%, transparent 72%); }
 @keyframes mascot-vortex { to { transform: rotate(-360deg); } }
-@media (prefers-reduced-motion: reduce) { .mascot-vortex { animation: none; } }
+@keyframes mascot-vortex-pulse { 50% { transform: scale(1.08); } }
+/* The event companions (public/mascots/foe.png, festival.png): one row of frames, drawn like the mascot. */
+.mascot-extra { position: absolute; pointer-events: none; background-repeat: no-repeat; image-rendering: pixelated; }
+@media (prefers-reduced-motion: reduce) { .mascot-vortex, .mascot-vortex::before { animation: none; } }
 
 /* ---------- seasons (palettes in app.css): winter 1 December to 6 January, Halloween 25 October to 1 November ---------- */
 :root[data-season="halloween"] .side { background: var(--season-glow), var(--surface); }

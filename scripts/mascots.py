@@ -420,7 +420,22 @@ for i in range(4):
     rift.append(c.image())
 anims["rift"] = rift
 
-ORDER = ["idle", "walk", "shout", "happy", "celebrate", "sad", "held", "thrown", "dizzy", "land", "rift"]
+# fight (the Dimensional Invasion): wind up, strike forward with a slash, sparks on the hit, hop back, ready again
+def slash(t):
+    arc = lambda r: [(int(31 + r * math.cos(math.radians(a))), int(27 + r * math.sin(math.radians(a)))) for a in range(-70 + t * 10, 71, 4)]
+    return [("T", arc(15)), ("w", arc(14)), ("T", arc(13)[::2])]
+def sparks(t):
+    return [sparkle(44, 24 + t % 2, "y"), sparkle(41, 32 - t % 2, "o"), ("y", [(46, 18), (38, 37)])]
+anims["fight"] = [
+    frame(eyes="squeeze", mouth="small", arms=((12, 20), (32, 16)), lean=-1, flap=0.4),
+    frame(eyes="squeeze", mouth="open", arms=UP, lean=-1, by=-1, flap=0.9),
+    frame(eyes="squeeze", mouth="open", arms=((22, 30), (40, 27)), lean=2, legs=(-2, 0, 2, 0), flap=1.2, extras=slash(0)),
+    frame(eyes="squeeze", mouth="open", arms=((24, 33), (41, 33)), lean=2, legs=(-2, 0, 2, 0), flap=0.6, extras=slash(1) + sparks(1)),
+    frame(eyes="open", mouth="small", arms=DOWN, gy=-2, legs=(0, -2, 0, -2), flap=1.0, extras=sparks(0)),
+    frame(eyes="open", mouth="mask", arms=((16, 30), (36, 27)), lean=1),
+]
+
+ORDER = ["idle", "walk", "shout", "happy", "celebrate", "sad", "held", "thrown", "dizzy", "land", "rift", "fight"]
 cols = max(len(anims[n]) for n in ORDER)
 sheet = Image.new("RGBA", (cols * S, len(ORDER) * S))
 for r, n in enumerate(ORDER):
@@ -433,7 +448,7 @@ if "--preview" in sys.argv:
     Z = 4
     bg = Image.new("RGBA", sheet.size, (38, 42, 50, 255)); bg.alpha_composite(sheet)
     bg.resize((sheet.width * Z, sheet.height * Z), Image.NEAREST).save(f"{OUT}/{name}-sheet-4x.png")
-    DUR = {"idle": 260, "walk": 120, "shout": 110, "happy": 90, "celebrate": 130, "sad": 380, "held": 160, "thrown": 80, "dizzy": 160, "land": 120, "rift": 100}
+    DUR = {"idle": 260, "walk": 120, "shout": 110, "happy": 90, "celebrate": 130, "sad": 380, "held": 160, "thrown": 80, "dizzy": 160, "land": 120, "rift": 100, "fight": 110}
     frames, durs = [], []
     for n in ORDER:
         reps = 3 if len(anims[n]) <= 4 else 2

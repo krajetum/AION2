@@ -9,7 +9,7 @@ import { charFor, eventsFrom, SUGGEST_MS, type MeterEvent } from "./domain/trigg
 import { autoTick } from "./app/auto.ts";
 import { RESET_CONFIG as C } from "./config.ts";
 import { checkNotifications, type Toast } from "./app/notifications.ts";
-import { cueOf, RIFT_MS } from "./domain/mascot.ts";
+import { cueOf, CUE_KEEP_MS } from "./domain/mascot.ts";
 import { muteForAnHour } from "./app/settings.ts";
 import { applyResets } from "./domain/resets.ts";
 import { recordKina } from "./domain/history.ts";
@@ -36,11 +36,11 @@ import { fightsSnapshot, live, ui } from "./ui/state.svelte.ts";
 
 const app = document.getElementById("app")!;
 
-/** A notification, and the mascot's cue: it shouts with the alerts, clings on when the rift's alert comes (domain/mascot.ts). */
+/** A notification, and the mascot's cue: it shouts with the alerts (domain/mascot.ts). */
 const alert: Toast = (s, title, body, sound) => {
   const kind = cueOf(sound);
   const now = Date.now();
-  if (kind) ui.mascotCues = [...ui.mascotCues.filter((c) => now - c.atMs < RIFT_MS), { kind, atMs: now }];
+  if (kind) ui.mascotCues = [...ui.mascotCues.filter((c) => now - c.atMs < CUE_KEEP_MS), { kind, atMs: now }];
   toast(s, title, body, sound);
 };
 

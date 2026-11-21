@@ -5,7 +5,7 @@ import { syncGuild } from "../app/guild.ts";
 import { flushGathers, syncGathers } from "../app/crowd.ts";
 import { trackProgress } from "../app/progress.ts";
 import { findTask } from "../app/tasks.ts";
-import { RIFT_MS, type Cue } from "../domain/mascot.ts";
+import { CUE_KEEP_MS, type Cue } from "../domain/mascot.ts";
 import { leftShare } from "../domain/planner.ts";
 import { allDone } from "../domain/tasks.ts";
 import { suggest } from "../domain/triggers.ts";
@@ -51,7 +51,7 @@ export function commit(e: Event, change: (v: string) => void, stored: () => unkn
 /** The mascot's cue (domain/mascot.ts): it cheers or sulks for a few seconds. */
 export function cue(kind: Cue["kind"]) {
   const now = Date.now();
-  ui.mascotCues = [...ui.mascotCues.filter((c) => now - c.atMs < RIFT_MS), { kind, atMs: now }];
+  ui.mascotCues = [...ui.mascotCues.filter((c) => now - c.atMs < CUE_KEEP_MS), { kind, atMs: now }];
 }
 
 /** A small win (a list finished, a personal best): confetti, the mascot cheers, the status line says why.
