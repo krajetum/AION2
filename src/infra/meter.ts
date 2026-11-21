@@ -139,7 +139,7 @@ function demoUpdate(): MeterUpdate {
     isYou: i === 0, inParty: i < 4, isOthers: false, damageTaken: Math.round([3, 0.5, 0.8, 0.6, 1][i] * t), hitsTaken: Math.round(t / 2000),
     deaths: i === 2 && t > 40_000 ? 1 : 0, deathTimes: i === 2 && t > 40_000 ? [38_500] : [], reviveTimes: i === 2 && t > 40_000 ? [47_200] : [], hits: Math.round(t / 350), critRate: [0.42, 0.31, 0.55, 0.12, 0.38][i], activeMs: Math.round(t * [0.92, 0.81, 0.74, 0.55, 0.88][i]),
     buffs: [
-      { id: 22101071, name: "Critical Hit Scroll", upMs: t, own: true, kind: "scroll" as const },
+      { id: 22101071, name: "Critical Hit Scroll", upMs: t, own: true, kind: "scroll" as const, icon: null },
       { id: 21601011, name: "Curry Meat Stirfry", upMs: t, own: true, kind: "food" as const },
       { id: 141100071, name: "Gale", upMs: Math.round(t * 0.78), own: i === 1, kind: "buff" as const },
       { id: 19005131, name: "Light of Protection", upMs: Math.round(t * [0.9, 0.85, 0.7, 0.93, 0.6][i]), own: i === 3, kind: "buff" as const },

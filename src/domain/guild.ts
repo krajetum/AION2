@@ -181,6 +181,7 @@ const cleanRow = (x: any): PlayerRow => ({
   buffs: Array.isArray(x?.buffs) ? x.buffs.slice(0, 40).filter(isObj).map((b: any): BuffUp => ({
     id: num(b.id) ?? 0, name: str(b.name), upMs: num(b.upMs) ?? 0, own: b.own === true,
     kind: (BUFF_KINDS as readonly string[]).includes(b.kind) ? b.kind : "buff",
+    icon: typeof b.icon === "string" && /^[A-Za-z0-9_]{1,80}$/.test(b.icon) ? b.icon : null,
   })) : undefined,
 });
 

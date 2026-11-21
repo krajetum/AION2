@@ -175,5 +175,12 @@ test("guildFight: your buffs go with your row, the others' stay home; parsed bac
   assert.deepEqual(out.rows[0].buffs, [buff]);
   assert.equal(out.rows[1].buffs, undefined);
   const [back] = parseGuildFights({ fights: [{ ...out, rows: [{ ...out.rows[0], buffs: [buff, { name: "x", kind: "weird", upMs: "no" }] }] }] });
-  assert.deepEqual(back.rows[0].buffs, [buff, { id: 0, name: "x", upMs: 0, own: false, kind: "buff" }]);
+  assert.deepEqual(back.rows[0].buffs, [{ ...buff, icon: null }, { id: 0, name: "x", upMs: 0, own: false, kind: "buff", icon: null }]);
+});
+
+test("parseGuildFights: a buff's icon kept only when it is a plain file name", () => {
+  const b = (icon: unknown) => ({ id: 1, name: "x", upMs: 1, own: true, kind: "buff", icon });
+  const f = fight("Ann", 10, 60_000, true, [row("Ann", 10, { isYou: true })]);
+  const [back] = parseGuildFights({ fights: [{ ...f, rows: [{ ...f.rows[0], buffs: [b("ICON_Abnormal_DotMp"), b("../x.png"), b(3)] }] }] });
+  assert.deepEqual(back.rows[0].buffs!.map((x) => x.icon), ["ICON_Abnormal_DotMp", null, null]);
 });
