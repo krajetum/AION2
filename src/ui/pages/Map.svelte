@@ -14,7 +14,7 @@
   } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import { downloadJson } from "../../infra/storage.ts";
-  import { act, commit } from "../actions.ts";
+  import { act, commit, refreshGathers } from "../actions.ts";
   import { num } from "../format.ts";
   import { ICON, TRAVEL_ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
@@ -145,11 +145,19 @@
     }).catch(() => {});
   });
   const material = (item: number) => itemNames[String(item)] || `Item ${item}`;
-  let gatherItem = $state(0), onlyMine = $state(false), selectedGather = $state<GatherMark | null>(null);
+  let gatherItem = $state(0), onlyMine = $state(false), selectedGather = $state<GatherMark | null>(null), gatherQuery = $state("");
+  // Others' spots, fresh when the layer opens (at most once a minute).
+  $effect(() => { if (layer === "gather") void refreshGathers(); });
   const gatherHere = $derived(gatherMarks(ui.data.gathering).filter((m) => mapOf(m.mapId) === current && (!onlyMine || m.mine)));
-  const gatherList = $derived(materials(gatherHere));
+  // The search: a material's name (or its code) containing what is typed; the map shows only what matches.
+  const gq = $derived(gatherQuery.trim().toLowerCase());
+  const matches = (item: number) => !gq || material(item).toLowerCase().includes(gq) || String(item).includes(gq);
+  const gatherList = $derived(materials(gatherHere).filter(([item]) => matches(item)));
   const gatherDots = $derived(size.w && layer === "gather"
-    ? gatherHere.filter((m) => !gatherItem || m.item === gatherItem).map((m) => ({ m, s: placed(m.x, m.y) })).filter((v) => v.s) : []);
+    ? gatherHere.filter((m) => (gatherItem ? m.item === gatherItem : matches(m.item))).map((m) => ({ m, s: placed(m.x, m.y) })).filter((v) => v.s) : []);
+  // Where a searched material is, when it is not on the open map: the other maps' counts.
+  const elsewhere = $derived(gq && !gatherList.length ? MAPS.filter((m) => m.key !== current)
+    .map((m) => ({ m, n: gatherMarks(ui.data.gathering).filter((g) => mapOf(g.mapId) === m.key && matches(g.item)).length })).filter((x) => x.n) : []);
   // Farming route: one stop per pet still to collect on this map (its busiest spot), in a good order from you.
   let showRoute = $state(remembered("route") === "1");
   $effect(() => remember("route", showRoute ? "1" : ""));
@@ -415,6 +423,7 @@
           <button class:on={layer === "pets"} aria-pressed={layer === "pets"} onclick={() => { layer = "pets"; selected = ""; }}>Pets</button>
           <button class:on={layer === "gather"} aria-pressed={layer === "gather"} onclick={() => { layer = "gather"; selected = ""; selectedDrop = ""; }}>Gathering</button></div>
         {#if layer === "gather"}
+          <input type="search" placeholder="Search a material" aria-label="Search a material" autocomplete="off" bind:value={gatherQuery} oninput={() => { gatherItem = 0; selectedGather = null; }}>
           <label class="toggle-line" title="Hides the spots only other players reported"><input type="checkbox" bind:checked={onlyMine}> Only where I gathered</label>
           {#if gatherItem}<button class="ghost showing" title="Show every material" onclick={() => { gatherItem = 0; selectedGather = null; }}>Showing: {material(gatherItem)} ✕</button>{/if}
           <ul class="pet-list" aria-label="Materials">
@@ -422,7 +431,8 @@
               onclick={() => { gatherItem = gatherItem === item ? 0 : item; selectedGather = null; }}>
               <span class="name">{#if itemIcons[String(item)]}<img class="mat-icon" src={ICON_BASE + itemIcons[String(item)]} alt="" width="18" height="18" loading="lazy">{/if}{material(item)}</span>
               <span class="hint">{num(n)} spot{n === 1 ? "" : "s"}</span></button></li>
-            {:else}<li class="hint">No gathering spot on the {mapName(current)} map yet: gather something with the meter running and it shows here. Spots two or more players gathered at come from the others too (Settings › Other players).</li>{/each}
+            {:else}{#if gq}<li class="hint">No "{gatherQuery.trim()}" on the {mapName(current)} map{#if elsewhere.length}: {#each elsewhere as x, i}{i ? ", " : ""}<button class="link" onclick={() => { current = x.m.key; }}>{x.n} on the {mapName(x.m.key)} map</button>{/each}{/if}.</li>
+            {:else}<li class="hint">No gathering spot on the {mapName(current)} map yet: gather something with the meter running and it shows here. Other players' spots show up too (Settings › Other players: Share).</li>{/if}{/each}
           </ul>
         {/if}
         {#if layer === "pets"}

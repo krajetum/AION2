@@ -30,8 +30,11 @@ const DAY = 24 * HOUR;
 const WRITES_PER_HOUR = 60;
 const SPOT_INSTALLS = 3;
 const CODE_INSTALLS = 2;
-/** A gathering spot is published once this many installs gathered that material there. */
-const GATHER_INSTALLS = 2;
+/** A gathering spot is published once this many installs gathered that material there: 1, so one player's spots reach
+ *  the others (a small community: 2 hid them all, 2026-11-21); writes stay rate-limited per install. */
+const GATHER_INSTALLS = 1;
+/** Gathering spots are cached for 5 min (cubes: an hour): new spots show up within one app refresh. */
+const GATHER_CACHE_S = 300;
 const BOSS_CACHE_S = 30;
 const CUBE_CACHE_S = 3600;
 
@@ -126,7 +129,7 @@ async function postCubes(env: Env, req: Request) {
 }
 
 async function getGathers(env: Env, url: URL) {
-  const spots = await cached(gatherKey(url), CUBE_CACHE_S, async () => (await env.DB.prepare(
+  const spots = await cached(gatherKey(url), GATHER_CACHE_S, async () => (await env.DB.prepare(
     `SELECT map_id AS mapId, item, AVG(x) AS x, AVG(y) AS y, AVG(z) AS z, COUNT(*) AS n
      FROM gather_reports GROUP BY map_id, item, cell HAVING COUNT(*) >= ? LIMIT 5000`,
   ).bind(GATHER_INSTALLS).all<{ mapId: number; item: number; x: number; y: number; z: number; n: number }>()).results);

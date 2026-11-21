@@ -19,7 +19,7 @@ import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
 import { loadFights, saveFights } from "./infra/fights.ts";
 import { findUpdate, getAutostart, isDesktop, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
-import { act, celebrate, cue, refreshCodes, refreshGuild, refreshNews, remindCodes, save } from "./ui/actions.ts";
+import { act, celebrate, cue, refreshCodes, refreshGathers, refreshGuild, refreshNews, remindCodes, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import EventsOverlay from "./ui/EventsOverlay.svelte";
@@ -27,7 +27,7 @@ import NetOverlay from "./ui/NetOverlay.svelte";
 import CubeOverlay from "./ui/CubeOverlay.svelte";
 import RadarOverlay from "./ui/RadarOverlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
-import { bossEvery, flushCubes, flushGathers, gameActive, shareFromMeter, syncBosses, syncCubes, syncGathers } from "./app/crowd.ts";
+import { bossEvery, flushCubes, flushGathers, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
 import { uploadFight } from "./app/guild.ts";
 import { crashReports } from "./infra/sentry.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, meterItemCodes, radarOverlay, meterOverlay, netOverlay, onEventsOverlay, onNetOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
@@ -127,6 +127,7 @@ async function main() {
   refreshCodes();
   crowdBosses();
   crowdCubes();
+  refreshGathers();
   refreshGuild(false);
   let ticks = 0;
   setInterval(async () => {
@@ -138,7 +139,10 @@ async function main() {
     // Out of game the guild every 15 min: an officer's call-up reminder reaches you with the app in the tray.
     else if (ticks % 900 === 0 && ui.data.guild) refreshGuild(false);
     if (ticks % 3600 === 0 && gameActive(ui.now)) crowdCubes();
-    if (ticks % 600 === 0) { flushCubes(ui.data); flushGathers(ui.data); }
+    if (ticks % 600 === 0) flushCubes(ui.data);
+    // Gathering spots: yours sent every 5 min, the others' read every 10 min while you play (and when the Map's layer opens).
+    if (ticks % 300 === 0) flushGathers(ui.data);
+    if (ticks % 600 === 0 && gameActive(ui.now)) refreshGathers();
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(ui.data, now, C).length > 0;
@@ -177,7 +181,6 @@ async function crowdCubes() {
   const { changed, codes } = await syncCubes(ui.data);
   if (codes && isDesktop()) await meterCubeCodes(ui.data.map.cubeCodes).catch(() => {});
   if (changed) await save();
-  if (await syncGathers(ui.data)) await save();
 }
 
 // Update from GitHub Releases. When the app opens (`atStart`) and `settings.autoUpdate` is on (the default), a newer
