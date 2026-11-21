@@ -162,7 +162,7 @@ export function clock(ms: number): string {
 }
 
 /** A buff on a player in a boss fight: its time up (ms), put on by themself or not, scroll / food / potion / buff. */
-export interface BuffUp { id: number; name: string; upMs: number; own: boolean; kind: "scroll" | "food" | "potion" | "buff" }
+export interface BuffUp { id: number; name: string; upMs: number; own: boolean; kind: "scroll" | "food" | "potion" | "buff"; icon?: string | null }
 export const BUFF_KINDS = ["scroll", "food", "potion", "buff"] as const;
 /** Uptime 0..1 over the fight's length. */
 export const buffShare = (b: BuffUp, ms: number) => (ms > 0 ? Math.min(1, b.upMs / ms) : 0);

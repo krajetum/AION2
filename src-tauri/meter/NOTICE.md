@@ -33,6 +33,7 @@ and sends nothing to the game or anywhere else.
 7. Data: English skill and NPC names only (`data/i18n/{skills,npcs}/en.json`); `servers.json` not included.
    `data/i18n/abnormals/en.json` (English buff names, the `SkillAbnormal` table) taken unchanged from upstream commit
    `b21b10c` (2026-11-21, v2.1.4) for the companion's buff uptimes (`src/buffs.rs`).
+   `data/abnormals.json` updated from the same commit (adds `hidden`, the buffs the game never shows).
    `skill_icons.json` added later (2026-10-21) for the skill icons; `snapshot.rs::skill_icon` follows A2Tools'
    `public/src/js/skillIcons.js` to name the icon on NCSOFT's CDN.
 8. `combat/data_storage.rs` (2026-10-21): player-on-player hits, which the meter counts as party healing,
