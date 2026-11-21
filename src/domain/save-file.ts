@@ -70,6 +70,7 @@ export function defaultData(): AppData {
       crowdShare: true,
       crashReports: false,
       autoUpdate: true,
+      betaUpdates: false,
       mascot: true,
       mascotGender: "m",
       soundTheme: "default",

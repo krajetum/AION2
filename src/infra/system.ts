@@ -2,7 +2,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { check } from "@tauri-apps/plugin-updater";
+import { check, Update } from "@tauri-apps/plugin-updater";
 
 export const isDesktop = isTauri;
 
@@ -14,8 +14,12 @@ export async function setAutostart(on: boolean) {
   return isEnabled();
 }
 
-/** The Windows installer closes and relaunches the app itself. */
-export const findUpdate = () => check();
+/**
+ * The Windows installer closes and relaunches the app itself. `beta`: the beta manifest, which always names the newest
+ * build of either channel (src-tauri/src/updates.rs); turned off, the stable one, so the next stable release takes over.
+ */
+export const findUpdate = async (beta: boolean) =>
+  beta ? invoke<ConstructorParameters<typeof Update>[0] | null>("update_check_beta").then((m) => m && new Update(m)) : check();
 
 export const onTrayMute = (handler: () => void) => listen("tray-mute", handler);
 

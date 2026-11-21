@@ -3,11 +3,15 @@
 # - server: if server/ changed, applies the D1 migrations and deploys the Cloudflare Worker (no app version bump);
 # - release: if anything else changed, bumps the version in package.json, commits and tags it, builds the Windows
 #   installer, signs it and publishes a GitHub Release with latest.json, which installed apps read to update themselves.
+# Every merge into beta -> checks, then release builds a pre-release instead: version = next patch + "-<run number>"
+#   (src/domain/release.ts), set only in this run's checkout (no commit on any branch; tag v<version> on the beta commit),
+#   published as a GitHub pre-release, which releases/latest never points at, so stable apps don't see it. No server deploy.
+# Both write latest-beta.json (release "beta-channel"), the manifest of apps with beta versions on (src-tauri/src/updates.rs).
 # Pushes made with GITHUB_TOKEN don't re-trigger this workflow.
 name: release
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
     paths-ignore: ["**.md"]
   # Pull requests run the check job only (server and release are skipped below).
   pull_request:
@@ -65,7 +69,7 @@ jobs:
 
   server:
     needs: check
-    if: github.event_name != 'pull_request' && needs.check.outputs.server == 'true'
+    if: github.event_name != 'pull_request' && github.ref_name == 'main' && needs.check.outputs.server == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,7 +92,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref_name == 'beta' && github.sha || 'main' }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -100,7 +104,16 @@ jobs:
       # Before the bump: a failing parser test creates no commit and no tag.
       - run: cargo test -p aion2-meter
         working-directory: src-tauri
+      - name: Beta version (not committed)
+        if: github.ref_name == 'beta'
+        shell: bash
+        run: |
+          git fetch origin --tags --force
+          v=$(node --input-type=module -e 'import { betaVersion } from "./src/domain/release.ts"; console.log(betaVersion(process.argv[1].split(/\s+/), +process.argv[2]))' "$(git tag -l 'v*')" "${{ github.run_number }}")
+          npm version "$v" --no-git-tag-version
+          echo "VERSION=$v" >> "$GITHUB_ENV"
       - name: Bump version, commit and tag
+        if: github.ref_name != 'beta'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -114,7 +127,7 @@ jobs:
             v=$(npm version "${{ inputs.bump || 'patch' }}" --no-git-tag-version)
             git commit -am "${v#v}"
             git tag -f "$v"
-            if git push --atomic origin HEAD:main "$v"; then exit 0; fi
+            if git push --atomic origin HEAD:main "$v"; then echo "VERSION=${v#v}" >> "$GITHUB_ENV"; exit 0; fi
             git tag -d "$v"
             sleep $((try * 5))
           done
@@ -129,9 +142,22 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: AION 2 Companion v__VERSION__
+          releaseName: AION 2 Companion v__VERSION__${{ github.ref_name == 'beta' && ' (beta)' || '' }}
           releaseDraft: false
+          prerelease: ${{ github.ref_name == 'beta' }}
           includeUpdaterJson: true
+      # latest-beta.json on the release "beta-channel" (made once; a pre-release, so never "latest"). Every build rewrites
+      # it, stable ones too: runs share one concurrency group, and a stable build is always above the betas made before it
+      # (they are its version's pre-releases), so it names the newest of both channels and beta apps get stable releases.
+      - name: Beta manifest
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view beta-channel >/dev/null 2>&1 || gh release create beta-channel --prerelease --target "$GITHUB_SHA" \
+            --title "Beta channel" --notes "Holds latest-beta.json, the update manifest of apps with beta versions turned on. The builds are the other releases."
+          gh release download "v$VERSION" -p latest.json -O latest-beta.json
+          gh release upload beta-channel latest-beta.json --clobber
       # The Rust debug symbols (.pdb), so Sentry can name the functions in a panic's stack trace.
       - name: Upload Rust debug files to Sentry
         shell: bash
