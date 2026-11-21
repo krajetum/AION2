@@ -19,6 +19,7 @@
   import PlayerDetail from "../parts/PlayerDetail.svelte";
   import SkillCompare from "../parts/SkillCompare.svelte";
   import Timeline from "../parts/Timeline.svelte";
+  import { phases, windowTotals } from "../../domain/timeline.ts";
   import { saveFights } from "../../infra/fights.ts";
   import { hm } from "../format.ts";
   import { showStatus } from "../overlays.ts";
@@ -81,7 +82,16 @@
   const deaths = $derived(f ? f.rows.flatMap((r) => (r.deathTimes ?? []).map((ms, i) => ({ r, ms, back: r.reviveTimes?.[i] }))).sort((a, b) => a.ms - b.ms) : []);
   const chartLines = $derived(f?.series ? [...f.rows].sort((p, q) => q.damage - p.damage).filter((r) => f.series?.[displayName(r)])
     .map((r, i) => ({ name: displayName(r), values: f.series![displayName(r)], color: classColor(r.job) || `--chart-${(i % 5) + 1}` })) : []);
-  function openFight(id: string) { open = id; who = null; tab = "damage"; }
+  // A window of the fight dragged on the chart (or a phase clicked): the damage table over those seconds only.
+  let range = $state<[number, number] | null>(null);
+  const fightPhases = $derived(f?.series && f.hp ? phases(f.hp, f.series, me && displayName(me)) : []);
+  const windowRows = $derived.by(() => {
+    if (!f?.series || !range) return [];
+    const t = windowTotals(f.series, range[0], range[1]), total = t.reduce((a, x) => a + x.damage, 0), secs = range[1] - range[0];
+    return t.map((x) => ({ ...x, row: f.rows.find((r) => displayName(r) === x.name), perSec: x.damage / secs, share: (x.damage / total) * 100 }));
+  });
+  const span = (a: number, b: number) => `${clock(a * 1000)} – ${clock(b * 1000)}`;
+  function openFight(id: string) { open = id; who = null; tab = "damage"; range = null; }
 </script>
 
 {#if f}
@@ -111,10 +121,38 @@
   <Card.Root class="gap-3 pt-2 pb-3">
     <div class="px-4"><UnderlineTabs label="Show" items={tabs} value={tab} onchange={(v: Tab) => { tab = v; who = null; }} /></div>
 
-    {#if tab === "damage" && chartLines.length && f.hp}<div class="px-4"><FightChart party hp={f.hp} lines={chartLines}
-      deaths={deaths.map((d) => ({ t: d.ms / 1000, name: displayName(d.r) }))} /></div>{/if}
+    {#if tab === "damage" && chartLines.length && f.hp}<div class="px-4"><FightChart party hp={f.hp} lines={chartLines} {range} onrange={(r) => { range = r; who = null; }}
+      deaths={deaths.map((d) => ({ t: d.ms / 1000, name: displayName(d.r) }))} />
+      <p class="hint mt-1">Drag across the chart to see the damage in those seconds only; double click for the whole fight.</p></div>
 
-    {#if tab === "damage" || tab === "healing" || tab === "taken"}
+      {#if fightPhases.length > 1}<div class="px-2"><Table.Root>
+        <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head class="text-muted-foreground">Boss HP</Table.Head>
+          <Table.Head class="text-muted-foreground">Time</Table.Head><Table.Head class="text-right text-muted-foreground">Took</Table.Head>
+          <Table.Head class="text-right text-muted-foreground">Party DPS</Table.Head><Table.Head class="text-right text-muted-foreground">Your DPS</Table.Head></Table.Row></Table.Header>
+        <Table.Body>{#each fightPhases as p (p.from)}{@const on = range?.[0] === p.from && range?.[1] === p.to}
+          <Table.Row class="cursor-pointer {on ? 'bg-muted/60' : ''}" tabindex={0} aria-pressed={on} onclick={() => { range = on ? null : [p.from, p.to]; who = null; }}>
+            <Table.Cell class="tabular-nums">{p.hpFrom}% → {p.hpTo}%</Table.Cell><Table.Cell class="tabular-nums text-muted-foreground">{span(p.from, p.to)}</Table.Cell>
+            <Table.Cell class="text-right tabular-nums">{p.to - p.from} s</Table.Cell><Table.Cell class="text-right tabular-nums">{short(p.party)}</Table.Cell>
+            <Table.Cell class="text-right font-semibold tabular-nums">{me ? short(p.you) : "—"}</Table.Cell></Table.Row>{/each}</Table.Body></Table.Root></div>{/if}
+    {/if}
+
+    {#if tab === "damage" && range}
+      <div class="flex items-center gap-2 px-4 text-sm"><span class="font-medium tabular-nums">{span(range[0], range[1])}</span>
+        <span class="text-muted-foreground">({range[1] - range[0]} s, the chart's {windowRows.length} biggest players)</span><span class="grow"></span>
+        <Button variant="ghost" size="sm" onclick={() => { range = null; }}>Whole fight</Button></div>
+      {#if windowRows.length}<div class="px-2"><Table.Root>
+        <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head class="text-muted-foreground">Player</Table.Head>
+          <Table.Head class="text-right text-muted-foreground">Damage</Table.Head><Table.Head class="text-right text-muted-foreground">DPS</Table.Head>
+          <Table.Head class="text-right text-muted-foreground">Share</Table.Head></Table.Row></Table.Header>
+        <Table.Body>{#each windowRows as x (x.name)}{@const r = x.row}
+          <Table.Row class="bar-row border-0" style="--p: {Math.min(1, x.share / 100)}; {r && classColor(r.job) ? `--cls: ${classColor(r.job)}` : ''}">
+            <Table.Cell><span class="flex items-center gap-2">{#if r && classIcon(r.job)}<img class="size-5 object-contain" src={classIcon(r.job)} alt={r.job} title={r.job}>{:else}<span class="size-5"></span>{/if}
+              <span class="font-medium {r?.isYou ? 'text-primary' : ''}">{x.name}</span></span></Table.Cell>
+            <Table.Cell class="text-right tabular-nums">{short(x.damage)}</Table.Cell><Table.Cell class="text-right font-semibold tabular-nums">{short(x.perSec)}</Table.Cell>
+            <Table.Cell class="text-right tabular-nums">{x.share.toFixed(1)}%</Table.Cell></Table.Row>{/each}</Table.Body></Table.Root></div>
+      {:else}<div class="px-4"><Empty>No damage in those seconds.</Empty></div>{/if}
+
+    {:else if tab === "damage" || tab === "healing" || tab === "taken"}
       {#if rows.length}<div class="px-2"><Table.Root>
         <Table.Header><Table.Row class="hover:bg-transparent">
           <Table.Head class="w-8"></Table.Head><Table.Head class="text-muted-foreground">Player</Table.Head>
