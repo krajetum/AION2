@@ -7,13 +7,14 @@ export interface Gather { node: number | null; item: number; amount: number; x: 
 export interface GatherSpot { mapId: number; item: number; x: number; y: number; z: number; exact: boolean; count: number; amount: number; lastMs: number }
 /** A spot other players reported: `n` = how many installs. */
 export interface SharedGather { mapId: number; item: number; x: number; y: number; z: number; n: number }
-export interface GatherData { spots: GatherSpot[]; seenMs: number; shared: SharedGather[] }
+/** `sentMs`: your spots gathered up to then are on the Worker (saved, so spots from before sharing, or before a restart, go too). */
+export interface GatherData { spots: GatherSpot[]; seenMs: number; sentMs: number; shared: SharedGather[] }
 
 /** Two gathers of one material closer than this (game units) are one spot: a node, with your place a few metres off. */
 export const GATHER_SPOT = 500;
 const MAX_SPOTS = 3000;
 
-export const emptyGathering = (): GatherData => ({ spots: [], seenMs: 0, shared: [] });
+export const emptyGathering = (): GatherData => ({ spots: [], seenMs: 0, sentMs: 0, shared: [] });
 
 const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
 const id = (n: unknown): n is number => Number.isInteger(n) && (n as number) > 0;
@@ -22,7 +23,7 @@ export function cleanGathering(raw: any): GatherData {
   const spots = (Array.isArray(raw?.spots) ? raw.spots : [])
     .filter((s: any) => s && id(s.mapId) && id(s.item) && ok(s.x) && ok(s.y) && ok(s.z) && id(s.count) && ok(s.amount) && ok(s.lastMs))
     .map((s: any): GatherSpot => ({ mapId: s.mapId, item: s.item, x: s.x, y: s.y, z: s.z, exact: !!s.exact, count: s.count, amount: s.amount, lastMs: s.lastMs }));
-  return { spots, seenMs: ok(raw?.seenMs) ? raw.seenMs : 0, shared: cleanSharedGathers(raw?.shared) };
+  return { spots, seenMs: ok(raw?.seenMs) ? raw.seenMs : 0, sentMs: ok(raw?.sentMs) ? raw.sentMs : 0, shared: cleanSharedGathers(raw?.shared) };
 }
 
 /** Shared spots, cleaned (saved data and the Worker's answer alike). */
@@ -72,4 +73,18 @@ export function materials(marks: GatherMark[]): [number, number][] {
   const n = new Map<number, number>();
   for (const m of marks) n.set(m.item, (n.get(m.item) ?? 0) + 1);
   return [...n].sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+}
+
+/** The Worker takes at most this many per post (`server/src/validate.ts` MAX_GATHERS). */
+export const SEND_BATCH = 100;
+/** Your spots not on the Worker yet (gathered again since `sentMs`, or never sent), per map in batches, oldest first. */
+export function toSend(g: GatherData): { mapId: number; spots: GatherSpot[] }[] {
+  const by = new Map<number, GatherSpot[]>();
+  for (const s of g.spots) if (s.lastMs > g.sentMs) by.set(s.mapId, [...(by.get(s.mapId) ?? []), s]);
+  const out: { mapId: number; spots: GatherSpot[] }[] = [];
+  for (const [mapId, list] of by) {
+    list.sort((a, b) => a.lastMs - b.lastMs);
+    for (let i = 0; i < list.length; i += SEND_BATCH) out.push({ mapId, spots: list.slice(i, i + SEND_BATCH) });
+  }
+  return out;
 }
