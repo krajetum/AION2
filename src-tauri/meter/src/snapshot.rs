@@ -117,6 +117,8 @@ pub struct PlayerRow {
     /// Time spent hitting the boss (ms): each direct hit counts ACTIVE_WINDOW_MS after it, overlaps once,
     /// within the fight; 0 elsewhere. Active time = this over the fight's length.
     pub active_ms: i64,
+    /// Buffs on the player with their uptime, on boss fights (`crate::buffs`); none elsewhere.
+    pub buffs: Vec<crate::buffs::BuffUp>,
     pub skills: Vec<SkillRow>,
     /// Healing per skill (`damage` = amount healed, `hits` = ticks), for rows opened in the healing view.
     pub heal_skills: Vec<SkillRow>,
@@ -173,6 +175,7 @@ impl Fight {
                     hits: 0,
                     crit_rate: 0.0,
                     active_ms: 0,
+                    buffs: Vec::new(),
                     skills: Vec::new(),
                     heal_skills: Vec::new(),
                 }
@@ -213,6 +216,15 @@ impl Fight {
             let skills = sum_skills(entries, row.id, row.damage);
             if !skills.is_empty() {
                 row.skills = skills;
+            }
+        }
+    }
+
+    /// Every row's buffs (`crate::buffs::by_player`).
+    pub fn add_buffs(&mut self, buffs: &std::collections::HashMap<i32, Vec<crate::buffs::BuffUp>>) {
+        for row in &mut self.rows {
+            if let Some(b) = buffs.get(&row.id) {
+                row.buffs = b.clone();
             }
         }
     }

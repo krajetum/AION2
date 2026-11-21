@@ -99,5 +99,12 @@ fn print_fight(at: i64, f: &aion2_meter::snapshot::Fight) {
         println!("  {:<16} {:<12} {:>9.0}/s  dmg {:>11}  hits {:>5}  crit {:>3.0}%  active {:>3.0}%  deaths {} {:<14} taken {:>9} ({} hits){}{}",
             if r.name.is_empty() { format!("#{}", r.id) } else { r.name.clone() }, r.job, r.dps, r.damage, r.hits, r.crit_rate * 100.0,
             r.active_ms as f64 * 100.0 / f.battle_time_ms.max(1) as f64, r.deaths, times.join(","), r.damage_taken, r.hits_taken, if r.is_you { "  YOU" } else { "" }, if r.is_others { "  OTHERS" } else { "" });
+        if !r.buffs.is_empty() {
+            let b: Vec<String> = r.buffs.iter().take(8).map(|b| format!("{} {:.0}%", b.name, b.up_ms as f64 * 100.0 / f.battle_time_ms.max(1) as f64)).collect();
+            println!("         buffs ({}): {}", r.buffs.len(), b.join(" · "));
+        }
+        if !r.skills.is_empty() {
+            println!("         skills: {}", r.skills.len());
+        }
     }
 }

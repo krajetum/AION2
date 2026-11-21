@@ -5,11 +5,11 @@
   import { bossFights, fightBosses, shareFights } from "../../../app/guild.ts";
   import { yourDps, type FightRecord } from "../../../domain/fights.ts";
   import { groupPulls, isStaticFight, memberBests, STATIC_MIN_MEMBERS, type GuildLink, type GuildView } from "../../../domain/guild.ts";
-  import { activeText, classColor, clock, displayName, hpText, short, skillIconUrl } from "../../../domain/meter.ts";
+  import { activeText, classColor, clock, displayName, hpText, short } from "../../../domain/meter.ts";
   import { classIcon } from "../../classes.ts";
   import { hm } from "../../format.ts";
   import { showStatus } from "../../overlays.ts";
-  import PlayerStats from "../../parts/PlayerStats.svelte";
+  import PlayerDetail from "../../parts/PlayerDetail.svelte";
   import SkillCompare from "../../parts/SkillCompare.svelte";
   import { ui } from "../../state.svelte.ts";
   import { gs, run, say } from "./run.svelte.ts";
@@ -79,12 +79,8 @@
           <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{/if}<span class="name">{displayName(r)}</span>
             <small>{[r.job, own ? "own record" : "as a member saw them"].filter(Boolean).join(" · ")}</small></td>
           <td class="n">{short(r.dps)}/s</td><td class="n">{short(r.damage)}</td><td class="n">{r.share.toFixed(1)}%</td><td class="n">{activeText(r, p.battleTimeMs)}</td><td class="n">{r.deaths ?? "—"}</td></tr>
-        {#if who === key}<tr class="skills"><td colspan="6"><PlayerStats row={r} ms={p.battleTimeMs} />
-          {#if r.skills.length}<table class="sheet">
-            <thead><tr><th>Skill</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Hits</th><th class="n">Used</th><th class="n">Crit</th></tr></thead>
-            <tbody>{#each r.skills as s (s.name)}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20">{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">DoT</span>{/if}</td>
-              <td class="n">{short(s.damage)}</td><td class="n">{(s.share * 100).toFixed(1)}%</td><td class="n">{s.hits}</td><td class="n">{s.dot || s.casts == null ? "–" : s.casts}</td><td class="n">{s.dot ? "–" : Math.round(s.critRate * 100) + "%"}</td></tr>{/each}</tbody></table>
-          {:else}<p class="hint">Skills only from a player's own record: they did not share this fight.</p>{/if}</td></tr>{/if}
+        {#if who === key}<tr class="skills"><td colspan="6"><PlayerDetail row={r} ms={p.battleTimeMs}
+          noSkills="Skills only from a player's own record: they did not share this fight." /></td></tr>{/if}
       {/each}</tbody></table></td></tr>{/if}
   {/each}</tbody></table></div>
   <p class="hint">Fights of the same boss that members recorded at the same time are one pull. Each player's numbers come from their own record when they shared it.

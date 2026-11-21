@@ -4,7 +4,7 @@
   import { mapLabel } from "../../domain/arena.ts";
   import { fightText, personalBests, you, yourDps, type FightRecord } from "../../domain/fights.ts";
   import { activeText, classColor, clock, displayName, hpText, short, skillIconUrl } from "../../domain/meter.ts";
-  import PlayerStats from "../parts/PlayerStats.svelte";
+  import PlayerDetail from "../parts/PlayerDetail.svelte";
   import SkillCompare from "../parts/SkillCompare.svelte";
   import Timeline from "../parts/Timeline.svelte";
   import { saveFights } from "../../infra/fights.ts";
@@ -92,8 +92,9 @@
             aria-expanded={who === r.id} onclick={() => { who = who === r.id ? null : r.id; }} onkeydown={(e) => { if (e.key === "Enter") who = who === r.id ? null : r.id; }}>
             <td>{#if classIcon(r.job)}<img class="cls-icon" src={classIcon(r.job)} alt={r.job} title={r.job} width="22" height="23">{/if}<span class="name">{displayName(r)}</span>{#if r.job}<small>{r.job}</small>{/if}</td>
             <td class="n">{short(r.dps)}/s</td><td class="n">{short(r.damage)}</td><td class="n">{r.share.toFixed(1)}%</td><td class="n">{activeText(r, f.battleTimeMs)}</td><td class="n">{r.heal ? short(r.heal) : "—"}</td></tr>
-            {#if who === r.id}<tr class="skills"><td colspan="6"><PlayerStats row={r} ms={f.battleTimeMs} /></td></tr>{/if}{/each}</tbody></table>
-        <p class="hint">Click a player for hits, crits, healing, deaths and damage taken.</p>
+            {#if who === r.id}<tr class="skills"><td colspan="6"><PlayerDetail row={r} ms={f.battleTimeMs}
+              noSkills="No skill breakdown: fights from before this version kept only your own skills." /></td></tr>{/if}{/each}</tbody></table>
+        <p class="hint">Click a player for their stats, every skill (damage, hits, crit) and their buffs with uptime, scrolls and food included.</p>
         {#if me?.skills.length}<table class="sheet">
           <thead><tr><th>Your skill</th><th class="n">Damage</th><th class="n">Share</th><th class="n">Hits</th><th class="n">Used</th><th class="n">Crit</th></tr></thead>
           <tbody>{#each me.skills as s (s.name)}<tr><td class="skill-name">{#if s.icon}<img class="skill-icon" src={skillIconUrl(s.icon)} alt="" loading="lazy" width="20" height="20">{:else}<span class="skill-icon none" aria-hidden="true"></span>{/if}{s.name}{#if s.dot}<span class="dim">DoT</span>{/if}</td>
