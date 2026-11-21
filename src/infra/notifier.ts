@@ -1,7 +1,7 @@
 // Toast notifications + sounds (Tauri notification plugin; console in the browser preview).
 import { isTauri } from "@tauri-apps/api/core";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
-import { channelVolume, type SoundTheme } from "../domain/alerts.ts";
+import { channelVolume, themeFor, type SoundTheme } from "../domain/alerts.ts";
 import type { Settings } from "../domain/types.ts";
 
 /** Plays the first of `names` that loads: each from the theme's folder, then the default one, .wav then .mp3; default last. */
@@ -26,7 +26,7 @@ export function playBirthday(volume: number) {
 
 export async function toast(s: Settings, title: string, body: string, sound: string[] = ["default"]) {
   const vol = channelVolume(s, sound[0]);
-  if (vol) playSound(sound, vol, s.soundTheme);
+  if (vol) playSound(sound, vol, themeFor(s, sound[0]));
   if (!isTauri()) return console.info(`[toast] ${title} — ${body}`); // browser preview
   let ok = await isPermissionGranted();
   if (!ok) ok = (await requestPermission()) === "granted";

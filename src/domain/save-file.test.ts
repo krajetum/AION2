@@ -49,3 +49,10 @@ test("save file: the sound theme is kept when known, else default", () => {
   assert.equal(theme("nope"), "default");
   assert.equal(theme(), "default");
 });
+
+test("save file: custom sounds keep each channel's known theme", () => {
+  const s = normalize({ tasks: [], characters: [{ id: "c", name: "Main" }], settings: { soundTheme: "custom", channelThemes: { cube: "pingy", shugo: "nope", news: 3 } } }).settings;
+  assert.equal(s.soundTheme, "custom");
+  assert.deepEqual(s.channelThemes, { cube: "pingy" });
+  assert.deepEqual(normalize({ tasks: [], characters: [{ id: "c", name: "Main" }] }).settings.channelThemes, {});
+});

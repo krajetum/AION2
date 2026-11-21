@@ -2,7 +2,7 @@
   // The hidden-cube popup (index.html#cube, shown by src-tauri/src/meter.rs while a known cube is in view
   // and for a few seconds after one is opened): the nearest cube's distance and direction from you, a chime
   // when a new one appears, green "Cube opened" after an opening. Settings > Overlays turns it on and sizes it.
-  import { channelVolume } from "../domain/alerts.ts";
+  import { channelVolume, themeFor } from "../domain/alerts.ts";
   import { bearing, climb, toMetres, staleFor, travelNote } from "../domain/map.ts";
   import type { MeterUpdate } from "../domain/meter.ts";
   import type { Settings } from "../domain/types.ts";
@@ -36,7 +36,7 @@
   // Sounds on the cube channel: a chime when one appears, a sad one when another player opens it.
   const play = (name: string) => loaded.then(() => {
     const vol = settings ? channelVolume(settings, "cube") : 70;
-    if (vol) playSound([name, "cube"], vol, settings?.soundTheme);
+    if (vol) playSound([name, "cube"], vol, settings ? themeFor(settings, "cube") : "default");
   });
   // The newest opening already announced (-1 until the first update: what was opened before the
   // window opened is not announced).

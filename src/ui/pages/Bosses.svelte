@@ -1,7 +1,7 @@
 <script lang="ts">
   import Empty from "../parts/Empty.svelte";
   import { addBossLead, removeBossLead, setBossLead, setBossName, setBossRepeat, toggleBossAlert } from "../../app/bosses.ts";
-  import { channelVolume } from "../../domain/alerts.ts";
+  import { channelVolume, themeFor } from "../../domain/alerts.ts";
   import { bossesByMap, bossLabel, bossState, needsName } from "../../domain/bosses.ts";
   import { formatCountdown } from "../../domain/time.ts";
   import { playSound } from "../../infra/notifier.ts";
@@ -48,7 +48,7 @@
           <div class="seg" role="group" aria-label="How often for {bossLabel(b, ui.data.bossNames)}">
             <button class:on={!a.repeat} aria-pressed={!a.repeat} onclick={() => act(() => setBossRepeat(ui.data, b.bossId, false))}>Once</button>
             <button class:on={a.repeat} aria-pressed={a.repeat} onclick={() => act(() => setBossRepeat(ui.data, b.bossId, true))}>Every respawn</button></div>
-          <button class="ghost" title="sounds/boss.wav" onclick={() => playSound(["boss", "event"], channelVolume(ui.data.settings, "boss") || 70, ui.data.settings.soundTheme)}>Play sound</button>
+          <button class="ghost" title="sounds/boss.wav" onclick={() => playSound(["boss", "event"], channelVolume(ui.data.settings, "boss") || 70, themeFor(ui.data.settings, "boss"))}>Play sound</button>
           {#if st !== "due"}<span class="hint">{a.repeat ? "Fires each time the map shows a respawn time." : "Fires once, on the next respawn time the map shows."}</span>{/if}
         </div></td></tr>{/if}
     {/each}</tbody>

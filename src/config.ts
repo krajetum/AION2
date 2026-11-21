@@ -31,7 +31,8 @@ export const EVENTS: GameEvent[] = [
   { id: "shugo", name: "Shugo Festival", everyHours: 1, minute: 0, firstHour: 0, duration: 10 },        // TO VERIFY (time + duration)
   { id: "invasion", name: "Dimensional Invasion", everyHours: 1, minute: 30, firstHour: 0, duration: 10 }, // TO VERIFY (time + duration)
   // 02:00, 05:00 … Paris time, DST included: guides 2:00 CEST in Oct, a player saw 11:00 CET on 2026-11-09 (a fixed UTC grid is off by 1 h in winter)
-  { id: "rift", name: "Spacetime Rift", everyHours: 3, minute: 0, firstHour: 2, duration: 15, timeZone: "Europe/Paris" }, // TO VERIFY (duration)
+  // duration: open 10 minutes (mein-mmo.de, "You only have 10 minutes to find and traverse one of the portals"; playnews.gg: "a few minutes")
+  { id: "rift", name: "Spacetime Rift", everyHours: 3, minute: 0, firstHour: 2, duration: 10, timeZone: "Europe/Paris" }, // TO VERIFY (duration)
 ];
 
 /** Guild > Raid plan: the week's grid is in this zone (one grid for the whole guild), and these hours can't be marked free.
