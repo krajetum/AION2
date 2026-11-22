@@ -387,10 +387,11 @@ export const VAKRON_MAP_IDS = [600071, 600072, 600073];
 /**
  * Ferocious Horn Den (src/assets/ncsoft/ferocious-horn-den-map.webp: two of the player's screenshots at the same zoom
  * joined on the entrance arrow and the boss icon), maps 600091-600093 (recording of 2026-11-22 16:07, the three
- * difficulties' map loads, their entrance on the same spot). No fit yet: unlike the other maps this picture is turned
- * about 180° against the game's axes (the player walked east and north in game, south-west on the picture), and the
- * second screenshot's spot is not certain (a teleport arrival at 0:49 or a stop at 2:53), so two points can't pin it;
- * until one is bundled the player's 3+ references place you.
+ * difficulties' map loads, their entrance on the same spot). No fit: four marked spots of a second recording (16:16,
+ * the entrance and three screenshots taken at the player's marks) fit no single picture of the game's plane, axis-
+ * aligned, turned or mirrored (180-460 px off); the walk changes floor at each step (height 14,500 → -12,800 → -10,700
+ * → -9,300 → +26,000), and the picture seems to draw the floors as pieces placed side by side. One fit per floor
+ * would need two marks on each; until then the player's 3+ references place you on the part they were made on.
  */
 export const HORN_MAP_IDS = [600091, 600092, 600093];
 
