@@ -31,7 +31,17 @@ test("soul pop: gains within 3 s add up as a combo, on fire from the 10th, a new
 
 test("soul pop: one update's gains in time order, named", () => {
   const f = freshGains(coll, [{ kind: 7, points: 2, atMs: 2000 }], [{ item: 610530014, atMs: 1500 }], 0);
-  const p = popGains(null, f, names)!;
-  assert.deepEqual(p, { points: 2, shards: 1, hits: 2, lastMs: 2000, label: "Fluffy" });
-  assert.equal(popGains(p, freshGains(coll, [], [], 0), names), null);
+  // Counted from when the app got them (5000), not the meter's times.
+  const p = popGains(null, f, names, 5000)!;
+  assert.deepEqual(p, { points: 2, shards: 1, hits: 2, lastMs: 5000, label: "Fluffy" });
+  assert.equal(popGains(p, freshGains(coll, [], [], 0), names, 6000), null);
+});
+
+test("soul pop: the pet's progress after the gain", async () => {
+  const { progressText } = await import("./soul-pop.ts");
+  assert.equal(progressText(coll, 7), "3/25 to level 2");
+  assert.equal(progressText(coll, 9), "level 3: done");
+  assert.equal(progressText({ pets: [{ id: 4, level: 0, points: 2 }], atMs: 0 }, 4), "2/5 to unlock");
+  assert.equal(progressText(coll, 1), undefined);
+  assert.equal(progressText(undefined, 7), undefined);
 });
