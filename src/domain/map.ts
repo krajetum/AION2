@@ -4,7 +4,7 @@
 import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 /** The maps the page offers: one image each, with its own points and fit. */
-export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire";
+export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire" | "draupnir";
 export interface WorldMap {
   key: MapKey;
   name: string;
@@ -156,7 +156,7 @@ export function linkKinds(map: Pick<MapData, "pets" | "mobPets">): number {
   return changed;
 }
 
-export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu" || k === "fire";
+export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu" || k === "fire" || k === "draupnir";
 
 /**
  * The meter's cube news into the save: new codes, and openings not already found at the same spot
@@ -362,12 +362,24 @@ export const FIRE_FIT: Affine = [0.0249233, 0, 815.726, 0, 0.0237369, 700.302];
 export const FIRE_MAP_IDS = [600021, 600022, 600023];
 
 /**
+ * Game → pixel fit of the bundled Draupnir map (src/assets/ncsoft/draupnir-cave-map.webp: two of the player's
+ * screenshots at the same zoom joined on the icons, the second 665 px above the first), from the packet recording of
+ * 2026-11-22 15:56 (map 600031, its map load): where the player stood at the entrance and at the teleport in the
+ * middle (two stops, 2:03-2:06), against the arrow's centre in a third screenshot matched to the first. Two points,
+ * axis-aligned; the walk then reaches the west boss's icon (1:52, the player's soul points 2 s later). The northern
+ * island was not walked. Three difficulties loaded as 600031-600033, their entrance on the same spot.
+ */
+export const DRAUPNIR_FIT: Affine = [0.0131774, 0, 775.009, 0, 0.0127707, 1138.835];
+export const DRAUPNIR_MAP_IDS = [600031, 600032, 600033];
+
+/**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
  * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot
  * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT. Krao Cave (a dungeon): the player's
  * screenshot (2026-11-22), maps 600001-600002, KRAO_FIT. Urugugu Canyon (a dungeon):
  * the player's screenshot (2026-11-22), map 600011, URUGUGU_FIT. Fire Temple (a dungeon):
- * the player's screenshot (2026-11-22), map 600021, FIRE_FIT.
+ * the player's screenshot (2026-11-22), map 600021, FIRE_FIT. Draupnir (a dungeon):
+ * two screenshots joined (2026-11-22), maps 600031-600033, DRAUPNIR_FIT.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
@@ -376,6 +388,7 @@ export const MAPS: WorldMap[] = [
   { key: "krao", name: "Krao Cave", gameIds: KRAO_MAP_IDS, fit: KRAO_FIT, bundled: true, dungeon: true },
   { key: "urugugu", name: "Urugugu Canyon", gameIds: URUGUGU_MAP_IDS, fit: URUGUGU_FIT, bundled: true, dungeon: true },
   { key: "fire", name: "Fire Temple", gameIds: FIRE_MAP_IDS, fit: FIRE_FIT, bundled: true, dungeon: true },
+  { key: "draupnir", name: "Draupnir", gameIds: DRAUPNIR_MAP_IDS, fit: DRAUPNIR_FIT, bundled: true, dungeon: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**

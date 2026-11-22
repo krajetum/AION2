@@ -6,6 +6,7 @@
 `krao-cave-map.webp` is the Krao Cave dungeon map, from an in-game screenshot (1514 × 1171 px, 2026-11-22).
 `urugugu-canyon-map.webp` is the Urugugu Canyon dungeon map, from an in-game screenshot (1583 × 1107 px, 2026-11-22).
 `fire-temple-map.webp` is the Fire Temple dungeon map, from an in-game screenshot (1677 × 1274 px, 2026-11-22).
+`draupnir-cave-map.webp` is the Draupnir dungeon map, two in-game screenshots joined (1226 × 1757 px, 2026-11-22).
 AION 2 and its art are © NCSOFT Corporation. These files are **not** licensed under GPL-3.0 with
 the rest of the repository; they are included only so the Map page has maps to start from, and it
 will be removed at NCSOFT's request.
