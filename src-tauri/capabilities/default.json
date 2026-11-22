@@ -8,7 +8,8 @@
     "events",
     "cube",
     "radar",
-    "net"
+    "net",
+    "souls"
   ],
   "permissions": [
     "core:default",

@@ -2,6 +2,7 @@
 // "meter-overlay" events. Outside Tauri (npm run dev in a browser) there is no capture, so a clearly
 // labelled demo fight stands in, only to preview the UI.
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import type { SoulPop } from "../domain/soul-pop.ts";
 import { listen } from "@tauri-apps/api/event";
 import type { ArenaMatch, BossTimer, MeterUpdate, MeterView, PlayerRow, RecorderStatus } from "../domain/meter.ts";
 
@@ -48,6 +49,16 @@ export const meterOverlayHide = () => (isTauri() ? invoke<void>("meter_overlay_h
 export const meterIdle = (secs: number) => (isTauri() ? invoke<void>("meter_idle", { secs }) : Promise.resolve());
 /** The event countdown overlay on or off (desktop only). */
 export const netOverlay = (show: boolean) => (isTauri() ? invoke<void>("net_overlay", { show }) : Promise.resolve());
+/** The soul points popup: the switch, and a combo to show until `untilMs` (domain/soul-pop.ts). */
+export const soulsPopup = (on: boolean, pop?: SoulPop, untilMs?: number, scale?: number) =>
+  (isTauri() ? invoke<void>("souls_popup", { on, pop, untilMs, scale }) : Promise.resolve());
+/** The popup window: the last combo now (the window is made on the first), then each new one. */
+export async function onSoulsPop(fn: (p: SoulPop) => void) {
+  if (!isTauri()) return;
+  const last = await invoke<SoulPop | null>("souls_popup_state");
+  if (last) fn(last);
+  await listen<SoulPop>("souls-pop", (e) => fn(e.payload));
+}
 export const eventsOverlay = (show: boolean) => (isTauri() ? invoke<void>("events_overlay", { show }) : Promise.resolve());
 /** Overlays: hide while another window than the game is in front, and background opacity (20..100 %). */
 export const overlayStyle = (followGame: boolean, opacity: number) =>

@@ -15,12 +15,13 @@
   import { nextEvent } from "../../domain/time.ts";
   import { CHANNELS, isTheme, SOUND_THEMES, themeFor } from "../../domain/alerts.ts";
   import { CADENCES } from "../../domain/types.ts";
+  import { SOUL_POPUP_SIZES } from "../../domain/soul-pop.ts";
   import { playBirthday, playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { clearCubePicture, loadCubePicture, saveCubePicture, type Opener } from "../../infra/map-image.ts";
   import { isDesktop, MCP_URL, mcpServer, setAutostart } from "../../infra/system.ts";
   import { crashReports } from "../../infra/sentry.ts";
-  import { cubePopup, eventsOverlay, meterIdle, meterOverlay, netOverlay, overlayStyle, radarOverlay } from "../../infra/meter.ts";
+  import { soulsPopup, cubePopup, eventsOverlay, meterIdle, meterOverlay, netOverlay, overlayStyle, radarOverlay } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
   import { LABEL, pad, WEEKDAYS } from "../format.ts";
   import { ICON } from "../icons.ts";
@@ -196,6 +197,10 @@
   <Panel title="Overlays">
     {@render toggle("Event countdown overlay", s.eventsOverlay, (on) => { s.eventsOverlay = on; eventsOverlay(s.eventsOverlay); }, !isDesktop())}
     {@render toggle("Ping and packet loss overlay", s.netOverlay, (on) => { s.netOverlay = on; netOverlay(s.netOverlay); }, !isDesktop())}
+    {@render toggle("Soul points popup (pets still to collect, shards: combo, on fire from ×10)", s.soulPopup, (on) => { s.soulPopup = on; soulsPopup(on, undefined, undefined, s.soulPopupSize); }, !isDesktop())}
+    <label class={ROW}><span>Soul points popup size</span><NativeSelect value={String(s.soulPopupSize)} disabled={!isDesktop() || !s.soulPopup}
+      onchange={(e) => act(() => { s.soulPopupSize = +e.currentTarget.value; soulsPopup(s.soulPopup, undefined, undefined, s.soulPopupSize); })}>
+      {#each SOUL_POPUP_SIZES as [k, label]}<NativeSelectOption value={String(k)}>{label}</NativeSelectOption>{/each}</NativeSelect></label>
     {@render toggle("DPS overlay during fights", s.dpsOverlay, (on) => { s.dpsOverlay = on; meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
     {@render toggle("Hide when the game is not in front", s.overlayFollowGame, (on) => { s.overlayFollowGame = on; overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, !isDesktop())}
     <label class={ROW}><span>Opacity</span><span class="flex items-center gap-2 text-muted-foreground tabular-nums">{@render range(s.overlayOpacity, "Overlay opacity", 20, 100,
