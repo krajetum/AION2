@@ -31,7 +31,7 @@ fn main() {
         .and_then(|s| s.parse::<i64>().ok()).map_or(1_800_000_000_000, |s| s * 1000);
     let (mut last_arena, mut last_kills, mut next_update, mut last_deaths) = (String::new(), String::new(), 0i64, 0usize);
     let mut gathers = 0usize;
-    let (mut seen_gain, mut seen_loot) = (0i64, 0i64);
+    let (mut seen_gain, mut seen_loot, mut seen_kill) = (0i64, 0i64, 0i64);
     let mut show = |engine: &aion2_meter::engine::Engine, at: i64| {
         aion2_meter::clock::set_override(Some(at));
         let u = engine.update();
@@ -72,6 +72,10 @@ fn main() {
         for g in u.soul_gains.iter().filter(|g| g.at_ms > seen_gain) {
             println!("[{:>7.1} s] SOUL kind {:?} +{}", (g.at_ms - base) as f64 / 1000.0, g.kind, g.points);
         }
+        for k in u.souls.iter().filter(|k| k.kill.at_ms > seen_kill) {
+            println!("[{:>7.1} s] KILL kind {:?} +{} mob {:?} ({:?}) at ({:.0}, {:.0}) map {:?}", (k.kill.at_ms - base) as f64 / 1000.0, k.kill.kind, k.kill.points, k.mob, k.mob_code, k.kill.x, k.kill.y, k.kill.map_id);
+        }
+        seen_kill = u.souls.iter().map(|k| k.kill.at_ms).max().unwrap_or(seen_kill).max(seen_kill);
         seen_gain = u.soul_gains.iter().map(|g| g.at_ms).max().unwrap_or(seen_gain).max(seen_gain);
         for l in u.loots.iter().filter(|l| l.loot.at_ms > seen_loot) {
             println!("[{:>7.1} s] LOOT item {} mob {} ({:?})", (l.loot.at_ms - base) as f64 / 1000.0, l.loot.item, l.mob, l.mob_code);
