@@ -1,4 +1,4 @@
-// Cloudflare Worker: players' apps share the field-boss timers, hidden-cube openings and gathering spots they see.
+// Cloudflare Worker: players' apps share the field-boss timers, hidden-cube openings, gathering spots and pets' soul point spots they see.
 // Players also share the game's redeem codes (Home > Codes).
 // No player names, only a random install id, except in guilds (the members' character names, item level and CP,
 // shared fights, by consent). The app works the same when this is down.
@@ -8,7 +8,7 @@ import {
   mergeWeeks, parseAdmin, parseAuth, parseAvailability, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
   type Ping, POSTED_FOR, rank, type Role, SLOTS_HEX,
   MAX_REDEEM_LISTED, parseRedeemPost, REDEEM_EXPIRED_VOTES, REDEEM_KEEP, REDEEM_TTL,
-  gatherCellOf, parseGatherPost,
+  gatherCellOf, parseGatherPost, parseSoulPost, soulCellOf,
 } from "./validate.ts";
 
 // Minimal Workers types (no @cloudflare/workers-types).
@@ -35,6 +35,9 @@ const CODE_INSTALLS = 2;
 const GATHER_INSTALLS = 1;
 /** Gathering spots are cached for 5 min (cubes: an hour): new spots show up within one app refresh. */
 const GATHER_CACHE_S = 300;
+/** Soul point spots: published from one install (as gathering spots), cached 5 min, kept 180 days (mobs don't move). */
+const SOUL_INSTALLS = 1;
+const SOUL_CACHE_S = 300;
 const BOSS_CACHE_S = 30;
 const CUBE_CACHE_S = 3600;
 
@@ -70,6 +73,7 @@ async function cached<T>(key: string, seconds: number, load: () => Promise<T>): 
 const bossKey = (url: URL, serverId: number) => `${url.origin}/v1/bosses/${serverId}`;
 const cubeKey = (url: URL) => `${url.origin}/v1/cubes`;
 const gatherKey = (url: URL) => `${url.origin}/v1/gathers`;
+const soulKey = (url: URL) => `${url.origin}/v1/souls`;
 
 async function getBosses(env: Env, url: URL, serverId: number) {
   const maps = await cached(bossKey(url, serverId), BOSS_CACHE_S, async () => {
@@ -145,6 +149,27 @@ async function postGathers(env: Env, req: Request) {
     `INSERT INTO gather_reports (map_id, item, cell, install, x, y, z, at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (map_id, item, cell, install) DO UPDATE SET x = excluded.x, y = excluded.y, z = excluded.z, at_ms = excluded.at_ms`,
   ).bind(p.mapId, g.item, gatherCellOf(g.x, g.y), p.install, g.x, g.y, g.z, g.atMs)));
+  return json({ ok: true, every: everyOf(env) });
+}
+
+async function getSouls(env: Env, url: URL) {
+  const spots = await cached(soulKey(url), SOUL_CACHE_S, async () => (await env.DB.prepare(
+    `SELECT map_id AS mapId, kind, MAX(mob) AS mob, AVG(x) AS x, AVG(y) AS y, AVG(z) AS z, COUNT(*) AS n, MAX(at_ms) AS atMs
+     FROM soul_reports GROUP BY map_id, kind, cell HAVING COUNT(*) >= ? LIMIT 10000`,
+  ).bind(SOUL_INSTALLS).all<{ mapId: number; kind: number; mob: string; x: number; y: number; z: number; n: number; atMs: number }>()).results);
+  return json({ serverNow: Date.now(), every: everyOf(env), spots });
+}
+
+async function postSouls(env: Env, req: Request) {
+  const now = Date.now();
+  const p = parseSoulPost(await readBody(req), now);
+  if (!p) return fail(400, "bad request");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  if (p.souls.length) await env.DB.batch(p.souls.map((s) => env.DB.prepare(
+    `INSERT INTO soul_reports (map_id, kind, cell, install, mob, x, y, z, at_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (map_id, kind, cell, install) DO UPDATE SET mob = CASE WHEN excluded.mob <> '' THEN excluded.mob ELSE mob END,
+       x = excluded.x, y = excluded.y, z = excluded.z, at_ms = excluded.at_ms`,
+  ).bind(p.mapId, s.kind, soulCellOf(s.x, s.y), p.install, s.mob, s.x, s.y, s.z, s.atMs)));
   return json({ ok: true, every: everyOf(env) });
 }
 
@@ -591,6 +616,8 @@ export default {
       if (req.method === "POST" && url.pathname === "/v1/cubes") return await postCubes(env, req);
       if (req.method === "GET" && url.pathname === "/v1/gathers") return await getGathers(env, url);
       if (req.method === "POST" && url.pathname === "/v1/gathers") return await postGathers(env, req);
+      if (req.method === "GET" && url.pathname === "/v1/souls") return await getSouls(env, url);
+      if (req.method === "POST" && url.pathname === "/v1/souls") return await postSouls(env, req);
       if (req.method === "GET" && url.pathname === "/v1/codes") return await getRedeem(env);
       if (req.method === "POST" && url.pathname === "/v1/codes") return await postRedeem(env, req);
       if (req.method === "POST" && url.pathname === "/v1/codes/expired") return await postRedeemExpired(env, req);
@@ -629,6 +656,7 @@ export default {
       env.DB.prepare("DELETE FROM boss_maps WHERE seen_ms < ?").bind(now - 7 * DAY),
       env.DB.prepare("DELETE FROM cube_reports WHERE at_ms < ?").bind(now - 30 * DAY),
       env.DB.prepare("DELETE FROM gather_reports WHERE at_ms < ?").bind(now - 90 * DAY),
+      env.DB.prepare("DELETE FROM soul_reports WHERE at_ms < ?").bind(now - 180 * DAY),
       env.DB.prepare("DELETE FROM writes WHERE hour < ?").bind(Math.floor(now / HOUR) - 2),
       env.DB.prepare("DELETE FROM guild_posts WHERE at_ms < ?").bind(now - 2 * DAY),
       env.DB.prepare("DELETE FROM guild_fights WHERE end_ms < ?").bind(now - 90 * DAY),

@@ -236,10 +236,11 @@
   </Panel>
 {:else if sub === "sharing"}
   <Panel title="Other players">
-    {@render toggle("Share boss timers, cube spots and gathering spots", s.crowdShare, (on) => { s.crowdShare = on; })}
+    {@render toggle("Share boss timers, cube spots, gathering spots and pets' soul point spots", s.crowdShare, (on) => { s.crowdShare = on; })}
     <p class="hint">The app shows the field-boss timers other players on your server read, the hidden cubes three or more
-      players saw opened and the spots other players gathered at. Sharing sends what your meter sees: server, map and boss ids with their times,
-      where cubes were opened, and where you gathered what (material and time). Never names, yours or anyone's. Turn it off and you still get the others'.</p>
+      players saw opened, the spots other players gathered at and where their kills gave a pet's soul points (dungeons too). Sharing sends what your
+      meter sees: server, map and boss ids with their times, where cubes were opened, where you gathered what (material and time), and where
+      your kills gave soul points (pet number, the mob's name, time). Never player names, yours or anyone's. Turn it off and you still get the others'.</p>
   </Panel>
 {:else if sub === "diagnostics"}
   <Recorder />

@@ -10,10 +10,10 @@
   // Pets page: your pet collection as the game sent it on entering the world (src-tauri/meter/src/pets.rs),
   // with the soul points gained since, and where each pet's soul points drop (the Map page's spots, by pet number).
   import { setPetName } from "../../app/map.ts";
-  import { dropMap, MAPS, petOf, soulOf, worldMap, type MapKey } from "../../domain/map.ts";
+  import { allDrops, dropMap, MAPS, petOf, soulOf, worldMap, type MapKey } from "../../domain/map.ts";
   import { KNOWN_PET_NAMES, PET_TYPE, PET_TYPES, type PetType } from "../../domain/pet-names.ts";
   import { MAX_LEVEL, maxed, needed, petName, type Pet } from "../../domain/pets.ts";
-  import { commit } from "../actions.ts";
+  import { commit, refreshSouls } from "../actions.ts";
   import { hm, num } from "../format.ts";
   import { ICON } from "../icons.ts";
   import { ui } from "../state.svelte.ts";
@@ -31,6 +31,7 @@
   let kind = $state<PetType | "any">("any");
   const KINDS: [PetType | "any", string][] = [["any", "All types"], ...PET_TYPES];
   const typeName = (id: number) => PET_TYPES.find(([t]) => t === PET_TYPE[id])?.[1] ?? "—";
+  $effect(() => { void refreshSouls(); }); // other players' spots (at most once a minute)
   const mapsOf = (id: number) => [...new Set((spots.get(id) ?? []).map(dropMap).filter((m): m is MapKey => !!m))];
   const placed = (w: Where, id: number) => w === "any" || (w === "none" ? !mapsOf(id).length
     : w === "dungeons" ? mapsOf(id).some((m) => worldMap(m).dungeon) : mapsOf(id).includes(w));
@@ -42,7 +43,7 @@
   // Spots on the maps, by pet number.
   const spots = $derived.by(() => {
     const by = new Map<number, typeof map.pets>();
-    for (const d of map.pets) {
+    for (const d of allDrops(map)) {
       const id = petOf(d, map.kinds);
       if (id != null) by.set(id, [...(by.get(id) ?? []), d]);
     }
