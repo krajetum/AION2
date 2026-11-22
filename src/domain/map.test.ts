@@ -539,13 +539,22 @@ test("a shared spot of a mob under another pet than the one it gives here is lef
   assert.deepEqual(shown([], { "lake skyray": 1200 }), ["Young Slink:1121", "Young Slink:1016"], "the pet you set for a mob");
 });
 
-test("a save from before SOULS_REV sends its spots again and forgets the Worker's", () => {
+test("a save from before SOULS_REV forgets the Worker's spots and sends only kills recorded from now on", () => {
   const raw = { pets: [{ id: "kill:Me:1:1", pet: "Slink", mob: "Young Slink", kind: 1016, mapId: 1110, x: 0, y: 0, z: 0, atMs: 1, by: "Me" }],
     kinds: { 1016: "Lake Skyray", 1200: "Old Name" }, soulsSentMs: 50, sharedSouls: [{ mapId: 1110, kind: 1016, mob: "x", x: 0, y: 0, z: 0, n: 1 }] };
   const old = cleanMap(raw);
-  assert.equal(old.soulsSentMs, 0);
+  assert.equal(old.soulsSentMs, 1, "your drops so far count as sent (paired by the old rule)");
   assert.deepEqual(old.sharedSouls, []);
   assert.deepEqual(old.kinds, { 1016: "Young Slink", 1200: "Old Name" }, "your own kills name their number");
   const now = cleanMap(JSON.parse(JSON.stringify({ ...old, soulsSentMs: 50 })));
   assert.equal(now.soulsSentMs, 50, "once");
+});
+
+test("a mob is listed under the pet most of its kills gave, not every pet a mispaired kill put it under", () => {
+  const d = (i: number, kind: number, mob: string): PetDrop => ({ id: `kill:Me:${i}:1`, pet: mob, mob, kind, mapId: 1110, x: 0, y: 0, z: 0, atMs: i, by: "Me" });
+  const drops = [d(1, 1066, "Faded Papis"), d(2, 1066, "Faded Papis"), d(3, 1072, "Faded Papis"), d(4, 1072, "Tog")];
+  const list = petList(drops);
+  assert.deepEqual(list.find((e) => e.name === "Papis")?.mobs, ["Faded Papis"]);
+  assert.deepEqual(list.find((e) => e.name === "Tog")?.mobs, ["Tog"], "Faded Papis not under Tog");
+  assert.equal(list.find((e) => e.name === "Tog")?.drops, 2, "its spot still counts");
 });
