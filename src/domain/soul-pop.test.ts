@@ -8,7 +8,9 @@ const coll = { pets: [{ id: 7, level: 1, points: 3 }, { id: 9, level: 3, points:
 test("soul pop: only new points of pets still needed, and crystals", () => {
   const gains = [{ kind: 7, points: 2, atMs: 100 }, { kind: 9, points: 2, atMs: 200 }, { kind: 7, points: 1, atMs: 50 }];
   const loots = [{ item: 610530014, atMs: 300 }, { item: 534660061, atMs: 310 }];
-  const f = freshGains(coll, gains, loots, 60);
+  // Only items the player named as a crystal are shards: 610530014 drops from many mobs (2026-11-22).
+  assert.deepEqual(freshGains(coll, gains, loots, 60).shards, []);
+  const f = freshGains(coll, gains, loots, 60, { "610530014": "Agrint" });
   assert.deepEqual(f.points.map((g) => g.atMs), [100]);
   assert.deepEqual(f.shards.map((l) => l.atMs), [300]);
   assert.equal(f.lastMs, 310);
@@ -30,7 +32,7 @@ test("soul pop: gains within 3 s add up as a combo, on fire from the 10th, a new
 });
 
 test("soul pop: one update's gains in time order, named", () => {
-  const f = freshGains(coll, [{ kind: 7, points: 2, atMs: 2000 }], [{ item: 610530014, atMs: 1500 }], 0);
+  const f = freshGains(coll, [{ kind: 7, points: 2, atMs: 2000 }], [{ item: 610530014, atMs: 1500 }], 0, { "610530014": "Agrint" });
   // Counted from when the app got them (5000), not the meter's times.
   const p = popGains(null, f, names, 5000)!;
   assert.deepEqual(p, { points: 2, shards: 1, hits: 2, lastMs: 5000, label: "Fluffy" });
