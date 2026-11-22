@@ -7,7 +7,7 @@
 //! ```text
 //! <len> 04 8d <mob varint> <4 bytes> <owner varint> <server u16> <len><name> ...   the loot's owner
 //! <len> 1e 56 01 <mob u32> <x y z f32> <x y z f32> <u32> <u32> <item u32> ...       an item a mob dropped there
-//! <len> 0d 90 01 <kind u32> <points u32>                                          soul points (+points)
+//! <len> 0d 90 <n u8> (<kind u32> <points u32>) × n                                soul points (+points), n pets
 //! ```
 //!
 //! - One `1e 56` per item: a kill dropping two items sends two, with the same mob and place. The item
@@ -21,6 +21,9 @@
 //!   Spider 1116), but not the soul's: the player's Young Slink kills gave "Slink soul points". So
 //!   the soul is named by the player per mob (the app), and `kind` is only passed on.
 //! - Every `0d 90` is also kept as a gain (`gains`): the collection counts them all, placed or not.
+//! - A `0d 90` can carry several pets: opening a chest of soul points (recording of 2026-11-22 13:29) sent one with
+//!   n = 5, five kinds +5 each. Only `n = 1` was read before, so every such gain was lost and the collection fell
+//!   behind the game's. Those are no kill's: only a single gain is paired with a kill waiting for its points.
 //! - In a dungeon every loot's owner is 0 (recordings of 2026-11-22: Krao Cave, Urugugu Canyon, Fire Temple, Draupnir,
 //!   Vakron Sky Island, Ferocious Horn Den, and the Hard dungeon of 2026-11-18; never in the open world's 1,400 loots), so
 //!   no kill there waited for its points and no dungeon spot was placed. An owner of 0 now waits too (any party member's
@@ -89,6 +92,8 @@ pub struct Gain {
     pub at_ms: i64,
 }
 const MAX_GAINS: usize = 1_000;
+/// A `0d 90` with more pets than this is not one.
+const MAX_PETS_PER_GAIN: usize = 32;
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
 
@@ -190,15 +195,26 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
             s.waiting.retain(|w| now_ms - w.2 <= POINTS_WITHIN_MS && w.0 != mob);
             s.waiting.push_back((mob, at, now_ms));
         }
-        [0x0D, 0x90] if *frame.get(body)? == 1 => {
-            let (kind, points) = (u32_at(frame, body + 1)?, u32_at(frame, body + 5)?);
-            if s.gains.len() >= MAX_GAINS {
-                s.gains.pop_front();
+        [0x0D, 0x90] => {
+            let n = *frame.get(body)? as usize;
+            if !(1..=MAX_PETS_PER_GAIN).contains(&n) || frame.len() < body + 1 + 8 * n {
+                return None;
             }
-            // Strictly increasing times: the collection counts the gains after the last one it took (by time),
-            // and several kills in one batch (an area attack) arrive in the same millisecond.
-            let at_ms = s.gains.back().map_or(now_ms, |g| now_ms.max(g.at_ms + 1));
-            s.gains.push_back(Gain { kind, points, at_ms });
+            let pairs: Vec<(u32, u32)> =
+                (0..n).map(|i| Some((u32_at(frame, body + 1 + 8 * i)?, u32_at(frame, body + 5 + 8 * i)?))).collect::<Option<_>>()?;
+            for &(kind, points) in &pairs {
+                if s.gains.len() >= MAX_GAINS {
+                    s.gains.pop_front();
+                }
+                // Strictly increasing times: the collection counts the gains after the last one it took (by time),
+                // and several kills in one batch (an area attack) arrive in the same millisecond.
+                let at_ms = s.gains.back().map_or(now_ms, |g| now_ms.max(g.at_ms + 1));
+                s.gains.push_back(Gain { kind, points, at_ms });
+            }
+            if n != 1 {
+                return Some(()); // a chest's: no kill
+            }
+            let (kind, points) = pairs[0];
             s.waiting.retain(|w| now_ms - w.2 <= POINTS_WITHIN_MS);
             // The oldest kill still waiting: points come in the order of the kills.
             let (entity, [x, y, z], _) = s.waiting.pop_front()?;
@@ -300,6 +316,23 @@ mod tests {
         }
         read(&mut s, &hex("0f0d90016104000001000000"), ME, None, 1_001);
         assert_eq!(s.gains.iter().map(|g| g.at_ms).collect::<Vec<_>>(), [1_000, 1_001, 1_002, 1_003]);
+    }
+
+    /// A chest of soul points: one `0d 90` with five pets, +5 each (recording of 2026-11-22 13:29), all counted, no kill.
+    #[test]
+    fn a_gain_of_several_pets_counts_each() {
+        let mut s = State::default();
+        read(&mut s, &hex("2f0d9005fd03000005000000400400000500000069040000050000008604000005000000ac04000005000000"), ME, None, 1_000);
+        assert_eq!(
+            s.gains.iter().map(|g| (g.kind, g.points)).collect::<Vec<_>>(),
+            [(1021, 5), (1088, 5), (1129, 5), (1158, 5), (1196, 5)]
+        );
+        assert_eq!(s.gains.iter().map(|g| g.at_ms).collect::<Vec<_>>(), [1_000, 1_001, 1_002, 1_003, 1_004]);
+        assert!(s.kills.is_empty());
+        // Cut short: nothing taken.
+        let mut t = State::default();
+        read(&mut t, &hex("2f0d9005fd0300000500000040040000"), ME, None, 1_000);
+        assert!(t.gains.is_empty());
     }
 
     #[test]
