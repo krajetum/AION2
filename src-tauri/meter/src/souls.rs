@@ -29,6 +29,10 @@
 //!   no kill there waited for its points and no dungeon spot was placed. An owner of 0 now waits too (any party member's
 //!   kill: points come only for yours, within 3 s, so a spot lands in the room you fought in); its items are not taken
 //!   as your loots.
+//! - A boss or mini-boss drops nothing on the ground: its `04 8d` (owner 0 in a dungeon) and, 0.1 s later, your
+//!   `0d 90`, no `1e 56` (recording of 2026-11-22 18:53, Draupnir: Phantasmal Lakshmi, kind 1093 +1). Such points went
+//!   to the collection but no spot. Now a `0d 90` with no loot waiting takes the last kill of yours (or a dungeon's)
+//!   seen within 3 s with no loot, at your own position (as fresh as `HERE_FRESH_MS`): you stood by the boss.
 
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -38,6 +42,8 @@ use crate::capture::stream_processor::read_varint;
 
 /// A `0d 90` this long after your loot is that kill's.
 const POINTS_WITHIN_MS: i64 = 3_000;
+/// Your position stands for a kill with no loot (a boss's) when read this recently.
+const HERE_FRESH_MS: i64 = 15_000;
 const MAX_OWNERS: usize = 2_000;
 const MAX_KILLS: usize = 200;
 const MAX_LOOTS: usize = 200;
@@ -80,6 +86,10 @@ struct State {
     kills: VecDeque<SoulKill>,
     loots: VecDeque<Loot>,
     gains: VecDeque<Gain>,
+    /// Kills of yours (or a dungeon's) with no loot yet: (entity, when). A boss's never gets one.
+    unlooted: VecDeque<(i32, i64)>,
+    /// Your position when the frame came, if fresh: where a kill with no loot is placed.
+    here: Option<[f32; 3]>,
 }
 
 /// Soul points the game gave you, whether or not a loot of yours places them: the collection counts them all
@@ -138,8 +148,13 @@ pub fn reset() {
 pub fn observe(frame: &[u8], me: i32, now_ms: i64) {
     // Read even before the meter knows who you are: soul points are yours whatever the loots say
     // (with `me` 0 no loot is yours, so nothing is placed).
-    let map = crate::position::latest().and_then(|p| p.map_id);
-    with(|s| read(s, frame, me, map, now_ms));
+    let pos = crate::position::latest();
+    let map = pos.and_then(|p| p.map_id);
+    let here = pos.filter(|p| now_ms - p.at_ms <= HERE_FRESH_MS).map(|p| [p.x, p.y, p.z]);
+    with(|s| {
+        s.here = here;
+        read(s, frame, me, map, now_ms)
+    });
 }
 
 fn u32_at(b: &[u8], at: usize) -> Option<u32> {
@@ -169,9 +184,14 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
                 s.owners.clear();
             }
             s.owners.insert(mob.value, owner.value);
+            if me != 0 && (owner.value == me || owner.value == 0) {
+                s.unlooted.retain(|u| now_ms - u.1 <= POINTS_WITHIN_MS && u.0 != mob.value);
+                s.unlooted.push_back((mob.value, now_ms));
+            }
         }
         [0x1E, 0x56] if *frame.get(body)? == 1 => {
             let mob = u32_at(frame, body + 1)? as i32;
+            s.unlooted.retain(|u| u.0 != mob);
             // Yours, or a dungeon's (owner 0: see the top of this file).
             let yours = match s.owners.get(&mob) {
                 Some(&o) if o == me => true,
@@ -217,7 +237,15 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
             let (kind, points) = pairs[0];
             s.waiting.retain(|w| now_ms - w.2 <= POINTS_WITHIN_MS);
             // The oldest kill still waiting: points come in the order of the kills.
-            let (entity, [x, y, z], _) = s.waiting.pop_front()?;
+            // None: a boss's (no loot on the ground), placed where you stand.
+            let (entity, [x, y, z]) = match s.waiting.pop_front() {
+                Some((entity, at, _)) => (entity, at),
+                None => {
+                    s.unlooted.retain(|u| now_ms - u.1 <= POINTS_WITHIN_MS);
+                    let (entity, _) = s.unlooted.pop_back()?;
+                    (entity, s.here?)
+                }
+            };
             if s.kills.len() >= MAX_KILLS {
                 s.kills.pop_front();
             }
@@ -274,6 +302,26 @@ mod tests {
         let k = s.kills[0];
         assert_eq!((k.entity, k.kind, k.points, k.map_id), (22240, 1068, 1, Some(600002)));
         assert!(s.loots.is_empty(), "a dungeon's loot is not yours");
+    }
+
+    /// 2026-11-22 18:53, Draupnir: a mini-boss's owner record and your points, no loot on the ground: placed where
+    /// you stand; without a fresh position of yours, not placed (the points still count).
+    #[test]
+    fn a_boss_with_no_loot_is_placed_where_you_stand() {
+        let frames = [(0, "1b048df4f901fad1ba000000000000000000000000000102"), (111, "0f0d90014504000001000000")];
+        let mut s = State { here: Some([-9100.0, 7200.0, 300.0]), ..State::default() };
+        for (t, f) in frames {
+            read(&mut s, &hex(f), ME, Some(600031), 1_000 + t);
+        }
+        assert_eq!(s.kills.len(), 1);
+        let k = s.kills[0];
+        assert_eq!((k.entity, k.kind, k.points, k.x, k.map_id), (31988, 1093, 1, -9100.0, Some(600031)));
+        let mut s = State::default();
+        for (t, f) in frames {
+            read(&mut s, &hex(f), ME, Some(600031), 1_000 + t);
+        }
+        assert!(s.kills.is_empty());
+        assert_eq!(s.gains.len(), 1, "the points count anyway");
     }
 
     /// 2026-10-25 19:16 (a friend's recording): a Mutated Forest Guardian of yours drops two items,
