@@ -419,7 +419,7 @@ test("Krao Cave fit puts the recorded spots on the screenshots' arrow", () => {
   const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 2;
   assert.ok(near(applyAffine(KRAO_FIT, -24000, 33994), 838.8, 1008.8), "the entrance");
   assert.ok(near(applyAffine(KRAO_FIT, -19441, 18198), 955.5, 624.5), "the teleport after the first boss");
-  assert.deepEqual(KRAO_MAP_IDS.map(mapOf), ["krao", "krao"], "both difficulties");
+  assert.deepEqual(KRAO_MAP_IDS.map(mapOf), ["krao", "krao", "krao"], "every difficulty");
   assert.ok(isMapKey("krao"));
 });
 

@@ -337,8 +337,8 @@ export const ELYOS_FIT: Affine = [0.00556664, 0, 1775.92, 0, 0.00565312, 1343.75
  * boss fights on the boss's icon).
  */
 export const KRAO_FIT: Affine = [0.0255977, 0, 1453.145, 0, 0.0243289, 181.76];
-/** Krao Cave's map ids, one per difficulty (map loads, recordings of 2026-11-22). */
-export const KRAO_MAP_IDS = [600001, 600002];
+/** Krao Cave's map ids, one per difficulty (map loads, recordings of 2026-11-22; 600004 = the last difficulty, its entrance on the same spot). */
+export const KRAO_MAP_IDS = [600001, 600002, 600004];
 
 /**
  * Game → pixel fit of the bundled Urugugu Canyon map (src/assets/ncsoft/urugugu-canyon-map.webp), from the packet
