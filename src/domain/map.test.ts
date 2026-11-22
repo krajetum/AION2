@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind, petStops, route, pathLength } from "./map.ts";
 import { readFileSync } from "node:fs";
-import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { ABYSS_FIT, ELYOS_FIT, KRAO_FIT, KRAO_MAP_IDS, URUGUGU_FIT, FIRE_FIT, DRAUPNIR_FIT, VAKRON_FIT, HORN_FIT, isMapKey, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
 
@@ -413,4 +413,47 @@ test("route: every stop once, from you, and 2-opt never worse than nearest-first
     if (a < b - 1e-6) shorter++;
   }
   assert.ok(shorter > 0, "2-opt shortened at least one nearest-first route");
+});
+
+test("Krao Cave fit puts the recorded spots on the screenshots' arrow", () => {
+  const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 2;
+  assert.ok(near(applyAffine(KRAO_FIT, -24000, 33994), 838.8, 1008.8), "the entrance");
+  assert.ok(near(applyAffine(KRAO_FIT, -19441, 18198), 955.5, 624.5), "the teleport after the first boss");
+  assert.deepEqual(KRAO_MAP_IDS.map(mapOf), ["krao", "krao", "krao"], "every difficulty");
+  assert.ok(isMapKey("krao"));
+});
+
+test("Urugugu Canyon fit puts the recorded spots on the screenshot", () => {
+  const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 8;
+  assert.ok(near(applyAffine(URUGUGU_FIT, -17138, 16847), 130.6, 982.6), "the entrance");
+  assert.ok(near(applyAffine(URUGUGU_FIT, 7645, 4175), 452.7, 818.8), "the first boss");
+  assert.deepEqual([600011, 600012, 600013].map(mapOf), ["urugugu", "urugugu", "urugugu"], "every difficulty");
+});
+
+test("Fire Temple fit puts the recorded spots on the screenshots' arrow", () => {
+  const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 2;
+  assert.ok(near(applyAffine(FIRE_FIT, 12730, -22720), 1133, 161), "the entrance");
+  assert.ok(near(applyAffine(FIRE_FIT, 20554, -4689), 1328, 589), "the teleport");
+  assert.deepEqual([600021, 600022, 600023].map(mapOf), ["fire", "fire", "fire"], "every difficulty");
+});
+
+test("Draupnir fit puts the recorded spots on the screenshots' arrow", () => {
+  const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 2;
+  assert.ok(near(applyAffine(DRAUPNIR_FIT, -27472, 36816), 413, 1609), "the entrance");
+  assert.ok(near(applyAffine(DRAUPNIR_FIT, -13281, 20607), 600, 1402), "the teleport");
+  assert.deepEqual([600031, 600032, 600033].map(mapOf), ["draupnir", "draupnir", "draupnir"]);
+});
+
+test("Vakron Sky Island fit puts the recorded spots on the screenshots' arrow", () => {
+  const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 2;
+  assert.ok(near(applyAffine(VAKRON_FIT, 38219, 58095), 1856, 2125), "the entrance");
+  assert.ok(near(applyAffine(VAKRON_FIT, 23123, 29333), 1524, 1492), "the teleport");
+  assert.deepEqual([600071, 600072, 600073].map(mapOf), ["vakron", "vakron", "vakron"]);
+});
+
+test("Ferocious Horn Den fit puts the recorded stops on the screenshots' arrow", () => {
+  const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 11;
+  assert.ok(near(applyAffine(HORN_FIT, -13720, 15158), 259.5, 1574), "a stop in the west rooms (height 13,600)");
+  assert.ok(near(applyAffine(HORN_FIT, 21909, -2724), 1207.6, 1093.8), "a stop in the east rooms (height -10,700)");
+  assert.deepEqual([600091, 600092, 600093].map(mapOf), ["horn", "horn", "horn"]);
 });

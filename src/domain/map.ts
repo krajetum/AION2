@@ -4,7 +4,7 @@
 import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 /** The maps the page offers: one image each, with its own points and fit. */
-export type MapKey = "asmodian" | "elyos" | "abyss";
+export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire" | "draupnir" | "vakron" | "horn";
 export interface WorldMap {
   key: MapKey;
   name: string;
@@ -14,6 +14,8 @@ export interface WorldMap {
   fit: Affine | null;
   /** Whether an image is bundled (src/assets/ncsoft/); without one the player imports their own. */
   bundled: boolean;
+  /** A dungeon: picked in the Map menu's dungeon list, not among the world maps. */
+  dungeon?: boolean;
 }
 
 /** A hidden-cube spot, or a reference: a place whose game coordinates are known (for the fit). */
@@ -154,7 +156,7 @@ export function linkKinds(map: Pick<MapData, "pets" | "mobPets">): number {
   return changed;
 }
 
-export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss";
+export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu" || k === "fire" || k === "draupnir" || k === "vakron" || k === "horn";
 
 /**
  * The meter's cube news into the save: new codes, and openings not already found at the same spot
@@ -326,14 +328,96 @@ export const ABYSS_FIT: Affine = [0.00921448, 0, 746.003, 0, 0.00939319, 654.083
 export const ELYOS_FIT: Affine = [0.00556664, 0, 1775.92, 0, 0.00565312, 1343.75];
 
 /**
+ * Game → pixel fit of the bundled Krao Cave map (src/assets/ncsoft/krao-cave-map.webp), from the packet recording of
+ * 2026-11-22 15:11 in the dungeon (map 600002, its map load): where the player stood at the entrance (0:08-0:46) and
+ * at the teleport after the first boss (2:10-2:13), against the arrow's centre in two screenshots (the second a 1:1
+ * crop of the first). Two points, axis-aligned as the other fits; the 15 positions walked in between all fall on the
+ * cave, and the boss (Enhanced Harcon) died ~60 px from its icon, with the player at range. Two more runs the same day,
+ * on two difficulties, loaded as 600002 and 600001: one layout, the same fit (their 47 positions fall on the cave, the
+ * boss fights on the boss's icon).
+ */
+export const KRAO_FIT: Affine = [0.0255977, 0, 1453.145, 0, 0.0243289, 181.76];
+/** Krao Cave's map ids, one per difficulty (map loads, recordings of 2026-11-22; 600004 = the last difficulty, its entrance on the same spot). */
+export const KRAO_MAP_IDS = [600001, 600002, 600004];
+
+/**
+ * Game → pixel fit of the bundled Urugugu Canyon map (src/assets/ncsoft/urugugu-canyon-map.webp), from the packet
+ * recording of 2026-11-22 15:23 (map 600011, its map load): where the player stood at the entrance, at the teleport
+ * after the first boss (a crop of the map zoomed 1.26×, matched on the icons), and where the player (melee) killed
+ * Guardian Captain Raur, against its icon. Axis-aligned least squares, within 7 px of the three. All three are in
+ * the canyon's south-west third: the far end of the map (north-east) is extrapolated, the player's references
+ * override it. Other difficulties loaded as 600012 and 600013, their entrance on the same spot: one layout.
+ */
+export const URUGUGU_FIT: Affine = [0.0128217, 0, 349.158, 0, 0.0129379, 764.511];
+export const URUGUGU_MAP_IDS = [600011, 600012, 600013];
+
+/**
+ * Game → pixel fit of the bundled Fire Temple map (src/assets/ncsoft/fire-temple-map.webp), from the packet recording
+ * of 2026-11-22 15:33 (map 600021, its map load): where the player stood at the entrance (0:22-0:26) and at the teleport
+ * the run ended on (2:48-2:51), against the arrow's centre in two screenshots (the second the same zoom, shifted 72,
+ * 22 px). Two points, axis-aligned; the 26 positions walked in between all fall on the temple. Another difficulty
+ * loaded as 600022 and 600023, their first positions by the entrance on the same fit: one layout.
+ */
+export const FIRE_FIT: Affine = [0.0249233, 0, 815.726, 0, 0.0237369, 700.302];
+export const FIRE_MAP_IDS = [600021, 600022, 600023];
+
+/**
+ * Game → pixel fit of the bundled Draupnir map (src/assets/ncsoft/draupnir-cave-map.webp: two of the player's
+ * screenshots at the same zoom joined on the icons, the second 665 px above the first), from the packet recording of
+ * 2026-11-22 15:56 (map 600031, its map load): where the player stood at the entrance and at the teleport in the
+ * middle (two stops, 2:03-2:06), against the arrow's centre in a third screenshot matched to the first. Two points,
+ * axis-aligned; the walk then reaches the west boss's icon (1:52, the player's soul points 2 s later). The northern
+ * island was not walked. Three difficulties loaded as 600031-600033, their entrance on the same spot.
+ */
+export const DRAUPNIR_FIT: Affine = [0.0131774, 0, 775.009, 0, 0.0127707, 1138.835];
+export const DRAUPNIR_MAP_IDS = [600031, 600032, 600033];
+
+/**
+ * Game → pixel fit of the bundled Vakron Sky Island map (src/assets/ncsoft/vakron-sky-island-map.webp: three of the
+ * player's screenshots at the same zoom joined by matching them, the sea around them filled with its colour), from
+ * the packet recording of 2026-11-22 16:02 (map 600071, its map load): where the player stood at the entrance and at
+ * the teleport in the middle (2:29-2:32), against the arrow's centre in two more screenshots matched to the first.
+ * Two points, axis-aligned (the same scale on both axes to 0.1%); two runs then walk the corridor to Tiere's icon.
+ * The northern islands were not walked. Three difficulties loaded as 600071-600073, their entrance on the same spot.
+ * Named after a guide (gamesfuze: "Vakron Sky Island Trial", bosses Tiere, Thamon, Vakron).
+ */
+export const VAKRON_FIT: Affine = [0.0219926, 0, 1015.466, 0, 0.0220082, 846.433];
+export const VAKRON_MAP_IDS = [600071, 600072, 600073];
+
+/**
+ * Game → pixel fit of the bundled Ferocious Horn Den map (src/assets/ncsoft/ferocious-horn-den-map.webp: two of the
+ * player's screenshots at the same zoom joined on the arrow and the boss icon), from the packet recording of
+ * 2026-11-22 16:25 (map 600091): eleven screenshots taken where the player stopped, at every height of the den (13,200
+ * to 17,500 and -12,900 to -8,300), each matched 1:1 to the picture, against where the recording had the player at
+ * the screenshot's time. Least squares on the eight taken standing still: within 10 px of them, the same scale on
+ * both axes to 0.1%; the three taken walking within 10-110 px. The walks of three runs follow the corridors. (A first
+ * try put the entrance at the round room: that screenshot was taken 2 min into the run, not at the start.) Three
+ * difficulties loaded as 600091-600093, their entrance on the same spot.
+ */
+export const HORN_FIT: Affine = [0.0265788, 0, 629.167, 0, 0.0265561, 1168.332];
+export const HORN_MAP_IDS = [600091, 600092, 600093];
+
+/**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
  * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot
- * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT.
+ * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT. Krao Cave (a dungeon): the player's
+ * screenshot (2026-11-22), maps 600001-600002, KRAO_FIT. Urugugu Canyon (a dungeon):
+ * the player's screenshot (2026-11-22), map 600011, URUGUGU_FIT. Fire Temple (a dungeon):
+ * the player's screenshot (2026-11-22), map 600021, FIRE_FIT. Draupnir (a dungeon):
+ * two screenshots joined (2026-11-22), maps 600031-600033, DRAUPNIR_FIT. Vakron Sky Island
+ * (a dungeon): three screenshots joined (2026-11-22), maps 600071-600073, VAKRON_FIT. Ferocious Horn
+ * Den (a dungeon): two screenshots joined (2026-11-22), maps 600091-600093, HORN_FIT.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
   { key: "elyos", name: "Elyos", gameIds: [1010], fit: ELYOS_FIT, bundled: true },
   { key: "abyss", name: "Abyss", gameIds: [20], fit: ABYSS_FIT, bundled: true },
+  { key: "krao", name: "Krao Cave", gameIds: KRAO_MAP_IDS, fit: KRAO_FIT, bundled: true, dungeon: true },
+  { key: "urugugu", name: "Urugugu Canyon", gameIds: URUGUGU_MAP_IDS, fit: URUGUGU_FIT, bundled: true, dungeon: true },
+  { key: "fire", name: "Fire Temple", gameIds: FIRE_MAP_IDS, fit: FIRE_FIT, bundled: true, dungeon: true },
+  { key: "draupnir", name: "Draupnir", gameIds: DRAUPNIR_MAP_IDS, fit: DRAUPNIR_FIT, bundled: true, dungeon: true },
+  { key: "vakron", name: "Vakron Sky Island", gameIds: VAKRON_MAP_IDS, fit: VAKRON_FIT, bundled: true, dungeon: true },
+  { key: "horn", name: "Ferocious Horn Den", gameIds: HORN_MAP_IDS, fit: HORN_FIT, bundled: true, dungeon: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**
