@@ -306,6 +306,22 @@ test("the bundled drops: no player names, every spot on its map, merged once, no
   assert.equal(cleanMap(JSON.parse(JSON.stringify(m))).bundledDrops, BUNDLED_DROPS, "kept in the save");
 });
 
+test("a save that merged the first bundle takes only its corrections: the Abyss run off the Asmodian sea", () => {
+  const raw = JSON.parse(readFileSync(new URL("../assets/pet-drops.json", import.meta.url), "utf8"));
+  const file = readDropsFile(raw);
+  const fixed = file.drops.find((d) => d.id === "bundled:2737")!;
+  assert.equal(fixed.mapId, 20);
+  assert.ok(!file.drops.some((d) => d.mapId === 1110 && /^Abyss/.test(d.mob ?? "")), "no Abyss mob on the Asmodian map");
+  const m = emptyMap();
+  m.bundledDrops = "2026-10-26";
+  m.pets.push({ ...fixed, mapId: 1110, map: "asmodian" }); // as the first bundle had it
+  m.pets.push({ ...fixed, id: "kill:Rec:1", by: "Rec", mapId: 1110, map: "asmodian" }); // the recorder's own copy
+  assert.equal(takeBundledDrops(m, raw), 0, "deleted spots stay deleted");
+  assert.equal(m.pets.length, 2);
+  assert.ok(m.pets.every((d) => d.mapId === 20 && d.map === "abyss"));
+  assert.equal(m.bundledDrops, BUNDLED_DROPS);
+});
+
 test("a kill while the map is unknown goes on the map its mob's spots are on", () => {
   const m = emptyMap();
   // The bundled Water Spirit spot (Elyos), and a mob seen on two maps.
