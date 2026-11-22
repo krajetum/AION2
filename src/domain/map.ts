@@ -502,14 +502,37 @@ export const dropsFile = (map: Pick<MapData, "pets" | keyof FileNames>) =>
  * the three maps, with the players' names taken out. Merged into every save once per bundle date, so spots the
  * player deletes stay deleted until a newer bundle.
  */
-export const BUNDLED_DROPS = "2026-10-26";
+export const BUNDLED_DROPS = "2026-11-22";
+/**
+ * Bundles whose drops are already in a save that has merged them: only their corrections are taken, so spots the
+ * player deleted stay deleted. 2026-11-22: 44 kills of one Abyss run (2026-10-26 17:36-17:40, an old build kept
+ * the Asmodian map id) moved from map 1110 to the Abyss (20); they were drawn in the sea on the Asmodian map.
+ */
+const BUNDLES_MERGED = new Set(["2026-10-26"]);
 /** Merges the bundled drops file unless this bundle was merged already; returns how many drops were new (-1: skipped). */
 export function takeBundledDrops(map: MapData, raw: any): number {
   if (map.bundledDrops === BUNDLED_DROPS) return -1;
   const { drops, ...names } = readDropsFile(raw);
-  const n = mergeDrops(map, drops, names);
+  const n = BUNDLES_MERGED.has(map.bundledDrops) ? 0 : mergeDrops(map, drops, names);
+  fixDropMaps(map, drops);
   map.bundledDrops = BUNDLED_DROPS;
   return n;
+}
+
+/**
+ * Puts each drop the bundle also has (by id, or same time, spot and mob: a copy from the players' file, under
+ * whoever recorded it) on the bundle's map. Returns how many moved.
+ */
+export function fixDropMaps(map: MapData, bundle: PetDrop[]): number {
+  const byKey = new Map<string, PetDrop>();
+  for (const b of bundle) { byKey.set(b.id, b); byKey.set(sameDrop(b), b); }
+  let moved = 0;
+  for (const d of map.pets) {
+    const b = byKey.get(d.id) ?? byKey.get(sameDrop(d));
+    if (!b || d.shared || (d.mapId === b.mapId && d.map === b.map)) continue;
+    d.mapId = b.mapId; d.map = b.map; moved++;
+  }
+  return moved;
 }
 
 /** A drops file's drops and names (older versions had fewer); throws on anything else. */
