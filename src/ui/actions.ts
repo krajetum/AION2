@@ -2,7 +2,7 @@
 import { fetchCodes } from "../app/codes.ts";
 import { reminderText, shouldRemind, toRedeem } from "../domain/codes.ts";
 import { syncGuild } from "../app/guild.ts";
-import { flushGathers, syncGathers } from "../app/crowd.ts";
+import { flushGathers, flushSouls, syncGathers, syncSouls } from "../app/crowd.ts";
 import { trackProgress } from "../app/progress.ts";
 import { findTask } from "../app/tasks.ts";
 import { CUE_KEEP_MS, type Cue } from "../domain/mascot.ts";
@@ -104,6 +104,17 @@ export async function refreshGathers(force = false): Promise<boolean> {
   const sent = force && await flushGathers(ui.data);
   const ok = await syncGathers(ui.data);
   if (ok) ui.gathersAt = Date.now();
+  if (ok || sent) await save();
+  return ok;
+}
+
+/** Other players' soul point spots (and yours not sent yet, first, when forced); at most once a minute unless forced. */
+let soulsAt = 0;
+export async function refreshSouls(force = false): Promise<boolean> {
+  if (!force && Date.now() - soulsAt < 60_000) return true;
+  soulsAt = Date.now();
+  const sent = force && await flushSouls(ui.data);
+  const ok = await syncSouls(ui.data);
   if (ok || sent) await save();
   return ok;
 }

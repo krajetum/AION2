@@ -103,6 +103,33 @@ export function parseGatherPost(body: unknown, serverNow: number): GatherPost | 
 
 export const gatherCellOf = (x: number, y: number) => `${Math.floor(x / GATHER_CELL)},${Math.floor(y / GATHER_CELL)}`;
 
+export const MAX_SOULS = 100;
+/** A soul point spot's cell (game units): one install counts once per pet and cell. */
+export const SOUL_CELL = 500;
+/** A mob's name as the game shows it: up to 40 characters, no control characters. */
+export const MAX_MOB = 40;
+export interface SoulReport { x: number; y: number; z: number; kind: number; mob: string; atMs: number }
+export interface SoulPost { install: string; mapId: number; souls: SoulReport[] }
+
+/** POST /v1/souls: your kills that gave a pet's soul points. Null = 400. Bad ones are dropped. */
+export function parseSoulPost(body: unknown, serverNow: number): SoulPost | null {
+  if (!isObj(body) || typeof body.install !== "string" || !UUID.test(body.install) || !isId(body.mapId)) return null;
+  const offset = offsetOf(body.sentMs, serverNow);
+  if (offset === null || !Array.isArray(body.souls) || body.souls.length > MAX_SOULS) return null;
+  const souls: SoulReport[] = [];
+  for (const s of body.souls) {
+    if (!isObj(s) || !isNum(s.x) || !isNum(s.y) || !isNum(s.z) || !isId(s.kind) || s.kind > 1e6 || !isNum(s.atMs) || s.atMs <= 0) continue;
+    if (Math.abs(s.x) > 1e6 || Math.abs(s.y) > 1e6 || Math.abs(s.z) > 1e6) continue;
+    const mob = typeof s.mob === "string" ? s.mob.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, MAX_MOB) : "";
+    // A kill from days ago is still a spot (apps send their saved ones): out of range = now.
+    const atMs = shift(s.atMs, offset, serverNow) ?? serverNow;
+    souls.push({ x: s.x, y: s.y, z: s.z, kind: s.kind, mob, atMs });
+  }
+  return { install: body.install.toLowerCase(), mapId: body.mapId, souls };
+}
+
+export const soulCellOf = (x: number, y: number) => `${Math.floor(x / SOUL_CELL)},${Math.floor(y / SOUL_CELL)}`;
+
 /** The spot a cube belongs to: one install counts once per cell. */
 // ponytail: fixed grid, two openings of one cube can straddle a cell edge; cluster by distance if spots come out split.
 export function cellOf(x: number, y: number): string {
