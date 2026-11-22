@@ -84,7 +84,7 @@ export function matchTotals(m: ArenaMatch) {
  * (world-map boss 2001, an Abyss boss in A2Tools' table), and the game sends boss maps only for your home
  * world and the Abyss. Which layer (lower / upper) is not known. Everything else the player names.
  */
-export const KNOWN_MAPS: Record<number, string> = { 20: "Abyss", 600002: "Krao Cave" };
+export const KNOWN_MAPS: Record<number, string> = { 20: "Abyss", 600001: "Krao Cave", 600002: "Krao Cave", 600011: "Urugugu Canyon" };
 
 /** A map's name: the player's, a known one, or "Map <id>". */
 export const mapLabel = (maps: Record<string, string>, id: number) => maps[id] || KNOWN_MAPS[id] || `Map ${id}`;

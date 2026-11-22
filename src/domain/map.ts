@@ -4,7 +4,7 @@
 import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 /** The maps the page offers: one image each, with its own points and fit. */
-export type MapKey = "asmodian" | "elyos" | "abyss" | "krao";
+export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu";
 export interface WorldMap {
   key: MapKey;
   name: string;
@@ -14,6 +14,8 @@ export interface WorldMap {
   fit: Affine | null;
   /** Whether an image is bundled (src/assets/ncsoft/); without one the player imports their own. */
   bundled: boolean;
+  /** A dungeon: picked in the Map menu's dungeon list, not among the world maps. */
+  dungeon?: boolean;
 }
 
 /** A hidden-cube spot, or a reference: a place whose game coordinates are known (for the fit). */
@@ -154,7 +156,7 @@ export function linkKinds(map: Pick<MapData, "pets" | "mobPets">): number {
   return changed;
 }
 
-export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao";
+export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu";
 
 /**
  * The meter's cube news into the save: new codes, and openings not already found at the same spot
@@ -330,24 +332,38 @@ export const ELYOS_FIT: Affine = [0.00556664, 0, 1775.92, 0, 0.00565312, 1343.75
  * 2026-11-22 15:11 in the dungeon (map 600002, its map load): where the player stood at the entrance (0:08-0:46) and
  * at the teleport after the first boss (2:10-2:13), against the arrow's centre in two screenshots (the second a 1:1
  * crop of the first). Two points, axis-aligned as the other fits; the 15 positions walked in between all fall on the
- * cave, and the boss (Enhanced Harcon) died ~60 px from its icon, with the player at range. One recording: whether
- * every instance of the dungeon loads as 600002 is not known yet.
+ * cave, and the boss (Enhanced Harcon) died ~60 px from its icon, with the player at range. Two more runs the same day,
+ * on two difficulties, loaded as 600002 and 600001: one layout, the same fit (their 47 positions fall on the cave, the
+ * boss fights on the boss's icon).
  */
 export const KRAO_FIT: Affine = [0.0255977, 0, 1453.145, 0, 0.0243289, 181.76];
-/** Krao Cave's map id (its map load, recording of 2026-11-22). */
-export const KRAO_MAP_ID = 600002;
+/** Krao Cave's map ids, one per difficulty (map loads, recordings of 2026-11-22). */
+export const KRAO_MAP_IDS = [600001, 600002];
+
+/**
+ * Game → pixel fit of the bundled Urugugu Canyon map (src/assets/ncsoft/urugugu-canyon-map.webp), from the packet
+ * recording of 2026-11-22 15:23 (map 600011, its map load): where the player stood at the entrance, at the teleport
+ * after the first boss (a crop of the map zoomed 1.26×, matched on the icons), and where the player (melee) killed
+ * Guardian Captain Raur, against its icon. Axis-aligned least squares, within 7 px of the three. All three are in
+ * the canyon's south-west third: the far end of the map (north-east) is extrapolated, the player's references
+ * override it. One difficulty seen (600011); Krao Cave's two loaded as two ids.
+ */
+export const URUGUGU_FIT: Affine = [0.0128217, 0, 349.158, 0, 0.0129379, 764.511];
+export const URUGUGU_MAP_IDS = [600011];
 
 /**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
  * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot
  * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT. Krao Cave (a dungeon): the player's
- * screenshot (2026-11-22), map 600002, KRAO_FIT.
+ * screenshot (2026-11-22), maps 600001-600002, KRAO_FIT. Urugugu Canyon (a dungeon):
+ * the player's screenshot (2026-11-22), map 600011, URUGUGU_FIT.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
   { key: "elyos", name: "Elyos", gameIds: [1010], fit: ELYOS_FIT, bundled: true },
   { key: "abyss", name: "Abyss", gameIds: [20], fit: ABYSS_FIT, bundled: true },
-  { key: "krao", name: "Krao Cave", gameIds: [KRAO_MAP_ID], fit: KRAO_FIT, bundled: true },
+  { key: "krao", name: "Krao Cave", gameIds: KRAO_MAP_IDS, fit: KRAO_FIT, bundled: true, dungeon: true },
+  { key: "urugugu", name: "Urugugu Canyon", gameIds: URUGUGU_MAP_IDS, fit: URUGUGU_FIT, bundled: true, dungeon: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**
