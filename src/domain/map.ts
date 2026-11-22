@@ -4,7 +4,7 @@
 import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 /** The maps the page offers: one image each, with its own points and fit. */
-export type MapKey = "asmodian" | "elyos" | "abyss";
+export type MapKey = "asmodian" | "elyos" | "abyss" | "krao";
 export interface WorldMap {
   key: MapKey;
   name: string;
@@ -154,7 +154,7 @@ export function linkKinds(map: Pick<MapData, "pets" | "mobPets">): number {
   return changed;
 }
 
-export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss";
+export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao";
 
 /**
  * The meter's cube news into the save: new codes, and openings not already found at the same spot
@@ -326,14 +326,28 @@ export const ABYSS_FIT: Affine = [0.00921448, 0, 746.003, 0, 0.00939319, 654.083
 export const ELYOS_FIT: Affine = [0.00556664, 0, 1775.92, 0, 0.00565312, 1343.75];
 
 /**
+ * Game → pixel fit of the bundled Krao Cave map (src/assets/ncsoft/krao-cave-map.webp), from the packet recording of
+ * 2026-11-22 15:11 in the dungeon (map 600002, its map load): where the player stood at the entrance (0:08-0:46) and
+ * at the teleport after the first boss (2:10-2:13), against the arrow's centre in two screenshots (the second a 1:1
+ * crop of the first). Two points, axis-aligned as the other fits; the 15 positions walked in between all fall on the
+ * cave, and the boss (Enhanced Harcon) died ~60 px from its icon, with the player at range. One recording: whether
+ * every instance of the dungeon loads as 600002 is not known yet.
+ */
+export const KRAO_FIT: Affine = [0.0255977, 0, 1453.145, 0, 0.0243289, 181.76];
+/** Krao Cave's map id (its map load, recording of 2026-11-22). */
+export const KRAO_MAP_ID = 600002;
+
+/**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
  * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot
- * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT.
+ * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT. Krao Cave (a dungeon): the player's
+ * screenshot (2026-11-22), map 600002, KRAO_FIT.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
   { key: "elyos", name: "Elyos", gameIds: [1010], fit: ELYOS_FIT, bundled: true },
   { key: "abyss", name: "Abyss", gameIds: [20], fit: ABYSS_FIT, bundled: true },
+  { key: "krao", name: "Krao Cave", gameIds: [KRAO_MAP_ID], fit: KRAO_FIT, bundled: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind, petStops, route, pathLength } from "./map.ts";
 import { readFileSync } from "node:fs";
-import { ABYSS_FIT, ELYOS_FIT, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { ABYSS_FIT, ELYOS_FIT, KRAO_FIT, KRAO_MAP_ID, isMapKey, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
 
@@ -413,4 +413,12 @@ test("route: every stop once, from you, and 2-opt never worse than nearest-first
     if (a < b - 1e-6) shorter++;
   }
   assert.ok(shorter > 0, "2-opt shortened at least one nearest-first route");
+});
+
+test("Krao Cave fit puts the recorded spots on the screenshots' arrow", () => {
+  const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 2;
+  assert.ok(near(applyAffine(KRAO_FIT, -24000, 33994), 838.8, 1008.8), "the entrance");
+  assert.ok(near(applyAffine(KRAO_FIT, -19441, 18198), 955.5, 624.5), "the teleport after the first boss");
+  assert.equal(mapOf(KRAO_MAP_ID), "krao");
+  assert.ok(isMapKey("krao"));
 });

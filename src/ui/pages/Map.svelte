@@ -14,7 +14,7 @@
   import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
   import Intro from "$lib/components/app/Intro.svelte";
   import { untrack } from "svelte";
-  // Map page: three maps (Asmodian, Elyos, Abyss), each the bundled image (src/assets/ncsoft/, © NCSOFT) or one the
+  // Map page: four maps (Asmodian, Elyos, Abyss, the Krao Cave dungeon), each the bundled image (src/assets/ncsoft/, © NCSOFT) or one the
   // player imported (kept only on this PC, infra/map-image.ts), with its own points and fit. Two layers, picked in the
   // corner menu: hidden cubes (spots, cubes found and in view) and pets (where their soul points drop, by soul and mob, searchable;
   // recorded here or merged from friends' files). Close markers merge into a numbered one when zoomed out.
@@ -372,7 +372,7 @@
   const mapName = (k: MapKey) => worldMap(k).name;
 </script>
 
-<Intro><p>Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
+<Intro><p>Hidden cubes and where pets' soul points drop on the Asmodian, Elyos, Abyss and Krao Cave maps (corner menu): every kill
   of yours that gives soul points is put where the mob died (desktop app with the meter running). Gathering: every gather of yours
   is put where the node is (or where you stood, when the node came into view before the meter started), one spot per material,
   with the spots other players gathered at (dashed). Each map can use your own image
