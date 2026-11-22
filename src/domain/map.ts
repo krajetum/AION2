@@ -346,20 +346,20 @@ export const KRAO_MAP_IDS = [600001, 600002, 600004];
  * after the first boss (a crop of the map zoomed 1.26×, matched on the icons), and where the player (melee) killed
  * Guardian Captain Raur, against its icon. Axis-aligned least squares, within 7 px of the three. All three are in
  * the canyon's south-west third: the far end of the map (north-east) is extrapolated, the player's references
- * override it. Another difficulty loaded as 600012, its entrance at the same spot to the unit: one layout.
+ * override it. Other difficulties loaded as 600012 and 600013, their entrance on the same spot: one layout.
  */
 export const URUGUGU_FIT: Affine = [0.0128217, 0, 349.158, 0, 0.0129379, 764.511];
-export const URUGUGU_MAP_IDS = [600011, 600012];
+export const URUGUGU_MAP_IDS = [600011, 600012, 600013];
 
 /**
  * Game → pixel fit of the bundled Fire Temple map (src/assets/ncsoft/fire-temple-map.webp), from the packet recording
  * of 2026-11-22 15:33 (map 600021, its map load): where the player stood at the entrance (0:22-0:26) and at the teleport
  * the run ended on (2:48-2:51), against the arrow's centre in two screenshots (the second the same zoom, shifted 72,
  * 22 px). Two points, axis-aligned; the 26 positions walked in between all fall on the temple. Another difficulty
- * loaded as 600022, its first position by the entrance on the same fit: one layout.
+ * loaded as 600022 and 600023, their first positions by the entrance on the same fit: one layout.
  */
 export const FIRE_FIT: Affine = [0.0249233, 0, 815.726, 0, 0.0237369, 700.302];
-export const FIRE_MAP_IDS = [600021, 600022];
+export const FIRE_MAP_IDS = [600021, 600022, 600023];
 
 /**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
