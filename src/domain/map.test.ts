@@ -427,7 +427,7 @@ test("Urugugu Canyon fit puts the recorded spots on the screenshot", () => {
   const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 8;
   assert.ok(near(applyAffine(URUGUGU_FIT, -17138, 16847), 130.6, 982.6), "the entrance");
   assert.ok(near(applyAffine(URUGUGU_FIT, 7645, 4175), 452.7, 818.8), "the first boss");
-  assert.equal(mapOf(600011), "urugugu");
+  assert.deepEqual([600011, 600012].map(mapOf), ["urugugu", "urugugu"], "both difficulties");
 });
 
 test("Fire Temple fit puts the recorded spots on the screenshots' arrow", () => {

@@ -346,10 +346,10 @@ export const KRAO_MAP_IDS = [600001, 600002];
  * after the first boss (a crop of the map zoomed 1.26×, matched on the icons), and where the player (melee) killed
  * Guardian Captain Raur, against its icon. Axis-aligned least squares, within 7 px of the three. All three are in
  * the canyon's south-west third: the far end of the map (north-east) is extrapolated, the player's references
- * override it. One difficulty seen (600011); Krao Cave's two loaded as two ids.
+ * override it. Another difficulty loaded as 600012, its entrance at the same spot to the unit: one layout.
  */
 export const URUGUGU_FIT: Affine = [0.0128217, 0, 349.158, 0, 0.0129379, 764.511];
-export const URUGUGU_MAP_IDS = [600011];
+export const URUGUGU_MAP_IDS = [600011, 600012];
 
 /**
  * Game → pixel fit of the bundled Fire Temple map (src/assets/ncsoft/fire-temple-map.webp), from the packet recording
