@@ -19,7 +19,7 @@ import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
 import { loadFights, saveFights } from "./infra/fights.ts";
 import { findUpdate, getAutostart, isDesktop, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
-import { act, celebrate, cue, refreshCodes, refreshGathers, refreshGuild, refreshNews, remindCodes, save } from "./ui/actions.ts";
+import { act, celebrate, cue, refreshCodes, refreshGathers, refreshGuild, refreshNews, refreshSouls, remindCodes, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import EventsOverlay from "./ui/EventsOverlay.svelte";
@@ -28,7 +28,7 @@ import NetOverlay from "./ui/NetOverlay.svelte";
 import CubeOverlay from "./ui/CubeOverlay.svelte";
 import RadarOverlay from "./ui/RadarOverlay.svelte";
 import { takeMeterData } from "./app/arena.ts";
-import { bossEvery, flushCubes, flushGathers, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
+import { bossEvery, flushCubes, flushGathers, flushSouls, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
 import { uploadFight } from "./app/guild.ts";
 import { crashReports } from "./infra/sentry.ts";
 import { soulsPopup } from "./infra/meter.ts";
@@ -147,6 +147,7 @@ async function main() {
   crowdBosses();
   crowdCubes();
   refreshGathers();
+  refreshSouls();
   refreshGuild(false);
   let ticks = 0;
   setInterval(async () => {
@@ -162,6 +163,8 @@ async function main() {
     // Gathering spots: yours sent every 5 min, the others' read every 10 min while you play (and when the Map's layer opens).
     if (ticks % 300 === 0) flushGathers(ui.data).then((moved) => { if (moved) save(); });
     if (ticks % 600 === 0 && gameActive(ui.now)) refreshGathers();
+    if (ticks % 300 === 150) flushSouls(ui.data).then((moved) => { if (moved) save(); });
+    if (ticks % 600 === 300 && gameActive(ui.now)) refreshSouls();
     if (ticks % 15) return; // every 15 s: resets and notifications
     const now = Date.now();
     const reset = applyResets(ui.data, now, C).length > 0;

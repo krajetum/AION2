@@ -23,12 +23,12 @@
   import { addDrop, addPoint, deleteDrop, deletePoint, importDrops, setItemSoul, setMobPet, setMobSoul, setPointGame, setPointGroup, setPointKind, setPointLabel } from "../../app/map.ts";
   import { travelIcon } from "../../domain/map.ts";
   import {
-    applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, mapOf, onMap, petHome, petList,
+    allDrops, applyAffine, clusters, dropMap, dropsFile, fitView, foundOn, GROUP_COLORS, invertAffine, MAPS, mapOf, onMap, petHome, petList,
     lootKind, pathLength, petOf, petStops, readDropsFile, route, toMetres, soulOf, toImage, toScreen, worldMap, zoomAt, fitError, isMapKey, type Cluster, type MapKey, type PointKind, type View,
   } from "../../domain/map.ts";
   import { clearMapImage, loadMapImage, saveMapImage } from "../../infra/map-image.ts";
   import { downloadJson } from "../../infra/storage.ts";
-  import { act, commit, refreshGathers } from "../actions.ts";
+  import { act, commit, refreshGathers, refreshSouls } from "../actions.ts";
   import { hm, num } from "../format.ts";
   import { ICON, TRAVEL_ICON } from "../icons.ts";
   import { BUNDLED_IMAGE, fitFor, refsOn } from "../maps.ts";
@@ -122,7 +122,9 @@
     const id = petOf(d, ui.data.map.kinds);
     return id == null ? d.item == null : wanted(collection, id); // a crystal drops once a collection is done
   };
-  const drops = $derived(onlyWanted && collection ? ui.data.map.pets.filter(stillWanted) : ui.data.map.pets);
+  // Yours and other players' spots (allDrops; theirs where you have none of that pet nearby).
+  const every = $derived(allDrops(ui.data.map));
+  const drops = $derived(onlyWanted && collection ? every.filter(stillWanted) : every);
   const names = $derived(ui.data.map.souls);
   const items = $derived(ui.data.map.items);
   const soul = (d: (typeof drops)[number]) => soulOf(ui.data.map, d);
@@ -173,6 +175,7 @@
   }
   // Others' spots, fresh when the layer opens (at most once a minute).
   $effect(() => { if (layer === "gather") void refreshGathers(); });
+  $effect(() => { if (layer === "pets") void refreshSouls(); });
   const gatherHere = $derived(gatherMarks(ui.data.gathering).filter((m) => mapOf(m.mapId) === current && (!onlyMine || m.mine)));
   // The search: a material's name (or its code) containing what is typed; the map shows only what matches.
   const gq = $derived(gatherQuery.trim().toLowerCase());
@@ -187,7 +190,7 @@
   let showRoute = $state(remembered("route") === "1");
   $effect(() => remember("route", showRoute ? "1" : ""));
   const stops = $derived(showRoute && layer === "pets"
-    ? petStops((collection ? ui.data.map.pets.filter(stillWanted) : ui.data.map.pets).filter((d) => d.item == null && dropMap(d) === current), ui.data.map)
+    ? petStops((collection ? every.filter(stillWanted) : every).filter((d) => d.item == null && dropMap(d) === current), ui.data.map)
     : []);
   const routed = $derived(route(stops, pos && here ? pos : null));
   const routeKm = $derived(toMetres(pathLength([...(pos && here ? [pos] : []), ...routed])) / 1000);
@@ -547,7 +550,7 @@
             <NativeSelectOption value="">{selPet && ui.data.map.mobPets[mob.toLowerCase()] == null ? `${selPet.name} (from its other kills)` : "From its other kills / not known"}</NativeSelectOption>
             {#each PET_CHOICES as [id, n] (id)}<NativeSelectOption value={id}>{n}</NativeSelectOption>{/each}</NativeSelect></label>{/if}
       <p class="hint">{when(selDrop.atMs)}{selDrop.by ? ` · recorded by ${selDrop.by}` : ""} · game x {selDrop.x}, y {selDrop.y}{selDrop.mapId != null ? ` · map ${selDrop.mapId}` : ""}</p>
-      <div class="btns"><Button variant="ghost" size="sm" class="text-destructive" onclick={() => { const id = selDrop.id; selectedDrop = ""; act(() => deleteDrop(ui.data, id)); }}>Delete drop</Button></div>
+      {#if !selDrop.shared}<div class="btns"><Button variant="ghost" size="sm" class="text-destructive" onclick={() => { const id = selDrop.id; selectedDrop = ""; act(() => deleteDrop(ui.data, id)); }}>Delete drop</Button></div>{/if}
     </div>{/if}
   </div>
 
