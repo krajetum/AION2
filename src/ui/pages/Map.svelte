@@ -14,7 +14,7 @@
   import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
   import Intro from "$lib/components/app/Intro.svelte";
   import { untrack } from "svelte";
-  // Map page: three maps (Asmodian, Elyos, Abyss), each the bundled image (src/assets/ncsoft/, © NCSOFT) or one the
+  // Map page: the world maps (Asmodian, Elyos, Abyss) and dungeons (Krao Cave, Urugugu Canyon, Fire Temple, Draupnir, Vakron Sky Island, Ferocious Horn Den), each the bundled image (src/assets/ncsoft/, © NCSOFT) or one the
   // player imported (kept only on this PC, infra/map-image.ts), with its own points and fit. Two layers, picked in the
   // corner menu: hidden cubes (spots, cubes found and in view) and pets (where their soul points drop, by soul and mob, searchable;
   // recorded here or merged from friends' files). Close markers merge into a numbered one when zoomed out.
@@ -372,7 +372,7 @@
   const mapName = (k: MapKey) => worldMap(k).name;
 </script>
 
-<Intro><p>Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps (corner menu): every kill
+<Intro><p>Hidden cubes and where pets' soul points drop on the Asmodian, Elyos and Abyss maps and the dungeons in the Dungeon list (corner menu): every kill
   of yours that gives soul points is put where the mob died (desktop app with the meter running). Gathering: every gather of yours
   is put where the node is (or where you stood, when the node came into view before the meter started), one spot per material,
   with the spots other players gathered at (dashed). Each map can use your own image
@@ -431,7 +431,9 @@
     <!-- Corner menu: which map, which layer, and for pets the search, the list and the drop tools. -->
     <div class="map-menu" role="dialog" aria-label="Map menu" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
       <div class="map-menu-head">
-        <ToggleGroup.Root type="single" variant="outline" size="sm" class="flex flex-1" aria-label="Map" value={current} onValueChange={(v) => { if (v) { current = v as typeof current; } }}>{#each MAPS as m}<ToggleGroup.Item class="flex-1" value={m.key}>{m.name}</ToggleGroup.Item>{/each}</ToggleGroup.Root>
+        <ToggleGroup.Root type="single" variant="outline" size="sm" class="flex flex-1" aria-label="Map" value={current} onValueChange={(v) => { if (v) { current = v as typeof current; } }}>{#each MAPS.filter((m) => !m.dungeon) as m}<ToggleGroup.Item class="flex-1" value={m.key}>{m.name}</ToggleGroup.Item>{/each}</ToggleGroup.Root>
+        <NativeSelect size="sm" class="w-40 shrink-0" aria-label="Dungeon" value={worldMap(current).dungeon ? current : ""} onchange={(e) => { const v = e.currentTarget.value; if (isMapKey(v)) current = v; }}>
+          <NativeSelectOption value="">Dungeon…</NativeSelectOption>{#each MAPS.filter((m) => m.dungeon) as m (m.key)}<NativeSelectOption value={m.key}>{m.name}</NativeSelectOption>{/each}</NativeSelect>
         <Button variant="ghost" size="icon-sm" aria-expanded={menuOpen} aria-label={menuOpen ? "Hide the menu" : "Show the menu"} title={menuOpen ? "Hide" : "Show"}
           onclick={() => { menuOpen = !menuOpen; }}>{#if menuOpen}<ChevronUp />{:else}<ChevronDown />{/if}</Button>
       </div>
