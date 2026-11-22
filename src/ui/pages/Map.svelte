@@ -49,6 +49,11 @@
   let layer = $state<Layer>(remembered("layer") === "pets" ? "pets" : remembered("layer") === "gather" ? "gather" : "cubes");
   let menuOpen = $state(remembered("menu") !== "closed");
   $effect(() => { remember("map", current); remember("layer", layer); remember("menu", menuOpen ? "open" : "closed"); });
+  // The Dungeons tab opens the dungeon looked at last (else the first); the dungeon list under it picks another.
+  const DUNGEONS = MAPS.filter((m) => m.dungeon);
+  let lastDungeon = $state<MapKey>(isMapKey(remembered("dungeon")) && worldMap(remembered("dungeon") as MapKey).dungeon ? (remembered("dungeon") as MapKey) : DUNGEONS[0].key);
+  $effect(() => { if (worldMap(current).dungeon) { lastDungeon = current; remember("dungeon", current); } });
+  const inDungeon = $derived(!!worldMap(current).dungeon);
 
   let url = $state<string | null>(null), custom = $state(false), error = $state(""), notice = $state("");
   let size = $state({ w: 0, h: 0 }); // natural image size
@@ -431,12 +436,15 @@
     <!-- Corner menu: which map, which layer, and for pets the search, the list and the drop tools. -->
     <div class="map-menu" role="dialog" aria-label="Map menu" tabindex="-1" onpointerdown={(e) => e.stopPropagation()}>
       <div class="map-menu-head">
-        <ToggleGroup.Root type="single" variant="outline" size="sm" class="flex flex-1" aria-label="Map" value={current} onValueChange={(v) => { if (v) { current = v as typeof current; } }}>{#each MAPS.filter((m) => !m.dungeon) as m}<ToggleGroup.Item class="flex-1" value={m.key}>{m.name}</ToggleGroup.Item>{/each}</ToggleGroup.Root>
-        <NativeSelect size="sm" class="w-40 shrink-0" aria-label="Dungeon" value={worldMap(current).dungeon ? current : ""} onchange={(e) => { const v = e.currentTarget.value; if (isMapKey(v)) current = v; }}>
-          <NativeSelectOption value="">Dungeon…</NativeSelectOption>{#each MAPS.filter((m) => m.dungeon) as m (m.key)}<NativeSelectOption value={m.key}>{m.name}</NativeSelectOption>{/each}</NativeSelect>
+        <ToggleGroup.Root type="single" variant="outline" size="sm" class="flex flex-1" aria-label="Map" value={inDungeon ? "dungeons" : current}
+          onValueChange={(v) => { if (v === "dungeons") { if (!inDungeon) current = lastDungeon; } else if (isMapKey(v)) current = v; }}>{#each MAPS.filter((m) => !m.dungeon) as m}<ToggleGroup.Item class="flex-1" value={m.key}>{m.name}</ToggleGroup.Item>{/each}<ToggleGroup.Item class="flex-1" value="dungeons">Dungeons</ToggleGroup.Item></ToggleGroup.Root>
         <Button variant="ghost" size="icon-sm" aria-expanded={menuOpen} aria-label={menuOpen ? "Hide the menu" : "Show the menu"} title={menuOpen ? "Hide" : "Show"}
           onclick={() => { menuOpen = !menuOpen; }}>{#if menuOpen}<ChevronUp />{:else}<ChevronDown />{/if}</Button>
       </div>
+      {#if inDungeon}
+        <NativeSelect size="sm" class="mb-2 w-full" aria-label="Dungeon" value={current} onchange={(e) => { const v = e.currentTarget.value; if (isMapKey(v)) current = v; }}>
+          {#each DUNGEONS as m (m.key)}<NativeSelectOption value={m.key}>{m.name}</NativeSelectOption>{/each}</NativeSelect>
+      {/if}
       {#if menuOpen}
         <ToggleGroup.Root type="single" variant="outline" size="sm" class="flex" aria-label="Show" value={layer} onValueChange={(v) => { if (v) { layer = v as typeof layer; if (v !== "pets") selectedDrop = ""; if (v !== "cubes") selected = ""; } }}><ToggleGroup.Item class="flex-1" value="cubes">Cubes</ToggleGroup.Item><ToggleGroup.Item class="flex-1" value="pets">Pets</ToggleGroup.Item><ToggleGroup.Item class="flex-1" value="gather">Gathering</ToggleGroup.Item></ToggleGroup.Root>
         {#if layer === "gather"}
