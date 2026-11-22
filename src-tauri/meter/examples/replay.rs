@@ -6,6 +6,7 @@
 //! `--fights`: also each boss fight as it ends (target changed or its time went back) and the one still on at the end:
 //! every row's DPS, hits, crit rate, deaths with their times, damage taken (the DPS Log's advanced stats).
 //! A boss is known from its spawn: a recording started after it shows no boss fight (`--target mostDamage` shows the fight, without those totals).
+//! `--positions`: also the map id as it changes and your position, one every 2 s at most (for fitting a map's picture).
 //! `--target <mode>`: the meter's target mode (bossTargets, mostDamage, lastHitByMe, …).
 use std::io::BufRead;
 
@@ -15,6 +16,8 @@ fn main() {
     let start_map = args.iter().position(|a| a == "--map").and_then(|i| args.get(i + 1)?.parse::<i32>().ok());
     let leave = args.iter().any(|a| a == "--leave");
     let fights = args.iter().any(|a| a == "--fights");
+    let track = args.iter().any(|a| a == "--positions");
+    let (mut last_map, mut last_pos_ms) = (None::<i32>, 0i64);
     let mut last_fight: Option<(i64, aion2_meter::snapshot::Fight)> = None;
     let (engine, mut processor) = aion2_meter::engine::Engine::offline();
     if let Some(mode) = args.iter().position(|a| a == "--target").and_then(|i| args.get(i + 1)) {
@@ -28,9 +31,21 @@ fn main() {
         .and_then(|s| s.parse::<i64>().ok()).map_or(1_800_000_000_000, |s| s * 1000);
     let (mut last_arena, mut last_kills, mut next_update, mut last_deaths) = (String::new(), String::new(), 0i64, 0usize);
     let mut gathers = 0usize;
+    let (mut seen_gain, mut seen_loot) = (0i64, 0i64);
     let mut show = |engine: &aion2_meter::engine::Engine, at: i64| {
         aion2_meter::clock::set_override(Some(at));
         let u = engine.update();
+        if track {
+            let map = aion2_meter::position::map_id();
+            if map != last_map {
+                println!("[{:>7.1} s] map {:?}", (at - base) as f64 / 1000.0, map);
+                last_map = map;
+            }
+            if let Some(p) = aion2_meter::position::latest().filter(|p| p.at_ms >= last_pos_ms + 2_000) {
+                println!("[{:>7.1} s] at ({:.0}, {:.0}, {:.0}) map {:?}", (p.at_ms - base) as f64 / 1000.0, p.x, p.y, p.z, p.map_id);
+                last_pos_ms = p.at_ms;
+            }
+        }
         if fights {
             let f = &u.fight;
             let ended = last_fight.as_ref().filter(|(_, p)| p.battle_time_ms > 0 && p.target.as_ref().is_some_and(|t| t.is_boss)
@@ -54,6 +69,14 @@ fn main() {
                 if g.exact { " (the node's place)" } else { " (your place)" });
         }
         gathers = u.gathers.len();
+        for g in u.soul_gains.iter().filter(|g| g.at_ms > seen_gain) {
+            println!("[{:>7.1} s] SOUL kind {:?} +{}", (g.at_ms - base) as f64 / 1000.0, g.kind, g.points);
+        }
+        seen_gain = u.soul_gains.iter().map(|g| g.at_ms).max().unwrap_or(seen_gain).max(seen_gain);
+        for l in u.loots.iter().filter(|l| l.loot.at_ms > seen_loot) {
+            println!("[{:>7.1} s] LOOT item {} mob {} ({:?})", (l.loot.at_ms - base) as f64 / 1000.0, l.loot.item, l.mob, l.mob_code);
+        }
+        seen_loot = u.loots.iter().map(|l| l.loot.at_ms).max().unwrap_or(seen_loot).max(seen_loot);
         let kills = serde_json::to_string(&u.kills).unwrap();
         if kills != last_kills {
             println!("[{:>7.1} s] kills: {kills}", (at - base) as f64 / 1000.0);
