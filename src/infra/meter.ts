@@ -50,7 +50,8 @@ export const meterIdle = (secs: number) => (isTauri() ? invoke<void>("meter_idle
 /** The event countdown overlay on or off (desktop only). */
 export const netOverlay = (show: boolean) => (isTauri() ? invoke<void>("net_overlay", { show }) : Promise.resolve());
 /** The soul points popup: the switch, and a combo to show until `untilMs` (domain/soul-pop.ts). */
-export const soulsPopup = (on: boolean, pop?: SoulPop, untilMs?: number) => (isTauri() ? invoke<void>("souls_popup", { on, pop, untilMs }) : Promise.resolve());
+export const soulsPopup = (on: boolean, pop?: SoulPop, untilMs?: number, scale?: number) =>
+  (isTauri() ? invoke<void>("souls_popup", { on, pop, untilMs, scale }) : Promise.resolve());
 /** The popup window: the last combo now (the window is made on the first), then each new one. */
 export async function onSoulsPop(fn: (p: SoulPop) => void) {
   if (!isTauri()) return;

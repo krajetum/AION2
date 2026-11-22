@@ -32,7 +32,7 @@ import { bossEvery, flushCubes, flushGathers, gameActive, shareFromMeter, syncBo
 import { uploadFight } from "./app/guild.ts";
 import { crashReports } from "./infra/sentry.ts";
 import { soulsPopup } from "./infra/meter.ts";
-import { COMBO_MS, freshGains, popGains, type SoulPop } from "./domain/soul-pop.ts";
+import { COMBO_MS, freshGains, popGains, progressText, type SoulPop } from "./domain/soul-pop.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, meterItemCodes, radarOverlay, meterOverlay, netOverlay, onEventsOverlay, onNetOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { fightsSnapshot, live, ui } from "./ui/state.svelte.ts";
@@ -77,7 +77,7 @@ async function main() {
     await meterCubeCodes(data.map.cubeCodes).catch(() => {});
     await meterItemCodes(data.crafting.items).catch(() => {});
     if (data.settings.cubePopup) await cubePopup(true, data.settings.cubePopupSize).catch(() => {});
-    if (data.settings.soulPopup) await soulsPopup(true).catch(() => {});
+    if (data.settings.soulPopup) await soulsPopup(true, undefined, undefined, data.settings.soulPopupSize).catch(() => {});
     if (data.settings.radar) await radarOverlay(true).catch(() => {});
   }
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
@@ -123,19 +123,19 @@ async function main() {
         const seen = Math.max(0, ...(last.kills ?? []).map((k) => k.atMs));
         for (const k of latest.kills ?? []) if (k.atMs > seen && k.kind !== "assist") cue(k.kind === "kill" ? "cheer" : "sulk");
       }
-      // Soul points for a pet still needed, or a shard: the popup over the game (before takeMeterData adds them to the collection).
-      if (!latest.demo) {
-        const fresh = freshGains(ui.data.pets[latest.profile?.name ?? ""], latest.soulGains ?? latest.souls ?? [], latest.loots ?? [], soulsSeen);
-        soulsSeen = fresh.lastMs;
-        const next = popGains(soulPop, fresh, ui.data.map);
-        if (next) {
-          soulPop = next;
-          if (ui.data.settings.soulPopup) soulsPopup(true, next, next.lastMs + COMBO_MS).catch(() => {});
-        }
-      }
+      // Soul points for a pet still needed, or a shard: the popup over the game (picked before takeMeterData adds them
+      // to the collection, shown after it with the pet's new progress).
+      const me = latest.profile?.name ?? "";
+      const fresh = latest.demo ? null : freshGains(ui.data.pets[me], latest.soulGains ?? latest.souls ?? [], latest.loots ?? [], soulsSeen);
+      if (fresh) soulsSeen = fresh.lastMs;
       last = latest;
       const shared = shareFromMeter(ui.data, latest); // before takeMeterData: it compares with the saved data
       if (takeMeterData(ui.data, latest) || shared) save();
+      const got = Date.now(), next = fresh && popGains(soulPop, fresh, ui.data.map, got);
+      if (next) {
+        soulPop = { ...next, progress: progressText(ui.data.pets[me], fresh!.points.at(-1)?.kind) ?? next.progress };
+        if (ui.data.settings.soulPopup) soulsPopup(true, soulPop, got + COMBO_MS).catch(() => {});
+      }
     });
   });
   if (isDesktop()) await onTrayMute(() => act(() => muteForAnHour(ui.data, Date.now())));

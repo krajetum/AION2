@@ -52,6 +52,8 @@ struct Auto {
     souls_near: bool,
     /// The popup's last combo (the app's `SoulPop`), for a window that was just made (`souls_popup_state`).
     souls_pop: Option<serde_json::Value>,
+    /// The popup's size: 1 = SOULS_SIZE (Settings: XS 0.7 … XL 1.6).
+    souls_scale: f64,
     /// Hide the overlays while another window than the game is in front (alt-tab).
     follow_game: bool,
     /// The game window was in front at the last check.
@@ -111,6 +113,7 @@ impl Default for MeterState {
                 souls_until: 0,
                 souls_near: false,
                 souls_pop: None,
+                souls_scale: 1.0,
                 follow_game: true,
                 front: true,
                 opacity: 90,
@@ -133,6 +136,8 @@ fn fight_total(u: &Update) -> f64 {
 /// How long the cube popup stays up after a cube is opened ("Cube opened").
 const OPENED_SHOWN_MS: i64 = 5_000;
 const CUBE_SIZE: (f64, f64) = (260.0, 96.0);
+/// The soul points popup at size M (Settings).
+const SOULS_SIZE: (f64, f64) = (220.0, 84.0);
 
 /// The cube popup has something to say: a cube in view, or one opened in the last few seconds.
 fn cube_news(c: &aion2_meter::cubes::Cubes, now_ms: i64) -> bool {
@@ -455,13 +460,18 @@ pub async fn net_overlay(app: AppHandle, show: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// The soul points popup: `on` = the switch (Settings); `pop` = the app's combo (`domain/soul-pop.ts` `SoulPop`), shown
-/// until `until_ms` (wall clock, ms). The window is made on the first one, so it asks for the last with
-/// `souls_popup_state`; later ones come as `souls-pop` events.
+/// The soul points popup: `on` = the switch (Settings), `scale` = its size; `pop` = the app's combo
+/// (`domain/soul-pop.ts` `SoulPop`), shown until `until_ms` (wall clock, ms). The window is made hidden as soon as the
+/// switch is on, so it is loaded when the first gain comes (made then, it showed for a moment only); a window made
+/// later asks for the last pop with `souls_popup_state`, the others come as `souls-pop` events.
 #[tauri::command]
-pub async fn souls_popup(app: AppHandle, on: bool, pop: Option<serde_json::Value>, until_ms: Option<i64>) -> Result<(), String> {
+pub async fn souls_popup(app: AppHandle, on: bool, pop: Option<serde_json::Value>, until_ms: Option<i64>, scale: Option<f64>) -> Result<(), String> {
+    let scale = scale.map(|k| k.clamp(0.5, 2.0));
     if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
         a.souls = on;
+        if let Some(k) = scale {
+            a.souls_scale = k;
+        }
         if let (Some(p), Some(t)) = (&pop, until_ms) {
             a.souls_pop = Some(p.clone());
             a.souls_until = t;
@@ -470,8 +480,18 @@ pub async fn souls_popup(app: AppHandle, on: bool, pop: Option<serde_json::Value
     if let Some(p) = pop {
         let _ = app.emit("souls-pop", p);
     }
-    if !on {
-        close(&app, SOULS);
+    match app.get_webview_window(SOULS) {
+        _ if !on => close(&app, SOULS),
+        Some(w) => {
+            if let Some(k) = scale {
+                let _ = w.set_size(tauri::LogicalSize::new(SOULS_SIZE.0 * k, SOULS_SIZE.1 * k));
+            }
+        }
+        None => {
+            if let Err(e) = build(&app, SOULS) {
+                eprintln!("souls popup: {e}");
+            }
+        }
     }
     Ok(())
 }
@@ -512,6 +532,10 @@ fn set_visible(app: &AppHandle, label: &str, on: bool) {
         (None, true) => {
             if let Err(e) = build(app, label) {
                 eprintln!("{label} overlay: {e}");
+            } else if label == SOULS {
+                if let Some(w) = app.get_webview_window(label) {
+                    let _ = w.show();
+                }
             }
         }
         (None, false) => {}
@@ -528,7 +552,8 @@ fn build(app: &AppHandle, label: &str) -> Result<(), String> {
     } else if label == RADAR {
         ("AION 2 Companion – Radar", 220.0, 220.0, 120.0, 120.0)
     } else if label == SOULS {
-        ("AION 2 Companion – Soul points", 320.0, 130.0, 160.0, 70.0)
+        let k = app.state::<MeterState>().auto.lock().map(|a| a.souls_scale).unwrap_or(1.0);
+        ("AION 2 Companion – Soul points", SOULS_SIZE.0 * k, SOULS_SIZE.1 * k, 110.0, 42.0)
     } else if label == CUBE {
         let k = app.state::<MeterState>().auto.lock().map(|a| a.cube_scale).unwrap_or(1.0);
         ("AION 2 Companion – Hidden cube", CUBE_SIZE.0 * k, CUBE_SIZE.1 * k, 150.0, 55.0)
@@ -553,6 +578,7 @@ fn build(app: &AppHandle, label: &str) -> Result<(), String> {
         .skip_taskbar(true)
         .focused(false)
         .focusable(false)
+        .visible(label != SOULS) // made hidden ahead of its first gain (`souls_popup`)
         .resizable(true)
         .build()
         .map(|w| crate::places::follow(app, label, &w))
@@ -577,6 +603,7 @@ mod tests {
             souls_until: 0,
             souls_near: false,
             souls_pop: None,
+            souls_scale: 1.0,
             follow_game: true,
             front: true,
             opacity: 90,
