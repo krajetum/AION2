@@ -81,8 +81,10 @@ pub struct SoulKill {
 struct State {
     /// Mob entity → its loot's owner entity (the `04 8d` records seen lately).
     owners: HashMap<i32, i32>,
-    /// Your kills' loots waiting for their soul points: (entity, xyz, when).
-    waiting: VecDeque<(i32, [f32; 3], i64)>,
+    /// Your kills' loots waiting for their soul points: (entity, xyz, when, its "Soul: X" item if seen).
+    waiting: VecDeque<(i32, [f32; 3], i64, Option<u32>)>,
+    /// A mob's "Soul: X (Bound)" item → the soul points' kind it goes with, learned from kills paired for sure.
+    soul_kinds: HashMap<u32, u32>,
     kills: VecDeque<SoulKill>,
     loots: VecDeque<Loot>,
     gains: VecDeque<Gain>,
@@ -208,12 +210,14 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
                 }
                 s.loots.push_back(Loot { entity: mob, item, x: at[0], y: at[1], z: at[2], map_id, at_ms: now_ms });
             }
+            let soul = u32_at(frame, body + 37).filter(|i| SOUL_ITEMS.contains(i));
             // A kill's second item is the same kill: it waits once.
-            if s.waiting.iter().any(|w| w.0 == mob && now_ms - w.2 <= POINTS_WITHIN_MS) {
+            if let Some(w) = s.waiting.iter_mut().find(|w| w.0 == mob && now_ms - w.2 <= POINTS_WITHIN_MS) {
+                w.3 = w.3.or(soul);
                 return Some(());
             }
             s.waiting.retain(|w| now_ms - w.2 <= POINTS_WITHIN_MS && w.0 != mob);
-            s.waiting.push_back((mob, at, now_ms));
+            s.waiting.push_back((mob, at, now_ms, soul));
         }
         [0x0D, 0x90] => {
             let n = *frame.get(body)? as usize;
@@ -236,10 +240,11 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
             }
             let (kind, points) = pairs[0];
             s.waiting.retain(|w| now_ms - w.2 <= POINTS_WITHIN_MS);
-            // The oldest kill still waiting: points come in the order of the kills.
+            let waited = !s.waiting.is_empty();
             // None: a boss's (no loot on the ground), placed where you stand.
-            let (entity, [x, y, z]) = match s.waiting.pop_front() {
-                Some((entity, at, _)) => (entity, at),
+            let (entity, [x, y, z]) = match pick(s, kind) {
+                Some((entity, at, _, _)) => (entity, at),
+                None if waited => return Some(()), // every kill waiting gives another pet: none of them is it
                 None => {
                     s.unlooted.retain(|u| now_ms - u.1 <= POINTS_WITHIN_MS);
                     let (entity, _) = s.unlooted.pop_back()?;
@@ -254,6 +259,26 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
         _ => {}
     }
     Some(())
+}
+
+/// The game's "Soul: X (Bound)" items: every kill drops its mob's (534660064 Vigilant Oculazen, 534660171 Mumu Worker;
+/// shugo.gg names them, e.g. 534660067 = Soul: Papis), whether or not it gives soul points.
+const SOUL_ITEMS: std::ops::Range<u32> = 534_660_000..534_670_000;
+
+/// The kill waiting that a single gain of `kind` belongs to, taken out of `waiting`. Most kills give no points (the
+/// pet done, or no drop this time), so the oldest kill waiting was often another mob's: a field of Mumu Workers and
+/// Vigilant Oculazens put the Oculazens' points on the Workers (recording of 2026-11-22 00:37; every gain came 0.3 s
+/// after an Oculazen's loot). So: the newest kill whose Soul item goes with this kind, else the newest whose item is
+/// not known to go with another, else none. A kill alone in the window teaches its item's kind.
+fn pick(s: &mut State, kind: u32) -> Option<(i32, [f32; 3], i64, Option<u32>)> {
+    let known = |w: &(i32, [f32; 3], i64, Option<u32>)| w.3.and_then(|i| s.soul_kinds.get(&i).copied());
+    let at = s.waiting.iter().rposition(|w| known(w) == Some(kind)).or_else(|| s.waiting.iter().rposition(|w| known(w).is_none()))?;
+    let alone = s.waiting.len() == 1;
+    let w = s.waiting.remove(at)?;
+    if let (true, Some(item)) = (alone, w.3) {
+        s.soul_kinds.entry(item).or_insert(kind);
+    }
+    Some(w)
 }
 
 #[cfg(test)]
@@ -283,6 +308,35 @@ mod tests {
         let k = s.kills[0];
         assert_eq!((k.entity, k.kind, k.points, k.at_ms, k.map_id), (56726, 1016, 1, 1_543, Some(7)));
         assert_eq!((k.x.round(), k.y.round()), (155815.0, 102300.0));
+    }
+
+    /// 2026-11-22 00:37: a Mumu Overseer's loot, then a Vigilant Oculazen's, then points for the Oculazen's pet (kind
+    /// 1063): the newest kill gets them, not the oldest; once known, an item of another kind never does.
+    #[test]
+    fn points_go_to_the_newest_kill_whose_soul_fits() {
+        let frames = [
+            (0, "30048dbfd302fad1ba00fe760e090a52616e64726f6e69726b0a4169306e6c7966616e73020000000000000100"),
+            (1, "471e5601bfa90000e1383247daa509c80040cc45c08232471a8709c80000ce45c13e0000c6fc0701def263240100000002f17b020000000e09cd31b200a2010000010301"),
+            (868, "30048dd29a01fad1ba00fe760e090a52616e64726f6e69726b0a4169306e6c7966616e73020000000000000100"),
+            (868, "471e5601524d0000a6743747f44009c800f0cd45d51a3747172b09c80098ce45c13e0000ebfc0701e043de1f0100000002f17b020000000e091e35b200a2010000010301"),
+            (1410, "0f0d90012704000001000000"),
+        ];
+        let me = 15_230; // `fe 76`, Randronirk in that recording
+        let mut s = State::default();
+        for (t, f) in frames {
+            read(&mut s, &hex(f), me, Some(1110), 1_000 + t);
+        }
+        assert_eq!(s.kills.iter().map(|k| (k.entity, k.kind)).collect::<Vec<_>>(), vec![(0x4d52, 1063)]);
+        // The Oculazen's Soul item (534660064) was learned only if it waited alone: here two waited, so nothing yet.
+        assert!(s.soul_kinds.is_empty());
+        s.soul_kinds.insert(534_660_064, 1063);
+        s.waiting.clear();
+        for (t, f) in &frames[..4] {
+            read(&mut s, &hex(f), me, Some(1110), 5_000 + t);
+        }
+        s.soul_kinds.insert(534_660_064, 1999); // the Oculazen's item goes with another pet: the Overseer's, unknown, takes them
+        read(&mut s, &hex(frames[4].1), me, Some(1110), 6_410);
+        assert_eq!(s.kills.back().map(|k| k.entity), Some(0xa9bf));
     }
 
     /// 2026-11-22 15:11, Krao Cave: a dungeon's loots have owner 0; the kill still gets your soul points and its place,
