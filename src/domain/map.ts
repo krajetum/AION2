@@ -88,8 +88,8 @@ export interface MapData {
  * Bumped when the shared soul spots were wrong: a save from before forgets the Worker's spots, and a pet number's mob
  * your own kills show wins over one learned from them. 2: kills with no pet number were sent as the pet named like
  * their mob (Worker cleared, 0014). 3: until 2026-11-22 the meter gave a gain to the oldest kill waiting, often another
- * mob's (`souls.rs` `pick`), so a mob came out under several pets; the Worker was cleared again (0015) and only kills
- * recorded from now on are sent (soulsSentMs = your newest drop).
+ * mob's (`souls.rs` `pick`), so a mob came out under several pets; only kills recorded from now on are sent
+ * (soulsSentMs = your newest drop). The Worker's spots were kept (the player's choice).
  */
 export const SOULS_REV = 3;
 
