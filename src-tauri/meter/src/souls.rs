@@ -24,6 +24,11 @@
 //! - A `0d 90` can carry several pets: opening a chest of soul points (recording of 2026-11-22 13:29) sent one with
 //!   n = 5, five kinds +5 each. Only `n = 1` was read before, so every such gain was lost and the collection fell
 //!   behind the game's. Those are no kill's: only a single gain is paired with a kill waiting for its points.
+//! - In a dungeon every loot's owner is 0 (recordings of 2026-11-22: Krao Cave, Urugugu Canyon, Fire Temple, Draupnir,
+//!   Vakron Sky Island, Ferocious Horn Den, and the Hard dungeon of 2026-11-18; never in the open world's 1,400 loots), so
+//!   no kill there waited for its points and no dungeon spot was placed. An owner of 0 now waits too (any party member's
+//!   kill: points come only for yours, within 3 s, so a spot lands in the room you fought in); its items are not taken
+//!   as your loots.
 
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -167,14 +172,17 @@ fn read(s: &mut State, frame: &[u8], me: i32, map_id: Option<i32>, now_ms: i64) 
         }
         [0x1E, 0x56] if *frame.get(body)? == 1 => {
             let mob = u32_at(frame, body + 1)? as i32;
-            if s.owners.get(&mob) != Some(&me) {
-                return None;
-            }
+            // Yours, or a dungeon's (owner 0: see the top of this file).
+            let yours = match s.owners.get(&mob) {
+                Some(&o) if o == me => true,
+                Some(0) => false,
+                _ => return None,
+            };
             let at = [f32_at(frame, body + 5)?, f32_at(frame, body + 9)?, f32_at(frame, body + 13)?];
             if !at.iter().all(|v| v.is_finite() && v.abs() < 1_000_000.0) {
                 return None;
             }
-            if let Some(item) = u32_at(frame, body + 37).filter(|&i| i != 0) {
+            if let Some(item) = u32_at(frame, body + 37).filter(|&i| i != 0 && yours) {
                 if s.loots.len() >= MAX_LOOTS {
                     s.loots.pop_front();
                 }
@@ -247,6 +255,25 @@ mod tests {
         let k = s.kills[0];
         assert_eq!((k.entity, k.kind, k.points, k.at_ms, k.map_id), (56726, 1016, 1, 1_543, Some(7)));
         assert_eq!((k.x.round(), k.y.round()), (155815.0, 102300.0));
+    }
+
+    /// 2026-11-22 15:11, Krao Cave: a dungeon's loots have owner 0; the kill still gets your soul points and its place,
+    /// its items are not taken as yours.
+    #[test]
+    fn a_dungeon_kill_gets_the_soul_points_and_its_place() {
+        let mut s = State::default();
+        let frames = [
+            (0, "1b048de0ad016443b7000000000000000000000000000102"),
+            (0, "471e5601e05600000f2ecfc60737c64600a0abc41584cfc6c652c7460060aac483010000fce00600e543de1f0100000001a2141a0083d6202452ab9b03a2010000010301"),
+            (217, "0f0d90012c04000001000000"),
+        ];
+        for (t, f) in frames {
+            read(&mut s, &hex(f), ME, Some(600002), 1_000 + t);
+        }
+        assert_eq!(s.kills.len(), 1);
+        let k = s.kills[0];
+        assert_eq!((k.entity, k.kind, k.points, k.map_id), (22240, 1068, 1, Some(600002)));
+        assert!(s.loots.is_empty(), "a dungeon's loot is not yours");
     }
 
     /// 2026-10-25 19:16 (a friend's recording): a Mutated Forest Guardian of yours drops two items,
