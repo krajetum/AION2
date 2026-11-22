@@ -14,7 +14,7 @@
   import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
   import Intro from "$lib/components/app/Intro.svelte";
   import { untrack } from "svelte";
-  // Map page: the world maps (Asmodian, Elyos, Abyss) and dungeons (Krao Cave, Urugugu Canyon, Fire Temple, Draupnir), each the bundled image (src/assets/ncsoft/, © NCSOFT) or one the
+  // Map page: the world maps (Asmodian, Elyos, Abyss) and dungeons (Krao Cave, Urugugu Canyon, Fire Temple, Draupnir, Vakron Sky Island), each the bundled image (src/assets/ncsoft/, © NCSOFT) or one the
   // player imported (kept only on this PC, infra/map-image.ts), with its own points and fit. Two layers, picked in the
   // corner menu: hidden cubes (spots, cubes found and in view) and pets (where their soul points drop, by soul and mob, searchable;
   // recorded here or merged from friends' files). Close markers merge into a numbered one when zoomed out.

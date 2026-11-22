@@ -4,7 +4,7 @@
 import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 /** The maps the page offers: one image each, with its own points and fit. */
-export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire" | "draupnir";
+export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire" | "draupnir" | "vakron";
 export interface WorldMap {
   key: MapKey;
   name: string;
@@ -156,7 +156,7 @@ export function linkKinds(map: Pick<MapData, "pets" | "mobPets">): number {
   return changed;
 }
 
-export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu" || k === "fire" || k === "draupnir";
+export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu" || k === "fire" || k === "draupnir" || k === "vakron";
 
 /**
  * The meter's cube news into the save: new codes, and openings not already found at the same spot
@@ -373,13 +373,26 @@ export const DRAUPNIR_FIT: Affine = [0.0131774, 0, 775.009, 0, 0.0127707, 1138.8
 export const DRAUPNIR_MAP_IDS = [600031, 600032, 600033];
 
 /**
+ * Game → pixel fit of the bundled Vakron Sky Island map (src/assets/ncsoft/vakron-sky-island-map.webp: three of the
+ * player's screenshots at the same zoom joined by matching them, the sea around them filled with its colour), from
+ * the packet recording of 2026-11-22 16:02 (map 600071, its map load): where the player stood at the entrance and at
+ * the teleport in the middle (2:29-2:32), against the arrow's centre in two more screenshots matched to the first.
+ * Two points, axis-aligned (the same scale on both axes to 0.1%); two runs then walk the corridor to Tiere's icon.
+ * The northern islands were not walked. Three difficulties loaded as 600071-600073, their entrance on the same spot.
+ * Named after a guide (gamesfuze: "Vakron Sky Island Trial", bosses Tiere, Thamon, Vakron).
+ */
+export const VAKRON_FIT: Affine = [0.0219926, 0, 1015.466, 0, 0.0220082, 846.433];
+export const VAKRON_MAP_IDS = [600071, 600072, 600073];
+
+/**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
  * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot
  * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT. Krao Cave (a dungeon): the player's
  * screenshot (2026-11-22), maps 600001-600002, KRAO_FIT. Urugugu Canyon (a dungeon):
  * the player's screenshot (2026-11-22), map 600011, URUGUGU_FIT. Fire Temple (a dungeon):
  * the player's screenshot (2026-11-22), map 600021, FIRE_FIT. Draupnir (a dungeon):
- * two screenshots joined (2026-11-22), maps 600031-600033, DRAUPNIR_FIT.
+ * two screenshots joined (2026-11-22), maps 600031-600033, DRAUPNIR_FIT. Vakron Sky Island
+ * (a dungeon): three screenshots joined (2026-11-22), maps 600071-600073, VAKRON_FIT.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
@@ -389,6 +402,7 @@ export const MAPS: WorldMap[] = [
   { key: "urugugu", name: "Urugugu Canyon", gameIds: URUGUGU_MAP_IDS, fit: URUGUGU_FIT, bundled: true, dungeon: true },
   { key: "fire", name: "Fire Temple", gameIds: FIRE_MAP_IDS, fit: FIRE_FIT, bundled: true, dungeon: true },
   { key: "draupnir", name: "Draupnir", gameIds: DRAUPNIR_MAP_IDS, fit: DRAUPNIR_FIT, bundled: true, dungeon: true },
+  { key: "vakron", name: "Vakron Sky Island", gameIds: VAKRON_MAP_IDS, fit: VAKRON_FIT, bundled: true, dungeon: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**
