@@ -776,20 +776,25 @@ export function cleanSharedSouls(raw: unknown): SharedSoul[] {
 export const SOUL_BATCH = 100;
 export interface SoulBatch { mapId: number; souls: { x: number; y: number; z: number; kind: number; mob: string; atMs: number }[]; lastMs: number }
 /**
- * Your kills to share, oldest first, in runs of one map of at most SOUL_BATCH: the ones this app's meter recorded
- * (`takeSouls`: id "kill:<name>:…", recorded by one of `mine`, your characters' names; friends' files and the bundled
- * spots carry other names or none), with a pet number and a known map, after `soulsSentMs` (spots from before sharing
- * go too, once). A mob not seen spawning goes without its name.
+ * Your spots to share, oldest first, in runs of one map of at most SOUL_BATCH: the ones recorded by one of `mine`,
+ * your characters' names — your meter's kills (`takeSouls`) and the ones you placed by hand (`addDrop`), from before
+ * sharing too (once); friends' files carry their names and the bundled spots none, so they stay out, as crystals do.
+ * Each needs a pet number (the kill's, else its mob's, `petOf`, else the pet's name as you or the database name it)
+ * and a known map, and comes after `soulsSentMs`. A mob not seen spawning goes without its name.
  */
-export function soulsToSend(map: Pick<MapData, "pets" | "soulsSentMs">, mine: Set<string>): SoulBatch[] {
+export function soulsToSend(map: Pick<MapData, "pets" | "soulsSentMs" | "kinds" | "petNames">, mine: Set<string>): SoulBatch[] {
   const gameMap = (d: PetDrop) => d.mapId ?? (d.map ? worldMap(d.map).gameIds[0] ?? null : null);
+  const byName = new Map<string, number>();
+  for (const [k, n] of Object.entries(KNOWN_PET_NAMES)) byName.set(n.toLowerCase(), Number(k));
+  for (const [k, n] of Object.entries(map.petNames)) byName.set(n.toLowerCase(), Number(k));
+  const kindOf = (d: PetDrop) => petOf(d, map.kinds) ?? byName.get(d.pet.trim().toLowerCase()) ?? null;
   const own = map.pets
-    .filter((d) => d.id.startsWith("kill:") && mine.has(d.by) && d.kind != null && !d.linked && d.atMs > map.soulsSentMs && gameMap(d) != null)
+    .filter((d) => mine.has(d.by) && !d.shared && d.item == null && d.atMs > map.soulsSentMs && gameMap(d) != null && kindOf(d) != null)
     .sort((a, b) => a.atMs - b.atMs);
   const out: SoulBatch[] = [];
   for (const d of own) {
     const mapId = gameMap(d)!, last = out[out.length - 1];
-    const soul = { x: d.x, y: d.y, z: d.z, kind: d.kind!, mob: d.mob && !d.mob.startsWith("Unknown mob #") ? d.mob : "", atMs: d.atMs };
+    const soul = { x: d.x, y: d.y, z: d.z, kind: kindOf(d)!, mob: d.mob && !d.mob.startsWith("Unknown mob #") ? d.mob : "", atMs: d.atMs };
     if (last && last.mapId === mapId && last.souls.length < SOUL_BATCH) { last.souls.push(soul); last.lastMs = d.atMs; }
     else out.push({ mapId, souls: [soul], lastMs: d.atMs });
   }
