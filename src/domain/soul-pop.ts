@@ -1,8 +1,7 @@
 // The soul points popup (src/ui/SoulsOverlay.svelte, its own window over the game): your kills that gave soul points
-// to a pet you still need (`wanted`) and your loots of a pet's crystal / shard (`lootKind`), added up on screen while
+// to a pet you still need (`wanted`), added up on screen while
 // they come within COMBO_MS of each other: "COMBO" from the second, "ON FIRE" from the ON_FIRE-th. Pure.
 
-import { lootKind } from "./map.ts";
 import { maxed, needed, petName, type PetCollection, type SoulGain } from "./pets.ts";
 import type { SoulNames } from "./map.ts";
 
@@ -17,11 +16,13 @@ export const ON_FIRE = 10;
 export interface SoulPop { points: number; shards: number; hits: number; lastMs: number; label: string; progress?: string }
 
 /** New gains since `seenMs` to show: soul points of pets not done (all of them while no collection is known), crystals. */
-export function freshGains(c: PetCollection | undefined, gains: SoulGain[], loots: { item: number; atMs: number }[], seenMs: number) {
+// No crystals / shards: none of the 61053xxxx loots is a pet's (recordings of 2026-11-22: 610530014, 610530001 and
+// 610531002 dropped from Spirit Guardians, Blood Spiders, Mumu Workers and Overseers alike, each next to its kill's own
+// soul point, and on mobs of a finished pet with none), so the popup showed "+1 shard" for nothing.
+export function freshGains(c: PetCollection | undefined, gains: SoulGain[], seenMs: number) {
   const points = gains.filter((g) => g.atMs > seenMs && g.points > 0 && g.kind != null && !maxed(c?.pets.find((p) => p.id === g.kind)));
-  const shards = loots.filter((l) => l.atMs > seenMs && lootKind(l.item) === "crystal");
-  const lastMs = Math.max(seenMs, ...gains.map((g) => g.atMs), ...loots.map((l) => l.atMs));
-  return { points, shards, lastMs };
+  const lastMs = Math.max(seenMs, ...gains.map((g) => g.atMs));
+  return { points, shards: [] as { atMs: number }[], lastMs };
 }
 
 /** The combo with one more gain (`points` soul points or `shards` crystals) at `atMs`: a new combo after COMBO_MS. */

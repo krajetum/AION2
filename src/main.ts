@@ -126,7 +126,7 @@ async function main() {
       // Soul points for a pet still needed, or a shard: the popup over the game (picked before takeMeterData adds them
       // to the collection, shown after it with the pet's new progress).
       const me = latest.profile?.name ?? "";
-      const fresh = latest.demo ? null : freshGains(ui.data.pets[me], latest.soulGains ?? latest.souls ?? [], latest.loots ?? [], soulsSeen);
+      const fresh = latest.demo ? null : freshGains(ui.data.pets[me], latest.soulGains ?? latest.souls ?? [], soulsSeen);
       if (fresh) soulsSeen = fresh.lastMs;
       last = latest;
       const shared = shareFromMeter(ui.data, latest); // before takeMeterData: it compares with the saved data
