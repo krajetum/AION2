@@ -85,12 +85,13 @@ export interface MapData {
 }
 
 /**
- * Bumped when the shared soul spots were wrong: a save from before sends its spots again (soulsSentMs 0) and forgets
- * the Worker's spots; a pet number's mob your own kills show wins over one learned from them. 2: until 2026-11-22
- * kills with no pet number were sent as the pet named like their mob ("Young Slink" kills as the Young Slink pet,
- * though they give Slink soul points), so pets showed other pets' mobs; the Worker's spots were cleared (0014).
+ * Bumped when the shared soul spots were wrong: a save from before forgets the Worker's spots, and a pet number's mob
+ * your own kills show wins over one learned from them. 2: kills with no pet number were sent as the pet named like
+ * their mob (Worker cleared, 0014). 3: until 2026-11-22 the meter gave a gain to the oldest kill waiting, often another
+ * mob's (`souls.rs` `pick`), so a mob came out under several pets; the Worker was cleared again (0015) and only kills
+ * recorded from now on are sent (soulsSentMs = your newest drop).
  */
-export const SOULS_REV = 2;
+export const SOULS_REV = 3;
 
 /** Cube codes seen so far: 1301199, the cube of the 2026-10-23 20:18 recording (seen coming into view, then opened). */
 export const KNOWN_CUBE_CODES = [1301199];
@@ -137,7 +138,7 @@ export function cleanMap(raw: any): MapData {
   return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets,
     souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds, petNames: cleanSoulNames(raw?.petNames), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0,
     bundledDrops: typeof raw?.bundledDrops === "string" ? raw.bundledDrops : "", shared: cleanShared(raw?.shared), mobPets,
-    sharedSouls: fresh ? cleanSharedSouls(raw?.sharedSouls) : [], soulsSentMs: fresh && ok(raw?.soulsSentMs) ? raw.soulsSentMs : 0, soulsRev: SOULS_REV };
+    sharedSouls: fresh ? cleanSharedSouls(raw?.sharedSouls) : [], soulsSentMs: fresh && ok(raw?.soulsSentMs) ? raw.soulsSentMs : Math.max(0, ...pets.map((d) => d.atMs)), soulsRev: SOULS_REV };
 }
 
 /** Pet number → mob, from drops that carry both (a kill's own; "Unknown mob #…" names nothing). Names already known stay. */
@@ -697,11 +698,20 @@ export function petList(drops: PetDrop[], query = "", n: Naming = { souls: {} })
     return by.get(k)!;
   };
   for (const n of KNOWN_PETS) entry(n);
+  // A mob gives one pet: it is listed under the pet most of its kills gave. Kills paired with another mob's points
+  // (the meter gave a gain to the oldest kill waiting until 2026-11-22) put it under several.
+  const perMob = new Map<string, Map<string, number>>();
+  for (const d of drops) if (d.mob && d.item == null) {
+    const m = d.mob.toLowerCase(), c = perMob.get(m) ?? new Map<string, number>(), p = soulOf(n, d).toLowerCase();
+    c.set(p, (c.get(p) ?? 0) + 1);
+    perMob.set(m, c);
+  }
+  const topOf = (mob: string) => [...(perMob.get(mob.toLowerCase()) ?? [])].sort((a, b) => b[1] - a[1])[0]?.[0];
   for (const d of drops) {
-    const e = entry(soulOf(n, d)), m = dropMap(d);
+    const pet = soulOf(n, d), e = entry(pet), m = dropMap(d);
     e.drops++;
     if (m && !e.maps.includes(m)) e.maps.push(m);
-    if (d.mob && !e.mobs.some((x) => x.toLowerCase() === d.mob!.toLowerCase())) e.mobs.push(d.mob);
+    if (d.mob && (d.item != null || topOf(d.mob) === pet.toLowerCase()) && !e.mobs.some((x) => x.toLowerCase() === d.mob!.toLowerCase())) e.mobs.push(d.mob);
   }
   for (const e of by.values()) e.mobs.sort((a, b) => a.localeCompare(b));
   const q = query.trim().toLowerCase();
