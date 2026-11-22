@@ -31,6 +31,8 @@
     }, 800);
     return () => clearInterval(t);
   });
+  // "56/75 to level 3": the numbers stand out (bold, the gold), the words stay quiet.
+  const progressParts = (t: string): [string, boolean][] => t.split(/(\d+\/\d+)/).filter(Boolean).map((p) => [p, /^\d+\/\d+$/.test(p)]);
   const live = $derived(!!pop && now - gotAt < COMBO_MS);
 </script>
 
@@ -38,7 +40,7 @@
   <div class="souls" class:fire={onFire(pop)} data-tauri-drag-region><div class="card" style:zoom={k} data-tauri-drag-region>
     {#key pop.hits}<div class="big" data-tauri-drag-region>{popText(pop).split(" · ")[0]}</div>{/key}
     {#if pop.points && pop.shards}<div class="sub" data-tauri-drag-region>+{pop.shards} shard{pop.shards === 1 ? "" : "s"}</div>{/if}
-    <div class="sub" data-tauri-drag-region>{pop.label}{#if pop.progress}{` · ${pop.progress}`}{/if}</div>
+    <div class="sub" data-tauri-drag-region>{pop.label}{#if pop.progress}{" · "}{#each progressParts(pop.progress) as [part, isNum], i (i)}{#if isNum}<b class="num">{part}</b>{:else}{part}{/if}{/each}{/if}</div>
     {#if isCombo(pop)}{#key pop.hits}<div class="combo" data-tauri-drag-region>{#if onFire(pop)}<Flame class="flame" />ON FIRE! ×{pop.hits}<Flame class="flame" />{:else}COMBO ×{pop.hits}{/if}</div>{/key}{/if}
     </div>
     {#if onFire(pop)}<div class="embers" aria-hidden="true">{#each Array(10) as _, i}<i style:left="{8 + i * 9}%" style:animation-delay="{(i * 137) % 900}ms"></i>{/each}</div>{/if}
@@ -53,6 +55,7 @@
   .card { display: flex; flex-direction: column; align-items: center; }
   .big { font-size: var(--fs-xl); font-weight: 800; line-height: 1.05; color: var(--gold); animation: pop 0.35s cubic-bezier(.2, 1.6, .4, 1); }
   .sub { font-size: var(--fs-xs); font-weight: 600; opacity: 0.9; }
+  .sub .num { font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
   .combo { font-size: var(--fs-md); font-weight: 900; letter-spacing: 0.08em; color: var(--chart-2); animation: pop 0.3s ease-out; }
   .fire .combo { font-size: var(--fs-lg); color: var(--taken); animation: pop 0.3s ease-out, flicker 0.18s steps(2) infinite alternate; }
   .fire .big { color: var(--star); }
