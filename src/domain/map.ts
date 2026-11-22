@@ -88,8 +88,9 @@ export interface MapData {
  * Bumped when the shared soul spots were wrong: a save from before forgets the Worker's spots, and a pet number's mob
  * your own kills show wins over one learned from them. 2: kills with no pet number were sent as the pet named like
  * their mob (Worker cleared, 0014). 3: until 2026-11-22 the meter gave a gain to the oldest kill waiting, often another
- * mob's (`souls.rs` `pick`), so a mob came out under several pets; only kills recorded from now on are sent
- * (soulsSentMs = your newest drop). The Worker's spots were kept (the player's choice).
+ * mob's (`souls.rs` `pick`), so a mob came out under several pets. Every save sends its spots again (soulsSentMs 0:
+ * the Worker keeps one per install, pet and cell, so nothing doubles); the Worker's spots are kept, never cleared
+ * again without the player's say (many can't be farmed again).
  */
 export const SOULS_REV = 3;
 
@@ -138,7 +139,7 @@ export function cleanMap(raw: any): MapData {
   return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets,
     souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds, petNames: cleanSoulNames(raw?.petNames), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0,
     bundledDrops: typeof raw?.bundledDrops === "string" ? raw.bundledDrops : "", shared: cleanShared(raw?.shared), mobPets,
-    sharedSouls: fresh ? cleanSharedSouls(raw?.sharedSouls) : [], soulsSentMs: fresh && ok(raw?.soulsSentMs) ? raw.soulsSentMs : Math.max(0, ...pets.map((d) => d.atMs)), soulsRev: SOULS_REV };
+    sharedSouls: fresh ? cleanSharedSouls(raw?.sharedSouls) : [], soulsSentMs: fresh && ok(raw?.soulsSentMs) ? raw.soulsSentMs : 0, soulsRev: SOULS_REV };
 }
 
 /** Pet number → mob, from drops that carry both (a kill's own; "Unknown mob #…" names nothing). Names already known stay. */
