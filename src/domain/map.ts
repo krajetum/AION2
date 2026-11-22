@@ -41,6 +41,8 @@ export interface PetDrop {
   id: string; pet: string; mob?: string; item?: number; kind?: number; mapId: number | null; map?: MapKey; x: number; y: number; z: number; atMs: number; by: string;
   /** The kind was not recorded with the kill but linked from its mob (`linkKinds`). */
   linked?: true;
+  /** Other players' spot (the crowd Worker, `sharedDrops`), not saved among yours. */
+  shared?: true;
 }
 /** The page map a drop is on: the one it was recorded on, else the one its game map id belongs to. */
 export const dropMap = (d: PetDrop): MapKey | null => d.map ?? mapOf(d.mapId);
@@ -77,6 +79,8 @@ export interface MapData {
   bundledDrops: string; // the bundled drops (src/assets/pet-drops.json) merged in, by their date: "" = none yet
   mobPets: Record<string, number>; // mob (lower case) → the pet its kills give, as the player set it (`linkKinds`)
   shared: SharedCube[]; // cube spots from other players, replaced at each download
+  sharedSouls: SharedSoul[]; // soul point spots from other players, replaced at each download
+  soulsSentMs: number;  // your kills up to this time were sent to the Worker (`soulsToSend`)
 }
 
 /** Cube codes seen so far: 1301199, the cube of the 2026-10-23 20:18 recording (seen coming into view, then opened). */
@@ -88,7 +92,7 @@ const MAX_FOUND = 2000;
 /** Spawn-group colors, picked to stay apart on the map's greens, browns and blues. */
 export const GROUP_COLORS = ["#ff5a5f", "#ffb020", "#f5f05a", "#4fe08a", "#3fd6ff", "#5a8bff", "#c46bff", "#ff6bd0"];
 
-export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, kinds: {}, petNames: {}, soulsSeenMs: 0, bundledDrops: "", shared: [], mobPets: {} });
+export const emptyMap = (): MapData => ({ points: [], found: [], cubeCodes: [...KNOWN_CUBE_CODES], pets: [], souls: {}, items: {}, kinds: {}, petNames: {}, soulsSeenMs: 0, bundledDrops: "", shared: [], mobPets: {}, sharedSouls: [], soulsSentMs: 0 });
 
 /** Shared spots, cleaned (saved data and the Worker's answer alike). */
 export function cleanShared(raw: unknown): SharedCube[] {
@@ -121,7 +125,8 @@ export function cleanMap(raw: any): MapData {
   linkKinds({ pets, mobPets });
   return { points, found, cubeCodes: [...new Set([...KNOWN_CUBE_CODES, ...codes])].sort((a, b) => a - b), pets,
     souls: cleanSoulNames(raw?.souls), items: cleanSoulNames(raw?.items), kinds, petNames: cleanSoulNames(raw?.petNames), soulsSeenMs: ok(raw?.soulsSeenMs) ? raw.soulsSeenMs : 0,
-    bundledDrops: typeof raw?.bundledDrops === "string" ? raw.bundledDrops : "", shared: cleanShared(raw?.shared), mobPets };
+    bundledDrops: typeof raw?.bundledDrops === "string" ? raw.bundledDrops : "", shared: cleanShared(raw?.shared), mobPets,
+    sharedSouls: cleanSharedSouls(raw?.sharedSouls), soulsSentMs: ok(raw?.soulsSentMs) ? raw.soulsSentMs : 0 };
 }
 
 /** Pet number → mob, from drops that carry both (a kill's own; "Unknown mob #…" names nothing). Names already known stay. */
@@ -752,4 +757,79 @@ export function route<T extends XY>(stops: T[], start?: XY | null): T[] {
     }
   }
   return (start ? path.slice(1) : path) as T[];
+}
+
+// ---- Soul point spots shared with other players (the crowd Worker's /v1/souls, src/app/crowd.ts) ----
+
+/** A soul point spot other players reported: their kills of one pet within one 500-unit cell, averaged; n = installs. */
+export interface SharedSoul { mapId: number; kind: number; mob: string; x: number; y: number; z: number; n: number; atMs: number }
+/** Shared soul spots, cleaned (saved data and the Worker's answer alike). */
+export function cleanSharedSouls(raw: unknown): SharedSoul[] {
+  const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+  return (Array.isArray(raw) ? raw : [])
+    .filter((s: any) => s && Number.isInteger(s.mapId) && s.mapId > 0 && Number.isInteger(s.kind) && s.kind > 0 && ok(s.x) && ok(s.y) && ok(s.z))
+    .map((s: any): SharedSoul => ({ mapId: s.mapId, kind: s.kind, mob: typeof s.mob === "string" ? s.mob.trim().slice(0, 40) : "",
+      x: Math.round(s.x), y: Math.round(s.y), z: Math.round(s.z), n: Number.isInteger(s.n) && s.n > 0 ? s.n : 1, atMs: ok(s.atMs) ? s.atMs : 0 }));
+}
+
+/** Kills sent per request (the Worker takes at most 100). */
+export const SOUL_BATCH = 100;
+export interface SoulBatch { mapId: number; souls: { x: number; y: number; z: number; kind: number; mob: string; atMs: number }[]; lastMs: number }
+/**
+ * Your kills to share, oldest first, in runs of one map of at most SOUL_BATCH: the ones this app's meter recorded
+ * (`takeSouls`: id "kill:<name>:…", recorded by one of `mine`, your characters' names; friends' files and the bundled
+ * spots carry other names or none), with a pet number and a known map, after `soulsSentMs` (spots from before sharing
+ * go too, once). A mob not seen spawning goes without its name.
+ */
+export function soulsToSend(map: Pick<MapData, "pets" | "soulsSentMs">, mine: Set<string>): SoulBatch[] {
+  const gameMap = (d: PetDrop) => d.mapId ?? (d.map ? worldMap(d.map).gameIds[0] ?? null : null);
+  const own = map.pets
+    .filter((d) => d.id.startsWith("kill:") && mine.has(d.by) && d.kind != null && !d.linked && d.atMs > map.soulsSentMs && gameMap(d) != null)
+    .sort((a, b) => a.atMs - b.atMs);
+  const out: SoulBatch[] = [];
+  for (const d of own) {
+    const mapId = gameMap(d)!, last = out[out.length - 1];
+    const soul = { x: d.x, y: d.y, z: d.z, kind: d.kind!, mob: d.mob && !d.mob.startsWith("Unknown mob #") ? d.mob : "", atMs: d.atMs };
+    if (last && last.mapId === mapId && last.souls.length < SOUL_BATCH) { last.souls.push(soul); last.lastMs = d.atMs; }
+    else out.push({ mapId, souls: [soul], lastMs: d.atMs });
+  }
+  return out;
+}
+
+/**
+ * Other players' spots as drops, for the map and the Pets page: on a page map, named by the pet's mob (theirs, else
+ * the one known here), and left out where a drop of yours of the same pet is within NEAR_DROP (yours are enough there).
+ */
+export function sharedDrops(map: Pick<MapData, "pets" | "sharedSouls" | "kinds">): PetDrop[] {
+  if (!map.sharedSouls.length) return [];
+  const cell = (x: number) => Math.floor(x / NEAR_DROP);
+  const own = new Map<string, PetDrop[]>();
+  for (const d of map.pets) {
+    const kind = petOf(d, map.kinds), page = dropMap(d);
+    if (kind == null || !page) continue;
+    const key = `${page}|${kind}|${cell(d.x)}|${cell(d.y)}`;
+    own.get(key)?.push(d) ?? own.set(key, [d]);
+  }
+  const out: PetDrop[] = [];
+  for (const s of map.sharedSouls) {
+    const page = mapOf(s.mapId);
+    if (!page) continue;
+    let near = false;
+    for (let i = -1; i <= 1 && !near; i++) for (let j = -1; j <= 1 && !near; j++)
+      near = !!own.get(`${page}|${s.kind}|${cell(s.x) + i}|${cell(s.y) + j}`)?.some((d) => Math.hypot(d.x - s.x, d.y - s.y) < NEAR_DROP);
+    if (near) continue;
+    const mob = s.mob || map.kinds[String(s.kind)] || unknownMob(s.kind);
+    out.push({ id: `shared:${s.mapId}:${s.kind}:${s.x}:${s.y}`, pet: mob, mob, kind: s.kind, mapId: s.mapId, map: page, x: s.x, y: s.y, z: s.z,
+      atMs: s.atMs, by: s.n === 1 ? "another player" : `${s.n} other players`, shared: true });
+  }
+  return out;
+}
+
+/** Your drops and other players' spots (`sharedDrops`): what the map and the Pets page show. */
+export const allDrops = (map: Pick<MapData, "pets" | "sharedSouls" | "kinds">): PetDrop[] =>
+  map.sharedSouls.length ? [...map.pets, ...sharedDrops(map)] : map.pets;
+
+/** The shared spots' mob names name pets this app has not seen yet (Pets page, `soulOf`). Names already known stay. */
+export function learnSharedKinds(map: Pick<MapData, "sharedSouls" | "kinds">) {
+  for (const s of map.sharedSouls) if (s.mob && !s.mob.startsWith("Unknown mob #")) map.kinds[String(s.kind)] ??= s.mob;
 }

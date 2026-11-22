@@ -457,3 +457,47 @@ test("Ferocious Horn Den fit puts the recorded stops on the screenshots' arrow",
   assert.ok(near(applyAffine(HORN_FIT, 21909, -2724), 1207.6, 1093.8), "a stop in the east rooms (height -10,700)");
   assert.deepEqual([600091, 600092, 600093].map(mapOf), ["horn", "horn", "horn"]);
 });
+
+test("soul spots to share: your meter's kills only, by map, in time order, after the last sent", async () => {
+  const { soulsToSend, SOUL_BATCH } = await import("./map.ts");
+  const d = (id: string, by: string, atMs: number, extra: Partial<PetDrop> = {}): PetDrop =>
+    ({ id, pet: "Agrint", mob: "Thin Agrint", kind: 1068, mapId: 1110, x: 10, y: 20, z: 0, atMs, by, ...extra });
+  const pets = [
+    d("kill:Me:3:1", "Me", 3, { mapId: 600091 }),
+    d("kill:Me:1:1", "Me", 1),
+    d("kill:Friend:2:1", "Friend", 2),            // a friend's file
+    d("kill:Me:4:1", "Me", 4, { kind: undefined }),  // no pet number
+    d("kill:Me:5:1", "Me", 5, { linked: true }),     // its number guessed from the mob
+    d("kill:Me:6:1", "Me", 6, { mob: "Unknown mob #1068" }),
+    d("drop:Me:7", "Me", 7),                          // placed by hand
+    d("kill:Me:0:1", "Me", 0),                        // sent already
+  ];
+  const out = soulsToSend({ pets, soulsSentMs: 0.5 }, new Set(["Me"]));
+  assert.deepEqual(out.map((b) => [b.mapId, b.souls.map((s) => s.atMs), b.lastMs]), [[1110, [1], 1], [600091, [3], 3], [1110, [6], 6]]);
+  assert.equal(out[2].souls[0].mob, "", "an unknown mob goes without a name");
+  const many = Array.from({ length: SOUL_BATCH + 1 }, (_, i) => d(`kill:Me:${i + 1}:1`, "Me", i + 1));
+  assert.deepEqual(soulsToSend({ pets: many, soulsSentMs: 0 }, new Set(["Me"])).map((b) => b.souls.length), [SOUL_BATCH, 1]);
+});
+
+test("shared soul spots: cleaned, shown where you have none of that pet, named by their mob", async () => {
+  const { cleanSharedSouls, sharedDrops, allDrops, learnSharedKinds, NEAR_DROP } = await import("./map.ts");
+  const shared = cleanSharedSouls([
+    { mapId: 1110, kind: 1068, mob: "Thin Agrint", x: 100.4, y: 200, z: 1, n: 2, atMs: 5 },
+    { mapId: 1110, kind: 1068, mob: "", x: 100 + NEAR_DROP * 3, y: 200, z: 1, n: 1, atMs: 5 },
+    { mapId: 1110, kind: 1077, mob: "Starturtle", x: 100, y: 200, z: 1, n: 1, atMs: 5 }, // another pet at your spot
+    { mapId: 999999, kind: 1068, mob: "x", x: 0, y: 0, z: 0, n: 1 },                        // a map no page shows
+    { mapId: 1110, kind: 0, x: 0, y: 0, z: 0 }, { x: 1 },
+  ]);
+  assert.equal(shared.length, 4);
+  const mine: PetDrop = { id: "kill:Me:1:1", pet: "Agrint", mob: "Thin Agrint", kind: 1068, mapId: 1110, map: "asmodian", x: 150, y: 220, z: 0, atMs: 1, by: "Me" };
+  const map = { pets: [mine], sharedSouls: shared, kinds: {} as Record<string, string> };
+  const got = sharedDrops(map);
+  assert.deepEqual(got.map((g) => [g.kind, g.x, g.mob, g.by, g.shared]), [
+    [1068, 100 + NEAR_DROP * 3, "Unknown mob #1068", "another player", true],
+    [1077, 100, "Starturtle", "another player", true],
+  ]);
+  assert.equal(allDrops(map).length, 3);
+  learnSharedKinds(map);
+  assert.deepEqual(map.kinds, { 1068: "Thin Agrint", 1077: "Starturtle" });
+  assert.equal(sharedDrops(map)[0].mob, "Thin Agrint", "a mob learned from the others names the nameless spot");
+});

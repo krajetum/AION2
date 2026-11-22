@@ -288,3 +288,23 @@ test("gather post: shifted, bad gathers dropped, the cell per material", async (
   assert.equal(parseGatherPost({ install: "x", sentMs: NOW, mapId: 1, gathers: [] }, NOW), null);
   assert.equal(gatherCellOf(-185265, -56783), "-371,-114");
 });
+
+test("soul post: shifted, bad kills dropped, the mob's name cleaned, the cell per pet", async () => {
+  const { parseSoulPost, soulCellOf, MAX_SOULS, MAX_MOB } = await import("./validate.ts");
+  const p = parseSoulPost({ install: ID, sentMs: NOW - MIN, mapId: 600091, souls: [
+    { x: -13720, y: 15158, z: 13599, kind: 1068, mob: " Enhanced Krao Test Subject\n", atMs: NOW - 2 * MIN },
+    { x: 1, y: 2, z: 3, kind: 0, mob: "x", atMs: NOW },
+    { x: 1, y: 2, z: 3, kind: 1077, mob: "x", atMs: 0 },
+    { x: 2e6, y: 2, z: 3, kind: 1077, mob: "x", atMs: NOW },
+    { x: 5, y: 6, z: 7, kind: 1077, atMs: NOW - 30 * 24 * 3600_000 }, // no name, from a month ago: kept, as now
+    { x: 5, y: 6, z: 7, kind: 1077, mob: "y".repeat(80), atMs: NOW },
+  ] }, NOW);
+  assert.deepEqual(p, { install: ID.toLowerCase(), mapId: 600091, souls: [
+    { x: -13720, y: 15158, z: 13599, kind: 1068, mob: "Enhanced Krao Test Subject", atMs: NOW - MIN },
+    { x: 5, y: 6, z: 7, kind: 1077, mob: "", atMs: NOW },
+    { x: 5, y: 6, z: 7, kind: 1077, mob: "y".repeat(MAX_MOB), atMs: NOW + MIN },
+  ] });
+  assert.equal(parseSoulPost({ install: ID, sentMs: NOW, mapId: 1, souls: Array(MAX_SOULS + 1).fill({}) }, NOW), null);
+  assert.equal(parseSoulPost({ install: ID, sentMs: NOW, mapId: 0, souls: [] }, NOW), null);
+  assert.equal(soulCellOf(-13720, 15158), "-28,30");
+});

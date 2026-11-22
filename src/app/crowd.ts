@@ -6,6 +6,7 @@ import type { MeterUpdate, OpenedCube } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
 import { crowd } from "../infra/crowd.ts";
 import { cleanSharedGathers, toSend } from "../domain/gathering.ts";
+import { cleanSharedSouls, learnSharedKinds, soulsToSend } from "../domain/map.ts";
 
 /** Seconds between boss reads (the Worker can ask for slower). */
 export let bossEvery = MIN_EVERY;
@@ -66,6 +67,32 @@ export async function flushGathers(data: AppData): Promise<boolean> {
     moved = true;
   }
   return moved;
+}
+
+/** Your characters' names: the kills this app's meter recorded carry one (`soulsToSend`). */
+const myNames = (data: AppData) => new Set([...Object.keys(data.pets ?? {}), ...Object.keys(data.wallets ?? {})].filter(Boolean));
+
+/** Your kills that gave soul points, to the Worker, per map in batches; soulsSentMs moves after each batch taken. Returns true if it moved. */
+export async function flushSouls(data: AppData): Promise<boolean> {
+  if (!data.settings.crowdShare) return false;
+  let moved = false;
+  for (const { mapId, souls, lastMs } of soulsToSend(data.map, myNames(data))) {
+    try {
+      await crowd("/v1/souls", { install: data.install, sentMs: Date.now(), mapId, souls });
+    } catch (e) { warn("soul upload")(e); return moved; } // the rest next time, from where it stopped
+    data.map.soulsSentMs = Math.max(data.map.soulsSentMs, lastMs);
+    moved = true;
+  }
+  return moved;
+}
+
+/** Soul point spots other players reported into map.sharedSouls. Returns true if it changed data. */
+export async function syncSouls(data: AppData): Promise<boolean> {
+  try {
+    data.map.sharedSouls = cleanSharedSouls((await crowd("/v1/souls"))?.spots);
+    learnSharedKinds(data.map);
+    return true;
+  } catch (e) { warn("soul download")(e); return false; }
 }
 
 /** Gathering spots other players reported into gathering.shared. Returns true if it changed data. */
