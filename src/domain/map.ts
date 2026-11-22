@@ -4,7 +4,7 @@
 import { KNOWN_PET_NAMES } from "./pet-names.ts";
 
 /** The maps the page offers: one image each, with its own points and fit. */
-export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire" | "draupnir" | "vakron";
+export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire" | "draupnir" | "vakron" | "horn";
 export interface WorldMap {
   key: MapKey;
   name: string;
@@ -156,7 +156,7 @@ export function linkKinds(map: Pick<MapData, "pets" | "mobPets">): number {
   return changed;
 }
 
-export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu" || k === "fire" || k === "draupnir" || k === "vakron";
+export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu" || k === "fire" || k === "draupnir" || k === "vakron" || k === "horn";
 
 /**
  * The meter's cube news into the save: new codes, and openings not already found at the same spot
@@ -385,6 +385,16 @@ export const VAKRON_FIT: Affine = [0.0219926, 0, 1015.466, 0, 0.0220082, 846.433
 export const VAKRON_MAP_IDS = [600071, 600072, 600073];
 
 /**
+ * Ferocious Horn Den (src/assets/ncsoft/ferocious-horn-den-map.webp: two of the player's screenshots at the same zoom
+ * joined on the entrance arrow and the boss icon), maps 600091-600093 (recording of 2026-11-22 16:07, the three
+ * difficulties' map loads, their entrance on the same spot). No fit yet: unlike the other maps this picture is turned
+ * about 180° against the game's axes (the player walked east and north in game, south-west on the picture), and the
+ * second screenshot's spot is not certain (a teleport arrival at 0:49 or a stop at 2:53), so two points can't pin it;
+ * until one is bundled the player's 3+ references place you.
+ */
+export const HORN_MAP_IDS = [600091, 600092, 600093];
+
+/**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
  * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot
  * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT. Krao Cave (a dungeon): the player's
@@ -392,7 +402,8 @@ export const VAKRON_MAP_IDS = [600071, 600072, 600073];
  * the player's screenshot (2026-11-22), map 600011, URUGUGU_FIT. Fire Temple (a dungeon):
  * the player's screenshot (2026-11-22), map 600021, FIRE_FIT. Draupnir (a dungeon):
  * two screenshots joined (2026-11-22), maps 600031-600033, DRAUPNIR_FIT. Vakron Sky Island
- * (a dungeon): three screenshots joined (2026-11-22), maps 600071-600073, VAKRON_FIT.
+ * (a dungeon): three screenshots joined (2026-11-22), maps 600071-600073, VAKRON_FIT. Ferocious Horn
+ * Den (a dungeon): two screenshots joined (2026-11-22), maps 600091-600093, no fit yet.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
@@ -403,6 +414,7 @@ export const MAPS: WorldMap[] = [
   { key: "fire", name: "Fire Temple", gameIds: FIRE_MAP_IDS, fit: FIRE_FIT, bundled: true, dungeon: true },
   { key: "draupnir", name: "Draupnir", gameIds: DRAUPNIR_MAP_IDS, fit: DRAUPNIR_FIT, bundled: true, dungeon: true },
   { key: "vakron", name: "Vakron Sky Island", gameIds: VAKRON_MAP_IDS, fit: VAKRON_FIT, bundled: true, dungeon: true },
+  { key: "horn", name: "Ferocious Horn Den", gameIds: HORN_MAP_IDS, fit: null, bundled: true, dungeon: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**
