@@ -434,5 +434,5 @@ test("Fire Temple fit puts the recorded spots on the screenshots' arrow", () => 
   const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 2;
   assert.ok(near(applyAffine(FIRE_FIT, 12730, -22720), 1133, 161), "the entrance");
   assert.ok(near(applyAffine(FIRE_FIT, 20554, -4689), 1328, 589), "the teleport");
-  assert.equal(mapOf(600021), "fire");
+  assert.deepEqual([600021, 600022].map(mapOf), ["fire", "fire"], "both difficulties");
 });

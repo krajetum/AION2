@@ -355,10 +355,11 @@ export const URUGUGU_MAP_IDS = [600011, 600012];
  * Game → pixel fit of the bundled Fire Temple map (src/assets/ncsoft/fire-temple-map.webp), from the packet recording
  * of 2026-11-22 15:33 (map 600021, its map load): where the player stood at the entrance (0:22-0:26) and at the teleport
  * the run ended on (2:48-2:51), against the arrow's centre in two screenshots (the second the same zoom, shifted 72,
- * 22 px). Two points, axis-aligned; the 26 positions walked in between all fall on the temple. One run.
+ * 22 px). Two points, axis-aligned; the 26 positions walked in between all fall on the temple. Another difficulty
+ * loaded as 600022, its first position by the entrance on the same fit: one layout.
  */
 export const FIRE_FIT: Affine = [0.0249233, 0, 815.726, 0, 0.0237369, 700.302];
-export const FIRE_MAP_IDS = [600021];
+export const FIRE_MAP_IDS = [600021, 600022];
 
 /**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
