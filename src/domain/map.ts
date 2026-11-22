@@ -385,14 +385,16 @@ export const VAKRON_FIT: Affine = [0.0219926, 0, 1015.466, 0, 0.0220082, 846.433
 export const VAKRON_MAP_IDS = [600071, 600072, 600073];
 
 /**
- * Ferocious Horn Den (src/assets/ncsoft/ferocious-horn-den-map.webp: two of the player's screenshots at the same zoom
- * joined on the entrance arrow and the boss icon), maps 600091-600093 (recording of 2026-11-22 16:07, the three
- * difficulties' map loads, their entrance on the same spot). No fit: four marked spots of a second recording (16:16,
- * the entrance and three screenshots taken at the player's marks) fit no single picture of the game's plane, axis-
- * aligned, turned or mirrored (180-460 px off); the walk changes floor at each step (height 14,500 → -12,800 → -10,700
- * → -9,300 → +26,000), and the picture seems to draw the floors as pieces placed side by side. One fit per floor
- * would need two marks on each; until then the player's 3+ references place you on the part they were made on.
+ * Game → pixel fit of the bundled Ferocious Horn Den map (src/assets/ncsoft/ferocious-horn-den-map.webp: two of the
+ * player's screenshots at the same zoom joined on the arrow and the boss icon), from the packet recording of
+ * 2026-11-22 16:25 (map 600091): eleven screenshots taken where the player stopped, at every height of the den (13,200
+ * to 17,500 and -12,900 to -8,300), each matched 1:1 to the picture, against where the recording had the player at
+ * the screenshot's time. Least squares on the eight taken standing still: within 10 px of them, the same scale on
+ * both axes to 0.1%; the three taken walking within 10-110 px. The walks of three runs follow the corridors. (A first
+ * try put the entrance at the round room: that screenshot was taken 2 min into the run, not at the start.) Three
+ * difficulties loaded as 600091-600093, their entrance on the same spot.
  */
+export const HORN_FIT: Affine = [0.0265788, 0, 629.167, 0, 0.0265561, 1168.332];
 export const HORN_MAP_IDS = [600091, 600092, 600093];
 
 /**
@@ -404,7 +406,7 @@ export const HORN_MAP_IDS = [600091, 600092, 600093];
  * the player's screenshot (2026-11-22), map 600021, FIRE_FIT. Draupnir (a dungeon):
  * two screenshots joined (2026-11-22), maps 600031-600033, DRAUPNIR_FIT. Vakron Sky Island
  * (a dungeon): three screenshots joined (2026-11-22), maps 600071-600073, VAKRON_FIT. Ferocious Horn
- * Den (a dungeon): two screenshots joined (2026-11-22), maps 600091-600093, no fit yet.
+ * Den (a dungeon): two screenshots joined (2026-11-22), maps 600091-600093, HORN_FIT.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
@@ -415,7 +417,7 @@ export const MAPS: WorldMap[] = [
   { key: "fire", name: "Fire Temple", gameIds: FIRE_MAP_IDS, fit: FIRE_FIT, bundled: true, dungeon: true },
   { key: "draupnir", name: "Draupnir", gameIds: DRAUPNIR_MAP_IDS, fit: DRAUPNIR_FIT, bundled: true, dungeon: true },
   { key: "vakron", name: "Vakron Sky Island", gameIds: VAKRON_MAP_IDS, fit: VAKRON_FIT, bundled: true, dungeon: true },
-  { key: "horn", name: "Ferocious Horn Den", gameIds: HORN_MAP_IDS, fit: null, bundled: true, dungeon: true },
+  { key: "horn", name: "Ferocious Horn Den", gameIds: HORN_MAP_IDS, fit: HORN_FIT, bundled: true, dungeon: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**

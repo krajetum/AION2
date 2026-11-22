@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind, petStops, route, pathLength } from "./map.ts";
 import { readFileSync } from "node:fs";
-import { ABYSS_FIT, ELYOS_FIT, KRAO_FIT, KRAO_MAP_IDS, URUGUGU_FIT, FIRE_FIT, DRAUPNIR_FIT, VAKRON_FIT, isMapKey, worldMap, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { ABYSS_FIT, ELYOS_FIT, KRAO_FIT, KRAO_MAP_IDS, URUGUGU_FIT, FIRE_FIT, DRAUPNIR_FIT, VAKRON_FIT, HORN_FIT, isMapKey, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
 
@@ -451,7 +451,9 @@ test("Vakron Sky Island fit puts the recorded spots on the screenshots' arrow", 
   assert.deepEqual([600071, 600072, 600073].map(mapOf), ["vakron", "vakron", "vakron"]);
 });
 
-test("Ferocious Horn Den: its three difficulties, no bundled fit yet", () => {
+test("Ferocious Horn Den fit puts the recorded stops on the screenshots' arrow", () => {
+  const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 11;
+  assert.ok(near(applyAffine(HORN_FIT, -13720, 15158), 259.5, 1574), "a stop in the west rooms (height 13,600)");
+  assert.ok(near(applyAffine(HORN_FIT, 21909, -2724), 1207.6, 1093.8), "a stop in the east rooms (height -10,700)");
   assert.deepEqual([600091, 600092, 600093].map(mapOf), ["horn", "horn", "horn"]);
-  assert.equal(worldMap("horn").fit, null);
 });
