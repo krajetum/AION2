@@ -23,16 +23,17 @@
   const shows = (f: Filter, p: Pet) =>
     f === "all" || (f === "wanted" ? !maxed(p) : f === "maxed" ? maxed(p) : p.level === Number(f.slice(1)));
   let filter = $state<Filter>("wanted"), query = $state("");
-  // Where its soul points drop: a map with spots of it, or none known (pets from chests, dungeons, events).
-  type Where = "any" | MapKey | "none";
-  const WHERE: [Where, string][] = [["any", "All maps"], ...MAPS.map((m): [Where, string] => [m.key, m.name]), ["none", "Unknown"]];
+  // Where its soul points drop: a world map with spots of it, any dungeon, or none known (chests, merchants).
+  type Where = "any" | MapKey | "dungeons" | "none";
+  const WHERE: [Where, string][] = [["any", "All maps"], ...MAPS.filter((m) => !m.dungeon).map((m): [Where, string] => [m.key, m.name]), ["dungeons", "Dungeons"], ["none", "Chests / Merchant"]];
   let where = $state<Where>("any");
   // Pet type (feral, intellect, nature...) from the database; a pet it doesn't list has none.
   let kind = $state<PetType | "any">("any");
   const KINDS: [PetType | "any", string][] = [["any", "All types"], ...PET_TYPES];
   const typeName = (id: number) => PET_TYPES.find(([t]) => t === PET_TYPE[id])?.[1] ?? "—";
   const mapsOf = (id: number) => [...new Set((spots.get(id) ?? []).map(dropMap).filter((m): m is MapKey => !!m))];
-  const placed = (w: Where, id: number) => w === "any" || (w === "none" ? !mapsOf(id).length : mapsOf(id).includes(w));
+  const placed = (w: Where, id: number) => w === "any" || (w === "none" ? !mapsOf(id).length
+    : w === "dungeons" ? mapsOf(id).some((m) => worldMap(m).dungeon) : mapsOf(id).includes(w));
 
   // Yours: the character the meter says you play, else the one read last.
   const me = $derived(ui.meter?.profile?.name || Object.entries(ui.data.pets).sort((a, b) => b[1].atMs - a[1].atMs)[0]?.[0] || "");
@@ -96,7 +97,7 @@
 <Panel title={me} count="{num(owned)} owned · {num(full)} at level {MAX_LEVEL} · read {hm(collection.atMs)}">
   <div class="mb-3 flex flex-wrap items-center gap-2">
     {@render seg("Show", FILTERS, filter, (v) => { filter = v as typeof filter; })}
-    {@render seg("Where it drops", WHERE, where, (v) => { where = v as typeof where; }, "Unknown: no spot on any map yet (chests, dungeons, events, or not found)")}
+    {@render seg("Where it drops", WHERE, where, (v) => { where = v as typeof where; }, "Chests / Merchant: no spot on any map yet: soul points from chests or bought from a merchant (or a mob not found yet)")}
     {@render seg("Type", KINDS, kind, (v) => { kind = v as typeof kind; })}
     <Input class="h-8 w-56" type="search" placeholder="Search a pet or a number" aria-label="Search a pet" autocomplete="off" bind:value={query} />
   </div>
@@ -113,7 +114,7 @@
           <Table.Cell>{#if maxed(p)}<span class="text-muted-foreground">done</span>{:else}<span class="flex items-center gap-2"><Progress class="w-24" value={share(p) * 100} />
             <span class="tabular-nums">{p.points}/{needed(p)}</span></span>{/if}</Table.Cell>
           <Table.Cell class="text-right">{n || ""}</Table.Cell>
-          <Table.Cell class="text-muted-foreground">{mapsOf(p.id).map((m) => worldMap(m).name).join(", ") || "—"}</Table.Cell>
+          <Table.Cell class="text-muted-foreground">{mapsOf(p.id).map((m) => worldMap(m).name).join(", ") || "Chests / Merchant"}</Table.Cell>
           <Table.Cell>{#if n}<Button variant="outline" size="sm" title="Open the map on this pet's spots" onclick={() => showOnMap(p.id)}><ICON.map />Show on map</Button>{/if}</Table.Cell>
         </Table.Row>
       {:else}<Table.Row><Table.Cell colspan={8} class="text-muted-foreground">{query.trim() ? "No pet matches." : filter === "wanted" ? "Every pet you own is at level 3." : "No pet at this level."}</Table.Cell></Table.Row>{/each}
