@@ -54,3 +54,21 @@ test("spots to send: every one not sent yet (saved ones too), per map in batches
   for (let i = 0; i < SEND_BATCH + 5; i++) d.spots.push({ mapId: 1, item: 1, x: i * 1000, y: 0, z: 0, exact: true, count: 1, amount: 1, lastMs: 100 + i });
   assert.deepEqual(toSend(d).filter((b) => b.mapId === 1).map((b) => b.spots.length), [SEND_BATCH, 5]);
 });
+
+test("a node is one spot of its plain material, whatever grade came out", async () => {
+  const { baseMaterials, gatherMarks, materials, emptyGathering } = await import("./gathering.ts");
+  const items = { "610610013": "Odyle", "610610014": "Fine Odyle", "610610015": "Pure Odyle", "610610016": "Radiant Odyle", "610660030": "Fine Ruby Gemstone", "999": "Fine Wine" };
+  const base = baseMaterials(items);
+  assert.equal(base.get(610610015), 610610013);
+  assert.equal(base.get(610610016), 610610013);
+  assert.equal(base.has(610660030), false, "no plain Ruby Gemstone listed: kept");
+  assert.equal(base.has(999), false);
+  const g = emptyGathering();
+  const spot = (item: number, x: number, count: number, exact = false) => ({ mapId: 1110, item, x, y: 0, z: 0, exact, count, amount: count * 2, lastMs: x });
+  g.spots = [spot(610610013, 0, 3), spot(610610015, 100, 1, true), spot(610610014, 5000, 2)];
+  g.shared = [{ mapId: 1110, item: 610610016, x: 50, y: 0, z: 0, n: 4 }];
+  const marks = gatherMarks(g, base);
+  assert.deepEqual(marks.map((m) => [m.item, m.x, m.mine?.count, m.mine?.amount, m.players]), [[610610013, 100, 4, 8, 4], [610610013, 5000, 2, 4, 0]]);
+  assert.equal(g.spots[0].count, 3, "your saved spots unchanged");
+  assert.deepEqual(materials(marks), [[610610013, 2]]);
+});
