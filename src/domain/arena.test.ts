@@ -66,3 +66,13 @@ test("Abyss PvP is no arena match (2026-10-29: 106 opponents in 6 'rounds')", ()
   assert.equal(logMatch(log, { mapId: 20, startMs: 1, endMs: 2, players: [] }), false);
   assert.equal(log.matches.length, 0);
 });
+
+test("a dungeon is never a match nor a PvP kill", async () => {
+  const { logMatch, logKills, isDungeonMap } = await import("./arena.ts");
+  const log = { matches: [], maps: {}, kills: [] } as any;
+  assert.equal(isDungeonMap(600023), true);
+  assert.equal(isDungeonMap(61), false);
+  assert.equal(logMatch(log, { mapId: 600023, startMs: 1, endMs: 2, players: [] } as any), false);
+  assert.equal(logKills(log, [{ atMs: 1, kind: "kill", mapId: 600023, other: { id: 1, name: "BM" } } as any]), 0);
+  assert.equal(logKills(log, [{ atMs: 1, kind: "kill", mapId: 61, other: { id: 1, name: "punkgob" } } as any]), 1);
+});
