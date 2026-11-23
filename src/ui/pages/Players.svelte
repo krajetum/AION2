@@ -7,8 +7,8 @@
   import Panel from "$lib/components/app/Panel.svelte";
   // Player search: the official character search and profiles (infra/armory.ts), as on NCSOFT's site.
   import { pickFound, profilePage, type Found, type Profile } from "../../domain/armory.ts";
-  import { gearUrl, REGIONS, regionOf, serversIn } from "../../domain/servers.ts";
-  import { equipmentOf, profileOf, searchPlayers } from "../../infra/armory.ts";
+  import { gearUrl, REGIONS, regionOf } from "../../domain/servers.ts";
+  import { equipmentOf, profileOf, searchPlayers, searchRegion } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
   import { hm, num } from "../format.ts";
   import DaevanionBoards from "../parts/DaevanionBoards.svelte";
@@ -23,25 +23,24 @@
   // A player card's "Full profile" fills these in (ui.lookup); else your own server.
   const asked = ui.lookup;
   let region = $state(regionOf(asked?.serverId ?? mine) || "eu");
-  let serverId = $state(asked?.serverId ?? (regionOf(mine) ? mine : 0));
   let name = $state(asked?.name ?? "");
-  const servers = $derived(serversIn(region));
-  $effect(() => { if (!servers.some((s) => s.id === serverId)) serverId = servers[0]?.id ?? 0; });
 
   let found = $state<Found[] | null>(null);
   let searching = $state(false), error = $state("");
   let open = $state<Found | null>(null);
   let profile = $state<Profile | null>(null), loading = $state(false), profileError = $state("");
 
+  let want = asked?.serverId ?? 0; // the server a card or "My character" asked for, to open that one among several
   async function search() {
     const n = name.trim();
-    if (!n || !serverId) return;
+    if (!n || !region) return;
     searching = true; error = ""; open = null; profile = null;
     try {
-      found = await searchPlayers(n, serverId);
-      // An exact match opens by itself.
+      found = await searchRegion(n, region);
+      // An exact match opens by itself: the one on the server asked for (a card's "Full profile", your character), else the only one.
       const exact = found.filter((c) => c.name.toLowerCase() === n.toLowerCase());
-      if (exact.length === 1) show(exact[0]);
+      const pick = exact.find((c) => c.serverId === want) ?? (exact.length === 1 ? exact[0] : null);
+      if (pick) show(pick);
     } catch (e) { found = null; error = e instanceof Error ? e.message : String(e); }
     searching = false;
   }
@@ -65,7 +64,7 @@
     if (!me) return;
     touched = true;
     region = regionOf(me.serverId);
-    serverId = me.serverId;
+    want = me.serverId;
     name = me.name;
     void search();
   }
@@ -93,14 +92,11 @@
 <form class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm" onsubmit={(e) => { e.preventDefault(); void search(); }}>
   <label class="flex items-center gap-1.5 text-muted-foreground">Name <Input class="w-52" bind:value={name} placeholder="Character name" aria-label="Character name" autocomplete="off" required /></label>
   <label class="flex items-center gap-1.5 text-muted-foreground">Region <NativeSelect bind:value={region}>{#each Object.values(REGIONS) as r}<NativeSelectOption value={r}>{REGION_NAMES[r] ?? r}</NativeSelectOption>{/each}</NativeSelect></label>
-  <label class="flex items-center gap-1.5 text-muted-foreground">Server <NativeSelect bind:value={serverId}>
-    {#each ["Elyos", "Asmodian"] as side, k}<optgroup label={side}>{#each servers.filter((s) => Math.floor(s.id / 1000) === k + 1) as s (s.id)}<option value={s.id}>{s.name}</option>{/each}</optgroup>{/each}
-  </NativeSelect></label>
-  <Button type="submit" disabled={searching} onclick={() => { touched = true; }}>{searching ? "Searching…" : "Search"}</Button>
+  <Button type="submit" disabled={searching} onclick={() => { touched = true; want = 0; }}>{searching ? "Searching…" : "Search"}</Button>
   {#if me && !(open && open.serverId === me.serverId && open.name.toLowerCase() === me.name.toLowerCase())}
     <Button type="button" variant="ghost" title="Back to the character you play in game" onclick={openMe}>← My character ({me.name})</Button>{/if}
 </form>
-<p class="hint mt-0 mb-3">From the official character search: names containing what you type, on one server. Only Europe has been checked.</p>
+<p class="hint mt-0 mb-3">From the official character search: names containing what you type, on every server of the region (one search per server, so a few seconds). Only Europe has been checked.</p>
 {#if error}<p class="hint error">The search could not be read ({error}).</p>{/if}
 
 {#if found}<Panel title="Characters" count={found.length}>
@@ -108,7 +104,7 @@
     <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Name</Table.Head><Table.Head class="text-right">Level</Table.Head><Table.Head>Server</Table.Head></Table.Row></Table.Header>
     <Table.Body>{#each found as c (c.characterId)}<Table.Row data-state={open === c ? "selected" : undefined}>
       <Table.Cell><Button variant="link" size="sm" class="px-0" onclick={() => show(c)}>{c.name}</Button></Table.Cell><Table.Cell class="text-right">{c.level ?? "—"}</Table.Cell><Table.Cell>{c.serverName}</Table.Cell>
-    </Table.Row>{:else}<Table.Row><Table.Cell class="text-muted-foreground" colspan={3}>No character with that name on this server.</Table.Cell></Table.Row>{/each}</Table.Body>
+    </Table.Row>{:else}<Table.Row><Table.Cell class="text-muted-foreground" colspan={3}>No character with that name in this region.</Table.Cell></Table.Row>{/each}</Table.Body>
   </Table.Root>
 </Panel>{/if}
 

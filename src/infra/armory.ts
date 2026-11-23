@@ -7,6 +7,7 @@ import {
   daevanionUrl, equipmentUrl, infoUrl, itemUrl, parseBoard, parseEquipment, parseInfo, parseItem, parseSearch, pickFound, searchUrl,
   type Board, type Equipment, type Found, type ItemDetail, type Piece, type Profile,
 } from "../domain/armory.ts";
+import { serversIn } from "../domain/servers.ts";
 
 const SEARCH_MS = 60_000, PROFILE_MS = 10 * 60_000, FAILED_MS = 60_000;
 /** Requests in flight at once, and the least time between two starts. A request takes ~1 s to answer, so one at a time
@@ -53,6 +54,20 @@ export function searchPlayers(name: string, serverId: number): Promise<Found[]> 
     const url = searchUrl(name, serverId);
     return url ? parseSearch(await getJson(url)) : [];
   });
+}
+
+/**
+ * Characters whose name contains `name` on every server of a region (`servers.ts` `serversIn`): the official search
+ * asks for one server at a time, so one search per server (12 in Europe), through the same 4-at-a-time queue and each
+ * kept a minute. Exact names first, then by level. Throws only when no server could be read.
+ */
+export async function searchRegion(name: string, region: string): Promise<Found[]> {
+  const all = await Promise.allSettled(serversIn(region).map((s) => searchPlayers(name, s.id)));
+  const ok = all.filter((r): r is PromiseFulfilledResult<Found[]> => r.status === "fulfilled");
+  if (!ok.length && all.length) throw (all[0] as PromiseRejectedResult).reason;
+  const n = name.trim().toLowerCase(), seen = new Set<string>();
+  return ok.flatMap((r) => r.value).filter((c) => !seen.has(c.characterId) && !!seen.add(c.characterId))
+    .sort((a, b) => Number(b.name.toLowerCase() === n) - Number(a.name.toLowerCase() === n) || (b.level ?? 0) - (a.level ?? 0) || a.name.localeCompare(b.name));
 }
 
 /** A character's profile, by the id the search gave. */
