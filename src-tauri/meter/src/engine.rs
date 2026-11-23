@@ -302,6 +302,8 @@ impl Engine {
     /// Kills and deaths from the deaths logged since the last look, read before a map load takes the
     /// PvP hits away (`arena_match`); a death is read 2.5 s late, for its killing blow to arrive.
     fn kills(&self) -> Vec<crate::kills::Kill> {
+        // Your team in this arena: the line-up read since the last zone change (never another arena's).
+        let since = self.arena.lock().zone_since_ms;
         let mut k = self.kills.lock();
         let Some(me) = self.storage.local_player_id().map(|id| id as i32) else { return k.1.clone() };
         let until = crate::clock::now_ms() - 2_500;
@@ -312,8 +314,12 @@ impl Engine {
         if !deaths.is_empty() {
             let hits = self.storage.pvp_ledger();
             let s = &self.storage;
+            let (line_up, fresh) = crate::roster::latest(since);
+            let me_name = s.local_profile().name;
+            let my_team = me_name.as_deref().filter(|_| fresh).and_then(|m| line_up.iter().find(|p| p.name == m)).map(|p| p.team);
+            let team = |n: &str| my_team.is_some() && line_up.iter().any(|p| p.name == n && Some(p.team) == my_team);
             let found = crate::kills::find(me, &deaths, k.0, &hits, &|id| s.get_nickname(id).unwrap_or_default(),
-                &|n| match s.player_server(n) { 0 => crate::roster::server_of(n), id => id }, &s.fight_roster(), s.current_map_id());
+                &|n| match s.player_server(n) { 0 => crate::roster::server_of(n), id => id }, &s.fight_roster(), &team, s.current_map_id());
             k.1.extend(found);
             let extra = k.1.len().saturating_sub(50);
             k.1.drain(..extra);
