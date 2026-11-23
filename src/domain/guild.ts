@@ -5,8 +5,11 @@ import { personalBests, yourDps, type Best, type FightRecord } from "./fights.ts
 import { BUFF_KINDS, type BuffUp, type PlayerRow, type Profile, type SkillRow } from "./meter.ts";
 
 export interface GuildShare { gear: boolean; fights: boolean }
-/** This install's guild (AppData.guild). memberCode = the code it joined with (to invite others), officerKey = officers only. */
-export interface GuildLink { id: string; name: string; serverId: number; memberCode?: string; officerKey?: string; share: GuildShare }
+/**
+ * This install's guild (AppData.guild). memberCode = the code it joined with (to invite others), officerKey = officers only,
+ * char = the character you chose to be in it as (My settings): only its card is sent; none = `cardToSend`'s rule.
+ */
+export interface GuildLink { id: string; name: string; serverId: number; memberCode?: string; officerKey?: string; char?: string; share: GuildShare }
 export interface GuildMember {
   /** serverId: the member's game server, null when their card predates it (the guild's then, a guess). */
   name: string; className: string; serverId: number | null; itemLevel: number | null; combatPower: number | null;
@@ -64,7 +67,22 @@ export function cleanGuild(raw: unknown): GuildLink | null {
   };
   if (typeof raw.memberCode === "string" && raw.memberCode) g.memberCode = raw.memberCode;
   if (typeof raw.officerKey === "string" && raw.officerKey) g.officerKey = raw.officerKey;
+  if (typeof raw.char === "string" && raw.char) g.char = raw.char;
   return g;
+}
+
+/**
+ * Whether the character played now (`p`) should be your card in the static, `me` = your card as the Worker has it.
+ * The one you chose (`link.char`) only. Else the one you are in it as; another character of yours on the static's
+ * server only with a higher item level: playing an alt used to put the alt in the static instead of your main
+ * (2026-11-23: three members listed by their alts in the Raid plan), and a main is the higher one.
+ */
+export function cardToSend(p: Profile | null | undefined, link: GuildLink, me: GuildMember | null | undefined): boolean {
+  if (!p?.name) return false;
+  if (link.char) return p.name === link.char;
+  if (!me) return false; // not known yet: after the first sync
+  if (p.name === me.name) return true;
+  return p.serverId === link.serverId && (p.gearScore ?? 0) > (me.itemLevel ?? 0) && me.itemLevel !== null;
 }
 
 /** Your card from what the meter saw (gear score = item level). */
