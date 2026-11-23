@@ -2,6 +2,7 @@
 // for zoomed-out views, pan/zoom math, and the fit from game coordinates to image pixels.
 // Pure, no DOM. The image itself is never in the save file (infra/map-image.ts keeps it local).
 import { KNOWN_PET_NAMES } from "./pet-names.ts";
+import { MOB_SOULS } from "./mob-souls.ts";
 
 /** The maps the page offers: one image each, with its own points and fit. */
 export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire" | "draupnir" | "vakron" | "horn";
@@ -627,6 +628,8 @@ export function takeSouls(map: MapData, kills: SoulKill[], by: string): boolean 
  * the same. Null when fewer, or when they disagree (the meter pairs points with kills by order, so a few are off).
  */
 export function mobKind(map: Pick<MapData, "pets">, mob: string): number | null {
+  const known = gameKind(mob);
+  if (known != null) return known;
   const m = mob.trim().toLowerCase();
   let kind: number | null = null, n = 0;
   for (const d of map.pets) {
@@ -636,6 +639,27 @@ export function mobKind(map: Pick<MapData, "pets">, mob: string): number | null 
     n++;
   }
   return n >= 3 ? kind : null;
+}
+
+const PET_BY_NAME = new Map(Object.entries(KNOWN_PET_NAMES).map(([k, n]) => [n.toLowerCase(), Number(k)]));
+/**
+ * The pet number a mob's kills give, from the game's data (`mob-souls.ts`: the soul its kills drop, named like the
+ * pet): null when the mob isn't listed, drops several souls, or its soul has no known pet number.
+ */
+export function gameKind(mob: string | undefined): number | null {
+  const souls = mob ? MOB_SOULS[mob.trim().toLowerCase()] : undefined;
+  return souls?.length === 1 ? PET_BY_NAME.get(souls[0].toLowerCase()) ?? null : null;
+}
+
+/**
+ * A kill as the Map and the Pets page show it: under the pet its mob gives in the game's data. The meter gave a gain
+ * to the oldest kill waiting until 2026-11-22 (`souls.rs` `pick`), so a kill's mob and place were right but its pet
+ * number often another mob's (about 1 in 8 of the bundled and recorded kills); the saved drop is left as it was.
+ */
+export function asGameSays(d: PetDrop): PetDrop {
+  if (d.item != null || !d.mob) return d;
+  const k = gameKind(d.mob);
+  return k == null || k === d.kind ? d : { ...d, kind: k, pet: KNOWN_PET_NAMES[k] };
 }
 
 /** A known spot of the same mob this close (game units) or closer says which map a kill is on. */
@@ -835,6 +859,7 @@ export function soulsToSend(map: Pick<MapData, "pets" | "soulsSentMs" | "petName
   for (const [k, n] of Object.entries(KNOWN_PET_NAMES)) byName.set(n.toLowerCase(), Number(k));
   for (const [k, n] of Object.entries(map.petNames)) byName.set(n.toLowerCase(), Number(k));
   const kindOf = (d: PetDrop): number | null => {
+    if (d.mob && d.item == null && gameKind(d.mob) != null) return gameKind(d.mob);
     if (d.mob) return d.kind != null && (!d.linked || map.mobPets[d.mob.toLowerCase()] === d.kind) ? d.kind : null;
     return d.kind ?? byName.get(d.pet.trim().toLowerCase()) ?? null;
   };
@@ -881,10 +906,10 @@ export function sharedDrops(map: Pick<MapData, "pets" | "sharedSouls" | "kinds" 
     for (let i = -1; i <= 1 && !near; i++) for (let j = -1; j <= 1 && !near; j++)
       near = !!own.get(`${page}|${s.kind}|${cell(s.x) + i}|${cell(s.y) + j}`)?.some((d) => Math.hypot(d.x - s.x, d.y - s.y) < NEAR_DROP);
     if (near) continue;
-    const pet = s.mob ? petOfMob(s.mob) : null;
+    const game = gameKind(s.mob), pet = s.mob && game == null ? petOfMob(s.mob) : null;
     if (pet != null && pet !== s.kind) continue;
-    const mob = s.mob || map.kinds[String(s.kind)] || unknownMob(s.kind);
-    out.push({ id: `shared:${s.mapId}:${s.kind}:${s.x}:${s.y}`, pet: mob, mob, kind: s.kind, mapId: s.mapId, map: page, x: s.x, y: s.y, z: s.z,
+    const mob = s.mob || map.kinds[String(s.kind)] || unknownMob(s.kind), kind = game ?? s.kind;
+    out.push({ id: `shared:${s.mapId}:${s.kind}:${s.x}:${s.y}`, pet: mob, mob, kind, mapId: s.mapId, map: page, x: s.x, y: s.y, z: s.z,
       atMs: s.atMs, by: s.n === 1 ? "another player" : `${s.n} other players`, shared: true });
   }
   return out;
@@ -892,7 +917,7 @@ export function sharedDrops(map: Pick<MapData, "pets" | "sharedSouls" | "kinds" 
 
 /** Your drops and other players' spots (`sharedDrops`): what the map and the Pets page show. */
 export const allDrops = (map: Pick<MapData, "pets" | "sharedSouls" | "kinds" | "mobPets">): PetDrop[] =>
-  map.sharedSouls.length ? [...map.pets, ...sharedDrops(map)] : map.pets;
+  [...map.pets.map(asGameSays), ...sharedDrops(map)];
 
 /** The shared spots' mob names name pets this app has not seen yet (Pets page, `soulOf`). Names already known stay. */
 export function learnSharedKinds(map: Pick<MapData, "sharedSouls" | "kinds">) {
