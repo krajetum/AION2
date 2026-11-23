@@ -18,6 +18,8 @@ use crate::combat::data_storage::{DataStorage, is_open_world_map};
 
 /// The Abyss's map id (the field-boss map `01 91` that lists its bosses; `src/domain/arena.ts` KNOWN_MAPS).
 const ABYSS_MAP: i32 = 20;
+/// Instance dungeons (Krao Cave 600001 … Ferocious Horn Den 600093): never an arena match or a PvP kill.
+fn is_dungeon_map(map: i32) -> bool { (600_000..700_000).contains(&map) }
 use crate::combat::dps_calculator::DpsCalculator;
 use crate::combat::ping_tracker::PingTracker;
 use crate::i18n::lookup::{NpcLookup, SkillLookup};
@@ -318,8 +320,8 @@ impl Engine {
             let me_name = s.local_profile().name;
             let my_team = me_name.as_deref().filter(|_| fresh).and_then(|m| line_up.iter().find(|p| p.name == m)).map(|p| p.team);
             let team = |n: &str| my_team.is_some() && line_up.iter().any(|p| p.name == n && Some(p.team) == my_team);
-            let found = crate::kills::find(me, &deaths, k.0, &hits, &|id| s.get_nickname(id).unwrap_or_default(),
-                &|n| match s.player_server(n) { 0 => crate::roster::server_of(n), id => id }, &s.fight_roster(), &team, s.current_map_id());
+            let found = if s.current_map_id().is_some_and(is_dungeon_map) { Vec::new() } else { crate::kills::find(me, &deaths, k.0, &hits, &|id| s.get_nickname(id).unwrap_or_default(),
+                &|n| match s.player_server(n) { 0 => crate::roster::server_of(n), id => id }, &s.fight_roster(), &team, s.current_map_id()) };
             k.1.extend(found);
             let extra = k.1.len().saturating_sub(50);
             k.1.drain(..extra);
@@ -547,7 +549,9 @@ impl Engine {
         // The Abyss (map 20) is open world too, though the game data's overworld list leaves it out: its PvP
         // went into the arena log as one "match" per map load (106 opponents, 2026-10-29). Its kills and deaths
         // are in the kill history.
-        if let Some(map_id) = map.filter(|&m| !is_open_world_map(m) && m != ABYSS_MAP) {
+        // Instance dungeons (600000-699999) are PvE: a party's hits on a player-like target there made a "match"
+        // (Fire Temple, 2026-11-18).
+        if let Some(map_id) = map.filter(|&m| !is_open_world_map(m) && m != ABYSS_MAP && !is_dungeon_map(m)) {
             let me = self.storage.local_player_id().map(|id| id as i32);
             let deaths = self.storage.deaths_between(i64::MIN, i64::MAX);
             let me_name = self.storage.local_profile().name;
