@@ -56,8 +56,9 @@ export function takeGathers(g: GatherData, list: Gather[]): Gather[] {
   return fresh;
 }
 
-/** The gathered materials' grades: a node gives its material in any of them ("Fine Odyle", "Pure Odyle", "Radiant Odyle"). */
-const GRADE = /^(Fine|Pure|Radiant) /;
+/** The gathered materials' grades: a node gives its material in any of them ("Fine Odyle", "Pure Odyle", "Radiant
+ *  Odyle"; plants: "Fresh Azpha", "Fresh Calendula", 2026-11-23). */
+const GRADE = /^(Fine|Pure|Radiant|Fresh) /;
 /**
  * Each graded material's code → its plain one's ("Pure Odyle" → "Odyle"), by the names in the bundled recipes table
  * (`items`: code → name); a node is a spot of its plain material, whatever grade came out (2026-11-23: Pure Odyle and

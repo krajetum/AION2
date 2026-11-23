@@ -57,12 +57,14 @@ test("spots to send: every one not sent yet (saved ones too), per map in batches
 
 test("a node is one spot of its plain material, whatever grade came out", async () => {
   const { baseMaterials, gatherMarks, materials, emptyGathering } = await import("./gathering.ts");
-  const items = { "610610013": "Odyle", "610610014": "Fine Odyle", "610610015": "Pure Odyle", "610610016": "Radiant Odyle", "610660030": "Fine Ruby Gemstone", "999": "Fine Wine" };
+  const items = { "610610013": "Odyle", "610610014": "Fine Odyle", "610610015": "Pure Odyle", "610610016": "Radiant Odyle", "610660030": "Fine Ruby Gemstone", "999": "Fine Wine",
+    "610670043": "Azpha", "610670047": "Fresh Azpha" };
   const base = baseMaterials(items);
   assert.equal(base.get(610610015), 610610013);
   assert.equal(base.get(610610016), 610610013);
   assert.equal(base.has(610660030), false, "no plain Ruby Gemstone listed: kept");
   assert.equal(base.has(999), false);
+  assert.equal(base.get(610670047), 610670043, "plants: Fresh");
   const g = emptyGathering();
   const spot = (item: number, x: number, count: number, exact = false) => ({ mapId: 1110, item, x, y: 0, z: 0, exact, count, amount: count * 2, lastMs: x });
   g.spots = [spot(610610013, 0, 3), spot(610610015, 100, 1, true), spot(610610014, 5000, 2)];
