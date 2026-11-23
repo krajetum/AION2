@@ -74,3 +74,15 @@ test("a node is one spot of its plain material, whatever grade came out", async 
   assert.equal(g.spots[0].count, 3, "your saved spots unchanged");
   assert.deepEqual(materials(marks), [[610610013, 2]]);
 });
+
+test("a quest item from a gather is no spot: not taken, shown or sent", async () => {
+  const { gatherMarks, takeGathers, toSend, emptyGathering } = await import("./gathering.ts");
+  const g = emptyGathering();
+  const x = (item: number, atMs: number): Gather => ({ node: 1, item, amount: 1, x: 0, y: 0, z: 0, exact: true, mapId: 1110, atMs });
+  takeGathers(g, [x(631010004, 1), x(610670043, 2)]);
+  assert.deepEqual(g.spots.map((s) => s.item), [610670043]);
+  g.spots.push({ ...g.spots[0], item: 631010004 }); // saved before
+  g.shared = [{ mapId: 1110, item: 631010004, x: 9000, y: 0, z: 0, n: 1 }];
+  assert.deepEqual(gatherMarks(g).map((m) => m.item), [610670043]);
+  assert.deepEqual(toSend(g).flatMap((b) => b.spots.map((s) => s.item)), [610670043]);
+});

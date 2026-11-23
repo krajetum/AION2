@@ -33,9 +33,13 @@ export function cleanSharedGathers(raw: unknown): SharedGather[] {
     .map((s: any): SharedGather => ({ mapId: s.mapId, item: s.item, x: s.x, y: s.y, z: s.z, n: s.n }));
 }
 
+/** Quest items a gather gives (631010004, no name or icon in the game's tables: the player's quest, 2026-11-23): not
+ *  a material, never a spot. */
+export const isQuestItem = (item: number) => item >= 631_010_000 && item < 631_020_000;
+
 /** The meter's gathers not taken yet, with a map (one without waits: the meter fills it at the next map load). */
 export const newGathers = (g: GatherData, list: Gather[]) =>
-  list.filter((x) => x.mapId != null && x.atMs > g.seenMs && id(x.item) && x.amount > 0 && ok(x.x) && ok(x.y) && ok(x.z));
+  list.filter((x) => x.mapId != null && x.atMs > g.seenMs && id(x.item) && !isQuestItem(x.item) && x.amount > 0 && ok(x.x) && ok(x.y) && ok(x.z));
 
 /** Adds the meter's new gathers to your spots; returns the ones taken (to share). */
 export function takeGathers(g: GatherData, list: Gather[]): Gather[] {
@@ -87,6 +91,7 @@ export function gatherMarks(g: GatherData, base: Map<number, number> = new Map()
   const near = (mapId: number, item: number, x: number, y: number) =>
     out.find((m) => m.mapId === mapId && m.item === item && Math.hypot(m.x - x, m.y - y) < GATHER_SPOT);
   for (const s of g.spots) {
+    if (isQuestItem(s.item)) continue; // taken before quest items were left out
     const item = plain(s.item), at = near(s.mapId, item, s.x, s.y);
     if (!at) { out.push({ mapId: s.mapId, item, x: s.x, y: s.y, mine: { ...s, item }, players: 0 }); continue; }
     const m = at.mine!;
@@ -94,6 +99,7 @@ export function gatherMarks(g: GatherData, base: Map<number, number> = new Map()
     at.mine = { ...m, count: m.count + s.count, amount: m.amount + s.amount, lastMs: Math.max(m.lastMs, s.lastMs) };
   }
   for (const s of g.shared) {
+    if (isQuestItem(s.item)) continue;
     const item = plain(s.item), at = near(s.mapId, item, s.x, s.y);
     if (at) at.players = Math.max(at.players, s.n);
     else out.push({ mapId: s.mapId, item, x: s.x, y: s.y, mine: null, players: s.n });
@@ -113,7 +119,7 @@ export const SEND_BATCH = 100;
 /** Your spots not on the Worker yet (gathered again since `sentMs`, or never sent), per map in batches, oldest first. */
 export function toSend(g: GatherData): { mapId: number; spots: GatherSpot[] }[] {
   const by = new Map<number, GatherSpot[]>();
-  for (const s of g.spots) if (s.lastMs > g.sentMs) by.set(s.mapId, [...(by.get(s.mapId) ?? []), s]);
+  for (const s of g.spots) if (s.lastMs > g.sentMs && !isQuestItem(s.item)) by.set(s.mapId, [...(by.get(s.mapId) ?? []), s]);
   const out: { mapId: number; spots: GatherSpot[] }[] = [];
   for (const [mapId, list] of by) {
     list.sort((a, b) => a.lastMs - b.lastMs);
