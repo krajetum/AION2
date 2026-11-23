@@ -317,7 +317,8 @@ body.overlay .status { display: none; }
   background: #1d2a30; cursor: grab; touch-action: none; user-select: none; }
 .map-view:active { cursor: grabbing; }
 .map-view.adding { cursor: crosshair; }
-.map-view img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; }
+/* the map picture only: the menu's and the markers' icons are images too (one showed in the menu's corner, 2026-11-23) */
+.map-view > img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; }
 .mark { position: absolute; width: 14px; height: 14px; min-width: 0; padding: 0; margin: -7px 0 0 -7px; border-radius: 50%;
   background: var(--c); border: 2px solid var(--black); box-shadow: 0 0 0 1px rgba(255, 255, 255, .5); cursor: pointer; }
 .mark.ref { border-radius: 2px; transform: rotate(45deg); background: var(--white); border-color: var(--c); }
@@ -337,7 +338,7 @@ body.overlay .status { display: none; }
   50% { transform: rotate(45deg) scale(1.25); box-shadow: 0 0 12px 5px var(--cube-core), 0 0 34px 14px color-mix(in srgb, var(--cube) 45%, transparent); }
 }
 /* Following you: the map glides to each new position instead of jumping. */
-.map-view.gliding img { transition: transform .6s linear; }
+.map-view.gliding > img { transition: transform .6s linear; }
 .map-view.gliding :is(.mark, .me, .found, .live-cube) { transition: left .6s linear, top .6s linear; }
 @media (prefers-reduced-motion: reduce) { .map-view.gliding img, .map-view.gliding :is(.mark, .me, .found, .live-cube) { transition: none; } }
 @media (prefers-reduced-motion: reduce) { .live-cube { animation: none; transform: rotate(45deg); } }
@@ -382,7 +383,7 @@ body.overlay .status { display: none; }
 .gather-dot.sel { box-shadow: 0 0 0 3px var(--gold); }
 .gather-refresh { display: flex; align-items: center; gap: var(--s-2); margin: 0; }
 .gather-refresh button { flex: none; white-space: nowrap; }
-.mat-icon { vertical-align: middle; margin-right: 6px; border-radius: var(--r-sm); }
+.mat-icon { display: inline-block; vertical-align: middle; margin-right: 6px; border-radius: var(--r-sm); }
 .drop-layer { position: absolute; left: 0; top: 0; width: 0; height: 0; }
 .map-view.gliding .drop-layer { transition: transform .6s linear; }
 @media (prefers-reduced-motion: reduce) { .map-view.gliding .drop-layer { transition: none; } }

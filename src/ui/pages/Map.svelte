@@ -36,7 +36,7 @@
   import { KNOWN_PET_NAMES } from "../../domain/pet-names.ts";
   const PET_CHOICES = Object.entries(KNOWN_PET_NAMES).sort((a, b) => a[1].localeCompare(b[1]));
   import { ui } from "../state.svelte.ts";
-  import { gatherMarks, materials, type GatherMark } from "../../domain/gathering.ts";
+  import { baseMaterials, gatherMarks, materials, type GatherMark } from "../../domain/gathering.ts";
   import { ICON_BASE } from "../../domain/crafting.ts";
 
   type Layer = "cubes" | "pets" | "gather";
@@ -166,6 +166,7 @@
     }).catch(() => {});
   });
   const material = (item: number) => itemNames[String(item)] || `Item ${item}`;
+  const bases = $derived(baseMaterials(itemNames)); // "Pure Odyle" → "Odyle": a node is one spot whatever grade came out
   let gatherItem = $state(0), onlyMine = $state(false), selectedGather = $state<GatherMark | null>(null), gatherQuery = $state("");
   let refreshing = $state(false), refreshFailed = $state(false);
   async function refreshSpots() {
@@ -176,7 +177,7 @@
   // Others' spots, fresh when the layer opens (at most once a minute).
   $effect(() => { if (layer === "gather") void refreshGathers(); });
   $effect(() => { if (layer === "pets") void refreshSouls(); });
-  const gatherHere = $derived(gatherMarks(ui.data.gathering).filter((m) => mapOf(m.mapId) === current && (!onlyMine || m.mine)));
+  const gatherHere = $derived(gatherMarks(ui.data.gathering, bases).filter((m) => mapOf(m.mapId) === current && (!onlyMine || m.mine)));
   // The search: a material's name (or its code) containing what is typed; the map shows only what matches.
   const gq = $derived(gatherQuery.trim().toLowerCase());
   const matches = (item: number) => !gq || material(item).toLowerCase().includes(gq) || String(item).includes(gq);
@@ -185,7 +186,7 @@
     ? gatherHere.filter((m) => (gatherItem ? m.item === gatherItem : matches(m.item))).map((m) => ({ m, s: placed(m.x, m.y) })).filter((v) => v.s) : []);
   // Where a searched material is, when it is not on the open map: the other maps' counts.
   const elsewhere = $derived(gq && !gatherList.length ? MAPS.filter((m) => m.key !== current)
-    .map((m) => ({ m, n: gatherMarks(ui.data.gathering).filter((g) => mapOf(g.mapId) === m.key && matches(g.item)).length })).filter((x) => x.n) : []);
+    .map((m) => ({ m, n: gatherMarks(ui.data.gathering, bases).filter((g) => mapOf(g.mapId) === m.key && matches(g.item)).length })).filter((x) => x.n) : []);
   // Farming route: one stop per pet still to collect on this map (its busiest spot), in a good order from you.
   let showRoute = $state(remembered("route") === "1");
   $effect(() => remember("route", showRoute ? "1" : ""));

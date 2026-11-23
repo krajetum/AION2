@@ -56,14 +56,46 @@ export function takeGathers(g: GatherData, list: Gather[]): Gather[] {
   return fresh;
 }
 
-/** One marker per material and place: yours, and others' not near one of yours of the same material. */
+/** The gathered materials' grades: a node gives its material in any of them ("Fine Odyle", "Pure Odyle", "Radiant Odyle"). */
+const GRADE = /^(Fine|Pure|Radiant) /;
+/**
+ * Each graded material's code → its plain one's ("Pure Odyle" → "Odyle"), by the names in the bundled recipes table
+ * (`items`: code → name); a node is a spot of its plain material, whatever grade came out (2026-11-23: Pure Odyle and
+ * Fine Ruby Gemstone were listed as materials of their own). A name with several codes: the smallest.
+ */
+export function baseMaterials(items: Record<string, string>): Map<number, number> {
+  const byName = new Map<string, number>();
+  for (const [code, name] of Object.entries(items)) {
+    const c = Number(code), had = byName.get(name);
+    if (Number.isInteger(c) && (had === undefined || c < had)) byName.set(name, c);
+  }
+  const out = new Map<number, number>();
+  for (const [code, name] of Object.entries(items)) {
+    const base = GRADE.test(name) ? byName.get(name.replace(GRADE, "")) : undefined;
+    if (base !== undefined) out.set(Number(code), base);
+  }
+  return out;
+}
+
+/** One marker per material and place: yours, and others' not near one of yours of the same material. `base` = the
+ *  plain material of a graded one (`baseMaterials`): your spots of its grades at one place are added up. */
 export interface GatherMark { mapId: number; item: number; x: number; y: number; mine: GatherSpot | null; players: number }
-export function gatherMarks(g: GatherData): GatherMark[] {
-  const out: GatherMark[] = g.spots.map((s) => ({ mapId: s.mapId, item: s.item, x: s.x, y: s.y, mine: s, players: 0 }));
+export function gatherMarks(g: GatherData, base: Map<number, number> = new Map()): GatherMark[] {
+  const plain = (item: number) => base.get(item) ?? item;
+  const out: GatherMark[] = [];
+  const near = (mapId: number, item: number, x: number, y: number) =>
+    out.find((m) => m.mapId === mapId && m.item === item && Math.hypot(m.x - x, m.y - y) < GATHER_SPOT);
+  for (const s of g.spots) {
+    const item = plain(s.item), at = near(s.mapId, item, s.x, s.y);
+    if (!at) { out.push({ mapId: s.mapId, item, x: s.x, y: s.y, mine: { ...s, item }, players: 0 }); continue; }
+    const m = at.mine!;
+    if (s.exact && !m.exact) Object.assign(at, { x: s.x, y: s.y }), Object.assign(m, { x: s.x, y: s.y, z: s.z, exact: true });
+    at.mine = { ...m, count: m.count + s.count, amount: m.amount + s.amount, lastMs: Math.max(m.lastMs, s.lastMs) };
+  }
   for (const s of g.shared) {
-    const near = out.find((m) => m.mapId === s.mapId && m.item === s.item && Math.hypot(m.x - s.x, m.y - s.y) < GATHER_SPOT);
-    if (near) near.players = Math.max(near.players, s.n);
-    else out.push({ mapId: s.mapId, item: s.item, x: s.x, y: s.y, mine: null, players: s.n });
+    const item = plain(s.item), at = near(s.mapId, item, s.x, s.y);
+    if (at) at.players = Math.max(at.players, s.n);
+    else out.push({ mapId: s.mapId, item, x: s.x, y: s.y, mine: null, players: s.n });
   }
   return out;
 }
