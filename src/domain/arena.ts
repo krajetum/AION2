@@ -16,6 +16,7 @@ const SAME_KILL_MS = 3_000;
 export function logKills(log: ArenaLog, kills: Kill[]): number {
   let added = 0;
   for (const k of kills) {
+    if (isDungeonMap(k.mapId)) continue;
     if (log.kills.some((x) => x.kind === k.kind && x.other.id === k.other.id && Math.abs(x.atMs - k.atMs) < SAME_KILL_MS)) continue;
     log.kills.push(k);
     added++;
@@ -60,8 +61,13 @@ export function mergeRound(prev: ArenaMatch, m: ArenaMatch): boolean {
 
 /** Adds a match unless it is logged already (the meter resends the last one), or merges it into the last as
  *  its next round. Returns whether anything changed. */
+/** Instance dungeons (Krao Cave 600001 … Ferocious Horn Den 600093): PvE, never a match. A party member's hit on
+ *  a player-like target in Fire Temple (600023) went into the arena log as a match, 2026-11-18. */
+export const isDungeonMap = (mapId: number | null | undefined) => mapId != null && mapId >= 600_000 && mapId < 700_000;
+
 export function logMatch(log: ArenaLog, m: ArenaMatch): boolean {
   if (m.mapId === 20) return false; // the Abyss: open world, not a match (an older meter sends it)
+  if (isDungeonMap(m.mapId)) return false;
   if (log.matches.some((x) => sameMatch(x, m))) return false;
   if (log.matches[0] && mergeRound(log.matches[0], m)) return true;
   log.matches.unshift(m);
