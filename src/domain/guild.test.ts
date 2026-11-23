@@ -184,3 +184,19 @@ test("parseGuildFights: a buff's icon kept only when it is a plain file name", (
   const [back] = parseGuildFights({ fights: [{ ...f, rows: [{ ...f.rows[0], buffs: [b("ICON_Abnormal_DotMp"), b("../x.png"), b(3)] }] }] });
   assert.deepEqual(back.rows[0].buffs!.map((x) => x.icon), ["ICON_Abnormal_DotMp", null, null]);
 });
+
+test("an alt never replaces your card in the static: the one you chose, else a higher item level on its server", async () => {
+  const { cardToSend } = await import("./guild.ts");
+  const p = (name: string, gearScore: number | null, serverId = 1001) => ({ name, serverId, job: "Chanter", level: 45, gearScore, combatPower: null });
+  const link = { id: "g", name: "S", serverId: 1001, share: { gear: true, fights: false } };
+  const me = { name: "Main", className: "Chanter", serverId: 1001, itemLevel: 3000, combatPower: null, shareGear: true, shareFights: false, seenMs: 0, role: "member" as const, me: true };
+  assert.equal(cardToSend(p("Main", 3010), link, me), true, "your card, updated");
+  assert.equal(cardToSend(p("Alt", 2400), link, me), false, "an alt on the static's server");
+  assert.equal(cardToSend(p("Alt", 3200), link, { ...me, name: "Alt0", itemLevel: 2400 }), true, "the main, after an alt got in");
+  assert.equal(cardToSend(p("Other", 3500, 2002), link, me), false, "another server");
+  assert.equal(cardToSend(p("Alt", 2000), link, { ...me, itemLevel: null }), false, "no item level known: kept");
+  assert.equal(cardToSend(p("Main", 3010), link, null), false, "before the first sync");
+  const chosen = { ...link, char: "Alt" };
+  assert.equal(cardToSend(p("Alt", 2400), chosen, me), true, "the one you chose");
+  assert.equal(cardToSend(p("Main", 3500), chosen, me), false, "and only it");
+});
