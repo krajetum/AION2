@@ -44,7 +44,11 @@ fn killer(hits: &HashMap<(i32, i32), PvpHits>, victim: i32, at: i64, may: &dyn F
         .map(|(&(a, _), _)| a)
 }
 
-/// The kills and deaths of `me` among `deaths` (victim, unix ms) after `after_ms`.
+/// The kills and deaths of `me` among `deaths` (victim, unix ms) after `after_ms`. `team` = the players on your
+/// team by name (the arena's line-up, `roster.rs`): in an arena your teammates are seldom your party, and their heals
+/// and buffs on you are in the ledger like hits, so the last one before your death made them your killer
+/// (2026-11-23: "killed by" teammates, in matches the player never fought).
+#[allow(clippy::too_many_arguments)]
 pub fn find(
     me: i32,
     deaths: &[(i32, i64, Option<i64>)],
@@ -53,9 +57,10 @@ pub fn find(
     names: &dyn Fn(i32) -> String,
     server: &dyn Fn(&str) -> u16,
     party: &HashMap<String, PartyMember>,
+    team: &dyn Fn(&str) -> bool,
     map_id: Option<i32>,
 ) -> Vec<Kill> {
-    let ours = |id: i32| id == me || party.contains_key(names(id).trim());
+    let ours = |id: i32| id == me || { let n = names(id); party.contains_key(n.trim()) || (!n.trim().is_empty() && team(n.trim())) };
     let on_us: std::collections::HashSet<i32> = hits.keys().filter(|&&(a, t)| !ours(a) && ours(t)).map(|&(a, _)| a).collect();
     let mut out: Vec<Kill> = Vec::new();
     let mut last_death: HashMap<i32, i64> = HashMap::new();
@@ -137,6 +142,7 @@ mod tests {
             _ => String::new(),
         }
     }
+    fn no_team(_: &str) -> bool { false }
     fn server(name: &str) -> u16 {
         if name == "Foe" { 2313 } else { 0 }
     }
@@ -146,7 +152,7 @@ mod tests {
         let hits: HashMap<(i32, i32), PvpHits> =
             [((1, 3), hit(900, 1_000, 9_000)), ((4, 3), hit(300, 1_000, 6_000)), ((3, 1), hit(400, 2_000, 8_000))].into();
         let deaths = [(3, 9_200, None), (3, 9_900, None)]; // logged twice: one death
-        let k = find(1, &deaths, 0, &hits, &names, &server, &HashMap::new(), Some(600_001));
+        let k = find(1, &deaths, 0, &hits, &names, &server, &HashMap::new(), &no_team, Some(600_001));
         assert_eq!(k.len(), 1);
         assert_eq!((k[0].kind, k[0].at_ms, k[0].map_id), ("kill", 9_200, Some(600_001)));
         let o = &k[0].other;
@@ -158,11 +164,11 @@ mod tests {
         let hits: HashMap<(i32, i32), PvpHits> =
             [((1, 3), hit(900, 1_000, 5_000)), ((4, 3), hit(300, 1_000, 9_000)), ((3, 1), hit(800, 2_000, 20_000))].into();
         let deaths = [(3, 9_100, None), (1, 20_500, None)];
-        let k = find(1, &deaths, 0, &hits, &names, &server, &HashMap::new(), None);
+        let k = find(1, &deaths, 0, &hits, &names, &server, &HashMap::new(), &no_team, None);
         assert_eq!(k.iter().map(|k| (k.kind, k.other.id)).collect::<Vec<_>>(), [("assist", 3), ("death", 3)]);
         // Your last hit 20 s before their death: not an assist.
         let hits: HashMap<(i32, i32), PvpHits> = [((1, 3), hit(900, 1_000, 2_000)), ((4, 3), hit(300, 1_000, 22_000))].into();
-        assert!(find(1, &[(3, 22_100, None)], 0, &hits, &names, &server, &HashMap::new(), None).is_empty());
+        assert!(find(1, &[(3, 22_100, None)], 0, &hits, &names, &server, &HashMap::new(), &no_team, None).is_empty());
     }
 
     /// 2026-10-25: a party member's heal landed last, and the history said they killed you.
@@ -170,25 +176,39 @@ mod tests {
     fn a_party_members_heal_is_not_the_killing_blow() {
         let party: HashMap<String, PartyMember> = [("Mate".to_string(), PartyMember::default())].into();
         let hits: HashMap<(i32, i32), PvpHits> = [((3, 1), hit(800, 1_000, 9_000)), ((5, 1), hit(500, 1_000, 9_500))].into();
-        let k = find(1, &[(1, 9_600, None)], 0, &hits, &names, &server, &party, None);
+        let k = find(1, &[(1, 9_600, None)], 0, &hits, &names, &server, &party, &no_team, None);
         assert_eq!(k.iter().map(|k| (k.kind, k.other.id)).collect::<Vec<_>>(), [("death", 3)]);
         // Only party members acted on you: no death to log.
         let hits: HashMap<(i32, i32), PvpHits> = [((5, 1), hit(500, 1_000, 9_500))].into();
-        assert!(find(1, &[(1, 9_600, None)], 0, &hits, &names, &server, &party, None).is_empty());
+        assert!(find(1, &[(1, 9_600, None)], 0, &hits, &names, &server, &party, &no_team, None).is_empty());
         // A heal on the foe from their team (who hit you) after your hit does not take your kill;
         // a party member's later hit makes it an assist.
         let hits: HashMap<(i32, i32), PvpHits> =
             [((1, 3), hit(900, 1_000, 9_000)), ((4, 3), hit(50, 1_000, 9_400)), ((4, 1), hit(70, 1_000, 3_000))].into();
-        assert_eq!(find(1, &[(3, 9_500, None)], 0, &hits, &names, &server, &party, None)[0].kind, "kill");
+        assert_eq!(find(1, &[(3, 9_500, None)], 0, &hits, &names, &server, &party, &no_team, None)[0].kind, "kill");
         let hits: HashMap<(i32, i32), PvpHits> = [((1, 3), hit(900, 1_000, 9_000)), ((5, 3), hit(50, 1_000, 9_400))].into();
-        assert_eq!(find(1, &[(3, 9_500, None)], 0, &hits, &names, &server, &party, None)[0].kind, "assist");
+        assert_eq!(find(1, &[(3, 9_500, None)], 0, &hits, &names, &server, &party, &no_team, None)[0].kind, "assist");
     }
 
     #[test]
     fn old_deaths_and_deaths_without_a_recent_hit_are_left_out() {
         let hits: HashMap<(i32, i32), PvpHits> = [((1, 3), hit(900, 1_000, 2_000))].into();
         let deaths = [(3, 1_500, None), (3, 60_000, None)];
-        assert!(find(1, &deaths, 1_600, &hits, &names, &server, &HashMap::new(), None).is_empty());
-        assert_eq!(find(1, &deaths, 0, &hits, &names, &server, &HashMap::new(), None).len(), 1);
+        assert!(find(1, &deaths, 1_600, &hits, &names, &server, &HashMap::new(), &no_team, None).is_empty());
+        assert_eq!(find(1, &deaths, 0, &hits, &names, &server, &HashMap::new(), &no_team, None).len(), 1);
+    }
+
+    /// An arena with a random teammate, not your party: their heal on you just before your death is not your killer,
+    /// the foe's last hit is; with no line-up the teammate would have been "who killed you".
+    #[test]
+    fn a_teammate_from_the_line_up_never_kills_you() {
+        let mut hits = HashMap::new();
+        hits.insert((3, 1), hit(900, 1_000, 9_000)); // the foe
+        hits.insert((5, 1), hit(0, 9_100, 9_400)); // Mate's heal on you
+        let team = |n: &str| n == "Mate";
+        let k = find(1, &[(1, 9_600, None)], 0, &hits, &names, &server, &HashMap::new(), &team, None);
+        assert_eq!((k[0].kind, k[0].other.name.as_str()), ("death", "Foe"));
+        let alone = find(1, &[(1, 9_600, None)], 0, &hits, &names, &server, &HashMap::new(), &no_team, None);
+        assert_eq!(alone[0].other.name, "Mate", "what happened before: the last action on you");
     }
 }
