@@ -1,6 +1,6 @@
 // Guild use cases: create / join / leave, consent, your card, shared fights, officer actions (the Worker's /v1/guilds).
 // Network calls throw (CrowdError) for the page to show; the background ones (sync, fight upload) only log.
-import { DEFAULT_SHARE, fightsToShare, guildFight, isStaticFight, meCard, parseFightBosses, parseGuild, parseGuildFights, type GuildMe, type GuildShare, type GuildView, type Perm, type Ping, type Role } from "../domain/guild.ts";
+import { cardToSend, DEFAULT_SHARE, fightsToShare, guildFight, isStaticFight, meCard, parseFightBosses, parseGuild, parseGuildFights, type GuildMe, type GuildMember, type GuildShare, type GuildView, type Perm, type Ping, type Role } from "../domain/guild.ts";
 import type { FightRecord } from "../domain/fights.ts";
 import type { Profile } from "../domain/meter.ts";
 import type { AppData } from "../domain/types.ts";
@@ -11,6 +11,7 @@ const warn = (what: string) => (e: unknown) => console.warn(`Guild ${what} faile
 let sentCard = ""; // the card last sent this session: sent again only when it changes
 /** The name this install is in the guild as (the Worker's last answer). */
 let cardName = "";
+let mine: GuildMember | null = null; // your card as the Worker last listed it
 let memberNames: string[] = []; // the static's members as of the last sync: a fight is shared only with STATIC_MIN_MEMBERS of them in it
 let claimed = ""; // the guild this session claimed Leader in (once)
 
@@ -20,13 +21,13 @@ const isGone = (e: unknown) => e instanceof CrowdError && e.status === 403 && e.
 
 export async function createGuild(data: AppData, name: string, serverId: number, me: GuildMe): Promise<void> {
   const r = await crowd("/v1/guilds", { install: data.install, name, serverId, me });
-  data.guild = { id: r.id, name: r.name, serverId: r.serverId, memberCode: r.memberCode, officerKey: r.officerKey, share: { ...DEFAULT_SHARE } };
+  data.guild = { id: r.id, name: r.name, serverId: r.serverId, memberCode: r.memberCode, officerKey: r.officerKey, char: me.name || undefined, share: { ...DEFAULT_SHARE } };
   sentCard = JSON.stringify(me);
 }
 
 export async function joinGuild(data: AppData, code: string, me: GuildMe, share: GuildShare = DEFAULT_SHARE): Promise<void> {
   const r = await crowd("/v1/guilds/join", { install: data.install, code, me, share });
-  data.guild = { id: r.id, name: r.name, serverId: r.serverId, memberCode: code.toUpperCase().replace(/[\s-]/g, ""), share: { ...share } };
+  data.guild = { id: r.id, name: r.name, serverId: r.serverId, memberCode: code.toUpperCase().replace(/[\s-]/g, ""), char: me.name || undefined, share: { ...share } };
   sentCard = JSON.stringify(me);
 }
 
@@ -35,6 +36,16 @@ export async function leaveGuild(data: AppData): Promise<void> {
   if (!data.guild) return;
   await crowd(path(data, "/me"), { install: data.install, leave: true }).catch((e) => { if (!isGone(e)) throw e; });
   data.guild = null;
+}
+
+/** Makes the character played now the one you are in the static as (My settings): its card replaces yours now, and only
+ *  its card is sent from then on. */
+export async function setStaticChar(data: AppData, profile: Profile): Promise<void> {
+  if (!data.guild || !profile.name) return;
+  const me = meCard(profile);
+  await crowd(path(data, "/me"), { install: data.install, me, share: data.guild.share });
+  data.guild.char = profile.name;
+  sentCard = JSON.stringify(me);
 }
 
 export async function setShare(data: AppData, share: GuildShare): Promise<void> {
@@ -51,9 +62,8 @@ export async function syncGuild(data: AppData, profile: Profile | null | undefin
   const g = data.guild;
   if (!g) return { view: null, removed: false };
   try {
-    // Your card: a character on the guild's server, or the one you are in the guild as, on any server (a member from
-    // another server); not another character of yours elsewhere, which would replace it.
-    if (profile?.name && (profile.serverId === g.serverId || profile.name === cardName)) {
+    // Your card: the character you are in the static as (any server), never an alt (`cardToSend`).
+    if (profile && cardToSend(profile, g, mine)) {
       const me = meCard(profile);
       const card = JSON.stringify(me);
       if (card !== sentCard) {
@@ -63,7 +73,8 @@ export async function syncGuild(data: AppData, profile: Profile | null | undefin
     }
     const j = await crowd(`${path(data)}?install=${data.install}${playing ? "&playing=1" : ""}`);
     const view = parseGuild(j, Date.now());
-    cardName = view.members.find((m) => m.me)?.name ?? cardName;
+    mine = view.members.find((m) => m.me) ?? mine;
+    cardName = mine?.name ?? cardName;
     memberNames = view.members.map((m) => m.name);
     // The leader key kept here, but the Worker doesn't list this install as Leader (an officer from before roles): claim it once.
     if (g.officerKey && view.role !== "leader" && j?.role && claimed !== g.id) {

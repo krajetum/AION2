@@ -4,7 +4,7 @@
   import { Input } from "$lib/components/ui/input/index.js";
   import Panel from "$lib/components/app/Panel.svelte";
   // Your own settings in the guild: what you share, the leader key, leaving.
-  import { leaveGuild, setOfficerKey, setShare } from "../../../app/guild.ts";
+  import { leaveGuild, setOfficerKey, setShare, setStaticChar } from "../../../app/guild.ts";
   import { ROLE_LABEL, myRole, type GuildLink, type GuildView } from "../../../domain/guild.ts";
   import { refreshGuild } from "../../actions.ts";
   import { ui } from "../../state.svelte.ts";
@@ -14,6 +14,9 @@
   let keyInput = $state("");
   const share = (k: "gear" | "fights", on: boolean) => run(() => setShare(ui.data, { ...g.share, [k]: on }).then(() => refreshGuild(false)));
   const leave = () => { if (confirm(`Leave ${g.name}? Your card and shared fights are deleted from the static.`)) run(async () => { await leaveGuild(ui.data); ui.guild = null; }, "Left the static"); };
+  const meName = $derived(view.members.find((m) => m.me)?.name ?? "");
+  const playing = $derived(ui.meter?.profile?.name ? ui.meter.profile : null);
+  const useChar = () => { if (playing) void run(async () => { await setStaticChar(ui.data, playing); await refreshGuild(false); }, `You are in the static as ${playing.name}`); };
   const useKey = () => { const k = keyInput; keyInput = ""; void run(async () => { setOfficerKey(ui.data, k); await refreshGuild(false); }, "Leader key saved"); };
 </script>
 
@@ -23,6 +26,14 @@
     <label class="flex cursor-pointer items-center gap-2.5"><Checkbox checked={g.share.fights} disabled={gs.busy} onCheckedChange={(on) => share("fights", on)} /> My boss fights (DPS and skills)</label>
   </div>
   <p class="hint">Your role: <b>{ROLE_LABEL[myRole(view, g)]}</b>.</p>
+</Panel>
+
+<Panel title="My character">
+  <p class="text-sm">You are in the static as <b>{meName || "…"}</b>{g.char ? "" : " (chosen by item level)"}.</p>
+  {#if playing && playing.name !== meName}
+    <Button variant="outline" size="sm" disabled={gs.busy} onclick={useChar}>Use {playing.name} instead</Button>
+  {/if}
+  <p class="hint">Only this character's card goes to the static: playing an alt doesn't replace it. {g.char ? "" : "Until you pick one, a character of yours on the static's server with a higher item level takes its place."}</p>
 </Panel>
 
 <Panel title="Leader key">
