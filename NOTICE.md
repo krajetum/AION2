@@ -22,6 +22,9 @@ It is distributed WITHOUT ANY WARRANTY; see `LICENSE` for the full text.
   (https://gamers4.life/aion-2/database/en/pet/), saved 2026-10-26. The names are the game's (NCSOFT).
 - **Pet soul point spots** (`src/assets/pet-drops.json`): 2,849 drops recorded with this app by its players and
   shared on 2026-10-26, with the players' names taken out. Merged once into every save (`takeBundledDrops`).
+- **Which soul each monster drops** (`src/domain/mob-souls.ts`): 253 "Soul: X (Bound)" items and the 510 monsters that
+  drop them, from aion2hub.com's item database ("Dropped by", Global client data), downloaded 2026-11-23 with
+  `scripts/souls.ps1`. The names are the game's (NCSOFT).
 
 - **Advent calendar jokes** (`src/domain/advent.ts`): 24 Christmas cracker jokes, credited under each joke in the app with a link:
   British Comedy Guide, "20 Christmas Cracker jokes to make you groan" (thortful's visitors' vote,
