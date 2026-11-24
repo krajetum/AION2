@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { addWeeks, bestDays, callupFor, CALLUP_LEADS, hourKind, NO_CLASS, withClasses, blockOf, classesOf, decodeWeek, emptyWeek, encodeWeek, freeBySlot, hoursFor, setDay, setRange, slotNow, slotOf, slotStart, unblocked, weekOf, WEEK_HOURS, type MemberAvailability } from "./raidplan.ts";
+import { addWeeks, bestDays, callupFor, dayWindow, parseAvailability, CALLUP_LEADS, hourKind, NO_CLASS, withClasses, blockOf, classesOf, decodeWeek, emptyWeek, encodeWeek, freeBySlot, hoursFor, setDay, setRange, slotNow, slotOf, slotStart, unblocked, weekOf, WEEK_HOURS, type MemberAvailability } from "./raidplan.ts";
 
 const B = [
   { day: 2, from: 9, to: 15, label: "Maintenance" },
@@ -106,7 +106,7 @@ test("call-up from a day's best stretch: its first hour, @everyone, the names, n
   assert.equal(c.atMs, at);
   assert.equal(c.ping, "everyone");
   assert.deepEqual(c.leads, [26 * 60, ...CALLUP_LEADS]);
-  assert.match(c.message, /9 members are free 20:00–22:00/);
+  assert.match(c.message, /9 players are free 20:00–22:00/);
   assert.match(c.message, /Signed up: P1, P2, P3, P4, P5, P6, P7, P8, P9/);
   assert.match(c.message, /Your spot is not guaranteed\.$/);
   assert.deepEqual(callupFor(d, W, at - 90 * 60_000, "Europe/Paris")!.leads, [180, 90, 60], "under 3 h: 3 h is past, the Worker posts at once anyway");
@@ -115,4 +115,26 @@ test("call-up from a day's best stretch: its first hour, @everyone, the names, n
   const long = callupFor(many, W, now, "Europe/Paris")!;
   assert.ok(long.message.length <= 500);
   assert.match(long.message, /and \d+ more\nYour spot/);
+});
+
+test("any day can be called: the hours picked, who is free for all of them, guests marked", () => {
+  const W = "2026-11-16";
+  const ann = { name: "Ann", className: "Cleric", serverId: 1, slots: encodeWeek(setRange(emptyWeek(), 4, 18, 23, true)), weeks: {}, updatedMs: 0 } as MemberAvailability;
+  const sub = { name: "Sub", className: "Ranger", serverId: null, guest: true, slots: encodeWeek(setRange(emptyWeek(), 4, 20, 22, true)), weeks: {}, updatedMs: 0 } as MemberAvailability;
+  const by = freeBySlot([ann, sub], W);
+  assert.deepEqual(dayWindow(by, 4, 20, 22).who.map((w) => w.name), ["Ann", "Sub"]);
+  assert.deepEqual(dayWindow(by, 4, 20, 23).who.map((w) => w.name), ["Ann"], "Sub leaves at 22");
+  const empty = dayWindow(by, 1, 20, 23);
+  assert.equal(empty.count, 0);
+  const at = Date.UTC(2026, 10, 17, 19);
+  const c = callupFor(empty, W, at - 5 * 3_600_000, "Europe/Paris")!;
+  assert.equal(c.atMs, at);
+  assert.equal(c.message, "Raid: Tuesday 20:00–23:00 (server time).\nYour spot is not guaranteed.");
+  assert.match(callupFor(dayWindow(by, 4, 20, 22), W, Date.UTC(2026, 10, 16), "Europe/Paris")!.message, /Signed up: Ann, Sub \(guest\)/);
+});
+
+test("the Worker's guests come back as guests", () => {
+  const r = parseAvailability({ mine: null, members: [], guests: [{ name: "Sub", className: "Ranger", slots: "0".repeat(42), weeks: {} }, { name: "", slots: "0".repeat(42) }] })!;
+  assert.deepEqual(r.guests.map((g) => [g.name, g.guest, g.serverId]), [["Sub", true, null]]);
+  assert.deepEqual(parseAvailability({ mine: null })!.guests, []);
 });
