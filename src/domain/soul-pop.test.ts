@@ -44,3 +44,10 @@ test("soul pop: the pet's progress after the gain", async () => {
   assert.equal(progressText(coll, 1), undefined);
   assert.equal(progressText(undefined, 7), undefined);
 });
+
+test("the popup's duration: a listed number of seconds, else 3 s", async () => {
+  const { soulPopupMs } = await import("./soul-pop.ts");
+  assert.equal(soulPopupMs(8), 8000);
+  assert.equal(soulPopupMs(7), 3000);
+  assert.equal(soulPopupMs(undefined), 3000);
+});

@@ -35,7 +35,7 @@ import { bossEvery, flushCubes, flushGathers, flushSouls, gameActive, shareFromM
 import { uploadFight } from "./app/guild.ts";
 import { crashReports } from "./infra/sentry.ts";
 import { soulsPopup } from "./infra/meter.ts";
-import { COMBO_MS, freshGains, popGains, progressText, type SoulPop } from "./domain/soul-pop.ts";
+import { freshGains, popGains, progressText, soulPopupMs, type SoulPop } from "./domain/soul-pop.ts";
 import { cubePopup, eventsOverlay, meterCubeCodes, meterIdle, meterItemCodes, radarOverlay, meterOverlay, netOverlay, onEventsOverlay, onNetOverlay, onMeter, onOpacity, onOverlay, overlayStyle } from "./infra/meter.ts";
 import { showStatus } from "./ui/overlays.ts";
 import { fightsSnapshot, live, ui } from "./ui/state.svelte.ts";
@@ -137,8 +137,9 @@ async function main() {
       if (takeMeterData(ui.data, latest) || shared) save();
       const got = Date.now(), next = fresh && popGains(soulPop, fresh, ui.data.map, got);
       if (next) {
-        soulPop = { ...next, progress: progressText(ui.data.pets[me], fresh!.points.at(-1)?.kind) ?? next.progress };
-        if (ui.data.settings.soulPopup) soulsPopup(true, soulPop, got + COMBO_MS).catch(() => {});
+        const showMs = soulPopupMs(ui.data.settings.soulPopupSeconds);
+        soulPop = { ...next, progress: progressText(ui.data.pets[me], fresh!.points.at(-1)?.kind) ?? next.progress, showMs };
+        if (ui.data.settings.soulPopup) soulsPopup(true, soulPop, got + showMs).catch(() => {});
       }
     });
   });

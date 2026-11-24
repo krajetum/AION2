@@ -33,7 +33,7 @@
   });
   // "56/75 to level 3": the numbers stand out (bold, the gold), the words stay quiet.
   const progressParts = (t: string): [string, boolean][] => t.split(/(\d+\/\d+)/).filter(Boolean).map((p) => [p, /^\d+\/\d+$/.test(p)]);
-  const live = $derived(!!pop && now - gotAt < COMBO_MS);
+  const live = $derived(!!pop && now - gotAt < (pop.showMs ?? COMBO_MS));
 </script>
 
 {#if pop && live}
@@ -55,7 +55,8 @@
   .card { display: flex; flex-direction: column; align-items: center; }
   .big { font-size: var(--fs-xl); font-weight: 800; line-height: 1.05; color: var(--gold); animation: pop 0.35s cubic-bezier(.2, 1.6, .4, 1); }
   .sub { font-size: var(--fs-xs); font-weight: 600; opacity: 0.9; }
-  .sub .num { font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+  /* the progress ("17/75") stands out: bigger than the words around it (the player, 2026-11-24) */
+  .sub .num { font-size: var(--fs-lg); font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; line-height: 1.1; }
   .combo { font-size: var(--fs-md); font-weight: 900; letter-spacing: 0.08em; color: var(--chart-2); animation: pop 0.3s ease-out; }
   .fire .combo { font-size: var(--fs-lg); color: var(--taken); animation: pop 0.3s ease-out, flicker 0.18s steps(2) infinite alternate; }
   .fire .big { color: var(--star); }
