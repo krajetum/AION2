@@ -20,6 +20,8 @@ const NET: &str = "net";
 const SOULS: &str = "souls";
 /// The "Edit overlays" panel (like the game's Edit HUD): every overlay that is on shows with a frame to drag and resize.
 const HUD: &str = "hud";
+/// Updates between two checks of the windows against what should show (5 × 200 ms).
+const RECHECK_EVERY: u32 = 5;
 /// The overlay windows, in the panel's order.
 pub const OVERLAYS: [&str; 6] = [OVERLAY, EVENTS, CUBE, RADAR, NET, SOULS];
 
@@ -219,6 +221,7 @@ fn start(app: AppHandle) -> Update {
             let mut sent = Instant::now();
             let mut front_checked = Instant::now() - FRONT_CHECK;
             let mut shown: Option<Visible> = None;
+            let mut checks = 0u32;
             loop {
                 std::thread::sleep(RATE);
                 let mut u = e.update();
@@ -253,13 +256,20 @@ fn start(app: AppHandle) -> Update {
                     e.reset();
                     u = e.update();
                 }
-                if Some(want) != shown {
-                    set_visible(&app, OVERLAY, want.dps);
-                    set_visible(&app, EVENTS, want.events);
-                    set_visible(&app, CUBE, want.cube);
-                    set_visible(&app, RADAR, want.radar);
-                    set_visible(&app, NET, want.net);
-                    set_visible(&app, SOULS, want.souls);
+                // Once a second the windows are checked against what should show too, not only on a change: after
+                // "Edit overlays" the cube popup and the radar stayed on screen with no cube (2026-11-24).
+                checks = (checks + 1) % RECHECK_EVERY;
+                if Some(want) != shown || checks == 0 {
+                    let check = Some(want) == shown;
+                    for (label, on) in [(OVERLAY, want.dps), (EVENTS, want.events), (CUBE, want.cube), (RADAR, want.radar), (NET, want.net), (SOULS, want.souls)] {
+                        if !check {
+                            set_visible(&app, label, on);
+                        } else if let Some(w) = app.get_webview_window(label) {
+                            if w.is_visible().unwrap_or(on) != on {
+                                set_visible(&app, label, on);
+                            }
+                        }
+                    }
                     shown = Some(want);
                 }
                 crate::places::flush();
