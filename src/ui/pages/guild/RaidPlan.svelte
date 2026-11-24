@@ -6,11 +6,14 @@
   import Panel from "$lib/components/app/Panel.svelte";
   // Raid plan: each member paints the hours they are free (every week, or only one week); with view.raidsummary,
   // everyone's hours added up: how many are free each hour, who, which classes, and each day's best stretch.
-  import { cancelCallup, createCallup, getAvailability, saveAvailability, testCallup } from "../../../app/guild.ts";
+  import { Input } from "$lib/components/ui/input/index.js";
+  import { Checkbox } from "$lib/components/ui/checkbox/index.js";
+  import { cancelCallup, createCallup, getAvailability, saveAvailability, saveGuest, testCallup } from "../../../app/guild.ts";
+  import { CLASSES } from "../../../domain/mascot.ts";
   import { refreshGuild } from "../../actions.ts";
   import { can, type GuildLink, type GuildView } from "../../../domain/guild.ts";
   import {
-    addWeeks, bestDays, blockOf, CALLUP_MIN_FREE, callupFor, decodeWeek, hourKind, unblocked, classesOf, DAY_NAMES, DAYS, emptyWeek, freeBySlot, hourLabel, hoursFor, ownWeek, setDay, setRange,
+    addWeeks, bestDays, blockOf, callupFor, dayWindow, DEFAULT_WINDOW, decodeWeek, hourKind, unblocked, classesOf, DAY_NAMES, DAYS, emptyWeek, freeBySlot, hourLabel, hoursFor, ownWeek, setDay, setRange,
     slotNow, slotOf, slotStart, weekOf, withClasses, NO_CLASS, type Availability, type MemberAvailability, type Week,
   } from "../../../domain/raidplan.ts";
   import { RAID_PLAN } from "../../../config.ts";
@@ -24,11 +27,12 @@
   // ---- What the Worker has ----
   let mine = $state<Availability | null>(null);
   let members = $state<MemberAvailability[] | null>(null);
+  let guests = $state<MemberAvailability[]>([]);
   let loaded = $state(false), loadError = $state("");
   async function load() {
     try {
       const r = await getAvailability(ui.data);
-      mine = r.mine; members = r.members; loadError = "";
+      mine = r.mine; members = r.members; guests = r.guests; loadError = "";
     } catch (e) { loadError = say(e); }
     loaded = true;
   }
@@ -113,36 +117,85 @@
       officialProfile(m.name, m.serverId).then((p) => { if (p?.className) found[m.name] = p.className; }).catch(() => {});
     }
   });
-  const everyone = $derived(members ? withClasses(members, found) : null);
+  const everyone = $derived(members ? [...withClasses(members, found), ...guests] : null);
   const bySlot = $derived(everyone ? freeBySlot(everyone, week) : []);
   const most = $derived(Math.max(1, ...bySlot.map((w) => w.length)));
   const days = $derived(everyone ? bestDays(everyone, week) : []);
   let picked = $state<number | null>(null);
   const pickedWho = $derived(picked === null ? [] : bySlot[picked] ?? []);
   const notMarked = $derived(Math.max(0, view.memberCount - (members?.length ?? 0)));
-  // A day with CALLUP_MIN_FREE or more free at once: officers can call the raid from here (posted now, 3 h and 1 h before).
+  // Every day can be called (officers, manage.callups), even with nobody free: the hours are picked per day, who is
+  // free for all of them is listed (guests too). Posted now, 3 h and 1 h before.
   const plans = $derived(can(view, g, "manage.callups"));
-  // Call-up times come back on this PC's clock (shifted by its offset to the Worker's): the same hour within 5 minutes.
-  const planned = (atMs: number) => view.callups.find((c) => Math.abs(c.atMs - atMs) < 5 * 60_000) ?? null;
-  const makeCallup = (d: (typeof days)[number]) => {
+  /** The call-ups planned on a day of the week shown (times on this PC's clock, as the Worker's come back). */
+  const plannedOn = (day: number) => {
+    const from = slotStart(week, slotOf(day, 0)), to = slotStart(week, slotOf(day, 0)) + 24 * 3_600_000;
+    return view.callups.filter((c) => c.atMs >= from - 5 * 60_000 && c.atMs < to);
+  };
+  // The hours picked per day: a planned call-up's, else the day's best stretch, else the evening.
+  let picks = $state<Record<string, { from: number; to: number }>>({});
+  const windowOf = (day: number) => {
+    const k = `${week}:${day}`;
+    if (picks[k]) return picks[k];
+    const p = plannedOn(day)[0];
+    if (p) { const h = Math.round((p.atMs - slotStart(week, slotOf(day, 0))) / 3_600_000); return { from: h, to: Math.min(24, h + 2) }; }
+    const best = days.find((d) => d.day === day);
+    return best ? { from: best.from, to: best.to } : DEFAULT_WINDOW;
+  };
+  const setWindow = (day: number, from: number, to: number) => { picks[`${week}:${day}`] = { from, to: Math.max(from + 1, to) }; };
+  const dayRows = $derived([0, 1, 2, 3, 4, 5, 6].map((day) => { const w = windowOf(day); return dayWindow(bySlot, day, w.from, w.to); }));
+  const makeCallup = (d: (typeof dayRows)[number]) => {
     const c = callupFor(d, week, Date.now());
     if (!c) return;
     if (!confirm(`Call the raid for ${range(d)} with @everyone?\nPosted to Discord now, then 3 h and 1 h before.\n\n${c.message}`)) return;
     void run(() => createCallup(ui.data, c).then(() => refreshGuild(false)), "Call-up made: posted to Discord within a minute");
   };
   /** The toggle switched off: the call-up cancelled (no more reminders) and "Raid cancelled" posted with its ping. */
-  const cancelIt = (d: (typeof days)[number], id: string) => {
-    if (!confirm(`Cancel the raid of ${range(d)}?\nNo more reminders; "Raid cancelled" is posted to Discord with @everyone.`)) return;
+  const cancelIt = (when: string, id: string) => {
+    if (!confirm(`Cancel the raid of ${when}?\nNo more reminders; "Raid cancelled" is posted to Discord with @everyone.`)) return;
     void run(async () => {
       const ok = await cancelCallup(ui.data, id, true);
       await refreshGuild(false);
       if (ok === false) throw new Error("Call-up cancelled, but Discord refused the \"Raid cancelled\" post: check the webhook");
     }, view.hasWebhook ? "Raid cancelled: posted to Discord" : "Raid cancelled (no Discord webhook: nothing posted)");
   };
-  const testIt = (d: (typeof days)[number]) => {
+  const testIt = (d: (typeof dayRows)[number]) => {
     const c = callupFor(d, week, Date.now());
     if (!c || !confirm(`Post a TEST of this call-up to Discord now, with @everyone?\nIt pings everyone in the channel; nothing is planned.`)) return;
     void run(() => testCallup(ui.data, c), "Test posted to Discord with @everyone (nothing planned)");
+  };
+  const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  // ---- Guests: players outside the static an officer adds (a stand-in while someone is away) ----
+  let gName = $state(""), gClass = $state(""), gDays = $state<boolean[]>(Array(7).fill(false)), gFrom = $state(20), gTo = $state(23);
+  let gScope = $state<"every" | "week">("week");
+  let editing = $state<string | null>(null);
+  const guestDays = (m: MemberAvailability) => DAYS.filter((_, day) => hoursFor(m, week).slice(day * 24, day * 24 + 24).some(Boolean));
+  function editGuest(m: MemberAvailability) {
+    editing = m.name; gName = m.name; gClass = m.className;
+    const h = hoursFor(m, week);
+    gDays = DAYS.map((_, day) => h.slice(day * 24, day * 24 + 24).some(Boolean));
+    const any = h.findIndex(Boolean);
+    if (any >= 0) { const day = Math.floor(any / 24); gFrom = any % 24; let t = gFrom; while (t < 24 && h[slotOf(day, t)]) t++; gTo = t; }
+    gScope = ownWeek(m, week) ? "week" : "every";
+  }
+  function clearGuest() { editing = null; gName = ""; gClass = ""; gDays = Array(7).fill(false); gFrom = 20; gTo = 23; }
+  const guestWeek = () => gDays.reduce((w, on, day) => (on ? setRange(w, day, gFrom, gTo, true) : w), emptyWeek());
+  const saveGuestNow = () => {
+    const name = gName.trim();
+    if (!name) return;
+    if (members?.some((m) => m.name.toLowerCase() === name.toLowerCase())) { void run(async () => { throw new Error(`${name} is in the static: they mark their own hours`); }, ""); return; }
+    const w = guestWeek();
+    void run(async () => {
+      if (editing && editing !== name) await saveGuest(ui.data, { name: editing, remove: true });
+      await saveGuest(ui.data, { name, className: gClass, ...(gScope === "every" ? { slots: w } : { week: { start: week, slots: w } }) });
+      await load();
+      clearGuest();
+    }, gScope === "every" ? `${name} added for every week` : `${name} added for the week of ${weekLabel(week)}`);
+  };
+  const removeGuest = (name: string) => {
+    if (!confirm(`Remove ${name} from the raid plan?`)) return;
+    void run(async () => { await saveGuest(ui.data, { name, remove: true }); await load(); if (editing === name) clearGuest(); }, `${name} removed`);
   };
   const range = (d: { day: number; from: number; to: number }) => `${DAY_NAMES[d.day]} ${dateOf(d.day).getUTCDate()}, ${hourLabel(d.from)}–${hourLabel(d.to)}`;
 </script>
@@ -215,27 +268,29 @@
 </Panel>
 {:else}
 <Panel>
-  <p class="dim">{members?.length ?? 0} of {view.memberCount} members marked their hours{notMarked ? ` · ${notMarked} not yet` : ""}.</p>
-  {#if days.length}
-    <h3 class="mt-4 mb-2 text-sm font-semibold">Best times, {offset ? "next" : "this"} week</h3>
-    <ol class="best">{#each days.slice(0, 4) as d (d.day)}
-      <li><div class="what"><b>{range(d)}</b> · {d.count} free · {d.classes.map(([c, n]) => `${c} ${n}`).join(", ")}
-        <div class="dim">{d.who.map((w) => w.name).join(", ")}</div></div>
-        {#if plans && d.count >= CALLUP_MIN_FREE}{@const c = callupFor(d, week, ui.now)}
-          <div class="callup">
+  <p class="dim">{members?.length ?? 0} of {view.memberCount} members marked their hours{notMarked ? ` · ${notMarked} not yet` : ""}{guests.length ? ` · ${guests.length} ${guests.length === 1 ? "guest" : "guests"}` : ""}.</p>
+  <h3 class="mt-4 mb-2 text-sm font-semibold">Call-ups, {offset ? "next" : "this"} week</h3>
+  <ol class="best">{#each dayRows as d (d.day)}{@const on = plannedOn(d.day)}{@const best = days.find((x) => x.day === d.day)}
+    <li><div class="what"><b>{DAY_NAMES[d.day]} {dateOf(d.day).getUTCDate()}</b>
+      {#if plans && !on.length}<span class="inline-flex items-center gap-1 text-sm">
+        <NativeSelect size="sm" value={String(d.from)} aria-label="From" onchange={(e) => setWindow(d.day, +e.currentTarget.value, d.to)}>{#each Array(24) as _, h}<NativeSelectOption value={String(h)}>{hourLabel(h)}</NativeSelectOption>{/each}</NativeSelect>
+        –<NativeSelect size="sm" value={String(d.to)} aria-label="To" onchange={(e) => setWindow(d.day, d.from, +e.currentTarget.value)}>{#each Array(24) as _, h}<NativeSelectOption value={String(h + 1)} disabled={h + 1 <= d.from}>{hourLabel(h + 1)}</NativeSelectOption>{/each}</NativeSelect></span>
+      {:else if !on.length}{" · "}{hourLabel(d.from)}–{hourLabel(d.to)}{/if}
+      {" · "}{d.count} free{#if d.count}{" · "}{d.classes.map(([c, n]) => `${c} ${n}`).join(", ")}{/if}
+      <div class="dim">{d.who.length ? d.who.map((w) => (w.guest ? `${w.name} (guest)` : w.name)).join(", ") : "Nobody marked these hours yet"}{#if best && (best.from !== d.from || best.to !== d.to)} · most free: {best.count} at {hourLabel(best.from)}–{hourLabel(best.to)}{/if}</div></div>
+      {#if plans}<div class="callup">
+        {#if on.length}{#each on as c (c.id)}
+          <label class="flex cursor-pointer items-center gap-2 text-sm" title="On: reminders before it. Switch off to cancel the raid and post &quot;Raid cancelled&quot; (@everyone)">
+            <Switch checked disabled={gs.busy} onCheckedChange={() => cancelIt(`${DAY_NAMES[d.day]} ${clock(c.atMs)}`, c.id)} />Call-up on, {clock(c.atMs)}</label>{/each}
+        {:else}{@const c = callupFor(d, week, ui.now)}
           {#if !c}<span class="dim">Already begun</span>
-          {:else}{@const on = planned(c.atMs)}
-            <label class="flex cursor-pointer items-center gap-2 text-sm"
-              title={on ? "On: reminders now, 3 h and 1 h before. Switch off to cancel the raid and post \"Raid cancelled\" (@everyone)"
-                : "@everyone, the names of those free, 'Your spot is not guaranteed': posted now, 3 h and 1 h before"}>
-              <!-- The app's switch; it shows what is planned, so it moves once the Worker has it. -->
-              <Switch checked={!!on} disabled={gs.busy} onCheckedChange={() => { if (on) cancelIt(d, on.id); else makeCallup(d); }} />{on ? "Call-up on" : "Make a call-up"}</label>
+          {:else}
+            <label class="flex cursor-pointer items-center gap-2 text-sm" title="@everyone, the names of those free, 'Your spot is not guaranteed': posted now, 3 h and 1 h before">
+              <Switch checked={false} disabled={gs.busy} onCheckedChange={() => makeCallup(d)} />Make a call-up</label>
             <Button variant="ghost" size="sm" disabled={gs.busy || !view.hasWebhook} onclick={() => testIt(d)}
-              title={view.hasWebhook ? "Post it once to Discord with @everyone, to check the ping: nothing planned" : "Set a Discord webhook first"}>Test ping</Button>{/if}
-          </div>
-        {/if}
-      </li>{/each}</ol>
-  {:else}<p class="hint">Nobody marked free hours for this week yet.</p>{/if}
+              title={view.hasWebhook ? "Post it once to Discord with @everyone, to check the ping: nothing planned" : "Set a Discord webhook first"}>Test ping</Button>{/if}{/if}
+      </div>{/if}
+    </li>{/each}</ol>
 
   <div class="grid heat" role="group" aria-label="Members free per hour">
     <div class="corner"></div>
@@ -252,10 +307,39 @@
   {#if picked !== null}
     <h3 class="mt-4 mb-2 text-sm font-semibold">{DAY_NAMES[Math.floor(picked / 24)]} {hourLabel(picked % 24)}–{hourLabel(picked % 24 + 1)} · {pickedWho.length} free</h3>
     {#if pickedWho.length}<p>{classesOf(pickedWho).map(([c, n]) => `${c} ${n}`).join(" · ")}</p>
-      <ul class="who">{#each pickedWho as w (w.name)}<li>{w.name} <span class="dim">{w.className || NO_CLASS}</span></li>{/each}</ul>
+      <ul class="who">{#each pickedWho as w (w.name)}<li>{w.name}{w.guest ? " (guest)" : ""} <span class="dim">{w.className || NO_CLASS}</span></li>{/each}</ul>
     {:else}<p class="hint">Nobody free at this hour.</p>{/if}
   {:else}<p class="hint small">Click an hour to see who is free and their classes.</p>{/if}
 </Panel>
+
+{#if plans || guests.length}<Panel title="Guests (not in the static)" count={guests.length}>
+  <p class="hint">A stand-in while someone is away: their name, class and the days they can come count in the plan and the call-ups
+    like a member's, without inviting them to the static.{plans ? "" : " Officers add them."}</p>
+  {#if guests.length}<ul class="mb-3 space-y-1">{#each guests as m (m.name)}
+    <li class="flex flex-wrap items-center gap-2 text-sm"><b>{m.name}</b> <span class="dim">{m.className || NO_CLASS}</span>
+      <span class="dim">· {guestDays(m).join(", ") || `no hours ${offset ? "next" : "this"} week`}{ownWeek(m, week) ? " (only this week)" : ""}</span>
+      {#if plans}<span class="grow"></span><Button variant="ghost" size="sm" disabled={gs.busy} onclick={() => editGuest(m)}>Edit</Button>
+        <Button variant="ghost" size="sm" disabled={gs.busy} onclick={() => removeGuest(m.name)}>Remove</Button>{/if}</li>{/each}</ul>{/if}
+  {#if plans}<form class="space-y-2" onsubmit={(e) => { e.preventDefault(); saveGuestNow(); }}>
+    <div class="flex flex-wrap items-center gap-2">
+      <Input class="h-8 w-48" bind:value={gName} placeholder="Name" aria-label="Guest name" maxlength={64} />
+      <NativeSelect size="sm" bind:value={gClass} aria-label="Class"><NativeSelectOption value="">Class…</NativeSelectOption>{#each CLASSES as c}<NativeSelectOption value={c}>{c}</NativeSelectOption>{/each}</NativeSelect>
+      <label class="inline-flex items-center gap-1 text-sm text-muted-foreground">from <NativeSelect size="sm" bind:value={gFrom}>{#each Array(24) as _, h}<NativeSelectOption value={h}>{hourLabel(h)}</NativeSelectOption>{/each}</NativeSelect></label>
+      <label class="inline-flex items-center gap-1 text-sm text-muted-foreground">to <NativeSelect size="sm" bind:value={gTo}>{#each Array(24) as _, h}<NativeSelectOption value={h + 1}>{hourLabel(h + 1)}</NativeSelectOption>{/each}</NativeSelect></label>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      {#each DAYS as d, day}<label class="inline-flex items-center gap-1.5 text-sm"><Checkbox checked={gDays[day]} onCheckedChange={(v) => { gDays[day] = !!v; }} />{d} {dateOf(day).getUTCDate()}</label>{/each}
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <ToggleGroup.Root type="single" variant="outline" size="sm" aria-label="For" value={gScope} onValueChange={(v) => { if (v) { gScope = v as typeof gScope; } }}>
+        <ToggleGroup.Item value="week">Only {offset ? "next" : "this"} week</ToggleGroup.Item><ToggleGroup.Item value="every">Every week</ToggleGroup.Item>
+      </ToggleGroup.Root>
+      <span class="grow"></span>
+      {#if editing}<Button variant="ghost" size="sm" onclick={clearGuest}>Cancel</Button>{/if}
+      <Button type="submit" size="sm" disabled={gs.busy || !gName.trim() || !gDays.some(Boolean) || gTo <= gFrom}>{editing ? "Save guest" : "Add guest"}</Button>
+    </div>
+  </form>{/if}
+</Panel>{/if}
 {/if}
 
 <style>
