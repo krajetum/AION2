@@ -15,7 +15,7 @@
   import { nextEvent } from "../../domain/time.ts";
   import { CHANNELS, isTheme, SOUND_THEMES, themeFor } from "../../domain/alerts.ts";
   import { CADENCES } from "../../domain/types.ts";
-  import { SOUL_POPUP_SIZES } from "../../domain/soul-pop.ts";
+  import { SOUL_POPUP_SECONDS, SOUL_POPUP_SIZES } from "../../domain/soul-pop.ts";
   import { playBirthday, playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { clearCubePicture, loadCubePicture, saveCubePicture, type Opener } from "../../infra/map-image.ts";
@@ -207,6 +207,9 @@
     <label class={ROW}><span>Soul points popup size</span><NativeSelect value={String(s.soulPopupSize)} disabled={!isDesktop() || !s.soulPopup}
       onchange={(e) => act(() => { s.soulPopupSize = +e.currentTarget.value; soulsPopup(s.soulPopup, undefined, undefined, s.soulPopupSize); })}>
       {#each SOUL_POPUP_SIZES as [k, label]}<NativeSelectOption value={String(k)}>{label}</NativeSelectOption>{/each}</NativeSelect></label>
+    <label class={ROW}><span>Soul points popup stays on screen <small class="text-xs text-muted-foreground">after the last gain</small></span><NativeSelect value={String(s.soulPopupSeconds ?? 3)} disabled={!isDesktop() || !s.soulPopup}
+      onchange={(e) => act(() => { s.soulPopupSeconds = +e.currentTarget.value; })}>
+      {#each SOUL_POPUP_SECONDS as sec}<NativeSelectOption value={String(sec)}>{sec} s</NativeSelectOption>{/each}</NativeSelect></label>
     {@render toggle("DPS overlay during fights", s.dpsOverlay, (on) => { s.dpsOverlay = on; meterOverlay(s.dpsOverlay, false); }, !isDesktop())}
     {@render toggle("Hide when the game is not in front", s.overlayFollowGame, (on) => { s.overlayFollowGame = on; overlayStyle(s.overlayFollowGame, s.overlayOpacity); }, !isDesktop())}
     <label class={ROW}><span>Opacity</span><span class="flex items-center gap-2 text-muted-foreground tabular-nums">{@render range(s.overlayOpacity, "Overlay opacity", 20, 100,

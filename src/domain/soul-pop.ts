@@ -13,7 +13,10 @@ export const ON_FIRE = 10;
 
 /** What the popup shows: soul points and shards of this combo, how many gains, the last pet's name and where it
  *  stands (`progress`, e.g. "12/25 to level 2"), `lastMs` = when the app got the last gain. */
-export interface SoulPop { points: number; shards: number; hits: number; lastMs: number; label: string; progress?: string }
+export interface SoulPop { points: number; shards: number; hits: number; lastMs: number; label: string; progress?: string; /** how long it stays up after the last gain (Settings), else COMBO_MS */ showMs?: number }
+/** The popup's durations in seconds (Settings › Overlays), the first = the default. */
+export const SOUL_POPUP_SECONDS = [3, 5, 8, 10, 15] as const;
+export const soulPopupMs = (seconds: unknown) => (SOUL_POPUP_SECONDS.includes(seconds as 3) ? (seconds as number) : SOUL_POPUP_SECONDS[0]) * 1000;
 
 /** New gains since `seenMs` to show: soul points of pets not done (all of them while no collection is known), crystals. */
 // No crystals / shards: none of the 61053xxxx loots is a pet's (recordings of 2026-11-22: 610530014, 610530001 and

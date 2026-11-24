@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PET_ID_BY_NAME, PET_TYPE, PET_TYPES, type PetType } from "../../domain/pet-names.ts";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import ChevronUp from "@lucide/svelte/icons/chevron-up";
   import Minus from "@lucide/svelte/icons/minus";
@@ -123,13 +124,19 @@
     return id == null ? d.item == null : wanted(collection, id); // a crystal drops once a collection is done
   };
   // Yours and other players' spots (allDrops; theirs where you have none of that pet nearby).
-  const every = $derived(allDrops(ui.data.map));
+  // The pet type picked (Cogni, Fera, Natura, Varian, Special: pet-names.ts), remembered here.
+  let petType = $state<PetType | "any">(PET_TYPES.some(([t]) => t === remembered("petType")) ? (remembered("petType") as PetType) : "any");
+  $effect(() => remember("petType", petType === "any" ? "" : petType));
+  const typeOk = (d: (typeof ui.data.map.pets)[number]) => petType === "any" || PET_TYPE[petOf(d, ui.data.map.kinds) ?? -1] === petType;
+  const every = $derived(allDrops(ui.data.map).filter(typeOk));
   const drops = $derived(onlyWanted && collection ? every.filter(stillWanted) : every);
+  /** A list entry's type by its name (`KNOWN_PET_NAMES`); a name the table doesn't know shows only under "All types". */
+  const entryOk = (name: string) => petType === "any" || PET_TYPE[PET_ID_BY_NAME[name.toLowerCase()] ?? -1] === petType;
   const names = $derived(ui.data.map.souls);
   const items = $derived(ui.data.map.items);
   const soul = (d: (typeof drops)[number]) => soulOf(ui.data.map, d);
   const isPet = (d: (typeof drops)[number]) => soul(d).toLowerCase() === pet.toLowerCase();
-  const pets = $derived(petList(drops, query, ui.data.map));
+  const pets = $derived(petList(drops, query, ui.data.map).filter((e) => entryOk(e.name)));
   const chosen = $derived(pets.find((e) => e.name.toLowerCase() === pet.toLowerCase()) ?? petList(drops, "", ui.data.map).find((e) => e.name.toLowerCase() === pet.toLowerCase()));
   // The chosen soul's mobs whose kills gave soul points (a crystal is named by its item, not its mob).
   const pointMobs = $derived((chosen?.mobs ?? []).filter((m) => drops.some((d) => d.item == null && d.mob?.toLowerCase() === m.toLowerCase())));
@@ -468,6 +475,8 @@
         {/if}
         {#if layer === "pets"}
           <Input type="search" placeholder="Search a soul or a mob" aria-label="Search a soul or a mob" autocomplete="off" bind:value={query} />
+          <NativeSelect size="sm" class="w-full" aria-label="Pet type" value={petType} onchange={(e) => { petType = e.currentTarget.value as typeof petType; pet = ""; selectedDrop = ""; }}>
+            <NativeSelectOption value="any">All types</NativeSelectOption>{#each PET_TYPES as [t, label] (t)}<NativeSelectOption value={t}>{label}</NativeSelectOption>{/each}</NativeSelect>
           <label class="toggle-line" title={collection ? "Hides the spots of pets you have at level 3 (Pets page)" : "Log in or change character in game once, with the companion running"}>
             <Checkbox bind:checked={onlyWanted} disabled={!collection} onCheckedChange={(on) => { if (on) { pet = ""; selectedDrop = ""; } }} /> Only pets still to collect</label>
           <label class="toggle-line" title="One stop per pet still to collect on this map, at its busiest spot, in a good order from where you are. Straight lines: terrain and teleports are not known.">

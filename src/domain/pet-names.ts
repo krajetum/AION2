@@ -233,9 +233,13 @@ export const KNOWN_PET_NAMES: Record<number, string> = {
   1253: "Umbral Shadow Unicorn",
 };
 
-// Pet type (the database's "main category") by pet number: Feral, Intellect, Nature, Special (chests, events) and Trans, same source and date.
+// Pet type (the database's "main category") by pet number, same source and date. Shown with the game's names (the player,
+// 2026-11-24): intellect = Cogni (Elite Manduri Fighter), feral = Fera (Fossa), nature = Natura (Forest Specter), trans =
+// Varian (Swarm), special = Special (chests, events); in the game's order.
 export type PetType = "feral" | "intellect" | "nature" | "special" | "trans";
-export const PET_TYPES: [PetType, string][] = [["feral", "Feral"], ["intellect", "Intellect"], ["nature", "Nature"], ["special", "Special"], ["trans", "Trans"]];
+export const PET_TYPES: [PetType, string][] = [["intellect", "Cogni"], ["feral", "Fera"], ["nature", "Natura"], ["trans", "Varian"], ["special", "Special"]];
+/** A pet's number by its name (any case), for the names in `KNOWN_PET_NAMES`. */
+export const PET_ID_BY_NAME: Record<string, number> = Object.fromEntries(Object.entries(KNOWN_PET_NAMES).map(([id, n]) => [n.toLowerCase(), +id]));
 const TYPE_IDS: Record<PetType, number[]> = {
   feral: [
     1004, 1006, 1007, 1008, 1009, 1011, 1014, 1015, 1016, 1021, 1022, 1025, 1032, 1034, 1035, 1036, 1037, 1038, 1039,
