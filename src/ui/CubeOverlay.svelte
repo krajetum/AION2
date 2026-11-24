@@ -7,7 +7,7 @@
   import type { MeterUpdate } from "../domain/meter.ts";
   import type { Settings } from "../domain/types.ts";
   import { loadCubePicture, type Opener } from "../infra/map-image.ts";
-  import { onMeter, sizeOverlay } from "../infra/meter.ts";
+  import { onHudEdit, onMeter, sizeOverlay } from "../infra/meter.ts";
   import { playSound } from "../infra/notifier.ts";
   import { loadData } from "../infra/storage.ts";
 
@@ -58,6 +58,9 @@
     }
   }));
 
+  // "Edit overlays" shows the popup with nothing to say: its frame only then.
+  let editing = $state(false);
+  $effect(() => { onHudEdit((on) => { editing = on; }); });
   const live = $derived(u?.cubes?.live ?? []);
   const lastOpened = $derived(u?.cubes?.opened.at(-1));
   const opened = $derived(!live.length && !!lastOpened && now - lastOpened.atMs < OPENED_MS);
@@ -86,7 +89,8 @@
 </script>
 
 <svelte:window bind:innerWidth={width} />
-{#if showPicture}<div class="cube-picture" data-tauri-drag-region>
+{#if !live.length && !opened && !editing}<!-- no cube: nothing to show, even if the window is still up -->
+{:else if showPicture}<div class="cube-picture" data-tauri-drag-region>
   <img src={picture} alt="Cube opened" draggable="false" data-tauri-drag-region>
   <b class:lost={!lastOpened?.byYou} data-tauri-drag-region>{lastOpened?.byYou ? "Cube opened" : "Someone else opened it"}</b>
 </div>
