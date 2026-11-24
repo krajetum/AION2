@@ -434,6 +434,31 @@ export function parseAvailability(body: unknown, now: number): AvailabilityPost 
   if (!slots && !week) return null;
   return { install: body.install.toLowerCase(), slots, week };
 }
+/** Guests per static (raid plan stand-ins who are not members). */
+export const MAX_GUESTS = 20;
+export interface GuestPost { auth: Auth; name: string; className: string; slots: string | null; week: AvailabilityPost["week"]; remove: boolean }
+/**
+ * An officer's guest: a name (not a member's), a class, every week's hours and/or one week's, like parseAvailability;
+ * or `remove: true` to drop them. The officer is checked by the Worker (manage.callups).
+ */
+export function parseGuest(body: unknown, now: number): GuestPost | null {
+  if (!isObj(body)) return null;
+  const auth = parseAuth(body);
+  const name = text(body.name, MAX_NAME);
+  if (!auth || !name) return null;
+  if (body.remove === true) return { auth, name, className: "", slots: null, week: null, remove: true };
+  const slots = body.slots === undefined ? null : isSlots(body.slots) ? body.slots.toLowerCase() : undefined;
+  if (slots === undefined) return null;
+  let week: AvailabilityPost["week"] = null;
+  if (body.week !== undefined) {
+    const w = body.week;
+    if (!isObj(w) || !isWeek(w.start, now) || !(w.slots === null || isSlots(w.slots))) return null;
+    week = { start: w.start, slots: w.slots === null ? null : (w.slots as string).toLowerCase() };
+  }
+  if (!slots && !week) return null;
+  return { auth, name, className: text(body.className, MAX_NAME), slots, week, remove: false };
+}
+
 /** The stored weeks with one set or cleared, past ones (Monday more than 7 days ago) dropped, the latest MAX_WEEKS kept. */
 export function mergeWeeks(json: string | null | undefined, week: AvailabilityPost["week"], now: number): Record<string, string> {
   let o: unknown;

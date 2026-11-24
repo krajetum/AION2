@@ -67,7 +67,7 @@ export function slotNow(week: string, now: number, tz = RAID_PLAN.timeZone): num
 
 /** A member's hours as the Worker keeps them: every week's, and weeks that differ ("only this week"). */
 export interface Availability { slots: string; weeks: Record<string, string>; updatedMs: number }
-export interface MemberAvailability extends Availability { name: string; className: string; /** null: not known (a card from before servers were kept) */ serverId: number | null }
+export interface MemberAvailability extends Availability { name: string; className: string; /** null: not known (a card from before servers were kept) */ serverId: number | null; /** not in the static: a stand-in an officer added */ guest?: boolean }
 
 /** The hours that count for `week`: that week's own when set, else every week's; blocked hours out. */
 export const hoursFor = (a: Pick<Availability, "slots" | "weeks"> | null | undefined, week: string): Week =>
@@ -86,7 +86,7 @@ export function hourKind(free: boolean, usual: boolean, onlyThisWeek: boolean): 
 }
 
 /** The Worker's answer, checked; null when it isn't one. */
-export function parseAvailability(j: any): { mine: Availability | null; members: MemberAvailability[] | null } | null {
+export function parseAvailability(j: any): { mine: Availability | null; members: MemberAvailability[] | null; guests: MemberAvailability[] } | null {
   if (!j || typeof j !== "object") return null;
   const av = (a: any): Availability | null => a && typeof a.slots === "string" ? {
     slots: a.slots,
@@ -98,16 +98,20 @@ export function parseAvailability(j: any): { mine: Availability | null; members:
     return a && typeof m.name === "string" ? [{ ...a, name: m.name, className: typeof m.className === "string" ? m.className : "",
       serverId: typeof m.serverId === "number" && m.serverId > 0 ? m.serverId : null }] : [];
   }) : null;
-  return { mine: av(j.mine), members };
+  const guests = Array.isArray(j.guests) ? j.guests.flatMap((m: any) => {
+    const a = av(m);
+    return a && typeof m.name === "string" && m.name ? [{ ...a, name: m.name, className: typeof m.className === "string" ? m.className : "", serverId: null, guest: true }] : [];
+  }) : [];
+  return { mine: av(j.mine), members, guests };
 }
 
-export interface Who { name: string; className: string }
+export interface Who { name: string; className: string; guest?: boolean }
 /** Who is free at each hour of `week`. */
 export function freeBySlot(members: MemberAvailability[], week: string): Who[][] {
   const out: Who[][] = Array.from({ length: WEEK_HOURS }, () => []);
   for (const m of members) {
     const h = hoursFor(m, week);
-    h.forEach((free, i) => { if (free) out[i].push({ name: m.name, className: m.className }); });
+    h.forEach((free, i) => { if (free) out[i].push({ name: m.name, className: m.className, ...(m.guest && { guest: true }) }); });
   }
   return out;
 }
@@ -146,8 +150,17 @@ export const withClasses = <T extends Who>(members: T[], found: Record<string, s
   members.map((m) => (m.className || !found[m.name] ? m : { ...m, className: found[m.name] }));
 export const hourLabel = (h: number) => `${String(h % 24).padStart(2, "0")}:00`;
 
-/** A day's best stretch with at least this many free gets a "Make a call-up" button (officers, `manage.callups`). */
-export const CALLUP_MIN_FREE = 9;
+/**
+ * A call-up's hours on one day, `from` to `to` (24 = midnight): who is free for all of them. Every day can be called,
+ * even with nobody free yet (the player's choice, 2026-11-24: stand-ins come from outside the plan).
+ */
+export function dayWindow(bySlot: Who[][], day: number, from: number, to: number): DayPeak {
+  const hours = [...Array(Math.max(0, to - from)).keys()].map((i) => bySlot[slotOf(day, from + i)] ?? []);
+  const who = hours.length ? hours[0].filter((w) => hours.every((h) => h.some((x) => x.name === w.name))) : [];
+  return { day, count: who.length, from, to, who, classes: classesOf(who) };
+}
+/** A day's hours when nobody has marked any: the evening. */
+export const DEFAULT_WINDOW = { from: 20, to: 23 };
 /** Its reminders: one at once (a lead as long as the wait, which the Worker posts within a minute), 3 h and 1 h before. */
 export const CALLUP_LEADS = [180, 60];
 const MAX_MESSAGE = 500; // the Worker's call-up message limit (server/src/validate.ts)
@@ -160,9 +173,10 @@ export function callupFor(d: DayPeak, week: string, now: number, tz = RAID_PLAN.
   const atMs = slotStart(week, slotOf(d.day, d.from), tz);
   const wait = Math.floor((atMs - now) / 60_000);
   if (wait < 1) return null;
-  const head = `Raid: ${d.count} members are free ${hourLabel(d.from)}–${hourLabel(d.to)} (server time).\n`;
   const tail = "\nYour spot is not guaranteed.";
-  const names = d.who.map((w) => w.name);
+  if (!d.who.length) return { atMs, message: `Raid: ${DAY_NAMES[d.day]} ${hourLabel(d.from)}–${hourLabel(d.to)} (server time).${tail}`, ping: "everyone", leads: [...new Set([wait, ...CALLUP_LEADS])].sort((a, b) => b - a) };
+  const head = `Raid: ${d.count} ${d.count === 1 ? "player is" : "players are"} free ${hourLabel(d.from)}–${hourLabel(d.to)} (server time).\n`;
+  const names = d.who.map((w) => (w.guest ? `${w.name} (guest)` : w.name));
   let list = names.join(", ");
   for (let n = names.length; n > 0 && head.length + "Signed up: ".length + list.length + tail.length > MAX_MESSAGE; n--) {
     list = `${names.slice(0, n - 1).join(", ")} and ${names.length - n + 1} more`;
