@@ -27,22 +27,33 @@
 
   let found = $state<Found[] | null>(null);
   let searching = $state(false), error = $state("");
+  let progress = $state<{ done: number; failed: number; total: number } | null>(null);
   let open = $state<Found | null>(null);
   let profile = $state<Profile | null>(null), loading = $state(false), profileError = $state("");
 
-  let want = asked?.serverId ?? 0; // the server a card or "My character" asked for, to open that one among several
+  let want = asked?.serverId ?? 0;
+  let runs = 0; // a newer search replaces the one still running // the server a card or "My character" asked for, to open that one among several
   async function search() {
     const n = name.trim();
     if (!n || !region) return;
-    searching = true; error = ""; open = null; profile = null;
+    searching = true; error = ""; open = null; profile = null; found = []; progress = null;
+    const run = ++runs;
+    // An exact match opens by itself: the one on the server asked for (a card's "Full profile", your character) as soon
+    // as that server answers, else the only one once every server has.
+    const exactIn = (list: Found[]) => list.filter((c) => c.name.toLowerCase() === n.toLowerCase());
     try {
-      found = await searchRegion(n, region);
-      // An exact match opens by itself: the one on the server asked for (a card's "Full profile", your character), else the only one.
-      const exact = found.filter((c) => c.name.toLowerCase() === n.toLowerCase());
-      const pick = exact.find((c) => c.serverId === want) ?? (exact.length === 1 ? exact[0] : null);
-      if (pick) show(pick);
-    } catch (e) { found = null; error = e instanceof Error ? e.message : String(e); }
-    searching = false;
+      const r = await searchRegion(n, region, (part) => {
+        if (run !== runs) return;
+        found = part.found; progress = part;
+        const asked = want ? exactIn(part.found).find((c) => c.serverId === want) : null;
+        if (asked && !open) show(asked);
+      });
+      if (run !== runs) return;
+      found = r.found; progress = r;
+      const exact = exactIn(r.found);
+      if (!open && exact.length === 1) show(exact[0]);
+    } catch (e) { if (run === runs) { found = null; error = e instanceof Error ? e.message : String(e); } }
+    if (run === runs) searching = false;
   }
   async function show(c: Found) {
     open = c; profile = null; profileError = ""; loading = true;
@@ -92,19 +103,21 @@
 <form class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm" onsubmit={(e) => { e.preventDefault(); void search(); }}>
   <label class="flex items-center gap-1.5 text-muted-foreground">Name <Input class="w-52" bind:value={name} placeholder="Character name" aria-label="Character name" autocomplete="off" required /></label>
   <label class="flex items-center gap-1.5 text-muted-foreground">Region <NativeSelect bind:value={region}>{#each Object.values(REGIONS) as r}<NativeSelectOption value={r}>{REGION_NAMES[r] ?? r}</NativeSelectOption>{/each}</NativeSelect></label>
-  <Button type="submit" disabled={searching} onclick={() => { touched = true; want = 0; }}>{searching ? "Searching…" : "Search"}</Button>
+  <Button type="submit" onclick={() => { touched = true; want = 0; }}>{searching ? `Searching… ${progress ? `${progress.done}/${progress.total}` : ""}` : "Search"}</Button>
   {#if me && !(open && open.serverId === me.serverId && open.name.toLowerCase() === me.name.toLowerCase())}
     <Button type="button" variant="ghost" title="Back to the character you play in game" onclick={openMe}>← My character ({me.name})</Button>{/if}
 </form>
-<p class="hint mt-0 mb-3">From the official character search: names containing what you type, on every server of the region (one search per server, so a few seconds). Only Europe has been checked.</p>
+<p class="hint mt-0 mb-3">From the official character search: names containing what you type, on every server of the region (one search per server: they show as each answers). Only Europe has been checked.</p>
 {#if error}<p class="hint error">The search could not be read ({error}).</p>{/if}
+{#if !searching && progress?.failed}<p class="hint error">{progress.failed} of {progress.total} servers did not answer: a character there may be missing.
+  <Button variant="link" size="sm" class="px-1" onclick={() => search()}>Search again</Button></p>{/if}
 
 {#if found}<Panel title="Characters" count={found.length}>
   <Table.Root>
     <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Name</Table.Head><Table.Head class="text-right">Level</Table.Head><Table.Head>Server</Table.Head></Table.Row></Table.Header>
     <Table.Body>{#each found as c (c.characterId)}<Table.Row data-state={open === c ? "selected" : undefined}>
       <Table.Cell><Button variant="link" size="sm" class="px-0" onclick={() => show(c)}>{c.name}</Button></Table.Cell><Table.Cell class="text-right">{c.level ?? "—"}</Table.Cell><Table.Cell>{c.serverName}</Table.Cell>
-    </Table.Row>{:else}<Table.Row><Table.Cell class="text-muted-foreground" colspan={3}>No character with that name in this region.</Table.Cell></Table.Row>{/each}</Table.Body>
+    </Table.Row>{:else}<Table.Row><Table.Cell class="text-muted-foreground" colspan={3}>{searching ? "Searching the region's servers…" : "No character with that name in this region."}</Table.Cell></Table.Row>{/each}</Table.Body>
   </Table.Root>
 </Panel>{/if}
 
