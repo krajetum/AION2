@@ -34,7 +34,7 @@ test("kills: the meter's resent ones once, one death logged twice once, newest f
 
 test("map labels: the player's name, a known one, or Map <id>", () => {
   assert.equal(mapLabel({ 20: "Upper Abyss" }, 20), "Upper Abyss");
-  assert.equal(mapLabel({}, 20), "Abyss");
+  assert.equal(mapLabel({}, 20), "Chaotic Lower Reshanta");
   assert.equal(mapLabel({}, 1110), "Map 1110");
 });
 
@@ -67,6 +67,15 @@ test("Abyss PvP is no arena match (2026-10-29: 106 opponents in 6 'rounds')", ()
   assert.equal(log.matches.length, 0);
 });
 
+test("Chaotic Outer Reshanta (23) is open Abyss: no match, its kills kept", async () => {
+  const { logMatch, logKills, mapLabel } = await import("./arena.ts");
+  const log = { matches: [], maps: {}, kills: [] } as any;
+  assert.equal(logMatch(log, { mapId: 23, startMs: 1, endMs: 2, players: [] } as any), false);
+  assert.equal(logKills(log, [{ atMs: 1, kind: "kill", mapId: 23, other: { id: 1, name: "X" } } as any]), 1);
+  assert.equal(mapLabel({}, 23), "Chaotic Outer Reshanta");
+  assert.equal(mapLabel({}, 62), "Battlefield");
+});
+
 test("a dungeon is never a match nor a PvP kill", async () => {
   const { logMatch, logKills, isDungeonMap } = await import("./arena.ts");
   const log = { matches: [], maps: {}, kills: [] } as any;
@@ -75,4 +84,13 @@ test("a dungeon is never a match nor a PvP kill", async () => {
   assert.equal(logMatch(log, { mapId: 600023, startMs: 1, endMs: 2, players: [] } as any), false);
   assert.equal(logKills(log, [{ atMs: 1, kind: "kill", mapId: 600023, other: { id: 1, name: "BM" } } as any]), 0);
   assert.equal(logKills(log, [{ atMs: 1, kind: "kill", mapId: 61, other: { id: 1, name: "punkgob" } } as any]), 1);
+});
+
+test("a match is a Battlefield on map 62 or with more than 5 opponents, else an Arena", async () => {
+  const { matchKind } = await import("./arena.ts");
+  const side = (n: number, s: string) => Array.from({ length: n }, () => ({ side: s }));
+  assert.equal(matchKind({ mapId: 62, players: side(1, "opponent") }), "Battlefield");
+  assert.equal(matchKind({ mapId: 61, players: [...side(1, "you"), ...side(1, "opponent")] }), "Arena");
+  assert.equal(matchKind({ mapId: 70, players: [...side(5, "ally"), ...side(5, "opponent")] }), "Arena");
+  assert.equal(matchKind({ mapId: 70, players: side(8, "opponent") }), "Battlefield");
 });
