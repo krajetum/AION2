@@ -8,13 +8,18 @@
   import type { MeterUpdate } from "../domain/meter.ts";
   import type { Settings } from "../domain/types.ts";
   import { loadMapImage } from "../infra/map-image.ts";
-  import { onMeter } from "../infra/meter.ts";
+  import { onHudEdit, onMeter } from "../infra/meter.ts";
   import { loadData } from "../infra/storage.ts";
   import { BUNDLED_IMAGE, fitFor } from "./maps.ts";
   import { TRAVEL_ICON } from "./icons.ts";
 
   let u = $state<MeterUpdate | undefined>();
   $effect(() => onMeter((x) => { u = x; }));
+  // On screen only while a cube is in view or was just opened (src-tauri/src/meter.rs `cube_news`), or while editing
+  // the overlays: otherwise nothing is drawn, even if the window is still up.
+  let editing = $state(false);
+  $effect(() => { onHudEdit((on) => { editing = on; }); });
+  const OPENED_SHOWN_MS = 5_000;
   let w = $state(220), h = $state(220);
   // Riding a mount or flying, your position stops coming (domain/map.ts staleFor): say how old it is.
   let now = $state(Date.now());
@@ -79,6 +84,7 @@
 </script>
 
 <svelte:window bind:innerWidth={w} bind:innerHeight={h} />
+{#if editing || u?.cubes?.live?.length || (u?.cubes?.opened.at(-1) && now - u.cubes.opened.at(-1)!.atMs < OPENED_SHOWN_MS)}
 <div class="radar" class:stale={stale != null} class:round={settings?.radarRound !== false} data-tauri-drag-region>
   {#if backdrop && image}<img class="radar-map" src={image} alt="" draggable="false" style:transform={backdrop}>{/if}
   <span class="radar-n" data-tauri-drag-region>N</span>
@@ -90,3 +96,4 @@
   {:else if travel}<small class="radar-note" data-tauri-drag-region title="The game sends your position on foot, when you open your wings or land, and at each jump on a mount: not while riding or gliding">{travel}</small>
   {:else if stale != null}<small class="radar-note" data-tauri-drag-region title="The game sends your position on foot, when you open your wings or land, and at each jump on a mount: not while riding or gliding">Last position {stale} s ago</small>{/if}
 </div>
+{/if}
