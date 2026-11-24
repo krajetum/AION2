@@ -181,6 +181,19 @@ export async function saveAvailability(data: AppData, a: { slots?: Week; week?: 
   });
 }
 
+/** Raid plan guest (officers): a player who is not in the static, with a class and hours like a member's; `remove` drops them. */
+export async function saveGuest(data: AppData, g: { name: string; className?: string; slots?: Week; week?: { start: string; slots: Week | null }; remove?: boolean }): Promise<void> {
+  if (!data.guild) throw new Error("Not in a static");
+  await crowd(path(data, "/guests"), {
+    ...auth(data), name: g.name,
+    ...(g.remove ? { remove: true } : {
+      className: g.className ?? "",
+      ...(g.slots ? { slots: encodeWeek(g.slots) } : {}),
+      ...(g.week ? { week: { start: g.week.start, slots: g.week.slots ? encodeWeek(g.week.slots) : null } } : {}),
+    }),
+  });
+}
+
 /** Leader key typed in by a Leader on another install (it was shown once, at creation): Leader here from the next sync. */
 export function setOfficerKey(data: AppData, key: string): void {
   if (data.guild) data.guild.officerKey = key.toUpperCase().replace(/[\s-]/g, "") || undefined;
