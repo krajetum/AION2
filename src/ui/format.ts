@@ -17,7 +17,7 @@ export const PAGE: Record<Tab, [string, string]> = {
   pets: ["Pets", "Your pet collection: what is left to collect, and where."],
   dps: ["DPS Meter", "Live damage, healing and damage taken."],
   fights: ["DPS Log", "Every boss fight: personal bests and runs side by side."],
-  arena: ["Arena Log", "Every arena match and opponent."],
+  arena: ["Arena Log", "Arena and battlefield matches, PvP kills and deaths."],
   players: ["Players", "Any character's official profile: combat power, item level, stats."],
   guild: ["Static", "Boss alerts in Discord, the members' gear and their boss fights."],
   wiki: ["Wiki", "Dungeons from online guides: requirements, drops, bosses and the rules they share."],
