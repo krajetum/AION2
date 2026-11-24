@@ -220,3 +220,44 @@ async function demoCall(cmd: string, args?: Record<string, unknown>) {
   if (cmd === "meter_target_mode") demo.mode = String(args?.mode);
   emit(demoUpdate());
 }
+
+// "Edit overlays" (src-tauri/src/meter.rs `hud_edit`): every overlay that is on shows with a frame to drag and
+// resize, and the panel window (index.html#hud) talks to the main window, which keeps the presets, by events.
+import type { HudLabel, Place } from "../domain/hud.ts";
+export const hudEdit = (on: boolean) => (isTauri() ? invoke<void>("hud_edit", { on }) : Promise.resolve());
+export const hudCancel = () => (isTauri() ? invoke<void>("hud_cancel") : Promise.resolve());
+/** Where each overlay is now (physical pixels). */
+export const overlayPlaces = () => (isTauri() ? invoke<[string, Place][]>("overlay_places") : Promise.resolve([] as [string, Place][]));
+/** Moves (and sizes) the overlays, open or not. */
+export const setOverlayPlaces = (places: [string, Place][]) => (isTauri() ? invoke<void>("overlay_set_places", { places }) : Promise.resolve());
+/** Editing or not, now and on every change (for an overlay window). */
+export async function onHudEdit(fn: (on: boolean) => void) {
+  if (!isTauri()) return;
+  fn(await invoke<boolean>("hud_edit_state"));
+  await listen<boolean>("hud-edit", (e) => fn(e.payload));
+}
+/** The tray's "Edit overlays". */
+export const onHudOpen = (fn: () => void) => (isTauri() ? listen("hud-open", () => fn()) : Promise.resolve(() => {}));
+
+export type HudCmd =
+  | { cmd: "hello" }
+  | { cmd: "toggle"; label: HudLabel; on: boolean }
+  | { cmd: "save"; slot: number }
+  | { cmd: "load"; slot: number }
+  | { cmd: "rename"; slot: number; name: string }
+  | { cmd: "done" }
+  | { cmd: "cancel" };
+export interface HudState {
+  presets: { name: string; savedMs: number | null }[];
+  active: number;
+  on: Record<string, boolean>;
+}
+async function hudEmit(name: string, payload: unknown) {
+  if (!isTauri()) return;
+  const { emit } = await import("@tauri-apps/api/event");
+  await emit(name, payload);
+}
+export const sendHudCmd = (c: HudCmd) => hudEmit("hud-cmd", c);
+export const sendHudState = (s: HudState) => hudEmit("hud-state", s);
+export const onHudCmd = (fn: (c: HudCmd) => void) => (isTauri() ? listen<HudCmd>("hud-cmd", (e) => fn(e.payload)) : Promise.resolve(() => {}));
+export const onHudState = (fn: (s: HudState) => void) => (isTauri() ? listen<HudState>("hud-state", (e) => fn(e.payload)) : Promise.resolve(() => {}));

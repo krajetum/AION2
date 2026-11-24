@@ -1,4 +1,5 @@
 // Save-file rules: the default data and the migration of old or imported saves. Pure.
+import { cleanPresets, defaultPresets, PRESET_COUNT } from "./hud.ts";
 import { cleanBis } from "./bis.ts";
 import { cleanCrafting, emptyCrafting } from "./crafting.ts";
 import { cleanMarks, emptyMarks } from "./codes.ts";
@@ -73,6 +74,8 @@ export function defaultData(): AppData {
       radarMap: true,
       sumKina: false,
       radarRound: true,
+      overlayPresets: defaultPresets(),
+      overlayPreset: 0,
       crowdShare: true,
       crashReports: false,
       autoUpdate: true,
@@ -140,6 +143,8 @@ export function normalize(raw: any): AppData {
     history: cleanHistory(raw.history),
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels,
       mascotGender: rs.mascotGender === "f" ? "f" : "m",
+      overlayPresets: cleanPresets(rs.overlayPresets),
+      overlayPreset: Number.isInteger(rs.overlayPreset) && rs.overlayPreset >= 0 && rs.overlayPreset < PRESET_COUNT ? rs.overlayPreset : 0,
       soundTheme: rs.soundTheme === "custom" ? "custom" : SOUND_THEMES.find((t) => t.id === rs.soundTheme)?.id ?? "default",
       channelThemes: Object.fromEntries(Object.entries(rs.channelThemes && typeof rs.channelThemes === "object" ? rs.channelThemes : {}).filter(([, t]) => isTheme(t))) as Settings["channelThemes"] },
   };
