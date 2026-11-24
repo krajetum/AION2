@@ -18,6 +18,8 @@ use crate::combat::data_storage::{DataStorage, is_open_world_map};
 
 /// The Abyss's map id (the field-boss map `01 91` that lists its bosses; `src/domain/arena.ts` KNOWN_MAPS).
 const ABYSS_MAP: i32 = 20;
+/// Chaotic Outer Reshanta, the outer Abyss (named by the player 2026-11-24): open like the Abyss, never a match.
+const OUTER_ABYSS_MAP: i32 = 23;
 /// Instance dungeons (Krao Cave 600001 … Ferocious Horn Den 600093): never an arena match or a PvP kill.
 fn is_dungeon_map(map: i32) -> bool { (600_000..700_000).contains(&map) }
 use crate::combat::dps_calculator::DpsCalculator;
@@ -566,7 +568,7 @@ impl Engine {
         // are in the kill history.
         // Instance dungeons (600000-699999) are PvE: a party's hits on a player-like target there made a "match"
         // (Fire Temple, 2026-11-18).
-        if let Some(map_id) = map.filter(|&m| !is_open_world_map(m) && m != ABYSS_MAP && !is_dungeon_map(m)) {
+        if let Some(map_id) = map.filter(|&m| !is_open_world_map(m) && m != ABYSS_MAP && m != OUTER_ABYSS_MAP && !is_dungeon_map(m)) {
             let me: Vec<i32> = if me_ids.is_empty() { self.storage.local_player_id().map(|id| id as i32).into_iter().collect() } else { me_ids };
             let deaths = self.storage.deaths_between(i64::MIN, i64::MAX);
             let me_name = zone_name.or(self.storage.local_profile().name);

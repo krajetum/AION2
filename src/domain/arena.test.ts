@@ -67,6 +67,14 @@ test("Abyss PvP is no arena match (2026-10-29: 106 opponents in 6 'rounds')", ()
   assert.equal(log.matches.length, 0);
 });
 
+test("Chaotic Outer Reshanta (23) is open Abyss: no match, its kills kept", async () => {
+  const { logMatch, logKills, mapLabel } = await import("./arena.ts");
+  const log = { matches: [], maps: {}, kills: [] } as any;
+  assert.equal(logMatch(log, { mapId: 23, startMs: 1, endMs: 2, players: [] } as any), false);
+  assert.equal(logKills(log, [{ atMs: 1, kind: "kill", mapId: 23, other: { id: 1, name: "X" } } as any]), 1);
+  assert.equal(mapLabel({}, 23), "Chaotic Outer Reshanta");
+});
+
 test("a dungeon is never a match nor a PvP kill", async () => {
   const { logMatch, logKills, isDungeonMap } = await import("./arena.ts");
   const log = { matches: [], maps: {}, kills: [] } as any;
