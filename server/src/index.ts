@@ -5,7 +5,7 @@
 // API under /v1, backward-compatible changes only (an incompatible one = /v2 alongside).
 import {
   alertKey, type Auth, type BossTimer, callupCancelPost, callupPost, can, cellOf, CODE_LEN, dueAlerts, MAX_BODY, MAX_CALLUPS, MAX_LEAD, MAX_POSTS, nextDue, nextSend,
-  mergeWeeks, parseAdmin, parseAuth, parseAvailability, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
+  mergeWeeks, MAX_GUESTS, parseAdmin, parseGuest, parseAuth, parseAvailability, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
   type Ping, POSTED_FOR, rank, type Role, SLOTS_HEX,
   MAX_REDEEM_LISTED, parseRedeemPost, REDEEM_EXPIRED_VOTES, REDEEM_KEEP, REDEEM_TTL,
   gatherCellOf, parseGatherPost, parseSoulPost, soulCellOf,
@@ -361,8 +361,40 @@ async function getAvailability(env: Env, url: URL, id: string) {
        WHERE a.guild_id = ? ORDER BY m.name`,
     ).bind(id).all<{ name: string; class_name: string; server_id: number | null; slots: string; weeks: string; updated_ms: number }>();
     out.members = results.map((r) => ({ name: r.name, className: r.class_name, serverId: r.server_id, slots: r.slots, weeks: mergeWeeks(r.weeks, null, now), updatedMs: r.updated_ms }));
+    const guests = await env.DB.prepare("SELECT name, class_name, slots, weeks, updated_ms FROM guild_guests WHERE guild_id = ? ORDER BY name")
+      .bind(id).all<{ name: string; class_name: string; slots: string; weeks: string; updated_ms: number }>();
+    out.guests = guests.results.map((r) => ({ name: r.name, className: r.class_name, slots: r.slots, weeks: mergeWeeks(r.weeks, null, now), updatedMs: r.updated_ms }));
   }
   return json(out);
+}
+
+/** An officer adds, changes or removes a raid plan guest: a player who is not in the static (a stand-in). */
+async function postGuest(env: Env, req: Request, id: string) {
+  const now = Date.now();
+  const p = parseGuest(await readBody(req), now);
+  if (!p) return fail(400, "bad request");
+  const who = await actorOf(env, id, p.auth);
+  if (!who) return fail(403, "not a member");
+  if (!can(who.role, "manage.callups", who.perms)) return fail(403, "no permission: manage.callups");
+  if (p.remove) {
+    await env.DB.prepare("DELETE FROM guild_guests WHERE guild_id = ? AND name = ?").bind(id, p.name).run();
+    return json({ ok: true });
+  }
+  if (await env.DB.prepare("SELECT 1 FROM guild_members WHERE guild_id = ? AND name = ? COLLATE NOCASE").bind(id, p.name).first())
+    return fail(409, "already a member: they mark their own hours");
+  const old = await env.DB.prepare("SELECT class_name, slots, weeks FROM guild_guests WHERE guild_id = ? AND name = ?")
+    .bind(id, p.name).first<{ class_name: string; slots: string; weeks: string }>();
+  if (!old) {
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM guild_guests WHERE guild_id = ?").bind(id).first<{ n: number }>();
+    if ((n?.n ?? 0) >= MAX_GUESTS) return fail(409, `at most ${MAX_GUESTS} guests`);
+  }
+  const slots = p.slots ?? old?.slots ?? "0".repeat(SLOTS_HEX);
+  const weeks = JSON.stringify(mergeWeeks(old?.weeks, p.week, now));
+  await env.DB.prepare(
+    `INSERT INTO guild_guests (guild_id, name, class_name, slots, weeks, updated_ms) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT (guild_id, name) DO UPDATE SET class_name = excluded.class_name, slots = excluded.slots, weeks = excluded.weeks, updated_ms = excluded.updated_ms`,
+  ).bind(id, p.name, p.className || old?.class_name || "", slots, weeks, now).run();
+  return json({ ok: true });
 }
 
 /** Your every-week hours and/or one week's; a first post with only a week starts every week empty. */
@@ -627,7 +659,7 @@ export default {
       if (req.method === "POST" && cancel) return await cancelCallup(env, req, cancel[1], cancel[2]);
       const send = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})\/callups\/([a-z2-7]{12})\/send$/);
       if (req.method === "POST" && send) return await sendCallup(env, req, send[1], send[2]);
-      const guild = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})(?:\/(me|fights|admin|callups|availability))?$/);
+      const guild = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})(?:\/(me|fights|admin|callups|availability|guests))?$/);
       if (guild) {
         const [, id, part] = guild;
         if (req.method === "POST" && part === "callups") return await createCallup(env, req, id);
@@ -635,6 +667,7 @@ export default {
         if (req.method === "GET" && part === "fights") return await getFights(env, url, id);
         if (req.method === "GET" && part === "availability") return await getAvailability(env, url, id);
         if (req.method === "POST" && part === "availability") return await postAvailability(env, req, id);
+        if (req.method === "POST" && part === "guests") return await postGuest(env, req, id);
         if (req.method === "POST" && part === "me") return await postMe(env, req, id);
         if (req.method === "POST" && part === "fights") return await postFight(env, req, id);
         if (req.method === "POST" && part === "admin") return await postAdmin(env, req, id);
@@ -664,6 +697,7 @@ export default {
       env.DB.prepare("DELETE FROM guilds WHERE id NOT IN (SELECT DISTINCT guild_id FROM guild_members)"),
       env.DB.prepare("DELETE FROM guild_callups WHERE at_ms < ? OR guild_id NOT IN (SELECT id FROM guilds)").bind(now - DAY),
       env.DB.prepare("DELETE FROM guild_availability WHERE (guild_id, install) NOT IN (SELECT guild_id, install FROM guild_members)"),
+      env.DB.prepare("DELETE FROM guild_guests WHERE guild_id NOT IN (SELECT id FROM guilds)"),
       env.DB.prepare("DELETE FROM redeem_codes WHERE MAX(expires_ms, COALESCE(dead_ms, 0)) < ?").bind(now - REDEEM_KEEP),
       env.DB.prepare("DELETE FROM redeem_votes WHERE key NOT IN (SELECT key FROM redeem_codes)"),
     ]));

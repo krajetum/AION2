@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  can, DEFAULT_PERMS, mergeWeeks, MAX_WEEKS, parseAvailability, SLOTS_HEX, permsOf, CALLUP_TITLE, callupPost, callupCancelPost, CANCELLED_TITLE, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
+  can, DEFAULT_PERMS, mergeWeeks, MAX_WEEKS, parseAvailability, parseGuest, SLOTS_HEX, permsOf, CALLUP_TITLE, callupPost, callupCancelPost, CANCELLED_TITLE, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
   parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseRedeemPost, parseServerId, parseShare, redeemKey, TIME_RANGE,
 } from "./validate.ts";
 
@@ -307,4 +307,15 @@ test("soul post: shifted, bad kills dropped, the mob's name cleaned, the cell pe
   assert.equal(parseSoulPost({ install: ID, sentMs: NOW, mapId: 1, souls: Array(MAX_SOULS + 1).fill({}) }, NOW), null);
   assert.equal(parseSoulPost({ install: ID, sentMs: NOW, mapId: 0, souls: [] }, NOW), null);
   assert.equal(soulCellOf(-13720, 15158), "-28,30");
+});
+
+test("raid plan guest: a name, a class and hours like a member's, or removed", () => {
+  const h = "f".repeat(SLOTS_HEX);
+  const g = parseGuest({ install: ID, name: "  Stand In ", className: "Cleric", slots: h }, NOW);
+  assert.deepEqual(g, { auth: { install: ID.toLowerCase(), officerKey: null }, name: "Stand In", className: "Cleric", slots: h, week: null, remove: false });
+  assert.equal(parseGuest({ install: ID, name: "X", remove: true }, NOW)?.remove, true);
+  assert.equal(parseGuest({ install: ID, name: "", slots: h }, NOW), null, "no name");
+  assert.equal(parseGuest({ name: "X", slots: h }, NOW), null, "nobody asking");
+  assert.equal(parseGuest({ install: ID, name: "X" }, NOW), null, "no hours");
+  assert.equal(parseGuest({ install: ID, name: "X", slots: "zz" }, NOW), null);
 });
