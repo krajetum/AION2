@@ -167,6 +167,11 @@ struct ArenaWatch {
     last: Option<ArenaMatch>,
     /// When the zone of the match being watched began (its line-up comes after).
     zone_since_ms: i64,
+    /// Your entity ids in this zone: the match is built after the next map load, which gives you a new one.
+    me_ids: Vec<i32>,
+    /// Your name as read in this zone: the next map load forgets it until your self record comes again, and
+    /// without it the line-up gives no sides (battlefield of 2026-11-24: every healer on you an "opponent").
+    me_name: Option<String>,
 }
 
 /// What the engine reads of a boss fight at most once a second (copies every hit's time and buff segment).
@@ -534,6 +539,14 @@ impl Engine {
         let mut a = self.arena.lock();
         let zone = self.storage.zone_generations().0;
         if zone == a.zone {
+            if let Some(id) = self.storage.local_player_id().map(|id| id as i32) {
+                if !a.me_ids.contains(&id) {
+                    a.me_ids.push(id);
+                }
+            }
+            if let Some(n) = self.storage.local_profile().name.filter(|n| !n.trim().is_empty()) {
+                a.me_name = Some(n);
+            }
             for id in self.storage.pvp_players() {
                 if let Some(n) = self.storage.get_nickname(id) {
                     a.names.insert(id, n);
@@ -546,17 +559,19 @@ impl Engine {
         a.zone = zone;
         let since = std::mem::replace(&mut a.zone_since_ms, crate::clock::now_ms());
         let names = std::mem::take(&mut a.names);
+        let me_ids = std::mem::take(&mut a.me_ids);
+        let zone_name = a.me_name.take();
         // The Abyss (map 20) is open world too, though the game data's overworld list leaves it out: its PvP
         // went into the arena log as one "match" per map load (106 opponents, 2026-10-29). Its kills and deaths
         // are in the kill history.
         // Instance dungeons (600000-699999) are PvE: a party's hits on a player-like target there made a "match"
         // (Fire Temple, 2026-11-18).
         if let Some(map_id) = map.filter(|&m| !is_open_world_map(m) && m != ABYSS_MAP && !is_dungeon_map(m)) {
-            let me = self.storage.local_player_id().map(|id| id as i32);
+            let me: Vec<i32> = if me_ids.is_empty() { self.storage.local_player_id().map(|id| id as i32).into_iter().collect() } else { me_ids };
             let deaths = self.storage.deaths_between(i64::MIN, i64::MAX);
-            let me_name = self.storage.local_profile().name;
+            let me_name = zone_name.or(self.storage.local_profile().name);
             let (line_up, teams) = crate::roster::latest(since);
-            if let Some(mut m) = build_match(map_id, &hits, me, &names, &self.storage.fight_roster(), &deaths, me_name.as_deref(), &line_up, teams) {
+            if let Some(mut m) = build_match(map_id, &hits, &me, &names, &self.storage.fight_roster(), &deaths, me_name.as_deref(), &line_up, teams) {
                 let profile = self.storage.local_profile();
                 for p in &mut m.players {
                     if p.server_id == 0 && !p.name.is_empty() {

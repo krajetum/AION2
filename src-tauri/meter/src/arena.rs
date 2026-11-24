@@ -51,11 +51,13 @@ pub struct ArenaMatch {
 /// roster by name (its members are your side, with their gear); `deaths` the death log; `me_name` your
 /// name (you are "you" by it too: your entity id changes with each arena map load); `line_up` the arena's
 /// line-up (`roster.rs`): every player in it gets the server and level it says; when it is this match's
-/// (`teams`), your team is your side and the players who never fought are listed too.
+/// (`teams`), your team is your side and the players who never fought are listed too; without it, `kin` says
+/// who is on your side (your faction on a battlefield, `roster::deciding_faction`). `me` = every entity id you
+/// had during the match (a map load gives you a new one, and the match is built after the next load).
 pub fn build_match(
     map_id: i32,
     hits: &HashMap<(i32, i32), PvpHits>,
-    me: Option<i32>,
+    me: &[i32],
     names: &HashMap<i32, String>,
     party: &HashMap<String, PartyMember>,
     deaths: &[(i32, i64, Option<i64>)],
@@ -64,7 +66,7 @@ pub fn build_match(
     teams: bool,
 ) -> Option<ArenaMatch> {
     let name = |id: i32| names.get(&id).cloned().unwrap_or_default();
-    let is_me = |id: i32| Some(id) == me || me_name.is_some_and(|m| !m.is_empty() && names.get(&id).is_some_and(|n| n.trim() == m));
+    let is_me = |id: i32| me.contains(&id) || me_name.is_some_and(|m| !m.is_empty() && names.get(&id).is_some_and(|n| n.trim() == m));
     let my_team = me_name.filter(|_| teams).and_then(|m| line_up.iter().find(|p| p.name == m)).map(|p| p.team);
     let team_of = |n: &str| line_up.iter().find(|p| p.name == n.trim()).map(|p| p.team);
     let ours = |id: i32| {
@@ -171,7 +173,7 @@ mod tests {
         .into_iter()
         .collect();
         let deaths = [(3, 9_500, None), (3, 20_000, None)];
-        let m = build_match(600_001, &hits, Some(1), &names, &party, &deaths, None, &[], false).unwrap();
+        let m = build_match(600_001, &hits, &[1], &names, &party, &deaths, None, &[], false).unwrap();
         assert_eq!((m.start_ms, m.end_ms), (1_000, 9_000));
         let row = |id: i32| m.players.iter().find(|p| p.id == id).unwrap();
         assert_eq!(m.players.iter().map(|p| p.side).collect::<Vec<_>>(), ["you", "ally", "opponent"]);
@@ -186,7 +188,7 @@ mod tests {
         let hits: HashMap<(i32, i32), PvpHits> = [((1, 2), hit(100, 0, 0, 0))].into_iter().collect();
         let party: HashMap<String, PartyMember> = [("B".to_string(), PartyMember::default())].into_iter().collect();
         let names: HashMap<i32, String> = [(2, "B".to_string())].into_iter().collect();
-        assert_eq!(build_match(1, &hits, Some(1), &names, &party, &[], None, &[], false), None);
+        assert_eq!(build_match(1, &hits, &[1], &names, &party, &[], None, &[], false), None);
     }
 
     /// The 5v5 of 2026-10-27 18:34: random teammates are not your party, but the line-up says who is on your
@@ -208,11 +210,38 @@ mod tests {
             RosterPlayer { name: "Randronirk".into(), server_id: 2318, level: 45, team: 1 },
             RosterPlayer { name: "Atticus".into(), server_id: 2302, level: 45, team: 1 },
         ];
-        let m = build_match(61, &hits, Some(1), &names, &HashMap::new(), &[], Some("Randronirk"), &line_up, true).unwrap();
+        let m = build_match(61, &hits, &[1], &names, &HashMap::new(), &[], Some("Randronirk"), &line_up, true).unwrap();
         let row = |n: &str| m.players.iter().find(|p| p.name == n).unwrap();
         assert_eq!(row("Randronirk").side, "you", "by name: id 1 was the old one");
         assert_eq!((row("Atticus").side, row("Atticus").dealt), ("ally", 300));
         assert_eq!((row("Deepstrike").side, row("Deepstrike").server_id, row("Deepstrike").level, row("Deepstrike").taken), ("opponent", 2303, Some(45), 700));
         assert_eq!((row("Oxsi").side, row("Oxsi").dealt, row("Oxsi").server_id), ("opponent", 0, 2321), "never fought, still listed");
+    }
+
+    /// The 10v10 battlefield of 2026-11-24 (map 62): its line-up mixes Elyos and Asmodians on both teams, so the
+    /// team decides, never the faction; you by the id you had there. A healer of your team on you is an ally.
+    #[test]
+    fn a_battlefield_line_up_mixes_factions() {
+        let names: HashMap<i32, String> =
+            [(633, "Randronirk"), (3326, "Ellusive"), (11848, "Marcul"), (5706, "Malus")].into_iter().map(|(i, n)| (i, n.to_string())).collect();
+        let hits: HashMap<(i32, i32), PvpHits> = [
+            ((3326, 633), hit(103_973, 1_000, 9_000, 18120000)), // a heal
+            ((633, 5706), hit(2_842, 2_000, 2_000, 12130000)),
+            ((11848, 5706), hit(20_465, 3_000, 5_000, 14340000)),
+        ]
+        .into_iter()
+        .collect();
+        let line_up = [
+            RosterPlayer { name: "Randronirk".into(), server_id: 2318, level: 45, team: 0 },
+            RosterPlayer { name: "Ellusive".into(), server_id: 2304, level: 45, team: 0 },
+            RosterPlayer { name: "Marcul".into(), server_id: 1319, level: 45, team: 0 },
+            RosterPlayer { name: "Malus".into(), server_id: 2303, level: 45, team: 1 },
+        ];
+        let m = build_match(62, &hits, &[633, 5243], &names, &HashMap::new(), &[], Some("Randronirk"), &line_up, true).unwrap();
+        let row = |n: &str| m.players.iter().find(|p| p.name == n).unwrap();
+        assert_eq!((row("Randronirk").side, row("Randronirk").taken), ("you", 0), "the heal is left out");
+        assert_eq!((row("Marcul").side, row("Marcul").dealt), ("ally", 20_465), "an Elyos on your team");
+        assert_eq!((row("Malus").side, row("Malus").taken), ("opponent", 23_307), "an Asmodian on theirs");
+        assert_eq!((row("Ellusive").side, row("Ellusive").dealt), ("ally", 0), "never fought: listed from the line-up");
     }
 }
