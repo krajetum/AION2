@@ -65,8 +65,8 @@ export function mergeRound(prev: ArenaMatch, m: ArenaMatch): boolean {
  *  a player-like target in Fire Temple (600023) went into the arena log as a match, 2026-11-18. */
 export const isDungeonMap = (mapId: number | null | undefined) => mapId != null && mapId >= 600_000 && mapId < 700_000;
 
-/** The Abyss's open maps, where everyone fights at once: the Abyss (20) and Chaotic Outer Reshanta (23, the outer
- *  Abyss, named by the player 2026-11-24): never a match (an older meter sent them; on 23, 29 "opponents" in
+/** The Abyss's open maps, where everyone fights at once: the Abyss (20, Chaotic Lower Reshanta, your own gear) and
+ *  Chaotic Outer Reshanta (23, gear equalized; named by the player 2026-11-24): never a match (an older meter sent them; on 23, 29 "opponents" in
  *  4 rounds), their kills and deaths stay in the kill history. */
 export const isOpenAbyssMap = (mapId: number | null | undefined) => mapId === 20 || mapId === 23;
 
@@ -95,7 +95,7 @@ export function matchTotals(m: ArenaMatch) {
  * (world-map boss 2001, an Abyss boss in A2Tools' table), and the game sends boss maps only for your home
  * world and the Abyss. Which layer (lower / upper) is not known. Everything else the player names.
  */
-export const KNOWN_MAPS: Record<number, string> = { 20: "Abyss", 23: "Chaotic Outer Reshanta", 62: "Lower Abyss", 600001: "Krao Cave", 600002: "Krao Cave", 600004: "Krao Cave", 600011: "Urugugu Canyon", 600012: "Urugugu Canyon", 600013: "Urugugu Canyon", 600021: "Fire Temple", 600022: "Fire Temple", 600023: "Fire Temple", 600031: "Draupnir", 600032: "Draupnir", 600033: "Draupnir", 600071: "Vakron Sky Island", 600072: "Vakron Sky Island", 600073: "Vakron Sky Island", 600091: "Ferocious Horn Den", 600092: "Ferocious Horn Den", 600093: "Ferocious Horn Den" };
+export const KNOWN_MAPS: Record<number, string> = { 20: "Abyss", 23: "Chaotic Outer Reshanta", 600001: "Krao Cave", 600002: "Krao Cave", 600004: "Krao Cave", 600011: "Urugugu Canyon", 600012: "Urugugu Canyon", 600013: "Urugugu Canyon", 600021: "Fire Temple", 600022: "Fire Temple", 600023: "Fire Temple", 600031: "Draupnir", 600032: "Draupnir", 600033: "Draupnir", 600071: "Vakron Sky Island", 600072: "Vakron Sky Island", 600073: "Vakron Sky Island", 600091: "Ferocious Horn Den", 600092: "Ferocious Horn Den", 600093: "Ferocious Horn Den" };
 
 /** A map's name: the player's, a known one, or "Map <id>". */
 export const mapLabel = (maps: Record<string, string>, id: number) => maps[id] || KNOWN_MAPS[id] || `Map ${id}`;

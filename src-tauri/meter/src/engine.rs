@@ -18,7 +18,8 @@ use crate::combat::data_storage::{DataStorage, is_open_world_map};
 
 /// The Abyss's map id (the field-boss map `01 91` that lists its bosses; `src/domain/arena.ts` KNOWN_MAPS).
 const ABYSS_MAP: i32 = 20;
-/// Chaotic Outer Reshanta, the outer Abyss (named by the player 2026-11-24): open like the Abyss, never a match.
+/// Chaotic Outer Reshanta (the outer Abyss, gear equalized; named by the player 2026-11-24): open like the Abyss
+/// (20, Chaotic Lower Reshanta), never a match.
 const OUTER_ABYSS_MAP: i32 = 23;
 /// Instance dungeons (Krao Cave 600001 … Ferocious Horn Den 600093): never an arena match or a PvP kill.
 fn is_dungeon_map(map: i32) -> bool { (600_000..700_000).contains(&map) }
