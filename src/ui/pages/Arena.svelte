@@ -8,7 +8,7 @@
   import Empty from "../parts/Empty.svelte";
   import { classIcon } from "../classes.ts";
   import { labelMap } from "../../app/arena.ts";
-  import { isDungeonMap, KNOWN_MAPS, mapLabel, matchTotals } from "../../domain/arena.ts";
+  import { isDungeonMap, isOpenAbyssMap, KNOWN_MAPS, mapLabel, matchTotals } from "../../domain/arena.ts";
   import { serverName } from "../../domain/servers.ts";
   import PlayerCard from "../parts/PlayerCard.svelte";
   import type { Profile } from "../../domain/armory.ts";
@@ -19,7 +19,7 @@
   import { ui } from "../state.svelte.ts";
 
   // Matches and kills logged in dungeons by older versions are hidden (kept in the save): PvE, never a match.
-  const log = $derived({ ...ui.data.arena, matches: ui.data.arena.matches.filter((m) => !isDungeonMap(m.mapId)),
+  const log = $derived({ ...ui.data.arena, matches: ui.data.arena.matches.filter((m) => !isDungeonMap(m.mapId) && !isOpenAbyssMap(m.mapId)),
     kills: ui.data.arena.kills.filter((k) => !isDungeonMap(k.mapId)) });
   const key = (m: ArenaMatch) => `${m.mapId}:${m.startMs}`;
   let open = $state(""), player = $state("");
