@@ -3,7 +3,7 @@
 import type { Component } from "svelte";
 import {
   Bell, BookOpen, CalendarDays, CalendarRange, ChartColumn, ChevronRight, Coins, Crown, Download, Hammer, House,
-  Map as MapIcon, MapPin, Newspaper, PanelRight, PawPrint, Play, ScrollText, Search, Settings, Sparkles, Sun, Swords,
+  Map as MapIcon, MapPin, Move, Newspaper, PanelRight, PawPrint, Play, ScrollText, Search, Settings, Sparkles, Sun, Swords,
   Timer, Trophy, Upload, Users, UserSearch, Volume2, VolumeX, X,
 } from "@lucide/svelte";
 
@@ -12,7 +12,7 @@ export const ICON: Record<string, Component> = {
   crafting: Hammer, bell: Bell, bosses: Crown, arena: Swords, map: MapIcon, pets: PawPrint, dps: ChartColumn,
   fights: ScrollText, enhance: Sparkles, players: UserSearch, guild: Users, wiki: BookOpen, trophies: Trophy,
   news: Newspaper, settings: Settings, download: Download, upload: Upload, pin: MapPin, search: Search,
-  panel: PanelRight, chevron: ChevronRight, close: X, sound: Volume2, muted: VolumeX, play: Play,
+  panel: PanelRight, chevron: ChevronRight, close: X, sound: Volume2, muted: VolumeX, play: Play, move: Move,
 };
 
 /**

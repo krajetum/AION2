@@ -23,6 +23,7 @@
   import { crashReports } from "../../infra/sentry.ts";
   import { soulsPopup, cubePopup, eventsOverlay, meterIdle, meterOverlay, netOverlay, overlayStyle, radarOverlay } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
+  import { loadPreset, openHud } from "../hud.ts";
   import { LABEL, pad, WEEKDAYS } from "../format.ts";
   import { ICON } from "../icons.ts";
   import { showStatus } from "../overlays.ts";
@@ -195,6 +196,11 @@
   </Panel>
 {:else if sub === "windows"}
   <Panel title="Overlays">
+    <div class={ROW}><span>Place and size every overlay over the game, and keep layouts as presets</span>
+      <Button size="sm" disabled={!isDesktop()} onclick={() => openHud()}><ICON.move />Edit overlays</Button></div>
+    {#if s.overlayPresets.some((p) => p.layout)}<div class={ROW}><span>Load a layout</span><span class="flex flex-wrap gap-1.5">
+      {#each s.overlayPresets as p, i (i)}{#if p.layout}<Button variant={s.overlayPreset === i ? "secondary" : "outline"} size="sm" disabled={!isDesktop()}
+        title="Places, switches and popup sizes of preset {i + 1}" onclick={() => loadPreset(i)}>{p.name}</Button>{/if}{/each}</span></div>{/if}
     {@render toggle("Event countdown overlay", s.eventsOverlay, (on) => { s.eventsOverlay = on; eventsOverlay(s.eventsOverlay); }, !isDesktop())}
     {@render toggle("Ping and packet loss overlay", s.netOverlay, (on) => { s.netOverlay = on; netOverlay(s.netOverlay); }, !isDesktop())}
     {@render toggle("Soul points popup (pets still to collect, shards: combo, on fire from ×10)", s.soulPopup, (on) => { s.soulPopup = on; soulsPopup(on, undefined, undefined, s.soulPopupSize); }, !isDesktop())}

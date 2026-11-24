@@ -27,6 +27,9 @@ import SoulsOverlay from "./ui/SoulsOverlay.svelte";
 import NetOverlay from "./ui/NetOverlay.svelte";
 import CubeOverlay from "./ui/CubeOverlay.svelte";
 import RadarOverlay from "./ui/RadarOverlay.svelte";
+import HudPanel from "./ui/HudPanel.svelte";
+import EditFrame from "./ui/parts/EditFrame.svelte";
+import { wireHud } from "./ui/hud.ts";
 import { takeMeterData } from "./app/arena.ts";
 import { bossEvery, flushCubes, flushGathers, flushSouls, gameActive, shareFromMeter, syncBosses, syncCubes } from "./app/crowd.ts";
 import { uploadFight } from "./app/guild.ts";
@@ -79,6 +82,7 @@ async function main() {
     if (data.settings.cubePopup) await cubePopup(true, data.settings.cubePopupSize).catch(() => {});
     if (data.settings.soulPopup) await soulsPopup(true, undefined, undefined, data.settings.soulPopupSize).catch(() => {});
     if (data.settings.radar) await radarOverlay(true).catch(() => {});
+    await wireHud();
   }
   // The capture runs from app start: boss timers, Odyle energy, who you play and the arena log need it.
   // Only the latest update is taken: each carries the meter's whole state (kills, gains, loots, position...), and
@@ -228,9 +232,20 @@ function overlay(page: typeof Overlay) {
   document.body.classList.add("overlay");
   app.textContent = "";
   mount(page, { target: app });
+  // "Edit overlays": a frame to drag and resize this window by (ui/parts/EditFrame.svelte).
+  const frame = document.createElement("div");
+  document.body.append(frame);
+  mount(EditFrame, { target: frame, props: { label: location.hash.slice(1) } });
   // Background opacity from Settings (the window itself is transparent).
   onOpacity((o) => document.documentElement.style.setProperty("--ov-alpha", `${o}%`));
 }
 
+// The "Edit overlays" panel: its own card on a transparent window.
+function hudPanel() {
+  for (const el of [document.documentElement, document.body]) el.style.background = "transparent";
+  app.textContent = "";
+  mount(HudPanel, { target: app });
+}
+
 const page = { "#overlay": Overlay, "#events": EventsOverlay, "#cube": CubeOverlay, "#radar": RadarOverlay, "#net": NetOverlay, "#souls": SoulsOverlay }[location.hash];
-(page ? Promise.resolve(overlay(page)) : main()).catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });
+(location.hash === "#hud" ? Promise.resolve(hudPanel()) : page ? Promise.resolve(overlay(page)) : main()).catch((e) => { app.textContent = "Startup error: " + e; console.error(e); });

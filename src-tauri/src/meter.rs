@@ -18,6 +18,10 @@ const CUBE: &str = "cube";
 const RADAR: &str = "radar";
 const NET: &str = "net";
 const SOULS: &str = "souls";
+/// The "Edit overlays" panel (like the game's Edit HUD): every overlay that is on shows with a frame to drag and resize.
+const HUD: &str = "hud";
+/// The overlay windows, in the panel's order.
+pub const OVERLAYS: [&str; 6] = [OVERLAY, EVENTS, CUBE, RADAR, NET, SOULS];
 
 /// Seconds without damage, healing or damage taken before the fight resets (and the overlay hides).
 const DEFAULT_IDLE_SECS: u32 = 15;
@@ -65,12 +69,19 @@ struct Auto {
     last_active: Instant,
     /// Sum of damage, healing and damage taken at the last update: it grows while the fight goes on.
     last_total: f64,
+    /// "Edit overlays" is open: every overlay that is on shows, whatever is in front and whatever it has to say.
+    edit: bool,
+    /// Where the overlays were when editing began (Cancel puts them back).
+    edit_from: Vec<(String, crate::places::Place)>,
 }
 
 impl Auto {
     /// Which overlays should be on screen.
     fn visible(&self) -> Visible {
         let front = self.front || !self.follow_game;
+        if self.edit {
+            return Visible { dps: self.overlay, events: self.events, cube: self.cube, radar: self.radar, net: self.net, souls: self.souls };
+        }
         Visible {
             dps: self.overlay && self.wanted && front,
             events: self.events && front,
@@ -120,6 +131,8 @@ impl Default for MeterState {
                 idle: Duration::from_secs(DEFAULT_IDLE_SECS as u64),
                 last_active: Instant::now(),
                 last_total: 0.0,
+                edit: false,
+                edit_from: Vec::new(),
             }),
         }
     }
@@ -513,6 +526,58 @@ pub fn meter_item_codes(codes: Vec<u32>) {
     aion2_meter::currencies::set_item_codes(&codes);
 }
 
+/// "Edit overlays" on or off. On: every overlay that is on shows with a frame (`hud-edit` event) and the panel
+/// opens in the middle of the screen; where they are now is kept for `hud_cancel`. Off: the panel closes, the
+/// overlays go back to showing only when they have something to say; their places stay as they were moved.
+#[tauri::command]
+pub async fn hud_edit(app: AppHandle, on: bool) -> Result<(), String> {
+    let from = if on { crate::places::now(&app, &OVERLAYS) } else { Vec::new() };
+    if let Ok(mut a) = app.state::<MeterState>().auto.lock() {
+        if on && !a.edit {
+            a.edit_from = from;
+        }
+        a.edit = on;
+    }
+    let _ = app.emit("hud-edit", on);
+    match app.get_webview_window(HUD) {
+        Some(w) if on => {
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+        Some(_) => close(&app, HUD),
+        None if on => build(&app, HUD)?,
+        None => {}
+    }
+    Ok(())
+}
+
+/// Whether "Edit overlays" is open (for an overlay window as it opens).
+#[tauri::command]
+pub fn hud_edit_state(app: AppHandle) -> bool {
+    app.state::<MeterState>().auto.lock().map(|a| a.edit).unwrap_or(false)
+}
+
+/// Cancel: the overlays back where they were when editing began, then editing ends.
+#[tauri::command]
+pub async fn hud_cancel(app: AppHandle) -> Result<(), String> {
+    let from = app.state::<MeterState>().auto.lock().map(|a| a.edit_from.clone()).unwrap_or_default();
+    crate::places::put(&app, &from);
+    hud_edit(app, false).await
+}
+
+/// Where each overlay is now (physical pixels; size only for the ones the player sizes by hand).
+#[tauri::command]
+pub fn overlay_places(app: AppHandle) -> Vec<(String, crate::places::Place)> {
+    crate::places::now(&app, &OVERLAYS)
+}
+
+/// Moves (and sizes) the overlays to a preset's places, open or not.
+#[tauri::command]
+pub fn overlay_set_places(app: AppHandle, places: Vec<(String, crate::places::Place)>) {
+    let places: Vec<_> = places.into_iter().filter(|(l, _)| OVERLAYS.contains(&l.as_str())).collect();
+    crate::places::put(&app, &places);
+}
+
 fn close(app: &AppHandle, label: &str) {
     if let Some(w) = app.get_webview_window(label) {
         let _ = w.close();
@@ -542,9 +607,41 @@ fn set_visible(app: &AppHandle, label: &str, on: bool) {
     }
 }
 
+/// Overlays whose size the player sets by dragging their corner (remembered with their spot): the cube and
+/// soul points popups take theirs from Settings, the events overlay's height follows its list.
+pub fn sized_by_hand(label: &str) -> crate::places::Sizing {
+    use crate::places::Sizing;
+    match label {
+        OVERLAY | RADAR | NET => Sizing::Both,
+        EVENTS => Sizing::Width,
+        _ => Sizing::None,
+    }
+}
+
 /// A borderless, transparent, always-on-top window that never takes the focus from the game.
 /// Over the game it needs borderless/windowed fullscreen.
 fn build(app: &AppHandle, label: &str) -> Result<(), String> {
+    if label == HUD {
+        let mut b = WebviewWindowBuilder::new(app, HUD, WebviewUrl::App("index.html#hud".into()));
+        let (w, h) = (380.0, 560.0);
+        if let Ok(Some(m)) = app.primary_monitor() {
+            let size = m.size().to_logical::<f64>(m.scale_factor());
+            let at = m.position().to_logical::<f64>(m.scale_factor());
+            b = b.position(at.x + (size.width - w) / 2.0, at.y + (size.height - h) / 2.0);
+        }
+        return b
+            .title("AION 2 Companion – Edit overlays")
+            .inner_size(w, h)
+            .min_inner_size(320.0, 360.0)
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .skip_taskbar(false)
+            .resizable(true)
+            .build()
+            .map(|_| ())
+            .map_err(|e| e.to_string());
+    }
     let (title, w, h, min_w, min_h) = if label == EVENTS {
         ("AION 2 Companion – Events", 300.0, 230.0, 200.0, 80.0)
     } else if label == NET {
@@ -581,7 +678,7 @@ fn build(app: &AppHandle, label: &str) -> Result<(), String> {
         .visible(label != SOULS) // made hidden ahead of its first gain (`souls_popup`)
         .resizable(true)
         .build()
-        .map(|w| crate::places::follow(app, label, &w))
+        .map(|w| crate::places::follow(app, label, &w, sized_by_hand(label)))
         .map_err(|e| e.to_string())
 }
 
@@ -610,6 +707,8 @@ mod tests {
             idle: Duration::from_secs(idle),
             last_active: Instant::now(),
             last_total: 0.0,
+            edit: false,
+            edit_from: Vec::new(),
         }
     }
 
