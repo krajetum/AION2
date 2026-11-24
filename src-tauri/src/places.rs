@@ -114,20 +114,120 @@ pub fn autosave() {
     });
 }
 
-/// Puts a new overlay window where it was left, and remembers where it goes from now on.
-pub fn follow(app: &AppHandle, label: &str, w: &WebviewWindow) {
+/// Which of an overlay's sides the player sets (its corner dragged in "Edit overlays"), remembered under `<label>:wh`.
+#[derive(Clone, Copy, PartialEq)]
+pub enum Sizing {
+    None,
+    Width,
+    Both,
+}
+
+/// An overlay's spot and, for the ones sized by hand, its size (physical pixels).
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Place {
+    pub x: i32,
+    pub y: i32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub w: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h: Option<i32>,
+}
+
+fn size_key(label: &str) -> String {
+    format!("{label}:wh")
+}
+
+/// Puts a new overlay window where it was left (and at the size left, for the ones sized by hand), and remembers
+/// where it goes from now on.
+pub fn follow(app: &AppHandle, label: &str, w: &WebviewWindow, sizing: Sizing) {
     if let Some(at) = with(|p| p.at.get(label).copied()).filter(|&at| on_a_screen(app, at)) {
         let _ = w.set_position(PhysicalPosition::new(at.0, at.1));
     }
-    let label = label.to_string();
-    w.on_window_event(move |e| {
-        if let WindowEvent::Moved(p) = e {
-            with(|s| {
-                if s.at.get(&label) != Some(&(p.x, p.y)) {
-                    s.at.insert(label.clone(), (p.x, p.y));
-                    s.dirty = true;
+    if let Some((sw, sh)) = with(|p| p.at.get(&size_key(label)).copied()).filter(|&(a, b)| a >= 60 && b >= 20) {
+        match sizing {
+            Sizing::Both => {
+                let _ = w.set_size(PhysicalSize::new(sw as u32, sh as u32));
+            }
+            Sizing::Width => {
+                if let Ok(now) = w.inner_size() {
+                    let _ = w.set_size(PhysicalSize::new(sw as u32, now.height));
                 }
-            });
+            }
+            Sizing::None => {}
+        }
+    }
+    let label = label.to_string();
+    w.on_window_event(move |e| match e {
+        WindowEvent::Moved(p) => remember(&label, (p.x, p.y)),
+        WindowEvent::Resized(s) if sizing != Sizing::None && s.width > 0 && s.height > 0 => {
+            remember(&size_key(&label), (s.width as i32, s.height as i32))
+        }
+        _ => {}
+    });
+}
+
+fn remember(key: &str, v: (i32, i32)) {
+    with(|s| {
+        if s.at.get(key) != Some(&v) {
+            s.at.insert(key.to_string(), v);
+            s.dirty = true;
         }
     });
+}
+
+/// Where these overlays are now: the open window's spot and size, else the ones remembered (an overlay never
+/// opened and never placed is left out). Size only for the ones sized by hand.
+pub fn now(app: &AppHandle, labels: &[&str]) -> Vec<(String, Place)> {
+    labels
+        .iter()
+        .filter_map(|&label| {
+            let sizing = crate::meter::sized_by_hand(label);
+            let live = app.get_webview_window(label).and_then(|w| Some((w.outer_position().ok()?, w.inner_size().ok()?)));
+            let (x, y, size) = match live {
+                Some((p, s)) => (p.x, p.y, Some((s.width as i32, s.height as i32))),
+                None => {
+                    let (x, y) = with(|p| p.at.get(label).copied())?;
+                    (x, y, with(|p| p.at.get(&size_key(label)).copied()))
+                }
+            };
+            let (w, h) = match (sizing, size) {
+                (Sizing::Both, Some((w, h))) => (Some(w), Some(h)),
+                (Sizing::Width, Some((w, _))) => (Some(w), None),
+                _ => (None, None),
+            };
+            Some((label.to_string(), Place { x, y, w, h }))
+        })
+        .collect()
+}
+
+/// Moves these overlays (open ones at once, the others when they open), and sizes the ones sized by hand.
+/// A spot no screen shows any more is skipped.
+pub fn put(app: &AppHandle, places: &[(String, Place)]) {
+    for (label, p) in places {
+        if !on_a_screen(app, (p.x, p.y)) {
+            continue;
+        }
+        remember(label, (p.x, p.y));
+        let sizing = crate::meter::sized_by_hand(label);
+        let live = app.get_webview_window(label);
+        if let Some(w) = &live {
+            let _ = w.set_position(PhysicalPosition::new(p.x, p.y));
+        }
+        match (sizing, p.w, p.h) {
+            (Sizing::Both, Some(w), Some(h)) if w >= 60 && h >= 20 => {
+                remember(&size_key(label), (w, h));
+                if let Some(win) = &live {
+                    let _ = win.set_size(PhysicalSize::new(w as u32, h as u32));
+                }
+            }
+            (Sizing::Width, Some(w), _) if w >= 60 => {
+                let h = live.as_ref().and_then(|x| x.inner_size().ok()).map_or(200, |s| s.height as i32);
+                remember(&size_key(label), (w, h));
+                if let Some(win) = &live {
+                    let _ = win.set_size(PhysicalSize::new(w as u32, h as u32));
+                }
+            }
+            _ => {}
+        }
+    }
 }

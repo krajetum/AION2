@@ -67,6 +67,8 @@ export interface Settings {
   radarMap: boolean;          // the map under it (else only the dots)
   sumKina: boolean;           // the sidebar's Wallet shows Kina and bound Kina as one total
   radarRound: boolean;        // round (else square)
+  overlayPresets: import("./hud.ts").OverlayPreset[]; // "Edit overlays": six layouts (places, switches, popup sizes), named by the player
+  overlayPreset: number;      // the preset last saved or loaded, 0..5
   crashReports: boolean;      // send errors and crashes to Sentry (opt-in)
   autoUpdate: boolean;        // install a newer release by itself when the app opens (else the banner offers it)
   betaUpdates: boolean;       // also take pre-release (beta) builds: the beta manifest (src-tauri/src/updates.rs), off by default

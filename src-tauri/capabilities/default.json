@@ -9,12 +9,14 @@
     "cube",
     "radar",
     "net",
-    "souls"
+    "souls",
+    "hud"
   ],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
     "core:window:allow-set-size",
+    "core:window:allow-start-resize-dragging",
     "notification:default",
     "store:default",
     "autostart:default",
