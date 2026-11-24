@@ -65,6 +65,11 @@ pub fn run() {
             meter::net_overlay,
             meter::souls_popup,
             meter::souls_popup_state,
+            meter::hud_edit,
+            meter::hud_edit_state,
+            meter::hud_cancel,
+            meter::overlay_places,
+            meter::overlay_set_places,
             crash::crash_log,
             links::open_url,
             armory::armory_get,
@@ -82,8 +87,9 @@ pub fn run() {
             }
             let open = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
             let mute = MenuItem::with_id(app, "mute", "Mute for 1 hour", true, None::<&str>)?;
+            let hud = MenuItem::with_id(app, "hud", "Edit overlays", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &mute, &quit])?;
+            let menu = Menu::with_items(app, &[&open, &hud, &mute, &quit])?;
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("AION 2 Companion")
@@ -94,6 +100,10 @@ pub fn run() {
                     // Mute state lives in the frontend data: notify it with an event.
                     "mute" => {
                         let _ = app.emit("tray-mute", ());
+                    }
+                    // The presets live in the frontend data: the main window opens the editor.
+                    "hud" => {
+                        let _ = app.emit("hud-open", ());
                     }
                     "quit" => app.exit(0),
                     _ => {}
