@@ -2,6 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { normalize } from "./save-file.ts";
+import { SEED_VERSION } from "./seed.ts";
 import type { Task } from "./types.ts";
 
 test("save file: a save from before 2026-11-04 gets the Sanctuary on and Chaotic Outer Reshanta, once", () => {
@@ -11,7 +12,7 @@ test("save file: a save from before 2026-11-04 gets the Sanctuary on and Chaotic
     { id: "weekly-10", cadence: "weekly", category: "Season Quests", name: "Battlefield", enabled: true, order: 10 },
   ];
   const d = normalize({ version: 1, tasks: old, characters: [{ id: "c", name: "Main" }] });
-  assert.equal(d.version, 3);
+  assert.equal(d.version, SEED_VERSION);
   const sanctuary = d.tasks.find((t) => t.name === "Sanctuary")!;
   assert.ok(sanctuary.enabled && sanctuary.note?.includes("Ludra"));
   const outer = d.tasks.find((t) => t.name === "Chaotic Outer Reshanta")!;
@@ -34,6 +35,25 @@ test("save file: a v2 save gets the 2026-11-18 notes, an edited note stays", () 
   assert.ok(d.tasks.find((t) => t.name === "Sanctuary")!.note!.includes("Easy"));
   assert.equal(d.tasks.find((t) => t.name === "Daily Dungeon")!.note, "Daily cap 1M Kina");
   assert.ok(!d.tasks.some((t) => t.name === "Chaotic Outer Reshanta"));
+});
+
+test("save file: a v3 save gets the event Sanctuary once and the Daily Dungeon note, a player's note stays", () => {
+  const old: Task[] = [
+    { id: "weekly-0", cadence: "weekly", category: "Content", name: "Daily Dungeon", enabled: true, order: 0 },
+    { id: "weekly-10", cadence: "weekly", category: "Content", name: "Chaotic Outer Reshanta", enabled: true, order: 10 },
+    { id: "weekly-11", cadence: "weekly", category: "Season Quests", name: "Battlefield", enabled: true, order: 11 },
+  ];
+  const d = normalize({ version: 3, tasks: old, characters: [{ id: "c", name: "Main" }] });
+  assert.ok(d.tasks.find((t) => t.name === "Daily Dungeon")!.note!.includes("Crobakhi"));
+  const ev = d.tasks.find((t) => t.name === "Corroded Decontamination Facility")!;
+  assert.equal(ev.id, "weekly-corroded-event");
+  assert.ok(ev.order > 10 && ev.order < 11);
+  assert.equal(ev.goals?.[0].target, 7);
+  // Deleted afterwards: not added again.
+  const again = normalize({ ...d, tasks: d.tasks.filter((t) => t.id !== ev.id) });
+  assert.ok(!again.tasks.some((t) => t.name === "Corroded Decontamination Facility"));
+  const mine = normalize({ version: 3, tasks: [{ ...old[0], note: "Mine" }], characters: [{ id: "c", name: "Main" }] });
+  assert.equal(mine.tasks.find((t) => t.name === "Daily Dungeon")!.note, "Mine");
 });
 
 test("save file: a Sanctuary task the player changed is left alone", () => {

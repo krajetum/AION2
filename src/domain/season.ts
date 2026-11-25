@@ -61,7 +61,7 @@ export const WEEKLY: WeeklyMission[] = [
   { tab: "Abyss", name: "Down to the Last One", steps: 1, coins: 260, ap: 450 },
   { tab: "Arena", name: "Me, Beyond Myself", steps: 3, coins: 2140, ap: 3780 },
   { tab: "Arena", name: "Steady Efforts", steps: 3, coins: 1080, ap: 1890 },
-  { tab: "Transcendence", name: "Way of the Transcended", steps: 3, coins: 5700, ap: 0 },
+  { tab: "Transcendence", name: "Way of the Transcended", steps: 3, coins: 5700, ap: 0, note: "+4 Sync Stones (Unique) per step since 2026-11-25" },
   { tab: "Transcendence", name: "Transforms Upon Death", steps: 2, coins: 1640, ap: 0 },
   { tab: "Transcendence", name: "Transcendence Speed Run", steps: 2, coins: 1640, ap: 0, note: "+Enhance Stone" },
   { tab: "Transcendence", name: "Toward Greater Power", steps: 2, coins: 1300, ap: 0 },
