@@ -6,6 +6,8 @@ type Row = [category: string, name: string, goals?: Goal[], extra?: Partial<Task
 const levels: Goal[] = [{ label: "Level", target: 50, step: 5 }];
 const vp = (v: number, p: number): Goal[] => [{ label: "Wins", target: v }, { label: "Entries", target: p }];
 
+const DAILY_DUNGEON_NOTE = "Entries shared: Daeva Bio-Research Base, Odylium Repository, Crobakhi's Secret Depository (Bound Kina by clear points, since 2026-11-25)";
+
 const SEED: Record<Cadence, Row[]> = {
   daily: [
     ["Buy", "Cloud Merchant (Theostones)", undefined, { note: "Restocks every hour · not for early game" }],
@@ -13,7 +15,7 @@ const SEED: Record<Cadence, Row[]> = {
     ["Content", "Pet/Kina Farm", undefined, { note: "Daily cap 1M Bound Kina (field mobs give Bound Kina since 2026-11-18)" }],
   ],
   weekly: [
-    ["Content", "Daily Dungeon"],
+    ["Content", "Daily Dungeon", undefined, { note: DAILY_DUNGEON_NOTE }],
     ["Content", "Ascension Trial"],
     ["Content", "Shugo Keys"],
     ["Content", "Odyle Energy"],
@@ -24,6 +26,7 @@ const SEED: Record<Cadence, Row[]> = {
     ["Content", "Abyss Siege + Corridors"],
     ["Content", "Sanctuary", undefined, { note: "Abyssal Forge: Ludra · Easy/Normal 2,800, Hard 3,000 item level · Easy 2 h, else 1 h" }],
     ["Content", "Chaotic Outer Reshanta", undefined, { note: "3 h a week, more with Outer Entry Stones · from level 45" }],
+    ["Content", "Corroded Decontamination Facility", [{ target: 7 }], { note: "Event Sanctuary until 16 Dec maintenance · 2,100 item level · coins removed every Wednesday" }],
     ["Season Quests", "Battlefield", [{ target: 3 }]],
     ["Season Quests", "Ascension Trial", [{ target: 3 }]],
     ["Season Quests", "Arena", vp(5, 10)],
@@ -70,7 +73,7 @@ export function seedTasks(): Task[] {
 }
 
 /** Save-file version the seed matches: older saves get `patchTasks`. */
-export const SEED_VERSION = 3;
+export const SEED_VERSION = 4;
 
 /** Notes the patch of 2026-11-18 changed: the old seed text → the new one (a note the player edited stays). */
 const NOTES_V3: Record<string, string> = {
@@ -80,9 +83,10 @@ const NOTES_V3: Record<string, string> = {
 
 /** The seed's changes since a save's version, so saves made before them get them too (once: a task the
  *  player deleted stays deleted). 2: the Sanctuary came out (2026-11-04) and Chaotic Outer Reshanta was added.
- *  3: Ludra Easy and Bound Kina from field mobs (2026-11-18), two notes. */
+ *  3: Ludra Easy and Bound Kina from field mobs (2026-11-18), two notes.
+ *  4: the event Sanctuary Corroded Decontamination Facility and the shared daily dungeon entries (2026-11-25). */
 export function patchTasks(tasks: Task[], version: number): Task[] {
-  if (version >= 3) return tasks;
+  if (version >= 4) return tasks;
   const seed = (name: string) => seedTasks().find((t) => t.name === name)!;
   let out = tasks;
   if (version < 2) {
@@ -94,7 +98,15 @@ export function patchTasks(tasks: Task[], version: number): Task[] {
       out = [...out, { ...seed("Chaotic Outer Reshanta"), id: "weekly-outer-reshanta", order: after + 0.5 }];
     }
   }
-  return out.map((t) => t.note && NOTES_V3[t.note] === t.name ? { ...t, note: seed(t.name).note } : t);
+  if (version < 3) out = out.map((t) => t.note && NOTES_V3[t.note] === t.name ? { ...t, note: seed(t.name).note } : t);
+  out = out.map((t) => t.cadence === "weekly" && t.name === "Daily Dungeon" && !t.note ? { ...t, note: DAILY_DUNGEON_NOTE } : t);
+  if (!out.some((t) => t.name === "Corroded Decontamination Facility")) {
+    const weekly = out.filter((t) => t.cadence === "weekly");
+    const after = (weekly.find((t) => t.name === "Chaotic Outer Reshanta") ?? weekly.find((t) => t.name === "Sanctuary"))?.order
+      ?? Math.max(-1, ...weekly.map((t) => t.order));
+    out = [...out, { ...seed("Corroded Decontamination Facility"), id: "weekly-corroded-event", order: after + 0.25 }];
+  }
+  return out;
 }
 
 /** Id of the seeded Cloud Merchant task (used for the hourly reminder). */
