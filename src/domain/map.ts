@@ -5,7 +5,7 @@ import { KNOWN_PET_NAMES } from "./pet-names.ts";
 import { MOB_SOULS } from "./mob-souls.ts";
 
 /** The maps the page offers: one image each, with its own points and fit. */
-export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire" | "draupnir" | "vakron" | "horn";
+export type MapKey = "asmodian" | "elyos" | "abyss" | "krao" | "urugugu" | "fire" | "draupnir" | "vakron" | "horn" | "kibelisk";
 export interface WorldMap {
   key: MapKey;
   name: string;
@@ -175,7 +175,7 @@ export function linkKinds(map: Pick<MapData, "pets" | "mobPets">): number {
   return changed;
 }
 
-export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu" || k === "fire" || k === "draupnir" || k === "vakron" || k === "horn";
+export const isMapKey = (k: unknown): k is MapKey => k === "asmodian" || k === "elyos" || k === "abyss" || k === "krao" || k === "urugugu" || k === "fire" || k === "draupnir" || k === "vakron" || k === "horn" || k === "kibelisk";
 
 /**
  * The meter's cube news into the save: new codes, and openings not already found at the same spot
@@ -417,6 +417,17 @@ export const HORN_FIT: Affine = [0.0265788, 0, 629.167, 0, 0.0265561, 1168.332];
 export const HORN_MAP_IDS = [600091, 600092, 600093];
 
 /**
+ * Game → pixel fit of the bundled Kibelisk map (src/assets/ncsoft/kibelisk-map.webp: two of the player's screenshots at
+ * the same zoom joined where they overlap, 2026-11-25), from the packet recording of 2026-11-25 16:50 (a run of map
+ * 600063): five spots matched by hand (the entrance under the screenshot's arrow, the first boss's room, the north-west
+ * circle's foot, the two waypoints the run reached), the same scale on both axes, within 21 px of them; the walk
+ * follows the corridors. Four difficulties loaded as 600063, 600065, 600068 and 610062 in the same recording, their
+ * entrance on the same spot (only 600063 walked).
+ */
+export const KIBELISK_FIT: Affine = [0.0256462, 0, 918.814, 0, 0.0256462, 919.883];
+export const KIBELISK_MAP_IDS = [600063, 600065, 600068, 610062];
+
+/**
  * The page's maps. Asmodian: the bundled world map and its fit (map 1110). Abyss: the player's screenshot
  * (2026-10-25), map 20 (the map loads of the same recording), ABYSS_FIT. Elyos (Verteron): the player's screenshot
  * (2026-10-25), map 1010 (map load and field-boss map of 2026-10-26), ELYOS_FIT. Krao Cave (a dungeon): the player's
@@ -425,7 +436,8 @@ export const HORN_MAP_IDS = [600091, 600092, 600093];
  * the player's screenshot (2026-11-22), map 600021, FIRE_FIT. Draupnir (a dungeon):
  * two screenshots joined (2026-11-22), maps 600031-600033, DRAUPNIR_FIT. Vakron Sky Island
  * (a dungeon): three screenshots joined (2026-11-22), maps 600071-600073, VAKRON_FIT. Ferocious Horn
- * Den (a dungeon): two screenshots joined (2026-11-22), maps 600091-600093, HORN_FIT.
+ * Den (a dungeon): two screenshots joined (2026-11-22), maps 600091-600093, HORN_FIT. Kibelisk (a dungeon): two
+ * screenshots joined (2026-11-25), maps 600063, 600065, 600068, 610062, KIBELISK_FIT.
  */
 export const MAPS: WorldMap[] = [
   { key: "asmodian", name: "Asmodian", gameIds: [WORLD_MAP_ID], fit: BUNDLED_FIT, bundled: true },
@@ -437,6 +449,7 @@ export const MAPS: WorldMap[] = [
   { key: "draupnir", name: "Draupnir", gameIds: DRAUPNIR_MAP_IDS, fit: DRAUPNIR_FIT, bundled: true, dungeon: true },
   { key: "vakron", name: "Vakron Sky Island", gameIds: VAKRON_MAP_IDS, fit: VAKRON_FIT, bundled: true, dungeon: true },
   { key: "horn", name: "Ferocious Horn Den", gameIds: HORN_MAP_IDS, fit: HORN_FIT, bundled: true, dungeon: true },
+  { key: "kibelisk", name: "Kibelisk", gameIds: KIBELISK_MAP_IDS, fit: KIBELISK_FIT, bundled: true, dungeon: true },
 ];
 export const worldMap = (key: MapKey): WorldMap => MAPS.find((m) => m.key === key)!;
 /**
