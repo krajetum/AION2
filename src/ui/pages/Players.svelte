@@ -6,7 +6,7 @@
   import * as Table from "$lib/components/ui/table/index.js";
   import Panel from "$lib/components/app/Panel.svelte";
   // Player search: the official character search and profiles (infra/armory.ts), as on NCSOFT's site.
-  import { pickFound, profilePage, type Found, type Profile } from "../../domain/armory.ts";
+  import { pickFound, profilePage, startingWith, type Found, type Profile } from "../../domain/armory.ts";
   import { gearUrl, REGIONS, regionOf } from "../../domain/servers.ts";
   import { equipmentOf, profileOf, searchPlayers, searchRegion, within } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
@@ -26,6 +26,11 @@
   let name = $state(asked?.name ?? "");
 
   let found = $state<Found[] | null>(null);
+  // The official search matches names containing the text ("Gar" finds Angrabu): only names starting with it are
+  // listed, the others behind "Also names containing it".
+  let term = $state(""), containing = $state(false);
+  const starting = $derived(found ? startingWith(found, term) : []);
+  const listed = $derived(found ? (containing ? found : starting) : []);
   let searching = $state(false), error = $state("");
   let progress = $state<{ done: number; failed: number; total: number } | null>(null);
   let open = $state<Found | null>(null);
@@ -36,7 +41,7 @@
   async function search() {
     const n = name.trim();
     if (!n || !region) return;
-    searching = true; error = ""; open = null; profile = null; found = []; progress = null;
+    searching = true; error = ""; open = null; profile = null; found = []; progress = null; term = n; containing = false;
     const run = ++runs;
     // An exact match opens by itself: the one on the server asked for (a card's "Full profile", your character) as soon
     // as that server answers, else the only one once every server has.
@@ -115,17 +120,19 @@
   {#if me && !(open && open.serverId === me.serverId && open.name.toLowerCase() === me.name.toLowerCase())}
     <Button type="button" variant="ghost" title="Back to the character you play in game" onclick={openMe}>← My character ({me.name})</Button>{/if}
 </form>
-<p class="hint mt-0 mb-3">From the official character search: names containing what you type, on every server of the region (one search per server: they show as each answers). Only Europe has been checked.</p>
+<p class="hint mt-0 mb-3">From the official character search: names starting with what you type (the site finds names containing it: those behind a button), on every server of the region (one search per server: they show as each answers). Only Europe has been checked.</p>
 {#if error}<p class="hint error">The search could not be read ({error}).</p>{/if}
 {#if !searching && progress?.failed}<p class="hint error">{progress.failed} of {progress.total} servers did not answer: a character there may be missing.
   <Button variant="link" size="sm" class="px-1" onclick={() => search()}>Search again</Button></p>{/if}
 
-{#if found}<Panel title="Characters" count={found.length}>
+{#if found}<Panel title="Characters" count={listed.length}>
+  {#snippet actions()}{#if found && found.length > starting.length}
+    <Button size="sm" variant="ghost" onclick={() => { containing = !containing; }}>{containing ? "Only names starting with it" : `Also names containing it (${found.length - starting.length})`}</Button>{/if}{/snippet}
   <Table.Root>
     <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Name</Table.Head><Table.Head class="text-right">Level</Table.Head><Table.Head>Server</Table.Head></Table.Row></Table.Header>
-    <Table.Body>{#each found as c (c.characterId)}<Table.Row data-state={open === c ? "selected" : undefined}>
+    <Table.Body>{#each listed as c (c.characterId)}<Table.Row data-state={open === c ? "selected" : undefined}>
       <Table.Cell><Button variant="link" size="sm" class="px-0" onclick={() => show(c)}>{c.name}</Button></Table.Cell><Table.Cell class="text-right">{c.level ?? "—"}</Table.Cell><Table.Cell>{c.serverName}</Table.Cell>
-    </Table.Row>{:else}<Table.Row><Table.Cell class="text-muted-foreground" colspan={3}>{searching ? "Searching the region's servers…" : "No character with that name in this region."}</Table.Cell></Table.Row>{/each}</Table.Body>
+    </Table.Row>{:else}<Table.Row><Table.Cell class="text-muted-foreground" colspan={3}>{searching ? "Searching the region's servers…" : found.length ? "No name starts with that: see the names containing it." : "No character with that name in this region."}</Table.Cell></Table.Row>{/each}</Table.Body>
   </Table.Root>
 </Panel>{/if}
 

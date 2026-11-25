@@ -3,6 +3,7 @@ import abyssMap from "../assets/ncsoft/abyss-map.webp";
 import draupnirMap from "../assets/ncsoft/draupnir-cave-map.webp";
 import elyosMap from "../assets/ncsoft/elyos-map.webp";
 import hornMap from "../assets/ncsoft/ferocious-horn-den-map.webp";
+import arkanisMap from "../assets/ncsoft/shattered-arkanis-map.webp";
 import fireMap from "../assets/ncsoft/fire-temple-map.webp";
 import kraoMap from "../assets/ncsoft/krao-cave-map.webp";
 import uruguguMap from "../assets/ncsoft/urugugu-canyon-map.webp";
@@ -11,7 +12,7 @@ import worldMapImage from "../assets/ncsoft/world-map.webp";
 import { fitAffine, worldMap, type Affine, type MapKey, type MapPoint } from "../domain/map.ts";
 
 /** The bundled image of a page map, null when none is bundled (the player imports one). */
-export const BUNDLED_IMAGE: Record<MapKey, string | null> = { asmodian: worldMapImage, elyos: elyosMap, abyss: abyssMap, krao: kraoMap, urugugu: uruguguMap, fire: fireMap, draupnir: draupnirMap, vakron: vakronMap, horn: hornMap };
+export const BUNDLED_IMAGE: Record<MapKey, string | null> = { asmodian: worldMapImage, elyos: elyosMap, abyss: abyssMap, krao: kraoMap, urugugu: uruguguMap, fire: fireMap, draupnir: draupnirMap, vakron: vakronMap, horn: hornMap, arkanis: arkanisMap };
 
 /** The references with game coordinates placed on `map`. */
 export const refsOn = (points: MapPoint[], map: MapKey) =>
