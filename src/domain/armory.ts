@@ -46,6 +46,12 @@ export function pickFound(found: Found[], name: string, serverId: number): Found
   return here.find((c) => c.name === n) ?? here.find((c) => c.name.toLowerCase() === n.toLowerCase()) ?? null;
 }
 
+/** Names starting with what was typed (any case): the official search matches names containing it, "Gar" finds Angrabu. */
+export const startingWith = (found: Found[], typed: string) => {
+  const t = typed.trim().toLowerCase();
+  return found.filter((c) => c.name.toLowerCase().startsWith(t));
+};
+
 /** The character id of exactly that name on that server, from the search's answer. */
 export const pickCharacter = (json: any, name: string, serverId: number) => pickFound(parseSearch(json), name, serverId)?.characterId ?? null;
 

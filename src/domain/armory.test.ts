@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { equipmentUrl, infoUrl, itemUrl, parseEquipment, parseInfo, parseItem, parseSearch, pickCharacter, profilePage, searchUrl } from "./armory.ts";
+import { equipmentUrl, infoUrl, itemUrl, parseEquipment, parseInfo, parseItem, parseSearch, pickCharacter, profilePage, searchUrl, startingWith } from "./armory.ts";
 
 // What the official site sent on 2026-11-01 (trimmed).
 const SEARCH = { list: [{ characterId: "RntUuGAWZ9jooU3ekF0p0R5IlD2DjrvdBiT1HIOVWfY%3D", name: "<strong>ImHopex</strong>", race: 2, pcId: 36, level: 45,
@@ -106,4 +106,11 @@ test("a Daevanion board reads as its Board Effect (Nezekan, the player's, 2026-1
     ["HP 700", "Attack Bonus 63", "Combat Speed 3", "Damage Boost 3"]);
   assert.equal(parseBoard({}), null);
   assert.match(daevanionUrl("a=", 2318, 21), /daevanion\/detail\?region=eu&lang=en-US&characterId=a%3D&serverId=2318&boardId=21$/);
+});
+
+test("player search: names starting with what was typed, any case", () => {
+  const c = (name: string) => ({ characterId: name, name, serverId: 1, serverName: "A", level: 1 } as any);
+  const found = [c("Gartino"), c("Angrabu"), c("garu"), c("Bogar")];
+  assert.deepEqual(startingWith(found, " gar ").map((x) => x.name), ["Gartino", "garu"]);
+  assert.deepEqual(startingWith(found, "Xyz"), []);
 });
