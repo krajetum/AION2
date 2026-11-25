@@ -8,7 +8,7 @@
   // Player search: the official character search and profiles (infra/armory.ts), as on NCSOFT's site.
   import { pickFound, profilePage, type Found, type Profile } from "../../domain/armory.ts";
   import { gearUrl, REGIONS, regionOf } from "../../domain/servers.ts";
-  import { equipmentOf, profileOf, searchPlayers, searchRegion } from "../../infra/armory.ts";
+  import { equipmentOf, profileOf, searchPlayers, searchRegion, within } from "../../infra/armory.ts";
   import { classIcon } from "../classes.ts";
   import { hm, num } from "../format.ts";
   import DaevanionBoards from "../parts/DaevanionBoards.svelte";
@@ -42,6 +42,14 @@
     // as that server answers, else the only one once every server has.
     const exactIn = (list: Found[]) => list.filter((c) => c.name.toLowerCase() === n.toLowerCase());
     try {
+      // A card or "My character" knows the server: that one search only, the profile opens at once (searching the
+      // whole region first made the gear wait, 2026-11-25). "Search" then looks in every server of the region.
+      if (want) {
+        const list = await within(searchPlayers(n, want));
+        if (run !== runs) return;
+        const hit = exactIn(list).find((c) => c.serverId === want);
+        if (hit) { found = list; progress = null; show(hit); searching = false; return; }
+      }
       const r = await searchRegion(n, region, (part) => {
         if (run !== runs) return;
         found = part.found; progress = part;
@@ -60,7 +68,7 @@
     // The equipment at the same time (cached: the Equipment part takes the same answer when it shows).
     equipmentOf(c.characterId, c.serverId).catch(() => {});
     try {
-      const p = await profileOf(c.characterId, c.serverId);
+      const p = await within(profileOf(c.characterId, c.serverId));
       if (open === c) { profile = p; if (!p) profileError = "the site sent no profile"; }
     } catch (e) { if (open === c) profileError = e instanceof Error ? e.message : String(e); }
     if (open === c) loading = false;
@@ -134,7 +142,8 @@
     <Button size="sm" variant="outline" disabled={!!first} onclick={startCompare}>Compare with…</Button>{/if}{/snippet}
   {#snippet head()}<span class="flex items-center gap-2">{#if profile && classIcon(profile.className)}<img class="size-6 object-contain" src={classIcon(profile.className)} alt="">{/if}{open!.name}</span>{/snippet}
   {#if loading}<p class="hint mt-0">Reading the profile…</p>
-  {:else if profileError}<p class="hint error mt-0">The profile could not be read ({profileError}).</p>
+  {:else if profileError}<p class="hint error mt-0">The profile could not be read ({profileError}).
+    <Button variant="link" size="sm" class="px-1" onclick={() => open && show(open)}>Try again</Button></p>
   {:else if profile}
     <div class="mb-3 grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-3">
       <Kpi label="Combat power" value={profile.combatPower == null ? "—" : num(profile.combatPower)} cls="hero" sub={profile.title || " "} />

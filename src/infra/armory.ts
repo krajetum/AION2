@@ -1,7 +1,9 @@
 // Reads the official character search and profiles (domain/armory.ts) through the app's Rust side (`armory_get`);
 // the browser preview can't (the site sends no CORS headers). Gently: at most 4 requests at once, started at least 150 ms
-// apart (about what the official site does when it opens a profile); searches go before the queue of a profile's pieces
-// and boards; a search is kept a minute (a failed one 5 s, after one retry), a profile 10 minutes, a failure a minute.
+// apart (about what the official site does when it opens a profile). What the Players page asks for (searches, the
+// profile, its pieces and boards) goes before the lookups other pages make in the background (`officialProfile`: the
+// Arena's players and kill history, the static's members); a search is kept a minute (a failed one 5 s, after one
+// retry), a profile 10 minutes, a failure a minute.
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   daevanionUrl, equipmentUrl, infoUrl, itemUrl, parseBoard, parseEquipment, parseInfo, parseItem, parseSearch, pickFound, searchUrl,
@@ -15,8 +17,9 @@ const SEARCH_MS = 60_000, PROFILE_MS = 10 * 60_000, FAILED_MS = 60_000, SEARCH_F
 const MAX_AT_ONCE = 4, START_GAP_MS = 150;
 const cache = new Map<string, { until: number; p: Promise<any> }>();
 let inFlight = 0, lastStart = 0;
-/** Requests waiting for a slot: searches first. A search typed while a profile's ~25 pieces were being read waited
- *  behind all of them (the player: "the search is very slow", 2026-11-24). */
+/** Requests waiting for a slot: the page being looked at first, background lookups after. The Arena's kill history
+ *  asks for every player's profile: put first, they made a profile's pieces wait (the player: "the gear loads too
+ *  slowly", 2026-11-25). */
 const waiting = { first: [] as (() => void)[], later: [] as (() => void)[] };
 
 /** A slot to send a request: waits while 4 are in flight, then keeps starts START_GAP_MS apart. */
@@ -29,16 +32,36 @@ async function slot(first = false): Promise<() => void> {
   return () => { inFlight--; (waiting.first.shift() ?? waiting.later.shift())?.(); };
 }
 
+/** The site not answering: after `DOWN_AFTER` failures in a row (timeouts, errors: maintenance, 2026-11-25), background
+ *  lookups fail at once for `DOWN_MS` instead of queueing; each took the 15 s timeout, and a kill history's hundred
+ *  of them kept a profile "Reading…" for minutes. The page's own requests still go (one answer ends it). */
+const DOWN_AFTER = 3, DOWN_MS = 60_000;
+let failsInARow = 0, downUntil = 0;
+export const siteDown = () => Date.now() < downUntil;
+const DOWN_TEXT = "the official site is not answering (maintenance?)";
+
 async function getJson(url: string, first = false): Promise<any> {
   if (!isTauri()) throw new Error("only in the desktop app");
+  if (!first && siteDown()) throw new Error(DOWN_TEXT);
   const done = await slot(first);
+  if (!first && siteDown()) { done(); throw new Error(DOWN_TEXT); }
   try {
     // From the Rust side (src-tauri/src/armory.rs): the HTTP plugin's Origin header gets a 403 from the search.
     const res = await invoke<{ status: number; json: boolean; body: string }>("armory_get", { url });
     // The site answers errors with an HTML page and status 200: only JSON counts.
     if (res.status < 200 || res.status >= 300 || !res.json) throw new Error(`HTTP ${res.status}`);
-    return JSON.parse(res.body);
+    const json = JSON.parse(res.body);
+    failsInARow = 0; downUntil = 0;
+    return json;
+  } catch (e) {
+    if (++failsInARow >= DOWN_AFTER) downUntil = Date.now() + DOWN_MS;
+    throw e;
   } finally { done(); }
+}
+
+/** Fails after `ms` with "not answering" (a page's request waiting in the queue or on the site). */
+export function within<T>(p: Promise<T>, ms = 25_000): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, no) => setTimeout(() => no(new Error(DOWN_TEXT)), ms))]);
 }
 
 function kept<T>(key: string, keepMs: number, make: () => Promise<T>, failedMs = FAILED_MS): Promise<T> {
@@ -51,13 +74,13 @@ function kept<T>(key: string, keepMs: number, make: () => Promise<T>, failedMs =
 }
 
 /** Characters whose name contains `name` on that server. Throws when the site can't be read. */
-export function searchPlayers(name: string, serverId: number): Promise<Found[]> {
+export function searchPlayers(name: string, serverId: number, first = true): Promise<Found[]> {
   return kept(`s|${serverId}|${name.trim().toLowerCase()}`, SEARCH_MS, async () => {
     const url = searchUrl(name, serverId);
     if (!url) return [];
     // One retry: a server whose search failed once was left out of the region's results for a minute (the player
     // was "not found" on it).
-    try { return parseSearch(await getJson(url, true)); } catch { await new Promise((r) => setTimeout(r, 400)); return parseSearch(await getJson(url, true)); }
+    try { return parseSearch(await getJson(url, first)); } catch { await new Promise((r) => setTimeout(r, 400)); return parseSearch(await getJson(url, first)); }
   }, SEARCH_FAILED_MS);
 }
 
@@ -91,27 +114,27 @@ export async function searchRegion(name: string, region: string, onPart?: (s: Re
 }
 
 /** A character's profile, by the id the search gave. */
-export function profileOf(characterId: string, serverId: number): Promise<Profile | null> {
-  return kept(`p|${serverId}|${characterId}`, PROFILE_MS, async () => parseInfo(await getJson(infoUrl(characterId, serverId)), Date.now()));
+export function profileOf(characterId: string, serverId: number, first = true): Promise<Profile | null> {
+  return kept(`p|${serverId}|${characterId}`, PROFILE_MS, async () => parseInfo(await getJson(infoUrl(characterId, serverId), first), Date.now()));
 }
 
-/** The profile of exactly that name on that server, or null when not found. */
+/** The profile of exactly that name on that server, or null when not found: a background lookup (after the Players page's). */
 export async function officialProfile(name: string, serverId: number): Promise<Profile | null> {
-  const hit = pickFound(await searchPlayers(name, serverId), name, serverId);
-  return hit ? profileOf(hit.characterId, serverId) : null;
+  const hit = pickFound(await searchPlayers(name, serverId, false), name, serverId);
+  return hit ? profileOf(hit.characterId, serverId, false) : null;
 }
 
 /** A character's equipment, arcana, pet, wings and skills, by the id the search gave. */
 export function equipmentOf(characterId: string, serverId: number): Promise<Equipment | null> {
-  return kept(`e|${serverId}|${characterId}`, PROFILE_MS, async () => parseEquipment(await getJson(equipmentUrl(characterId, serverId))));
+  return kept(`e|${serverId}|${characterId}`, PROFILE_MS, async () => parseEquipment(await getJson(equipmentUrl(characterId, serverId), true)));
 }
 
 /** A piece's details (stats, manastones, godstones, an arcana's skills and set). */
 export function itemOf(p: Piece, characterId: string, serverId: number): Promise<ItemDetail | null> {
-  return kept(`i|${serverId}|${characterId}|${p.slot}|${p.id}|${p.enchant + p.exceed}`, PROFILE_MS, async () => parseItem(await getJson(itemUrl(p, characterId, serverId))));
+  return kept(`i|${serverId}|${characterId}|${p.slot}|${p.id}|${p.enchant + p.exceed}`, PROFILE_MS, async () => parseItem(await getJson(itemUrl(p, characterId, serverId), true)));
 }
 
 /** One Daevanion board's open nodes and what they give, by the profile's board id. */
 export function boardOf(characterId: string, serverId: number, boardId: number): Promise<Board | null> {
-  return kept(`d|${serverId}|${characterId}|${boardId}`, PROFILE_MS, async () => parseBoard(await getJson(daevanionUrl(characterId, serverId, boardId))));
+  return kept(`d|${serverId}|${characterId}|${boardId}`, PROFILE_MS, async () => parseBoard(await getJson(daevanionUrl(characterId, serverId, boardId), true)));
 }
