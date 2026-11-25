@@ -42,6 +42,14 @@
     // as that server answers, else the only one once every server has.
     const exactIn = (list: Found[]) => list.filter((c) => c.name.toLowerCase() === n.toLowerCase());
     try {
+      // A card or "My character" knows the server: that one search only, the profile opens at once (searching the
+      // whole region first made the gear wait, 2026-11-25). "Search" then looks in every server of the region.
+      if (want) {
+        const list = await searchPlayers(n, want);
+        if (run !== runs) return;
+        const hit = exactIn(list).find((c) => c.serverId === want);
+        if (hit) { found = list; progress = null; show(hit); searching = false; return; }
+      }
       const r = await searchRegion(n, region, (part) => {
         if (run !== runs) return;
         found = part.found; progress = part;
