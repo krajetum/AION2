@@ -32,16 +32,36 @@ async function slot(first = false): Promise<() => void> {
   return () => { inFlight--; (waiting.first.shift() ?? waiting.later.shift())?.(); };
 }
 
+/** The site not answering: after `DOWN_AFTER` failures in a row (timeouts, errors: maintenance, 2026-11-25), background
+ *  lookups fail at once for `DOWN_MS` instead of queueing; each took the 15 s timeout, and a kill history's hundred
+ *  of them kept a profile "Reading…" for minutes. The page's own requests still go (one answer ends it). */
+const DOWN_AFTER = 3, DOWN_MS = 60_000;
+let failsInARow = 0, downUntil = 0;
+export const siteDown = () => Date.now() < downUntil;
+const DOWN_TEXT = "the official site is not answering (maintenance?)";
+
 async function getJson(url: string, first = false): Promise<any> {
   if (!isTauri()) throw new Error("only in the desktop app");
+  if (!first && siteDown()) throw new Error(DOWN_TEXT);
   const done = await slot(first);
+  if (!first && siteDown()) { done(); throw new Error(DOWN_TEXT); }
   try {
     // From the Rust side (src-tauri/src/armory.rs): the HTTP plugin's Origin header gets a 403 from the search.
     const res = await invoke<{ status: number; json: boolean; body: string }>("armory_get", { url });
     // The site answers errors with an HTML page and status 200: only JSON counts.
     if (res.status < 200 || res.status >= 300 || !res.json) throw new Error(`HTTP ${res.status}`);
-    return JSON.parse(res.body);
+    const json = JSON.parse(res.body);
+    failsInARow = 0; downUntil = 0;
+    return json;
+  } catch (e) {
+    if (++failsInARow >= DOWN_AFTER) downUntil = Date.now() + DOWN_MS;
+    throw e;
   } finally { done(); }
+}
+
+/** Fails after `ms` with "not answering" (a page's request waiting in the queue or on the site). */
+export function within<T>(p: Promise<T>, ms = 25_000): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, no) => setTimeout(() => no(new Error(DOWN_TEXT)), ms))]);
 }
 
 function kept<T>(key: string, keepMs: number, make: () => Promise<T>, failedMs = FAILED_MS): Promise<T> {
