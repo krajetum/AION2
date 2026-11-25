@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind, petStops, route, pathLength } from "./map.ts";
 import { readFileSync } from "node:fs";
-import { ABYSS_FIT, ELYOS_FIT, KRAO_FIT, KRAO_MAP_IDS, URUGUGU_FIT, FIRE_FIT, DRAUPNIR_FIT, VAKRON_FIT, HORN_FIT, KIBELISK_FIT, isMapKey, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
+import { ABYSS_FIT, ELYOS_FIT, KRAO_FIT, KRAO_MAP_IDS, URUGUGU_FIT, FIRE_FIT, DRAUPNIR_FIT, VAKRON_FIT, HORN_FIT, ARKANIS_FIT, isMapKey, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
 const pt = (id: string, x: number, y: number): MapPoint => ({ id, map: "asmodian", x, y, kind: "cube", group: 0, label: "" });
 
@@ -474,12 +474,12 @@ test("Ferocious Horn Den fit puts the recorded stops on the screenshots' arrow",
   assert.deepEqual([600091, 600092, 600093].map(mapOf), ["horn", "horn", "horn"]);
 });
 
-test("Kibelisk fit puts the recorded run on the screenshots' rooms", () => {
+test("Shattered Arkanis fit puts the recorded run on the screenshots' rooms", () => {
   const near = (a: { x: number; y: number }, x: number, y: number) => Math.hypot(a.x - x, a.y - y) < 22;
-  assert.ok(near(applyAffine(KIBELISK_FIT, -51, 22933), 918, 1505), "the entrance, under the arrow");
-  assert.ok(near(applyAffine(KIBELISK_FIT, -23343, 17552), 322, 1375), "the first boss's room");
-  assert.ok(near(applyAffine(KIBELISK_FIT, 9010, 15644), 1153, 1336), "the east waypoint");
-  assert.deepEqual([600063, 600065, 600068, 610062].map(mapOf), ["kibelisk", "kibelisk", "kibelisk", "kibelisk"]);
+  assert.ok(near(applyAffine(ARKANIS_FIT, -51, 22933), 918, 1505), "the entrance, under the arrow");
+  assert.ok(near(applyAffine(ARKANIS_FIT, -23343, 17552), 322, 1375), "the first boss's room");
+  assert.ok(near(applyAffine(ARKANIS_FIT, 9010, 15644), 1153, 1336), "the east waypoint");
+  assert.deepEqual([600063, 600065, 600068, 610062].map(mapOf), ["arkanis", "arkanis", "arkanis", "arkanis"]);
 });
 
 test("soul spots to share: yours (meter or by hand, old ones too), by map, in time order, after the last sent", async () => {
