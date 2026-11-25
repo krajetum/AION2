@@ -61,7 +61,7 @@ export function mergeRound(prev: ArenaMatch, m: ArenaMatch): boolean {
 
 /** Adds a match unless it is logged already (the meter resends the last one), or merges it into the last as
  *  its next round. Returns whether anything changed. */
-/** Instance dungeons (Krao Cave 600001 … Ferocious Horn Den 600093): PvE, never a match. A party member's hit on
+/** Instance dungeons (Krao Cave 600001 … Ferocious Horn Den 600093, Shattered Arkanis 610062): PvE, never a match. A party member's hit on
  *  a player-like target in Fire Temple (600023) went into the arena log as a match, 2026-11-18. */
 export const isDungeonMap = (mapId: number | null | undefined) => mapId != null && mapId >= 600_000 && mapId < 700_000;
 
@@ -95,7 +95,7 @@ export function matchTotals(m: ArenaMatch) {
  * (world-map boss 2001, an Abyss boss in A2Tools' table), and the game sends boss maps only for your home
  * world and the Abyss. Which layer (lower / upper) is not known. Everything else the player names.
  */
-export const KNOWN_MAPS: Record<number, string> = { 20: "Chaotic Lower Reshanta", 23: "Chaotic Outer Reshanta", 62: "Battlefield", 600001: "Krao Cave", 600002: "Krao Cave", 600004: "Krao Cave", 600011: "Urugugu Canyon", 600012: "Urugugu Canyon", 600013: "Urugugu Canyon", 600021: "Fire Temple", 600022: "Fire Temple", 600023: "Fire Temple", 600031: "Draupnir", 600032: "Draupnir", 600033: "Draupnir", 600071: "Vakron Sky Island", 600072: "Vakron Sky Island", 600073: "Vakron Sky Island", 600091: "Ferocious Horn Den", 600092: "Ferocious Horn Den", 600093: "Ferocious Horn Den" };
+export const KNOWN_MAPS: Record<number, string> = { 20: "Chaotic Lower Reshanta", 23: "Chaotic Outer Reshanta", 62: "Battlefield", 600001: "Krao Cave", 600002: "Krao Cave", 600004: "Krao Cave", 600011: "Urugugu Canyon", 600012: "Urugugu Canyon", 600013: "Urugugu Canyon", 600021: "Fire Temple", 600022: "Fire Temple", 600023: "Fire Temple", 600031: "Draupnir", 600032: "Draupnir", 600033: "Draupnir", 600071: "Vakron Sky Island", 600072: "Vakron Sky Island", 600073: "Vakron Sky Island", 600091: "Ferocious Horn Den", 600092: "Ferocious Horn Den", 600093: "Ferocious Horn Den", 600063: "Shattered Arkanis", 600065: "Shattered Arkanis", 600068: "Shattered Arkanis", 610062: "Shattered Arkanis" };
 
 /** A map's name: the player's, a known one, or "Map <id>". */
 /** The Battlefield's map (10v10, named by the player 2026-11-24). */
