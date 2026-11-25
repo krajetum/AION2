@@ -40,6 +40,8 @@ export const ui = $state({
   gathersAt: 0, // when the others' gathering spots were last read (actions.ts refreshGathers), 0 = not this session
   codes: [] as import("../domain/codes.ts").RedeemCode[], // the shared redeem codes as the Worker last answered (actions.ts refreshCodes), not saved
   codesError: "",
+  drops: [] as import("../domain/drops.ts").TwitchDrop[], // the shared Twitch Drops campaigns as the Worker last answered (actions.ts refreshDrops), not saved
+  dropsError: "",
   guild: null as GuildView | null, // the guild as the Worker last answered (main.ts syncs it while playing), not saved
   updating: "", // the update in progress or its error, shown in the update banner
   update: undefined as { version: string; install: () => Promise<void> } | undefined, // a newer release (main.ts checkUpdate), offered by a banner
