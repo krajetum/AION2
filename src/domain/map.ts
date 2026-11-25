@@ -418,7 +418,7 @@ export const HORN_MAP_IDS = [600091, 600092, 600093];
 
 /**
  * Game → pixel fit of the bundled Shattered Arkanis map (src/assets/ncsoft/shattered-arkanis-map.webp: two of the player's screenshots at
- * the same zoom joined where they overlap, 2026-11-25), (the screenshots' title "Kibelisk" is an area inside it), from the packet recording of 2026-11-25 16:50 (a run of map
+ * the same zoom joined where they overlap, 2026-11-25; their title "Kibelisk" is an area inside it), from the packet recording of 2026-11-25 16:50 (a run of map
  * 600063): five spots matched by hand (the entrance under the screenshot's arrow, the first boss's room, the north-west
  * circle's foot, the two waypoints the run reached), the same scale on both axes, within 21 px of them; the walk
  * follows the corridors. Four difficulties loaded as 600063, 600065, 600068 and 610062 in the same recording, their
