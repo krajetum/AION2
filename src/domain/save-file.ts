@@ -46,6 +46,7 @@ export function defaultData(): AppData {
     guild: null,
     advent: emptyAdvent(),
     codes: emptyMarks(),
+    drops: emptyMarks(),
     history: emptyHistory(),
     settings: {
       warnHours: { daily: 2, weekly: 12, monthly: 24 },
@@ -141,6 +142,7 @@ export function normalize(raw: any): AppData {
     guild: cleanGuild(raw.guild),
     advent: cleanAdvent(raw.advent),
     codes: cleanMarks(raw.codes),
+    drops: cleanMarks(raw.drops),
     history: cleanHistory(raw.history),
     settings: { ...d.settings, ...rs, warnHours: { ...d.settings.warnHours, ...rs.warnHours }, channels,
       mascotGender: rs.mascotGender === "f" ? "f" : "m",

@@ -16,6 +16,7 @@
   import { winterActive } from "../../domain/holiday.ts";
   import AdventCalendar from "../parts/AdventCalendar.svelte";
   import Codes from "../parts/Codes.svelte";
+  import TwitchDrops from "../parts/TwitchDrops.svelte";
   import Kpi from "../parts/Kpi.svelte";
   import { winterNow } from "../winter.ts";
   import TaskRow from "../parts/TaskRow.svelte";
@@ -61,6 +62,7 @@
 
 <div class="grid grid-cols-[repeat(auto-fit,minmax(380px,1fr))] items-start gap-x-3">
   <Codes />
+  <TwitchDrops />
 
   <Panel title="Tracked field bosses">{#snippet actions()}<a class="text-primary hover:underline" href="#bosses">All bosses</a>{/snippet}
     {#if tracked.length}<Table.Root><Table.Body>{#each tracked as b (b.mapId + ":" + b.bossId)}{@const st = bossState(b, ui.now)}{@const a = ui.data.bossAlerts[b.bossId]}<Table.Row>

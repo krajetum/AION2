@@ -19,7 +19,7 @@ import { toast } from "./infra/notifier.ts";
 import { loadData } from "./infra/storage.ts";
 import { loadFights, saveFights } from "./infra/fights.ts";
 import { findUpdate, getAutostart, isDesktop, mcpServer, onTrayMute, openLinksInBrowser } from "./infra/system.ts";
-import { act, celebrate, cue, refreshCodes, refreshGathers, refreshGuild, refreshNews, refreshSouls, remindCodes, save } from "./ui/actions.ts";
+import { act, celebrate, cue, refreshCodes, refreshDrops, refreshGathers, refreshGuild, refreshNews, refreshSouls, remindCodes, save } from "./ui/actions.ts";
 import App from "./ui/App.svelte";
 import Overlay from "./ui/Overlay.svelte";
 import EventsOverlay from "./ui/EventsOverlay.svelte";
@@ -150,6 +150,7 @@ async function main() {
   if (isDesktop()) checkUpdate(true);
   refreshNews();
   refreshCodes();
+  refreshDrops();
   crowdBosses();
   crowdCubes();
   refreshGathers();
@@ -158,7 +159,7 @@ async function main() {
   let ticks = 0;
   setInterval(async () => {
     ui.now = Date.now();
-    if (++ticks % 1800 === 0) { refreshNews(); refreshCodes(); } // every 30 min
+    if (++ticks % 1800 === 0) { refreshNews(); refreshCodes(); refreshDrops(); } // every 30 min
     if (ticks % 21600 === 0 && isDesktop()) checkUpdate(); // every 6 h: the app can stay in the tray for days
     // Other players' boss timers every 2 min and cube spots every hour, only while you play.
     if (ticks % bossEvery === 0 && gameActive(ui.now)) { crowdBosses(); refreshGuild(true); }
