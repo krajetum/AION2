@@ -1,7 +1,7 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind, petStops, route, pathLength } from "./map.ts";
+import { foundOn, invertAffine, mapOf, onMap, mergeDrops, lootKind, takeLoots, takeSouls, soulOf, unknownMob, type LootKill, type SoulKill, petHome, petList, readDropsFile, dropsFile, type PetDrop, BUNDLED_DROPS, takeBundledDrops, mapOfMob, linkKinds, mobKind, petStops, route, pathLength, gameKind } from "./map.ts";
 import { readFileSync } from "node:fs";
 import { ABYSS_FIT, ELYOS_FIT, KRAO_FIT, KRAO_MAP_IDS, URUGUGU_FIT, FIRE_FIT, DRAUPNIR_FIT, VAKRON_FIT, HORN_FIT, ARKANIS_FIT, isMapKey, applyAffine, bearing, BUNDLED_FIT, climb, onRadar, staleFor, STALE_POSITION_MS, travelNote, travelIcon, cleanMap, emptyMap, takeCubes, clusters, fitAffine, fitError, fitView, toImage, toScreen, zoomAt, type MapPoint } from "./map.ts";
 
@@ -580,4 +580,12 @@ test("a kill shows under the pet its mob gives in the game's data, not the one a
   assert.equal(shown[0].kind, 1137);
   assert.equal(shown[0].pet, "Mumu Worker");
   assert.equal(shown[1].kind, 1063, "a mob the data doesn't list keeps its number");
+});
+
+test("a new dungeon's mob: Void Water Spirit's kills go to Ultimate Water Spirit (1090)", () => {
+  assert.equal(gameKind("Void Water Spirit"), 1090);
+  const map = emptyMap();
+  takeSouls(map, [{ entity: 1, x: 9273, y: -15544, z: 104333, mapId: 600063, kind: 1090, points: 1, atMs: 5, mob: "Void Water Spirit" } as any], "Me");
+  assert.equal(map.pets[0].kind, 1090);
+  assert.equal(map.pets[0].map, "arkanis");
 });

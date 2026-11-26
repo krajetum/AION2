@@ -654,13 +654,21 @@ export function mobKind(map: Pick<MapData, "pets">, mob: string): number | null 
   return n >= 3 ? kind : null;
 }
 
+/**
+ * Monsters newer than `mob-souls.ts`'s data (a new dungeon's), as the player's recordings showed them: a kill's
+ * "Soul: X (Bound)" loot and the soul points that followed. Void Water Spirit (Shattered Arkanis): Soul: Ultimate
+ * Water Spirit and +1 to pet 1090, recording of 2026-11-26 10:10.
+ */
+const RECORDED_MOB_SOULS: Record<string, string[]> = { "void water spirit": ["Ultimate Water Spirit"] };
+
 const PET_BY_NAME = new Map(Object.entries(KNOWN_PET_NAMES).map(([k, n]) => [n.toLowerCase(), Number(k)]));
 /**
  * The pet number a mob's kills give, from the game's data (`mob-souls.ts`: the soul its kills drop, named like the
  * pet): null when the mob isn't listed, drops several souls, or its soul has no known pet number.
  */
 export function gameKind(mob: string | undefined): number | null {
-  const souls = mob ? MOB_SOULS[mob.trim().toLowerCase()] : undefined;
+  const key = mob?.trim().toLowerCase();
+  const souls = key ? MOB_SOULS[key] ?? RECORDED_MOB_SOULS[key] : undefined;
   return souls?.length === 1 ? PET_BY_NAME.get(souls[0].toLowerCase()) ?? null : null;
 }
 
