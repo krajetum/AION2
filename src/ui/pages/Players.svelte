@@ -68,15 +68,19 @@
     } catch (e) { if (run === runs) { found = null; error = e instanceof Error ? e.message : String(e); } }
     if (run === runs) searching = false;
   }
+  // The profile asked for last: `open` is $state, so it holds a proxy of `c` and `open === c` is false for a
+  // character the search opened by itself (an exact name): its profile stayed "Reading…" for ever (2026-11-26).
+  let shows = 0;
   async function show(c: Found) {
+    const run = ++shows;
     open = c; profile = null; profileError = ""; loading = true;
     // The equipment at the same time (cached: the Equipment part takes the same answer when it shows).
     equipmentOf(c.characterId, c.serverId).catch(() => {});
     try {
       const p = await within(profileOf(c.characterId, c.serverId));
-      if (open === c) { profile = p; if (!p) profileError = "the site sent no profile"; }
-    } catch (e) { if (open === c) profileError = e instanceof Error ? e.message : String(e); }
-    if (open === c) loading = false;
+      if (run === shows) { profile = p; if (!p) profileError = "the site sent no profile"; }
+    } catch (e) { if (run === shows) profileError = e instanceof Error ? e.message : String(e); }
+    if (run === shows) loading = false;
   }
   if (asked) { ui.lookup = null; void search(); }
 
@@ -130,7 +134,7 @@
     <Button size="sm" variant="ghost" onclick={() => { containing = !containing; }}>{containing ? "Only names starting with it" : `Also names containing it (${found.length - starting.length})`}</Button>{/if}{/snippet}
   <Table.Root>
     <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Name</Table.Head><Table.Head class="text-right">Level</Table.Head><Table.Head>Server</Table.Head></Table.Row></Table.Header>
-    <Table.Body>{#each listed as c (c.characterId)}<Table.Row data-state={open === c ? "selected" : undefined}>
+    <Table.Body>{#each listed as c (c.characterId)}<Table.Row data-state={open?.characterId === c.characterId && open?.serverId === c.serverId ? "selected" : undefined}>
       <Table.Cell><Button variant="link" size="sm" class="px-0" onclick={() => show(c)}>{c.name}</Button></Table.Cell><Table.Cell class="text-right">{c.level ?? "—"}</Table.Cell><Table.Cell>{c.serverName}</Table.Cell>
     </Table.Row>{:else}<Table.Row><Table.Cell class="text-muted-foreground" colspan={3}>{searching ? "Searching the region's servers…" : found.length ? "No name starts with that: see the names containing it." : "No character with that name in this region."}</Table.Cell></Table.Row>{/each}</Table.Body>
   </Table.Root>
