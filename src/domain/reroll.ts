@@ -21,14 +21,22 @@
  * Adding a line (`ADD_LINE`, the player 2026-11-27): 2 Philosopher's Stones + 1,000,000 Kina, once per piece, any
  * piece but bracelets; drawn like a reroll (never a line the piece has), rerollable after; lost when the piece is
  * transferred to a new one. The official site marks it (`added: true` on the line, the game's purple one).
- *
- * Our own score, not kisk.app's: a line is worth its best-in-slot % (bis.json, the player's list over it), 0 when it
- * is not one of the class's ideal lines; a piece's score = what its lines are worth over the best its line count could
- * hold, 0-100. The plan rerolls a piece's worthless lines while ideal lines are missing, the least likely line first
- * (it is then excluded from the draw the longest, which helps the others); the pieces rank by the score they gain per
- * expected try.
  */
-import type { BisLine } from "./bis.ts";
+/** Lines worth less (% of top players carrying it) are rerolled; worth this much or more, aimed at: kisk.app's plans
+ *  for the player's pieces (2026-11-27) reroll and aim at the same lines on every armour piece and jewel. */
+export const KEEP = 50;
+/** A line's worth for a class and slot; `skill` = one of the class's skills (drawn at the slot's skill chance).
+ *
+ * What a line is worth: the share of the class's top players in Korea who carry it on that slot (`src/assets/carry.json`,
+ * kisk.app's tables, the player's screenshots 2026-11-27); skill lines, each player's own choice, are worth their % in
+ * the best-in-slot list (bis.json, the player's list over it). Our own score (kisk's also weighs the roll; ours doesn't,
+ * as the values can be raised cheaply later): a piece = what its lines are worth over the best its line count could
+ * hold, 0-100. A line worth less than `KEEP` is rerolled; a try lands when it gives any line worth `KEEP` or more that
+ * the piece lacks and the slot's draw holds (kisk counts its Best, Good and Fine lines alike: its "33% a try" on the
+ * player's earrings comes out the same); lines the draw doesn't hold (Time and Space on bracelets, Perfect Chance on
+ * capes) count for the score but can't be aimed at. The least likely line is rerolled first (it is then excluded from
+ * the draw the longest, which helps the others); the pieces rank by the score they gain per expected try.
+ */
 
 export const REROLL_CHECKED = "2026-11-27";
 
@@ -52,8 +60,34 @@ export interface SlotPool { stats: Record<string, number>; skills: { count: numb
 
 export const ADD_LINE = { stones: 2, kina: 1_000_000 };
 
-/** Best-in-slot lines the game can't give yet (the player, 2026-11-27). */
-export const UNOBTAINABLE = ["Time [Siel]"];
+export interface Worth { stat: string; pct?: number; skill?: boolean }
+
+/** What a class's lines are worth on a slot: the top players' carry table, and the best-in-slot list's skill lines
+ *  (its names no slot's draw or carry table has). */
+export function worthLines(carry: Record<string, number> | undefined, bis: { stat: string; pct?: number }[] | null, statNames: Set<string>,
+  passives: { stat: string; pct?: number }[] = []): Worth[] {
+  const out: Worth[] = Object.entries(carry ?? {}).map(([stat, pct]) => ({ stat, pct }));
+  for (const l of [...(bis ?? []), ...passives]) if (!statNames.has(norm(l.stat)) && !out.some((o) => norm(o.stat) === norm(l.stat))) out.push({ stat: l.stat, pct: l.pct ?? 100, skill: true });
+  return out;
+}
+/** Armour, necklaces and earrings draw the same passive skills: each is worth its most carried share over the class's
+ *  best-in-slot armour lists (a list holds only its three most carried; kisk.app aims at all of them on every piece). */
+export const ARMOUR_SLOTS = ["Torso", "Pants", "Helmet", "Shoulders", "Gloves", "Boots", "Cape"];
+export function armourPassives(lists: ({ stat: string; pct?: number }[] | null)[], statNames: Set<string>): { stat: string; pct: number }[] {
+  const best = new Map<string, { stat: string; pct: number }>();
+  for (const l of lists.flat()) if (l && !statNames.has(norm(l.stat))) {
+    const k = norm(l.stat), p = l.pct ?? 100;
+    if ((best.get(k)?.pct ?? -1) < p) best.set(k, { stat: l.stat, pct: p });
+  }
+  return [...best.values()];
+}
+/** Every stat name a draw or a carry table has (lower case): anything else on a piece is a skill. */
+export function statNamesOf(carry: Record<string, Record<string, Record<string, number>>>): Set<string> {
+  const s = new Set<string>();
+  for (const p of Object.values(REROLL_POOLS)) for (const k of Object.keys(p.stats)) s.add(norm(k));
+  for (const c of Object.values(carry)) for (const sl of Object.values(c)) for (const k of Object.keys(sl)) s.add(norm(k));
+  return s;
+}
 
 /** Every line a slot can roll, by the best-in-slot slot names (`bis.ts` `bisSlot`). Belts, runes and arcana (not rerolled): none. */
 export const REROLL_POOLS: Record<string, SlotPool> = {
@@ -102,19 +136,22 @@ export interface PiecePlan {
  * The plan for one piece: `lines` = its bonus lines and skills by name, `ideal` = the class's lines for the slot with
  * their best-in-slot %. Null when the slot has no known draw or no ideal lines.
  */
-export function planPiece(slot: string, lines: string[], allIdeal: BisLine[], resetDraws = 4000, canAdd = false): PiecePlan | null {
+export function planPiece(slot: string, lines: string[], allIdeal: Worth[], resetDraws = 4000, canAdd = false): PiecePlan | null {
   const pool = REROLL_POOLS[slot];
-  const gone = new Set(UNOBTAINABLE.map(norm));
-  const ideal = allIdeal.filter((l) => !gone.has(norm(l.stat)));
-  const unobtainable = allIdeal.filter((l) => gone.has(norm(l.stat))).map((l) => l.stat);
-  if (!pool || !ideal.length || !lines.length) return null;
-  const worth = new Map(ideal.map((l) => [norm(l.stat), l.pct ?? 100]));
-  const valueOf = (l: string) => worth.get(norm(l)) ?? 0;
+  if (!pool || !allIdeal.length || !lines.length) return null;
+  const inDraw = (l: Worth) => Object.keys(pool.stats).some((k) => norm(k) === norm(l.stat)) || (!!l.skill && pool.skills.count > 0);
+  const worth = new Map(allIdeal.map((l) => [norm(l.stat), l.pct ?? 100]));
+  // A ring's skill lines are the player's own pick (the arcana's skills, the luck of the rolls): kept, worth KEEP.
+  const ownSkill = (l: string) => slot === "Ring" && !Object.keys(pool.stats).some((k) => norm(k) === norm(l));
+  const valueOf = (l: string) => Math.max(worth.get(norm(l)) ?? 0, ownSkill(l) ? KEEP : 0);
   const best = [...worth.values()].sort((a, b) => b - a).slice(0, lines.length).reduce((a, b) => a + b, 0);
   const have = lines.map(norm);
-  const missing = ideal.filter((l) => !have.includes(norm(l.stat)));
-  // The worthless lines, the least likely first.
-  const bad = lines.filter((l) => valueOf(l) === 0).sort((a, b) => chanceOf(pool, a) - chanceOf(pool, b));
+  const wanted = allIdeal.filter((l) => (l.pct ?? 100) >= KEEP && !have.includes(norm(l.stat)));
+  const missing = wanted.filter(inDraw);
+  const unobtainable = wanted.filter((l) => !inDraw(l)).map((l) => l.stat);
+  const ideal = allIdeal;
+  // The lines not worth keeping, the least likely first.
+  const bad = lines.filter((l) => valueOf(l) < KEEP).sort((a, b) => chanceOf(pool, a) - chanceOf(pool, b));
   const score = lines.reduce((s, l) => s + valueOf(l), 0);
   const stepCount = Math.min(bad.length, missing.length);
 
@@ -124,7 +161,7 @@ export function planPiece(slot: string, lines: string[], allIdeal: BisLine[], re
   let tries = 0, gained = 0;
   const presentWeight = (mask: number, k: number) => {
     // lines still on the piece at step k: the good ones, the bad ones not rerolled yet (incl. the one now), the ones gained
-    let w = lines.filter((l) => valueOf(l) > 0).reduce((s, l) => s + chanceOf(pool, l), 0);
+    let w = lines.filter((l) => valueOf(l) >= KEEP).reduce((s, l) => s + chanceOf(pool, l), 0);
     for (let i = k; i < bad.length; i++) w += chanceOf(pool, bad[i]);
     missing.forEach((m, i) => { if (mask & (1 << i)) w += chanceOf(pool, m.stat); });
     return w;
@@ -141,7 +178,7 @@ export function planPiece(slot: string, lines: string[], allIdeal: BisLine[], re
       for (const { m, i } of left) {
         const q = chanceOf(pool, m.stat) / want;
         next.set(mask | (1 << i), (next.get(mask | (1 << i)) ?? 0) + pr * q);
-        gained += pr * q * (m.pct ?? 100);
+        gained += pr * q * ((m.pct ?? 100) - valueOf(bad[k]));
       }
     }
     steps.push({ line: bad[k], chance: stepChance });
@@ -165,9 +202,9 @@ export function planPiece(slot: string, lines: string[], allIdeal: BisLine[], re
 }
 
 /** A reset: every line drawn again without repeats, weighted by its chance. Simulated (seeded, so it repeats). */
-function resetOdds(pool: SlotPool, ideal: BisLine[], count: number, best: number, draws: number) {
+function resetOdds(pool: SlotPool, ideal: Worth[], count: number, best: number, draws: number) {
   const entries: { name: string; w: number }[] = Object.entries(pool.stats).map(([name, w]) => ({ name: norm(name), w }));
-  const idealSkills = ideal.filter((l) => !entries.some((e) => e.name === norm(l.stat))).map((l) => norm(l.stat));
+  const idealSkills = ideal.filter((l) => l.skill).map((l) => norm(l.stat));
   for (let i = 0; i < pool.skills.count; i++) entries.push({ name: idealSkills[i] ?? `skill ${i}`, w: pool.skills.pct });
   const worth = new Map(ideal.map((l) => [norm(l.stat), l.pct ?? 100]));
   let seed = 12345;
@@ -180,7 +217,8 @@ function resetOdds(pool: SlotPool, ideal: BisLine[], count: number, best: number
       while (j < left.length - 1 && (r -= left[j].w) > 0) j++;
       const [e] = left.splice(j, 1);
       const v = worth.get(e.name) ?? 0;
-      if (v) { idealSum++; valueSum += v; }
+      if (v >= KEEP) idealSum++;
+      valueSum += v;
     }
   }
   return { ideal: idealSum / draws, score: best ? (100 * valueSum) / draws / best : 0 };
