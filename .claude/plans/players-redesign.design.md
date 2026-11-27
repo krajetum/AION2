@@ -173,7 +173,7 @@ Header (profile `Panel`): class icon, name, class · server · level, Demo badge
 - [x] **T3.2** `UnderlineTabs` optional icon + badge — files: `src/lib/components/app/UnderlineTabs.svelte` — proves: `npm run check`; DPS Log / Settings / Arena tabs unchanged in the browser pane
 - [x] **T3.3** `STAT_ICON` / `SLOT_ICON` — files: `src/ui/icons.ts` — proves: `npm run check`
 - [x] **T3.4** `CharacterSheet` (with `upgrades` from `buildUpgrades` + bundled `bis.json`, `carry.json`, `ranks.json`) — files: `src/ui/parts/sheet.svelte.ts` — proves: `npm run check`; browser pane
-- [ ] **T3.5** Header + tabs in `Players.svelte` on the sheet; Players' own profile state and prefetch removed; Upgrades tab = today's `UpgradeCards` (+ `UpgradeInfo` toggle) from `sheet.upgrades`; `Equipment.svelte` reads the sheet (props `sheet`) instead of loading — files: `src/ui/pages/Players.svelte`, `src/ui/parts/Equipment.svelte` — proves: browser pane
+- [x] **T3.5** Header + tabs in `Players.svelte` on the sheet; Players' own profile state and prefetch removed; Upgrades tab = today's `UpgradeCards` (+ `UpgradeInfo` toggle) from `sheet.upgrades`; `Equipment.svelte` reads the sheet (props `sheet`) instead of loading — files: `src/ui/pages/Players.svelte`, `src/ui/parts/Equipment.svelte` — proves: browser pane
 
 ### F4. Overview, Gear, Stats, Daevanion tabs
 **Interfaces**
@@ -272,6 +272,12 @@ Summary line (to improve = `sheet.toImprove` of total pieces, ≈ tries for all 
 
 ## Plan changes
 None to features or criteria. Design-level choices made in review: the Upgrades badge counts gear and arcana to improve; Recent keeps whole search results so a chip opens the profile directly.
+
+## Build changes
+- 2026-11-27 · T2.2 · Result cards show a generic person icon and the server, the class only for the character already open: the official search answer has no class.
+- 2026-11-27 · T3.4 · `CharacterSheet` also has `eqError` (the equipment read failed while the profile came) and `boardsError`, and a `className` getter (profile's, else the constructor's): the header keeps working when only the equipment fails, as today's two separate messages.
+- 2026-11-27 · T3.5 · Reads of "is this piece read" use `details[slot] !== undefined`, not `slot in details`: inside the class's `$derived`, `in` on the `$state` record never re-ran for keys added later ("reading 0 / 9" stuck). Same in `Equipment.svelte`.
+- 2026-11-27 · T3.5 · Until F6 the Compare tab holds today's compare flow (Compare with you / Compare with…, `PlayerCompare` on two `Found`); `show()` keeps the Compare tab while a first side is kept.
 
 ## Open questions
 None.

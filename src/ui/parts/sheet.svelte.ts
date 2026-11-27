@@ -42,7 +42,7 @@ export class CharacterSheet {
   readonly all: Piece[] = $derived(this.eq ? [...this.eq.gear, ...this.eq.accessories, ...this.eq.arcana] : []);
   /** Pieces read (or failed) of all; null once every piece is read or failed, and before the equipment is. */
   readonly reading: { read: number; total: number } | null = $derived.by(() => {
-    const read = this.all.filter((p) => p.slot in this.details || p.slot in this.errors).length;
+    const read = this.all.filter((p) => this.details[p.slot] !== undefined || this.errors[p.slot] !== undefined).length;
     return this.eq && read < this.all.length ? { read, total: this.all.length } : null;
   });
   readonly upgrades: Upgrades = $derived(buildUpgrades(this.eq, this.details, this.className,

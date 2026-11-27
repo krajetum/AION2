@@ -2,88 +2,30 @@
   // A character's equipment from the official profile (infra/armory.ts), as cards: gear, accessories and arcana
   // (`GearCard`: the piece's lines, and its best-in-slot lines for the class behind a BiS button), pet and wings,
   // skills and stigma. Each piece's details are read one after another (the request queue spaces them).
-  import bundled from "../../assets/bis.json";
-  import type { Equipment, ItemDetail, Piece, Skill } from "../../domain/armory.ts";
-  import { bisLines, bisSlot, type BisLine, type BisTable } from "../../domain/bis.ts";
+  import type { Piece, Skill } from "../../domain/armory.ts";
+  import { bisLines, bisSlot, type BisLine } from "../../domain/bis.ts";
   import { setBis } from "../../app/bis.ts";
-  import { equipmentOf, itemOf } from "../../infra/armory.ts";
   import { gearStats, gearText } from "../../domain/gearstats.ts";
-  import { ARMOUR_SLOTS, armourPassives, planPiece, rankPlans, rankSkills, rankTable, statNamesOf, worthLines, type RankFile } from "../../domain/reroll.ts";
-  import rankFile from "../../assets/ranks.json";
-  import { arcanaPlan } from "../../domain/arcana.ts";
-  import carryFile from "../../assets/carry.json";
-  import UpgradeCards from "./UpgradeCards.svelte";
-  import UpgradeInfo from "./UpgradeInfo.svelte";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Fold from "$lib/components/app/Fold.svelte";
   import { act } from "../actions.ts";
   import { ui } from "../state.svelte.ts";
   import GearCard from "./GearCard.svelte";
+  import { BIS, type CharacterSheet } from "./sheet.svelte.ts";
 
-  let { characterId, serverId, className }: { characterId: string; serverId: number; className: string } = $props();
-  const BIS = bundled as { classes: BisTable; source: string; sourceUrl: string; captured: string };
-  const BUNDLED = BIS.classes;
-
-  let eq = $state<Equipment | null>(null), failed = $state(""), loading = $state(true);
-  // Each piece's details by slot: undefined = not read yet.
-  let details = $state<Record<number, ItemDetail | null>>({}), errors = $state<Record<number, string>>({});
-  $effect(() => {
-    const id = characterId, server = serverId;
-    let live = true;
-    eq = null; failed = ""; loading = true; details = {}; errors = {};
-    equipmentOf(id, server).then((v) => {
-      if (!live) return;
-      eq = v;
-      if (!v) { failed = "the site sent no equipment"; return; }
-      for (const p of [...v.gear, ...v.accessories, ...v.arcana]) itemOf(p, id, server).then(
-        (d) => { if (live) details[p.slot] = d; },
-        (e) => { if (live) errors[p.slot] = e instanceof Error ? e.message : String(e); });
-    }, (e) => { if (live) failed = e instanceof Error ? e.message : String(e); }).finally(() => { if (live) loading = false; });
-    return () => { live = false; };
-  });
-
-  const all = $derived(eq ? [...eq.gear, ...eq.accessories, ...eq.arcana] : []);
+  let { sheet }: { sheet: CharacterSheet } = $props();
+  const eq = $derived(sheet.eq), details = $derived(sheet.details), errors = $derived(sheet.errors), className = $derived(sheet.className);
+  const all = $derived(sheet.all);
   const fromGear = $derived(gearStats(all.map((p) => ({ piece: p, detail: details[p.slot] }))));
-  const readCount = $derived(all.filter((p) => p.slot in details || p.slot in errors).length);
+  const readCount = $derived(all.filter((p) => details[p.slot] !== undefined || errors[p.slot] !== undefined).length);
   let shownStat = $state("");
-  const linesOf = (slot: string | null) => (slot ? bisLines(BUNDLED, ui.data.bis, className, slot) : null);
+  const linesOf = (slot: string | null) => (slot ? bisLines(BIS.classes, ui.data.bis, className, slot) : null);
   const customOf = (slot: string | null) => !!slot && !!ui.data.bis[className]?.[slot];
-  // Upgrades: every read piece with a known draw and ideal lines, the most score per expected try first.
-  const CARRY = carryFile as { classes: Record<string, Record<string, Record<string, number>>>; source: string; sourceUrl: string; captured: string; players: Record<string, number> };
-  const STAT_NAMES = statNamesOf(CARRY.classes);
-  const RANKS = rankFile as unknown as RankFile & { source: string; captured: string };
-  const plans = $derived(rankPlans(all.flatMap((p) => {
-    const slot = bisSlot(p.slotName), d = details[p.slot];
-    if (!slot || !d || !d.random) return [];
-    const jewel = slot === "Necklace" || slot === "Earring" || ARMOUR_SLOTS.includes(slot);
-    // The static's ranks where they have the slot (skill lines: the best-in-slot's, worth B), else kisk's carry shares.
-    const ranks = rankTable(RANKS, slot), passives = jewel ? armourPassives(ARMOUR_SLOTS.map((s) => linesOf(s)), STAT_NAMES) : [];
-    const ideal = ranks
-      ? worthLines(ranks.worth, rankSkills(RANKS, linesOf(slot) ?? []), STAT_NAMES, rankSkills(RANKS, passives))
-      : worthLines(CARRY.classes[className]?.[slot], linesOf(slot), STAT_NAMES, passives);
-    const canAdd = ![...d.sub, ...d.skills].some((x) => x.added);
-    const lines = [...d.sub.map((x) => x.name), ...d.skills.map((x) => x.name)];
-    const plan = planPiece(slot, lines, ideal, 4000, canAdd);
-    return plan ? [{ p, plan, ideal, lines, ranked: ranks?.ranked ?? null }] : [];
-  })));
-  // Every skill's level with its bonuses (the profile's), for what the arcana still need.
-  const totals = $derived(Object.fromEntries([...(eq?.active ?? []).map((s) => [s.name, { level: s.level ?? 0, passive: false }]),
-    ...(eq?.passive ?? []).map((s) => [s.name, { level: s.level ?? 0, passive: true }])]));
-  // Arcana: a Transmute plan for each Unique one read (domain/arcana.ts), easiest gain first.
-  const arcana = $derived((eq?.arcana ?? []).flatMap((p) => {
-    const slot = bisSlot(p.slotName), d = details[p.slot], ideal = linesOf(slot);
-    if (!slot || !d || !ideal || p.grade !== "Unique") return [];
-    const plan = arcanaPlan(slot, d.skills, ideal, totals);
-    return plan ? [{ p, slot, held: d.skills, plan, ideal }] : [];
-  }).sort((a, b) => Number(b.plan.craft) - Number(a.plan.craft) || b.plan.missing.length - a.plan.missing.length));
-  const notUnique = $derived((eq?.arcana ?? []).filter((p) => p.grade !== "Unique").map((p) => p.name));
-  // "Best upgrades" shows the reroll plans in place of the cards.
-  let upgrades = $state(false), info = $state(false);
   const saveOf = (slot: string | null) => (lines: BisLine[] | null) => { if (slot) act(() => setBis(ui.data, className, slot, lines)); };
 </script>
 
 {#snippet cards(list: Piece[])}<div class="gcards">{#each list as p (p.slot)}{@const slot = bisSlot(p.slotName)}
-  <GearCard {p} {slot} detail={p.slot in details ? details[p.slot] : undefined} failed={errors[p.slot] ?? ""}
+  <GearCard {p} {slot} detail={details[p.slot]} failed={errors[p.slot] ?? ""}
     lines={linesOf(slot)} custom={customOf(slot)} {className} save={saveOf(slot)} />{/each}</div>{/snippet}
 
 {#snippet skills(title: string, list: Skill[], stigma = false)}
@@ -93,17 +35,12 @@
       {#if stigma && s.equipped}<i class="eq-e">E</i>{/if}{#if s.level}<small>Lv {s.level}</small>{:else}<small>🔒</small>{/if}</span>{/each}
   </div>{/if}
 {/snippet}
-{#if loading}<p class="hint">Reading the equipment…</p>
-{:else if failed}<p class="hint">Equipment not read ({failed}).</p>
+{#if sheet.eqError}<p class="hint">Equipment not read ({sheet.eqError}).</p>
+{:else if !eq}<p class="hint">Reading the equipment…</p>
 {:else if eq}
-  <div class="mt-4 mb-2 flex items-center gap-3"><h3 class="m-0 text-sm font-semibold">{upgrades ? "Best upgrades" : "Gear"}</h3>
-    <button class="bis-btn" title="Which lines to reroll, piece by piece, and which piece first" aria-pressed={upgrades} onclick={() => { upgrades = !upgrades; }}>{upgrades ? "Gear" : "Best upgrades"}</button>
-    {#if upgrades}<button class="bis-btn" title="How this page works, with the formulas" aria-pressed={info} onclick={() => { info = !info; }}>ⓘ Info</button>{/if}</div>
-  {#if upgrades && info}<UpgradeInfo example={plans.find((x) => x.plan.steps.length) ?? null} ranked={plans.some((x) => x.ranked)} />{/if}
-  {#if upgrades}<UpgradeCards {plans} ranks={RANKS} {totals} {arcana} {notUnique} reading={readCount < all.length} {className} players={CARRY.players[className] ?? 0} source={CARRY} />
-  {:else}{@render cards(eq.gear)}
+  <h3 class="mt-4 mb-2 text-sm font-semibold">Gear</h3>{@render cards(eq.gear)}
   <h3 class="mt-4 mb-2 text-sm font-semibold">Accessories</h3>{@render cards(eq.accessories)}
-  <h3 class="mt-4 mb-2 text-sm font-semibold">Arcana</h3>{#if eq.arcana.length}{@render cards(eq.arcana)}{:else}<p class="hint">No arcana equipped: the official profile lists none for this character.</p>{/if}{/if}
+  <h3 class="mt-4 mb-2 text-sm font-semibold">Arcana</h3>{#if eq.arcana.length}{@render cards(eq.arcana)}{:else}<p class="hint">No arcana equipped: the official profile lists none for this character.</p>{/if}
   <p class="hint">Best-in-slot lines from <a class="underline" href={BIS.sourceUrl} target="_blank" rel="noopener">{BIS.source}</a> ({BIS.captured}), with its % per line; Edit on a card's back keeps your own list.</p>
   <div class="mt-4"><Fold title="Stats from gear" note={readCount < all.length ? `reading ${readCount} / ${all.length} pieces…` : `${all.length} pieces`} open>
     <div class="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-6 text-sm">
