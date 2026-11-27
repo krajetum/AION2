@@ -22,6 +22,7 @@ Tauri 2 + TypeScript + Svelte 5 + Vite. Single user, multiple characters, everyt
   set only in the run's checkout (no commit; tag `v<version>` on the beta commit), so `releases/latest` (stable apps) never sees it.
   Every build, stable or beta, rewrites `latest-beta.json` on the pre-release `beta-channel` (made by the first run): the manifest of apps with `settings.betaUpdates`,
   always the newest of both channels (one concurrency group; a stable is above the betas before it), read by `src-tauri/src/updates.rs`.
+- App icon: `src-tauri/icons/source.png` (1024 px: the gladiator mascot, one white and one black wing, the greatsword planted in both hands, on a slate disc; drawn with `scripts/mascots.py`'s parts, 2026-11-27) → `npx tauri icon src-tauri/icons/source.png -o src-tauri/icons` makes every size (also the tray's: the window icon); the sidebar's logo = `src/assets/logo.png` (64 px of it)
 - `npm run dev` — UI only in a browser on http://localhost:1420 (launch config `web-ui` in `.claude/launch.json`)
 - `node scripts/chiptune.mjs` — redraws the Pingy theme's 8-bit sounds into `public/sounds/pingy/` (no deps; the restored beeps there are not its)
 - `python3 scripts/mascots.py` — redraws the mascots' sprite sheets into `public/mascots/` (Pillow + numpy, a dev tool: the app ships only the PNGs); `python3 scripts/mascot-extras.py` — the event companions (foe, festival critter)
