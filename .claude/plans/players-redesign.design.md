@@ -107,7 +107,7 @@ Demo Alt's pieces: a weapon whose lines need rerolls, an already ideal ring, a n
 - WHILE in Tauri … never demo data → the `isTauri()` branch in `getJson` (review); `npm test` green
 
 **Tasks**
-- [ ] **T1.1** Fixture + tests — files: `src/infra/armory-demo.ts`, `src/infra/armory-demo.test.ts` — proves: the three cases above
+- [x] **T1.1** Fixture + tests — files: `src/infra/armory-demo.ts`, `src/infra/armory-demo.test.ts` — proves: the three cases above
 - [ ] **T1.2** `getJson` answers from the demo outside Tauri through `slot()`; "Demo" `Badge` near the profile name when `!isTauri()` — files: `src/infra/armory.ts`, `src/ui/pages/Players.svelte` — proves: browser pane
 
 ### F2. Search bar, paged results, Recent
