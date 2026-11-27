@@ -13,6 +13,11 @@
  * where an old line can come back, and a piece never holds the same line twice. The value within the range is not
  * counted: it can be raised later, cheaply.
  *
+ * Bracelets (level 70 and up): 4 Soul Binding lines out of 8, 12.5% each; rebinding one shows the other four at 25%
+ * (the player's screenshot 2026-11-27: the line being rebound is left out too, as on every other piece). Its value
+ * (5-10: 46.67 / 25.46 / 13.89 / 7.58 / 4.14 / 2.26%) is not counted either. `UNOBTAINABLE` = best-in-slot lines the
+ * game can't give yet (Time [Siel] on bracelets): left out of the plan and named under it.
+ *
  * Our own score, not kisk.app's: a line is worth its best-in-slot % (bis.json, the player's list over it), 0 when it
  * is not one of the class's ideal lines; a piece's score = what its lines are worth over the best its line count could
  * hold, 0-100. The plan rerolls a piece's worthless lines while ideal lines are missing, the least likely line first
@@ -41,7 +46,10 @@ const JEWEL: Record<string, number> = {
 
 export interface SlotPool { stats: Record<string, number>; skills: { count: number; pct: number } }
 
-/** Every line a slot can roll, by the best-in-slot slot names (`bis.ts` `bisSlot`). Bracelets, belts, runes and arcana: none. */
+/** Best-in-slot lines the game can't give yet (the player, 2026-11-27). */
+export const UNOBTAINABLE = ["Time [Siel]"];
+
+/** Every line a slot can roll, by the best-in-slot slot names (`bis.ts` `bisSlot`). Belts, runes and arcana (not rerolled): none. */
 export const REROLL_POOLS: Record<string, SlotPool> = {
   Weapon: { stats: WEAPON, skills: { count: 12, pct: 20 / 12 } },
   "Off-hand": { stats: WEAPON, skills: { count: 12, pct: 20 / 12 } },
@@ -54,6 +62,11 @@ export const REROLL_POOLS: Record<string, SlotPool> = {
   Cape: armour({ "Critical Damage Tolerance": 2.4, "Double Chance": 0.96, Endurance: 0.96, "Attack increase": 0.96, "Weapon Damage Tolerance": 0.96, "Status Effect Resist": 2.4, "Endurance Penetration": 0.96 }),
   Necklace: { stats: { "Combat Speed": 1.6, ...JEWEL }, skills: { count: 10, pct: 2 } },
   Earring: { stats: { "Move Speed": 1.6, ...JEWEL }, skills: { count: 10, pct: 2 } },
+  Bracelet: {
+    stats: Object.fromEntries(["Justice [Nezekan]", "Freedom [Vaizel]", "Illusion [Kaisinel]", "Life [Yustiel]", "Destruction [Zikel]",
+      "Death [Triniel]", "Wisdom [Lumiel]", "Destiny [Marchutan]"].map((n) => [n, 12.5])),
+    skills: { count: 0, pct: 0 },
+  },
   Ring: { stats: { ...JEWEL, "Critical Hit Resist": 7.6, Block: 7.6, MP: 7.6, HP: 7.6 }, skills: { count: 12, pct: 20 / 12 } },
 };
 
@@ -73,7 +86,8 @@ export interface PiecePlan {
   best: number;       // what a perfect piece of this line count would be worth (sum of %): the 100
   steps: PlanStep[];
   tries: number;      // expected tries (Sync Stones / gold pieces) for the whole plan
-  missing: string[];  // ideal lines the piece doesn't have
+  missing: string[];  // ideal lines the piece doesn't have (and the game can give)
+  unobtainable: string[]; // ideal lines the game can't give yet
   reset: { ideal: number; score: number } | null; // a reset's expected ideal lines and score (0..100)
 }
 
@@ -81,8 +95,11 @@ export interface PiecePlan {
  * The plan for one piece: `lines` = its bonus lines and skills by name, `ideal` = the class's lines for the slot with
  * their best-in-slot %. Null when the slot has no known draw or no ideal lines.
  */
-export function planPiece(slot: string, lines: string[], ideal: BisLine[], resetDraws = 4000): PiecePlan | null {
+export function planPiece(slot: string, lines: string[], allIdeal: BisLine[], resetDraws = 4000): PiecePlan | null {
   const pool = REROLL_POOLS[slot];
+  const gone = new Set(UNOBTAINABLE.map(norm));
+  const ideal = allIdeal.filter((l) => !gone.has(norm(l.stat)));
+  const unobtainable = allIdeal.filter((l) => gone.has(norm(l.stat))).map((l) => l.stat);
   if (!pool || !ideal.length || !lines.length) return null;
   const worth = new Map(ideal.map((l) => [norm(l.stat), l.pct ?? 100]));
   const valueOf = (l: string) => worth.get(norm(l)) ?? 0;
@@ -127,7 +144,7 @@ export function planPiece(slot: string, lines: string[], ideal: BisLine[], reset
   return {
     score: best ? (100 * score) / best : 0,
     after: best ? (100 * (score + gained)) / best : 0,
-    best, steps, tries, missing: missing.map((m) => m.stat),
+    best, steps, tries, missing: missing.map((m) => m.stat), unobtainable,
     reset: resetDraws > 0 ? resetOdds(pool, ideal, lines.length, best, resetDraws) : null,
   };
 }

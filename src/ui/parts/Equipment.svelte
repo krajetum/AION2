@@ -90,10 +90,11 @@
         <ol class="m-0 mt-2 grid list-none gap-1 p-0">{#each plan.steps as s, k (k)}<li class="flex flex-wrap gap-x-2"><span class="text-muted-foreground">{k + 1}.</span>Reroll <b>{s.line}</b>
           <span class="ml-auto tabular-nums text-muted-foreground">{pct(s.chance)} a try</span></li>{/each}</ol>
         <p class="mb-0 mt-2 text-xs text-muted-foreground">Ideal lines it lacks: {plan.missing.join(", ")}.
+          {#if plan.unobtainable.length}{plan.unobtainable.join(", ")}: in the best-in-slot list, but the game doesn't give it yet.{/if}
           {#if plan.reset}A reset (300 Kina + 3 Soul Codex: Reset) would give ≈{plan.reset.ideal.toFixed(1)} ideal lines, ≈{Math.round(plan.reset.score)} / 100 on average.{/if}</p>
       </li>{/each}
     </ol>
-    <p class="hint mb-0">One try = a Sync Stone or a gold piece of gear, on one line: it never lands a line the piece already has. The chances are the game's (its reroll window, read {REROLL_CHECKED}); a line is worth its best-in-slot %, the others nothing; the score doesn't count where a value fell in its range. Pieces first by score gained per expected try; within one, the least likely line first. Bracelets and arcana: not known yet.</p>
+    <p class="hint mb-0">One try = a Sync Stone or a gold piece of gear, on one line: it never lands a line the piece already has. The chances are the game's (its reroll window, read {REROLL_CHECKED}); a line is worth its best-in-slot %, the others nothing; the score doesn't count where a value fell in its range. Pieces first by score gained per expected try; within one, the least likely line first. Bracelets: the Soul Binding lines (level 70 and up), their value 5-10 not counted. Arcana can't be rerolled.</p>
   </Fold></div>
   {#if eq.pet || eq.wing}<h3 class="mt-4 mb-2 text-sm font-semibold">Pet / Wings</h3><ul class="eq-list eq-cols">
     {#if eq.pet}<li class="eq-row">{#if eq.pet.icon}<img src={eq.pet.icon} alt="" width="32" height="32" loading="lazy">{/if}{eq.pet.name}{eq.pet.level != null ? ` Lv ${eq.pet.level}` : ""}</li>{/if}
