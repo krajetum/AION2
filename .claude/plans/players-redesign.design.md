@@ -169,7 +169,7 @@ Header (profile `Panel`): class icon, name, class · server · level, Demo badge
 - (moved logic) → `src/domain/upgrades.test.ts` "buildUpgrades matches the old Equipment logic" (fixture tables as literals: a weapon needing rerolls, an ideal ring, a Unique arcana, a non-random belt skipped) and "everything ideal: todo empty, done full"
 
 **Tasks**
-- [ ] **T3.1** `buildUpgrades` + tests — files: `src/domain/upgrades.ts`, `src/domain/upgrades.test.ts` — proves: the two cases
+- [x] **T3.1** `buildUpgrades` + tests — files: `src/domain/upgrades.ts`, `src/domain/upgrades.test.ts` — proves: the two cases
 - [ ] **T3.2** `UnderlineTabs` optional icon + badge — files: `src/lib/components/app/UnderlineTabs.svelte` — proves: `npm run check`; DPS Log / Settings / Arena tabs unchanged in the browser pane
 - [ ] **T3.3** `STAT_ICON` / `SLOT_ICON` — files: `src/ui/icons.ts` — proves: `npm run check`
 - [ ] **T3.4** `CharacterSheet` (with `upgrades` from `buildUpgrades` + bundled `bis.json`, `carry.json`, `ranks.json`) — files: `src/ui/parts/sheet.svelte.ts` — proves: `npm run check`; browser pane
