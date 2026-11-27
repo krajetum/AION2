@@ -8,7 +8,7 @@
   let { plans, reading, className, players, source }: { plans: { p: Piece; plan: PiecePlan; ideal: Worth[] }[]; reading: boolean;
     className: string; players: number; source: { source: string; sourceUrl: string; captured: string } } = $props();
   // The lines it can land, in tiers by how many top players carry them.
-  const TIERS = [{ name: "Best", min: 90 }, { name: "Good", min: 50 }, { name: "Fine", min: KEEP }];
+  const TIERS = [{ name: "Best", min: 90 }, { name: "Good", min: KEEP }];
   const tierOf = (pct: number) => TIERS.find((t) => pct >= t.min)!.name;
   const pct = (v: number) => `${Math.round(v * 100)}%`;
   const or = (list: string[]) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} or ${list[list.length - 1]}` : list[0] ?? "");
