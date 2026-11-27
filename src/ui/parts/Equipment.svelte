@@ -8,7 +8,8 @@
   import { setBis } from "../../app/bis.ts";
   import { equipmentOf, itemOf } from "../../infra/armory.ts";
   import { gearStats, gearText } from "../../domain/gearstats.ts";
-  import { ADD_LINE, planPiece, rankPlans, REROLL_CHECKED } from "../../domain/reroll.ts";
+  import { planPiece, rankPlans } from "../../domain/reroll.ts";
+  import UpgradeCards from "./UpgradeCards.svelte";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Fold from "$lib/components/app/Fold.svelte";
   import { act } from "../actions.ts";
@@ -49,9 +50,10 @@
     if (!slot || !d || !ideal || !d.random) return [];
     const canAdd = ![...d.sub, ...d.skills].some((x) => x.added);
     const plan = planPiece(slot, [...d.sub.map((x) => x.name), ...d.skills.map((x) => x.name)], ideal, 4000, canAdd);
-    return plan ? [{ p, plan }] : [];
+    return plan ? [{ p, plan, ideal }] : [];
   })));
-  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  // "Best upgrades" shows the reroll plans in place of the cards.
+  let upgrades = $state(false);
   const saveOf = (slot: string | null) => (lines: BisLine[] | null) => { if (slot) act(() => setBis(ui.data, className, slot, lines)); };
 </script>
 
@@ -69,9 +71,12 @@
 {#if loading}<p class="hint">Reading the equipment…</p>
 {:else if failed}<p class="hint">Equipment not read ({failed}).</p>
 {:else if eq}
-  <h3 class="mt-4 mb-2 text-sm font-semibold">Gear</h3>{@render cards(eq.gear)}
+  <div class="mt-4 mb-2 flex items-center gap-3"><h3 class="m-0 text-sm font-semibold">{upgrades ? "Best upgrades" : "Gear"}</h3>
+    <button class="bis-btn" title="Which lines to reroll, piece by piece, and which piece first" aria-pressed={upgrades} onclick={() => { upgrades = !upgrades; }}>{upgrades ? "Gear" : "Best upgrades"}</button></div>
+  {#if upgrades}<UpgradeCards {plans} reading={readCount < all.length} />
+  {:else}{@render cards(eq.gear)}
   <h3 class="mt-4 mb-2 text-sm font-semibold">Accessories</h3>{@render cards(eq.accessories)}
-  <h3 class="mt-4 mb-2 text-sm font-semibold">Arcana</h3>{#if eq.arcana.length}{@render cards(eq.arcana)}{:else}<p class="hint">No arcana equipped: the official profile lists none for this character.</p>{/if}
+  <h3 class="mt-4 mb-2 text-sm font-semibold">Arcana</h3>{#if eq.arcana.length}{@render cards(eq.arcana)}{:else}<p class="hint">No arcana equipped: the official profile lists none for this character.</p>{/if}{/if}
   <p class="hint">Best-in-slot lines from <a class="underline" href={BIS.sourceUrl} target="_blank" rel="noopener">{BIS.source}</a> ({BIS.captured}), with its % per line; Edit on a card's back keeps your own list.</p>
   <div class="mt-4"><Fold title="Stats from gear" note={readCount < all.length ? `reading ${readCount} / ${all.length} pieces…` : `${all.length} pieces`} open>
     <div class="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-6 text-sm">
@@ -82,21 +87,6 @@
       </div>{/each}
     </div>
     <p class="hint mb-0">Every piece's lines added up: main stats with their enchant, bonus lines, manastones and the arcana. Before the game's percentages (Might's Attack increase and the like), and without Daevanion, Genus, pets or titles: not the Stat Info total. Click a stat for the pieces that give it.</p>
-  </Fold></div>
-  <div class="mt-4"><Fold title="Upgrades" note={plans.some((x) => x.plan.steps.length || x.plan.add) ? `${plans.filter((x) => x.plan.steps.length || x.plan.add).length} pieces to improve` : readCount < all.length ? "reading the pieces…" : "nothing to reroll"}>
-    <ol class="m-0 grid list-none gap-3 p-0">
-      {#each plans.filter((x) => x.plan.steps.length || x.plan.add) as { p, plan }, i (p.slot)}<li class="rounded-lg border p-3 text-sm {i === 0 ? 'border-primary' : ''}">
-        <div class="flex flex-wrap items-baseline gap-x-2">{#if i === 0}<span class="rounded bg-primary px-1.5 text-xs text-primary-foreground">Up next</span>{/if}
-          <b>{p.name}</b><span class="text-muted-foreground">{Math.round(plan.score)} → ≈{Math.round(plan.after)} / 100 · ≈{Math.ceil(plan.tries)} tries</span></div>
-        <ol class="m-0 mt-2 grid list-none gap-1 p-0">{#each plan.steps as s, k (k)}<li class="flex flex-wrap gap-x-2"><span class="text-muted-foreground">{k + 1}.</span>Reroll <b>{s.line}</b>
-          <span class="ml-auto tabular-nums text-muted-foreground">{pct(s.chance)} a try</span></li>{/each}</ol>
-        <p class="mb-0 mt-2 text-xs text-muted-foreground">Ideal lines it lacks: {plan.missing.join(", ")}.
-          {#if plan.unobtainable.length}{plan.unobtainable.join(", ")}: in the best-in-slot list, but the game doesn't give it yet.{/if}
-          {#if plan.add}<br>Room for a Philosopher's Stone line ({ADD_LINE.stones} stones + {ADD_LINE.kina.toLocaleString()} Kina): {pct(plan.add.chance)} it lands an ideal one. It is lost when the piece is transferred to a new one.<br>{/if}
-          {#if plan.reset}A reset (300 Kina + 3 Soul Codex: Reset) would give ≈{plan.reset.ideal.toFixed(1)} ideal lines, ≈{Math.round(plan.reset.score)} / 100 on average.{/if}</p>
-      </li>{/each}
-    </ol>
-    <p class="hint mb-0">One try = a Sync Stone or a gold piece of gear, on one line: it never lands a line the piece already has. The chances are the game's (its reroll window, read {REROLL_CHECKED}); a line is worth its best-in-slot %, the others nothing; the score doesn't count where a value fell in its range. Pieces first by score gained per expected try; within one, the least likely line first. Bracelets: the Soul Binding lines (level 70 and up), their value 5-10 not counted. Arcana can't be rerolled.</p>
   </Fold></div>
   {#if eq.pet || eq.wing}<h3 class="mt-4 mb-2 text-sm font-semibold">Pet / Wings</h3><ul class="eq-list eq-cols">
     {#if eq.pet}<li class="eq-row">{#if eq.pet.icon}<img src={eq.pet.icon} alt="" width="32" height="32" loading="lazy">{/if}{eq.pet.name}{eq.pet.level != null ? ` Lv ${eq.pet.level}` : ""}</li>{/if}
