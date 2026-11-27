@@ -1,6 +1,6 @@
 # Players page redesign
 
-Status: building · Type: feature | change · Planned: 2026-11-27 · Design: players-redesign.design.md
+Status: built · Type: feature | change · Planned: 2026-11-27 · Design: players-redesign.design.md
 
 ## Problem
 The Players page stacks search, results, profile, gear, stats, boards, Genus and Compare in one long column, the search is clunky,

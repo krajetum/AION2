@@ -1,6 +1,6 @@
 # Players page redesign: design
 
-Status: building · Plan: players-redesign.plan.md · Designed: 2026-11-27
+Status: built · Plan: players-redesign.plan.md · Designed: 2026-11-27
 
 ## Overview
 Work on a branch off `beta` (Best upgrades lives only there; rebase on `beta` before each feature). One reactive `CharacterSheet`
@@ -281,6 +281,7 @@ None to features or criteria. Design-level choices made in review: the Upgrades 
 - 2026-11-27 · T6.1 · `PlayerCompare` also takes `onretry` (side B failed → a new sheet for it): the design's "Try again" needs a way back to Players. T6.1 already wires the default side B (your character when the Compare tab opens) so its commit builds; T6.2 adds "Other".
 - 2026-11-27 · T6.2 · Two guards ADR-4 left open: picking the opened character itself does nothing, and opening (normally) the character that is side B drops side B (else a kept "Other" side came back as the same character on both sides, found in the browser check).
 - 2026-11-27 · T7.1 · `UpgradeCards` takes the "How it's scored" toggle and `UpgradeInfo` inside it (the summary line is its own); one row open at a time. "Already good" is "Already ideal": item icons whose `title` / `aria-label` carry today's card text (score, the good lines with their rank, an arcana's skills); "Skills at 20" became one line of text under it.
+- 2026-11-27 · review · Subagent review fixed: the one-server "My character" search no longer opens over a character opened meanwhile; a failed board is marked not read; Compare names an equipment failure; Swap is per side B; picking's Cancel folds the results; results in two columns as the plan says; the header keeps the old Level tile's "read HH:MM"; the arcana explanation shows with only non-Unique arcana too. Left as designed: a side B kept from "Other" stays when another character opens (ADR-4, against the plan's F6 line "second side = your character"); `Players.svelte` imports `isTauri` directly (as `HudPanel` does).
 
 ## Open questions
 None.
