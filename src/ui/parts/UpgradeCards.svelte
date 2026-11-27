@@ -4,8 +4,11 @@
   // Philosopher's Stone line and a reset as options (domain/reroll.ts).
   import type { Piece } from "../../domain/armory.ts";
   import { ADD_LINE, KEEP, REROLL_CHECKED, type PiecePlan, type Worth } from "../../domain/reroll.ts";
+  import { ARCANA_LEVELS, TRANSMUTE_CHECKED, type ArcanaPlan, type TransmuteOption } from "../../domain/arcana.ts";
+  import { ARCANA_KINDS, type BisLine } from "../../domain/bis.ts";
 
-  let { plans, reading, className, players, source }: { plans: { p: Piece; plan: PiecePlan; ideal: Worth[] }[]; reading: boolean;
+  let { plans, arcana = [], notUnique = [], reading, className, players, source }: { plans: { p: Piece; plan: PiecePlan; ideal: Worth[] }[];
+    arcana?: { p: Piece; slot: string; plan: ArcanaPlan; ideal: BisLine[] }[]; notUnique?: string[]; reading: boolean;
     className: string; players: number; source: { source: string; sourceUrl: string; captured: string } } = $props();
   // The lines it can land, in tiers by how many top players carry them.
   const TIERS = [{ name: "Best", min: 90 }, { name: "Good", min: KEEP }];
@@ -14,6 +17,9 @@
   const or = (list: string[]) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} or ${list[list.length - 1]}` : list[0] ?? "");
   const lacking = (x: { plan: PiecePlan; ideal: Worth[] }) =>
     x.ideal.filter((l) => x.plan.missing.includes(l.stat)).sort((a, b) => (b.pct ?? 100) - (a.pct ?? 100));
+  const pct1 = (v: number) => (v >= 0.995 ? "100%" : v >= 0.1 ? `${Math.round(v * 100)}%` : `${(v * 100).toFixed(1)}%`);
+  // The pick with the fewest crystals per try that beats the arcana now.
+  const cheapest = (o: TransmuteOption[]) => o.filter((x) => x.better > 0).reduce<TransmuteOption | null>((a, b) => (!a || b.crystals / b.better < a.crystals / a.better ? b : a), null);
   const todo = $derived(plans.filter((x) => x.plan.steps.length || x.plan.add));
   const done = $derived(plans.filter((x) => !x.plan.steps.length && !x.plan.add));
 </script>
@@ -49,6 +55,31 @@
     </li>
   {/each}
 </ol>
+{#if arcana.length || notUnique.length}<h3 class="mt-4 mb-2 text-sm font-semibold">Arcana · Transmute</h3>
+<ol class="ups">
+  {#each arcana as x (x.p.slot)}{@const plan = x.plan}{@const best = cheapest(plan.options)}
+    <li class="up grade-edge-{x.p.grade}">
+      <header>
+        <span class="icon">{#if x.p.icon}<img src={x.p.icon} alt="" width="44" height="44" loading="lazy">{/if}{#if x.p.enchant}<i>+{x.p.enchant}</i>{/if}</span>
+        <div class="title">
+          <b class="grade-{x.p.grade}">{x.p.name}</b>
+          <small>{ARCANA_KINDS[x.slot] ?? "Arcana"} · <b>{plan.have.length}</b> / {plan.have.length + plan.missing.length} best-in-slot skills · draws from {plan.pool}</small>
+        </div>
+      </header>
+      <div class="chips">{#each x.ideal.slice(0, 4) as l (l.stat)}<span class="chip {plan.have.includes(l.stat) ? '' : 'fine'}" title={plan.have.includes(l.stat) ? "On this arcana" : "Missing"}>{plan.have.includes(l.stat) ? "✓ " : ""}{l.stat}<small>{l.value ?? ""}</small></span>{/each}</div>
+      {#if plan.options.length}<ol class="steps">
+        {#each plan.options as o, k (k)}<li class:first={o === best}>
+          <span class="n">{o.fixed.length}</span>
+          <span class="what">Pick <b>{o.fixed.join(" + ")}</b> <span class="dim">· {o.crystals} crystals + {o.kina.toLocaleString()} Kina a try{#if o.better > 0 && o.better < 1} · ≈{Math.ceil(1 / o.better)} tries ≈ {Math.ceil(o.crystals / o.better)} crystals{/if}</span></span>
+          <span class="try" title="A try beats this arcana's {plan.have.length} best-in-slot skills / lands all of them">{pct1(o.better)} better · {pct1(o.perfect)} all</span>
+        </li>{/each}
+      </ol>{:else}<p class="dim m-0">Every best-in-slot skill: nothing to transmute.</p>{/if}
+      {#if plan.levels != null}<p class="opt">The {ARCANA_LEVELS} enhance levels then go to its skills at random: {x.ideal.slice(0, 4).map((l) => l.value).join(" / ")} on the right ones in {pct1(plan.levels)} of enhances.</p>{/if}
+    </li>
+  {/each}
+</ol>
+{#if notUnique.length}<p class="hint">Only a Unique arcana can be transmuted: {notUnique.join(", ")}.</p>{/if}
+<p class="hint">A transmute draws the arcana's 4 skills again: the 1 or 2 you pick for sure, the others at random from its pool, all equally likely, never twice the same (the Chalice from every skill of the class, the others from 5-6, counted on a Templar). Grade, main effect and item level stay; the arcana starts again at +0. "Better" = more best-in-slot skills than now. The highlighted pick costs the fewest crystals per better arcana. From the game's Arcana window ({TRANSMUTE_CHECKED}).</p>{/if}
 {#if done.length}<p class="hint">Nothing worth rerolling: {done.map((x) => x.p.name).join(", ")}.</p>{/if}
 <p class="hint">A line is worth the share of top {className}s in Korea carrying it on that slot{players ? ` (${players} players)` : ""}, from <a class="underline" href={source.sourceUrl} target="_blank" rel="noopener">{source.source}</a> ({source.captured}); skill lines, your own choice, their % in your best-in-slot list. A line under {KEEP}% is rerolled; a try lands when it gives any line of {KEEP}% or more the piece lacks. One try = a Sync Stone or a gold piece of gear, on one line: it never lands a line the piece already has. Chances from the game's reroll window (read {REROLL_CHECKED}); where a value fell in its range isn't counted. Pieces first by score gained per expected try; within one, the least likely line first. Bracelets: the Soul Binding lines (level 70 and up). Arcana can't be rerolled.</p>
 
