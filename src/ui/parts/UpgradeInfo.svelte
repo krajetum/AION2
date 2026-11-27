@@ -48,8 +48,8 @@
 
   <div class="blk">
     <h4>Which piece first</h4>
-    <p class="f">points per try = (≈ after − score now) ÷ ≈ tries</p>
-    <p>The highest is "Up next", then the rest in that order: the most score for each Sync Stone spent.</p>
+    <p class="f">next try's worth = chance of the piece's next reroll × (worth of the line it lands − worth of the line it replaces)</p>
+    <p>Worth here is the lines' own values (S 100, A 80 …), not the piece's score: a point of score is a share of that piece's best, so it isn't the same on a weapon and on earrings. The highest is "Up next": where the next Sync Stone adds the most. Plan one try at a time: after each reroll the page reads the piece again, so a piece with many lines to fix stays first while its rerolls pay more, and steps down once only its harder lines are left.{#if ex && ex.plan.steps.length} Here: {Math.round(100 * ex.plan.steps[0].chance)}% × the worth it adds ≈ <b>{r1(ex.plan.next)}</b> a try.{/if}</p>
   </div>
 
   <div class="blk">

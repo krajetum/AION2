@@ -145,6 +145,7 @@ export interface PiecePlan {
   best: number;       // what a perfect piece of this line count would be worth (sum of %): the 100
   steps: PlanStep[];
   tries: number;      // expected tries (Sync Stones / gold pieces) for the whole plan
+  next: number;       // what the next try is worth: its chance × the worth it adds (line landed − line replaced, the lines' own values, not the piece's score): the order of the pieces
   missing: string[];  // ideal lines the piece doesn't have (and the game can give)
   unobtainable: string[]; // ideal lines the game can't give yet
   reset: { ideal: number; score: number } | null; // a reset's expected ideal lines and score (0..100)
@@ -178,7 +179,7 @@ export function planPiece(slot: string, lines: string[], allIdeal: Worth[], rese
   // Exact: a distribution over which ideal lines were gained so far (bit masks), step by step.
   let states = new Map<number, number>([[0, 1]]);
   const steps: PlanStep[] = [];
-  let tries = 0, gained = 0;
+  let tries = 0, gained = 0, firstGain = 0;
   const presentWeight = (mask: number, k: number) => {
     // lines still on the piece at step k: the good ones, the bad ones not rerolled yet (incl. the one now), the ones gained
     let w = lines.filter((l) => valueOf(l) >= KEEP).reduce((s, l) => s + chanceOf(pool, l), 0);
@@ -201,6 +202,7 @@ export function planPiece(slot: string, lines: string[], allIdeal: Worth[], rese
         gained += pr * q * ((m.pct ?? 100) - valueOf(bad[k]));
       }
     }
+    if (k === 0) firstGain = gained;
     steps.push({ line: bad[k], chance: stepChance });
     states = next;
   }
@@ -216,7 +218,7 @@ export function planPiece(slot: string, lines: string[], allIdeal: Worth[], rese
     add, lines: lines.map((l) => ({ line: l, worth: valueOf(l), chance: chanceOf(pool, l) })),
     score: best ? (100 * score) / best : 0,
     after: best ? (100 * (score + gained)) / best : 0,
-    best, steps, tries, missing: missing.map((m) => m.stat), unobtainable,
+    best, steps, tries, next: steps.length ? steps[0].chance * firstGain : 0, missing: missing.map((m) => m.stat), unobtainable,
     reset: resetDraws > 0 ? resetOdds(pool, ideal, lines.length, best, resetDraws) : null,
   };
 }
@@ -246,6 +248,9 @@ function resetOdds(pool: SlotPool, ideal: Worth[], count: number, best: number, 
 
 /** The order to work in: the most score per expected try first; pieces with nothing to gain last. */
 export function rankPlans<T extends { plan: PiecePlan }>(list: T[]): T[] {
-  const rate = (p: PiecePlan) => (p.tries > 0 ? (p.after - p.score) / p.tries : -1);
+  // The next Sync Stone goes where it adds the most: one try at a time, so a piece with many lines to fix comes first
+  // while its first reroll pays more than another piece's, and moves down once its lines get harder (the player's
+  // remark, 2026-11-27: the whole plan's average put a weapon with one line to fix before earrings with four).
+  const rate = (p: PiecePlan) => (p.steps.length ? p.next : -1);
   return [...list].sort((a, b) => rate(b.plan) - rate(a.plan));
 }
