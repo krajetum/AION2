@@ -47,7 +47,7 @@ const EQUIPMENT = {"equipment": {"equipmentList": [{"enchantLevel": 15, "exceedL
 // A piece's details as the site sent them (Nuakum Helm, trimmed).
 const ITEM = { id: 210330053, name: "Nuakum Helm", grade: "Unique", categoryName: "Helm", level: 86, enchantLevel: 11, maxEnchantLevel: 15,
   mainStats: [{ id: "ArmorDefense", name: "Defense", value: "477", extra: "275", exceed: false }],
-  subStats: [{ id: "HardHit", name: "Double Chance", value: "1.9%" }],
+  subStats: [{ id: "HardHit", name: "Double Chance", value: "1.9%", added: false }],
   magicStoneStat: [{ id: "Critical", value: "+15", name: "Critical Hit", grade: "Unique", slotPos: 2 }] };
 const ARCANA = { id: 810230001, name: "Parchment of Vigor", grade: "Unique", categoryName: "Parchment", level: 80, maxEnchantLevel: 5,
   mainStats: [{ id: "Life", name: "Life [Yustiel]", value: "20", extra: "4", exceed: false }],
@@ -75,11 +75,11 @@ test("official equipment: tabs, arcana, pet, wings, skills", () => {
 test("official item details: stats, manastones, an arcana's skills and set", () => {
   const h = parseItem(ITEM)!;
   assert.deepEqual(h.main, [{ id: "ArmorDefense", name: "Defense", value: "477", extra: "275", exceed: false }]);
-  assert.deepEqual(h.sub, [{ id: "HardHit", name: "Double Chance", value: "1.9%" }]);
+  assert.deepEqual(h.sub, [{ id: "HardHit", name: "Double Chance", value: "1.9%", added: false }]);
   assert.deepEqual(h.manastones, [{ id: "Critical", name: "Critical Hit", value: "+15", grade: "Unique" }]);
   assert.equal(h.set, null);
   const a = parseItem(ARCANA)!;
-  assert.deepEqual(a.skills, [{ name: "Heat Wave Blow", level: 3 }]);
+  assert.deepEqual(a.skills, [{ name: "Heat Wave Blow", level: 3, added: false }]);
   assert.deepEqual(a.set, { name: "Primal Vigor", equipped: 3, bonuses: [{ pieces: 2, text: ["+60 PvE Attack when HP is 70% or more"] }] });
   assert.equal(parseItem(null), null);
 });
