@@ -63,9 +63,9 @@
   const arcana = $derived((eq?.arcana ?? []).flatMap((p) => {
     const slot = bisSlot(p.slotName), d = details[p.slot], ideal = linesOf(slot);
     if (!slot || !d || !ideal || p.grade !== "Unique") return [];
-    const plan = arcanaPlan(slot, d.skills.map((x) => x.name), ideal);
-    return plan ? [{ p, slot, plan, ideal }] : [];
-  }).sort((a, b) => (b.plan.options.at(-1)?.better ?? -1) - (a.plan.options.at(-1)?.better ?? -1)));
+    const plan = arcanaPlan(slot, d.skills, ideal);
+    return plan ? [{ p, slot, held: d.skills, plan, ideal }] : [];
+  }).sort((a, b) => Number(b.plan.craft) - Number(a.plan.craft) || b.plan.missing.length - a.plan.missing.length));
   const notUnique = $derived((eq?.arcana ?? []).filter((p) => p.grade !== "Unique").map((p) => p.name));
   // "Best upgrades" shows the reroll plans in place of the cards.
   let upgrades = $state(false);
