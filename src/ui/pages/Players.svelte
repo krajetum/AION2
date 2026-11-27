@@ -37,6 +37,7 @@
   import { num } from "../format.ts";
   import DaevanionBoards from "../parts/DaevanionBoards.svelte";
   import Equipment from "../parts/Equipment.svelte";
+  import GearTab from "../parts/GearTab.svelte";
   import GenusInsight from "../parts/GenusInsight.svelte";
   import PlayerCompare from "../parts/PlayerCompare.svelte";
   import Kpi from "../parts/Kpi.svelte";
@@ -231,7 +232,9 @@
       <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Stat</Table.Head><Table.Head class="text-right">Value</Table.Head><Table.Head>Gives</Table.Head></Table.Row></Table.Header>
       <Table.Body>{#each profile.stats as s (s.name)}<Table.Row><Table.Cell>{s.name}</Table.Cell><Table.Cell class="text-right">{num(s.value)}</Table.Cell><Table.Cell class="whitespace-normal text-muted-foreground">{s.effects.join(" · ")}</Table.Cell></Table.Row>{/each}</Table.Body>
     </Table.Root>{/if}
-  {:else if tab === "gear" || tab === "skills"}
+  {:else if tab === "gear"}
+    <GearTab {sheet} />
+  {:else if tab === "skills"}
     <Equipment {sheet} />
     {#if tab === "skills"}<div class="mt-4">{#if genus}<GenusInsight g={genus} />{:else if me && open.name.toLowerCase() === me.name.toLowerCase()}<p class="hint m-0">Genus Insight: the game sends it when you enter the world. Log in (or change character) with the companion open to see it here.</p>{/if}</div>{/if}
   {:else if tab === "upgrades"}
