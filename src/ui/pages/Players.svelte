@@ -36,7 +36,6 @@
   import Clock from "@lucide/svelte/icons/clock";
   import { num } from "../format.ts";
   import DaevanionBoards from "../parts/DaevanionBoards.svelte";
-  import Equipment from "../parts/Equipment.svelte";
   import GearTab from "../parts/GearTab.svelte";
   import StatsTab from "../parts/StatsTab.svelte";
   import Overview from "../parts/Overview.svelte";
@@ -236,7 +235,13 @@
   {:else if tab === "gear"}
     <GearTab {sheet} />
   {:else if tab === "skills"}
-    <Equipment {sheet} />
+    <!-- Temporary until T5.1 (SkillsTab). -->
+    {#if sheet.eq}{#each [["Active skills", sheet.eq.active, false], ["Passive skills", sheet.eq.passive, false], ["Stigma", sheet.eq.stigma, true]] as const as [title, list, stigma] (title)}
+      {#if list.length}<h3 class="mt-4 mb-2 text-sm font-semibold">{title}</h3><div class="eq-skills">
+        {#each list as s (s.id)}<span class="eq-skill" class:locked={s.level === 0} title="{s.name}{s.level ? ` · level ${s.level}` : ' · not learned'}{stigma && s.equipped ? ' · equipped' : ''}">
+          {#if s.icon}<img src={s.icon} alt="" width="40" height="40" loading="lazy">{/if}
+          {#if stigma && s.equipped}<i class="eq-e">E</i>{/if}{#if s.level}<small>Lv {s.level}</small>{:else}<small>🔒</small>{/if}</span>{/each}
+      </div>{/if}{/each}{/if}
     {#if tab === "skills"}<div class="mt-4">{#if genus}<GenusInsight g={genus} />{:else if me && open.name.toLowerCase() === me.name.toLowerCase()}<p class="hint m-0">Genus Insight: the game sends it when you enter the world. Log in (or change character) with the companion open to see it here.</p>{/if}</div>{/if}
   {:else if tab === "upgrades"}
     <div class="mb-3 flex items-center gap-2"><Button size="sm" variant="ghost" aria-pressed={info} onclick={() => { info = !info; }}><Info />How it's scored</Button></div>
@@ -244,7 +249,7 @@
     <UpgradeCards plans={sheet.upgrades.plans} ranks={RANKS} totals={sheet.upgrades.totals} arcana={sheet.upgrades.arcana} notUnique={sheet.upgrades.notUnique}
       reading={!!sheet.reading} className={sheet.className} players={CARRY.players[sheet.className] ?? 0} source={CARRY} />
   {:else if tab === "dae"}
-    {#if profile.boards?.length}<DaevanionBoards characterId={open.characterId} serverId={open.serverId} boards={profile.boards} />{:else}<p class="hint">No Daevanion board read.</p>{/if}
+    {#if profile.boards?.length}<DaevanionBoards boards={profile.boards} read={sheet.boards} failed={sheet.boardsError} />{:else}<p class="hint">No Daevanion board read.</p>{/if}
   {:else if tab === "compare"}
     {#if first && !comparing}<p class="hint mt-0 mb-3">Comparing with <b>{first.name}</b>: search and open the other character.
       <Button size="sm" variant="ghost" onclick={() => { first = null; }}>Cancel</Button></p>{/if}
