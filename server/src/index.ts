@@ -1,5 +1,5 @@
 // Cloudflare Worker: players' apps share the field-boss timers, hidden-cube openings, gathering spots and pets' soul point spots they see.
-// Players also share the game's redeem codes (Home > Codes).
+// Players also share the game's redeem codes (Home > Codes) and Twitch Drops campaigns (Home > Twitch Drops).
 // No player names, only a random install id, except in guilds (the members' character names, item level and CP,
 // shared fights, by consent). The app works the same when this is down.
 // API under /v1, backward-compatible changes only (an incompatible one = /v2 alongside).
@@ -8,6 +8,7 @@ import {
   mergeWeeks, MAX_GUESTS, parseAdmin, parseGuest, parseAuth, parseAvailability, parseBossPost, parseCallup, parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseServerId, type Perm, permsOf,
   type Ping, POSTED_FOR, rank, type Role, SLOTS_HEX,
   MAX_REDEEM_LISTED, parseRedeemPost, REDEEM_EXPIRED_VOTES, REDEEM_KEEP, REDEEM_TTL,
+  DROP_EXPIRED_VOTES, MAX_DROPS_LISTED, parseDropPost, parseDropVote,
   gatherCellOf, parseGatherPost, parseSoulPost, soulCellOf,
 } from "./validate.ts";
 
@@ -633,6 +634,44 @@ async function postRedeemExpired(env: Env, req: Request) {
   return json({ removed, votes });
 }
 
+// Twitch Drops (Home > Twitch Drops): the live campaigns, soonest end first, with how many said each is wrong or over.
+async function getDrops(env: Env) {
+  const now = Date.now();
+  const { results } = await env.DB.prepare(
+    `SELECT d.title, d.rewards, d.url, d.added_ms, d.starts_ms, d.ends_ms, (SELECT COUNT(*) FROM twitch_drop_votes v WHERE v.key = d.key) AS votes
+     FROM twitch_drops d WHERE d.dead_ms IS NULL AND d.ends_ms > ? ORDER BY d.ends_ms LIMIT ?`,
+  ).bind(now, MAX_DROPS_LISTED).all<{ title: string; rewards: string; url: string | null; added_ms: number; starts_ms: number | null; ends_ms: number; votes: number }>();
+  return json({ serverNow: now, drops: results.map((r) => ({ title: r.title, rewards: r.rewards, url: r.url, addedMs: r.added_ms, startsMs: r.starts_ms, endsMs: r.ends_ms, votes: r.votes })) });
+}
+
+/** A new campaign for everyone until its end. Refused (409) when the same title is listed, or ended or was removed lately. */
+async function postDrop(env: Env, req: Request) {
+  const now = Date.now();
+  const p = parseDropPost(await readBody(req), now);
+  if (!p) return fail(400, "bad campaign");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  const had = await env.DB.prepare("SELECT dead_ms, ends_ms FROM twitch_drops WHERE key = ?").bind(p.key).first<{ dead_ms: number | null; ends_ms: number }>();
+  if (had) return fail(409, had.dead_ms === null && had.ends_ms > now ? "already listed" : "expired");
+  await env.DB.prepare("INSERT INTO twitch_drops (key, title, rewards, url, install, added_ms, starts_ms, ends_ms) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(p.key, p.title, p.rewards, p.url, p.install, now, p.startsMs, p.endsMs).run();
+  return json({ ok: true, serverNow: now });
+}
+
+/** An install says the campaign is wrong or over: one vote each; DROP_EXPIRED_VOTES of them remove it at once. */
+async function postDropExpired(env: Env, req: Request) {
+  const now = Date.now();
+  const p = parseDropVote(await readBody(req));
+  if (!p) return fail(400, "bad campaign");
+  if (!(await allowWrite(env, p.install, now))) return fail(429, "too many writes");
+  const live = await env.DB.prepare("SELECT 1 AS x FROM twitch_drops WHERE key = ? AND dead_ms IS NULL AND ends_ms > ?").bind(p.key, now).first();
+  if (!live) return json({ removed: true, votes: 0 });
+  await env.DB.prepare("INSERT OR IGNORE INTO twitch_drop_votes (key, install) VALUES (?, ?)").bind(p.key, p.install).run();
+  const votes = (await env.DB.prepare("SELECT COUNT(*) AS n FROM twitch_drop_votes WHERE key = ?").bind(p.key).first<{ n: number }>())?.n ?? 0;
+  const removed = votes >= DROP_EXPIRED_VOTES;
+  if (removed) await env.DB.prepare("UPDATE twitch_drops SET dead_ms = ? WHERE key = ?").bind(now, p.key).run();
+  return json({ removed, votes });
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -653,6 +692,9 @@ export default {
       if (req.method === "GET" && url.pathname === "/v1/codes") return await getRedeem(env);
       if (req.method === "POST" && url.pathname === "/v1/codes") return await postRedeem(env, req);
       if (req.method === "POST" && url.pathname === "/v1/codes/expired") return await postRedeemExpired(env, req);
+      if (req.method === "GET" && url.pathname === "/v1/drops") return await getDrops(env);
+      if (req.method === "POST" && url.pathname === "/v1/drops") return await postDrop(env, req);
+      if (req.method === "POST" && url.pathname === "/v1/drops/expired") return await postDropExpired(env, req);
       if (req.method === "POST" && url.pathname === "/v1/guilds") return await createGuild(env, req);
       if (req.method === "POST" && url.pathname === "/v1/guilds/join") return await joinGuild(env, req);
       const cancel = url.pathname.match(/^\/v1\/guilds\/([a-z2-7]{12})\/callups\/([a-z2-7]{12})\/delete$/);
@@ -700,6 +742,8 @@ export default {
       env.DB.prepare("DELETE FROM guild_guests WHERE guild_id NOT IN (SELECT id FROM guilds)"),
       env.DB.prepare("DELETE FROM redeem_codes WHERE MAX(expires_ms, COALESCE(dead_ms, 0)) < ?").bind(now - REDEEM_KEEP),
       env.DB.prepare("DELETE FROM redeem_votes WHERE key NOT IN (SELECT key FROM redeem_codes)"),
+      env.DB.prepare("DELETE FROM twitch_drops WHERE MAX(ends_ms, COALESCE(dead_ms, 0)) < ?").bind(now - REDEEM_KEEP),
+      env.DB.prepare("DELETE FROM twitch_drop_votes WHERE key NOT IN (SELECT key FROM twitch_drops)"),
     ]));
   },
 };

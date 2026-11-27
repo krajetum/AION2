@@ -494,3 +494,35 @@ export function parseRedeemPost(body: unknown): RedeemPost | null {
   const code = redeemCode(body.code);
   return code ? { install: body.install.toLowerCase(), code, key: redeemKey(code) } : null;
 }
+
+// Twitch Drops campaigns players share (Home > Twitch Drops): listed until they end, unless DROP_EXPIRED_VOTES installs say they're wrong or over.
+export const DROP_EXPIRED_VOTES = 5;
+export const DROP_MAX_AHEAD = 60 * 24 * 3600_000;
+export const MAX_DROPS_LISTED = 30;
+export const MAX_DROP_TITLE = 80;
+export const MAX_DROP_REWARDS = 300;
+/** One campaign per title, whatever its case or spacing. */
+export const dropKey = (title: string) => title.trim().replace(/\s+/g, " ").toLowerCase();
+const TWITCH_URL = /^https:\/\/(www\.)?twitch\.tv\/[\w\-./?=&%#]{0,200}$/;
+
+export interface DropPost { install: string; key: string; title: string; rewards: string; url: string | null; startsMs: number | null; endsMs: number }
+export function parseDropPost(body: unknown, now: number): DropPost | null {
+  if (!isObj(body) || !isInstall(body.install)) return null;
+  const title = text(body.title, MAX_DROP_TITLE + 1).replace(/\s+/g, " ");
+  if (title.length < 3 || title.length > MAX_DROP_TITLE) return null;
+  const rewards = text(body.rewards, MAX_DROP_REWARDS);
+  const endsMs = body.endsMs;
+  if (typeof endsMs !== "number" || !Number.isInteger(endsMs) || endsMs <= now || endsMs > now + DROP_MAX_AHEAD) return null;
+  const s = body.startsMs;
+  if (!(s === undefined || s === null || (typeof s === "number" && Number.isInteger(s) && s < endsMs))) return null;
+  const u = body.url;
+  if (!(u === undefined || u === null || u === "" || (typeof u === "string" && TWITCH_URL.test(u.trim())))) return null;
+  return { install: body.install.toLowerCase(), key: dropKey(title), title, rewards, url: typeof u === "string" && u.trim() ? u.trim() : null,
+    startsMs: typeof s === "number" ? s : null, endsMs };
+}
+/** A vote: the install and the campaign's title (its key is worked out here). */
+export function parseDropVote(body: unknown): { install: string; key: string } | null {
+  if (!isObj(body) || !isInstall(body.install) || typeof body.title !== "string") return null;
+  const key = dropKey(body.title);
+  return key.length >= 3 && key.length <= MAX_DROP_TITLE ? { install: body.install.toLowerCase(), key } : null;
+}

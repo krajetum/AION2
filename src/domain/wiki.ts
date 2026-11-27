@@ -1,12 +1,12 @@
 // Wiki: Expeditions (Exploration, Conquest, Hard) and Transcendence, global/EU build. Pure data: tested with `npm test`.
 // Sources (checked 2026-10-30): aion2.wiki.fextralife.com/Expeditions (2026-10-09), couga54.github.io/aion2-guides (2026-10-10),
 // timesaver.gg (2026-10-17/20/22), expcarry.com Krao Cave Hard (2026-10-27), gamesfuze.com, games.gg (2026-10-05), patch notes of 2026-11-04 (Sanctuary, Exploration rewards),
-// 2026-11-18 (Ludra Easy, drop rates, morph recipes).
+// 2026-11-18 (Ludra Easy, drop rates, morph recipes), 2026-11-25 (event Sanctuary, daily dungeons, Stigma).
 // Guides disagree often: a value only one site gives, or given differently, is `unconfirmed` with the alternatives in the note.
 // Drop rates from boosting sites are never used. Update by hand after a patch; KR-only values stay out unless marked.
 import { SEASONAL, WEEKLY } from "./season.ts";
 
-export const VERIFIED = "2026-11-18";
+export const VERIFIED = "2026-11-25";
 
 /** A value; the object form = not confirmed (one source only, or sources disagree), `note` says why. */
 export type Val = string | { v: string; note: string };
@@ -57,6 +57,7 @@ const GF_TR: Source = { name: "Gamesfuze: Transcendence dungeons", url: "https:/
 const GF_DRAUP: Source = { name: "Gamesfuze: Draupnir", url: "https://gamesfuze.com/guides/aion-2-draupnir-cave-dungeon-guide-all-bosses-mechanics-and-rewards/", date: "2026-09-30" };
 const PATCH: Source = { name: "Patch notes (Steam news)", url: "https://store.steampowered.com/news/app/3393110", date: "2026-11-04" };
 const PATCH_1118: Source = { name: "Patch notes (Steam news): Ludra Easy", url: "https://store.steampowered.com/news/app/3393110", date: "2026-11-18" };
+const PATCH_1125: Source = { name: "Patch notes (Steam news): event Sanctuary", url: "https://store.steampowered.com/news/app/3393110", date: "2026-11-25" };
 const GG_FIRE: Source = { name: "games.gg: Fire Temple", url: "https://games.gg/aion-2/guides/aion-2-fire-temple-expedition/", date: "2026-10-05" };
 
 const P15 = "1–5", P25 = "2–5";
@@ -316,6 +317,24 @@ export const DUNGEONS: Dungeon[] = [
       "The item level only lets you in: it doesn't mean a clear"],
     sources: [PATCH, PATCH_1118],
   },
+  {
+    id: "corroded", name: "Corroded Decontamination Facility", kind: "sanctuary",
+    summary: "Event Sanctuary: 25 November after maintenance to 16 December before maintenance (CET). Defeat Bargott for event coins, spent in the Event Substance Morph.",
+    modes: [
+      { name: "Event", level: maybe("45", "Not in the patch notes"), itemLevel: "2,100", party: "?",
+        drops: ["Corroded Decontamination Facility Coin: up to 5,000 a week, from Bargott's reward cube"],
+        changes: ["7 entries a week", "Player stats normalized to the boss, as in Battlefield and the Outer Abyss",
+          maybe("Reward cube costs Odyle Energy", "The patch notes leave the amount blank")] },
+    ],
+    bosses: [{ name: "Bargott", role: "final", mechanics: ["No guide yet (2026-11-25)"] }],
+    gear: ["No gear"],
+    other: ["Coins are removed every Wednesday at maintenance: spend them first",
+      "Event Substance Morph, weekly limits: Gear Change Voucher: Fire Temple (Bound) 500 coins ×2 · Gear Change Voucher: Ferocious Horn Den (Bound) 500 ×2",
+      "Sync Stone (Unique) (Bound) 500 ×5 · Abyss Points 100,000 for 700 ×1 · Philosopher's Stone: Revelation (Bound) 300 ×1",
+      "Wrathful Material Selection Chest (Bound) 500 ×3 · Radiant Odyle (Bound) 500 ×3 · Soul Crystal ×100 for 50 ×30"],
+    tips: ["Stats are normalized: gear matters less than mechanics here"],
+    sources: [PATCH_1125],
+  },
 ];
 
 function trStage(n: number, itemLevel: number): Mode {
@@ -333,9 +352,14 @@ export const MECHANICS: Section[] = [
     "Exploration: from level 20, Legend gear and a few Unique pieces; no weekly limit, except Draupnir, Vakron and Horn Den (like Conquest since 2026-11-04)",
     "Conquest: level 45, three tiers (★1 700 · ★2 1,400 · ★3 2,100 item level), Unique gear, Sealed Wings, more Kina",
     "Hard: Krao Cave and Draupnir only (2026-10-21), 2,600 item level, 4-min Frenzy, 3 revives, Ariel Fragments",
-    "Sanctuary: Abyssal Forge: Ludra (2026-11-04), Force of 10, Easy and Normal 2,800 / Hard 3,000 item level, Easy 2 h (since 2026-11-18), Normal and Hard 1 h per run",
+    "Sanctuary: Abyssal Forge: Ludra (2026-11-04), Force of 10, Easy and Normal 2,800 / Hard 3,000 item level, Easy 2 h (since 2026-11-18), Normal and Hard 1 h per run; event Sanctuary Corroded Decontamination Facility until 16 Dec (2,100 item level, 7 a week)",
     "Transcendence: level 45, 2–5 players, 4 stages (1,600 / 1,900 / 2,200 / 2,500), Arcana instead of gear",
     "Unlock: episode quest at level 10 (Elyos: Wind Breeze Merchants · Asmodians: Daeva in a Dream)"] },
+  { title: "Daily Dungeons, Stigma, Abyss Corridor (2026-11-25)", lines: [
+    "Daily Dungeons share one entry count: Daeva Bio-Research Base, Odylium Repository, Crobakhi's Secret Depository (Bound Kina by clear points)",
+    "Stigma: up to 5 equipped",
+    "Stigma Shard (Bound) limits per character: Nightmare Dungeons Shop and Shugo Festival Shop 50 (35 before), Wind Breeze Merchants (Special) 20 at 250,000 Kina each",
+    "Abyss Corridor opened at the losing faction's base when every Artifact is taken: entering it gives 30% less Abyss Points"] },
   { title: "Reward cube and Odyle Energy", lines: [
     "Each run ends with one cube holding the final boss's and both mini-bosses' loot: opening it costs Odyle Energy (20/30/40 in Exploration, 40 elsewhere)",
     "Odyle Energy: +15 every 3 h (120/day), auto-recharge up to 560 (840 with the Quai Membership); basic energy is spent first",

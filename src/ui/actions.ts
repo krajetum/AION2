@@ -1,5 +1,6 @@
 // Glue between UI events and the app/ use cases: save after each change, undo, progress tracking, news refresh.
 import { fetchCodes } from "../app/codes.ts";
+import { fetchDrops } from "../app/drops.ts";
 import { reminderText, shouldRemind, toRedeem } from "../domain/codes.ts";
 import { syncGuild } from "../app/guild.ts";
 import { flushGathers, flushSouls, syncGathers, syncSouls } from "../app/crowd.ts";
@@ -124,6 +125,14 @@ export async function refreshCodes() {
     ui.codes = await fetchCodes();
     ui.codesError = "";
   } catch (e) { ui.codesError = "Offline: " + (e as Error).message; console.warn("Codes not read", e); }
+}
+
+/** The shared Twitch Drops campaigns into ui.drops (startup, every 30 min, Home). */
+export async function refreshDrops() {
+  try {
+    ui.drops = await fetchDrops();
+    ui.dropsError = "";
+  } catch (e) { ui.dropsError = "Offline: " + (e as Error).message; console.warn("Twitch Drops not read", e); }
 }
 
 /** Entering the game or another character: a reminder of the codes still to redeem, and that the rewards land on `char`. */

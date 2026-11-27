@@ -19,7 +19,7 @@
   import { playBirthday, playSound, toast } from "../../infra/notifier.ts";
   import { exportJson, importJson } from "../../infra/storage.ts";
   import { clearCubePicture, loadCubePicture, saveCubePicture, type Opener } from "../../infra/map-image.ts";
-  import { isDesktop, setAutostart } from "../../infra/system.ts";
+  import { isDesktop, MCP_URL, mcpServer, setAutostart } from "../../infra/system.ts";
   import { crashReports } from "../../infra/sentry.ts";
   import { soulsPopup, cubePopup, eventsOverlay, meterIdle, meterOverlay, netOverlay, overlayStyle, radarOverlay } from "../../infra/meter.ts";
   import { act, commit } from "../actions.ts";
@@ -269,6 +269,13 @@
     <p class="hint">Sends the app's errors, crashes, warnings and timings to Sentry so they can be fixed: where in the code, the app version
       and your Windows/WebView version, plus a screen recording of some sessions with every text, input and image hidden.
       No names, servers, positions or save data. For the app's core the switch applies at the next start.</p>
+    {@render toggle("Claude connector (MCP)", s.mcpServer, async (on) => {
+      s.mcpServer = on;
+      try { await mcpServer(on); } catch (e) { act(() => { s.mcpServer = false; }); showStatus(`Claude connector not started: ${e}`, true); }
+    }, !isDesktop())}
+    <p class="hint">While the app is open, Claude can read your DPS Log at <code>{MCP_URL}</code> (this PC only), e.g. to write a raid recap.
+      Claude Code: <code>claude mcp add --transport http aion2 {MCP_URL}</code>. Claude Desktop: a server with the command
+      <code>npx mcp-remote {MCP_URL}</code>.</p>
   </Panel>
 {:else if sub === "backup"}
   <Panel title="Backup">

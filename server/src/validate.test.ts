@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   can, DEFAULT_PERMS, mergeWeeks, MAX_WEEKS, parseAvailability, parseGuest, SLOTS_HEX, permsOf, CALLUP_TITLE, callupPost, callupCancelPost, CANCELLED_TITLE, cellOf, dueAlerts, isWebhook, MAX_MESSAGE, nextSend, parseCallup, MAX_CUBES, MAX_FIGHT, MAX_LEAD, MAX_POSTS, MAX_ROWS, MAX_TIMERS, nextDue, normCode, parseAdmin, parseBossPost,
-  parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseRedeemPost, parseServerId, parseShare, redeemKey, TIME_RANGE,
+  parseCubePost, parseGuildCreate, parseGuildFight, parseJoin, parseMePost, parseRedeemPost, parseServerId, parseShare, redeemKey, TIME_RANGE, dropKey, parseDropPost, parseDropVote,
 } from "./validate.ts";
 
 const NOW = 1_800_000_000_000;
@@ -318,4 +318,18 @@ test("raid plan guest: a name, a class and hours like a member's, or removed", (
   assert.equal(parseGuest({ name: "X", slots: h }, NOW), null, "nobody asking");
   assert.equal(parseGuest({ install: ID, name: "X" }, NOW), null, "no hours");
   assert.equal(parseGuest({ install: ID, name: "X", slots: "zz" }, NOW), null);
+});
+
+const DAY = 86_400_000;
+test("twitch drops: a title, an end within 60 days, only twitch.tv links; one key per title in any case or spacing", () => {
+  const ok = { install: ID, title: "  AION 2   Launch Drops ", rewards: "Mount skin", endsMs: NOW + DAY, url: "https://www.twitch.tv/directory/category/aion-2" };
+  assert.deepEqual(parseDropPost(ok, NOW), { install: ID.toLowerCase(), key: "aion 2 launch drops", title: "AION 2 Launch Drops", rewards: "Mount skin",
+    url: "https://www.twitch.tv/directory/category/aion-2", startsMs: null, endsMs: NOW + DAY });
+  assert.equal(parseDropPost({ ...ok, url: "" }, NOW)?.url, null);
+  for (const bad of [{ title: "ab" }, { title: "x".repeat(81) }, { endsMs: NOW }, { endsMs: NOW + 61 * DAY }, { endsMs: "soon" },
+    { url: "https://evil.example/twitch.tv" }, { url: "http://twitch.tv/x" }, { startsMs: NOW + 2 * DAY }, { install: "nope" }])
+    assert.equal(parseDropPost({ ...ok, ...bad }, NOW), null, JSON.stringify(bad));
+  assert.deepEqual(parseDropVote({ install: ID, title: "aion 2  LAUNCH drops" }), { install: ID.toLowerCase(), key: "aion 2 launch drops" });
+  assert.equal(parseDropVote({ install: ID, title: 5 }), null);
+  assert.equal(dropKey("A  b C"), dropKey("a b c"));
 });
