@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { Badge } from "$lib/components/ui/badge/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
+  import { isTauri } from "@tauri-apps/api/core";
   import { Input } from "$lib/components/ui/input/index.js";
   import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
   import { Progress } from "$lib/components/ui/progress/index.js";
@@ -151,7 +153,7 @@
   {#snippet actions()}{#if profile && !comparing}
     {#if me && !isMe(open)}<Button size="sm" variant="outline" onclick={compareWithMe}>Compare with {me.name}</Button>{/if}
     <Button size="sm" variant="outline" disabled={!!first} onclick={startCompare}>Compare with…</Button>{/if}{/snippet}
-  {#snippet head()}<span class="flex items-center gap-2">{#if profile && classIcon(profile.className)}<img class="size-6 object-contain" src={classIcon(profile.className)} alt="">{/if}{open!.name}</span>{/snippet}
+  {#snippet head()}<span class="flex items-center gap-2">{#if profile && classIcon(profile.className)}<img class="size-6 object-contain" src={classIcon(profile.className)} alt="">{/if}{open!.name}{#if !isTauri()}<Badge variant="secondary" title="Browser preview: demo data, not the official site">Demo</Badge>{/if}</span>{/snippet}
   {#if loading}<p class="hint mt-0">Reading the profile…</p>
   {:else if profileError}<p class="hint error mt-0">The profile could not be read ({profileError}).
     <Button variant="link" size="sm" class="px-1" onclick={() => open && show(open)}>Try again</Button></p>
