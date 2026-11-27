@@ -91,3 +91,18 @@ test("rank tables: tier values, a little less down a tier, skills worth B, slots
   assert.equal(rankTable(file, "Ring"), null);
   assert.deepEqual(rankSkills(file, [{ stat: "Fury", pct: 79 }, { stat: "Block Pain", pct: 2 }]), [{ stat: "Fury", pct: 60 }, { stat: "Block Pain", pct: 2 }]);
 });
+
+test("the order: what the next try adds, not the whole plan's average (a Ranger's bow, gloves, earrings, 2026-11-27)", () => {
+  const w = (o: Record<string, number>) => Object.entries(o).map(([stat, pct]) => ({ stat, pct }));
+  const sk = (stat: string) => ({ stat, pct: 60, skill: true });
+  const bow = planPiece("Weapon", ["Combat Speed", "Weapon Damage Boost", "Multi-hit Chance"], w({ "Combat Speed": 100, "Weapon Damage Boost": 99, "Damage Boost": 98, Might: 80, Attack: 79 }), 0)!;
+  const ear = planPiece("Earring", ["Critical Hit", "Accuracy", "Critical Hit Resist", "Natural HP Regen"], [...w({ Might: 100, Attack: 80, "Move Speed": 79, Precision: 78 }), sk("Focused Eye"), sk("Hunter's Resolve")], 0)!;
+  const glo = planPiece("Gloves", ["Combat Speed", "Hunter's Soul", "Melee Fire", "Perfect Chance"], [...w({ "Combat Speed": 100, Attack: 80, "Critical Hit": 60, Accuracy: 59 }), sk("Focused Eye")], 0)!;
+  // As the page showed them: 14% / 18% / 14% a try, ≈8 / ≈38 / ≈31 tries.
+  assert.deepEqual([bow, ear, glo].map((p) => Math.round(100 * p.steps[0].chance)), [14, 18, 14]);
+  assert.deepEqual([bow, ear, glo].map((p) => Math.ceil(p.tries)), [8, 38, 31]);
+  // The whole plan's average put the bow first; the next try's worth puts the earrings first.
+  const avg = (p: typeof bow) => (p.after - p.score) / p.tries;
+  assert.ok(avg(bow) > avg(glo) && avg(glo) > 0 && avg(bow) > avg(ear));
+  assert.deepEqual(rankPlans([{ n: "bow", plan: bow }, { n: "glo", plan: glo }, { n: "ear", plan: ear }]).map((x) => x.n), ["ear", "bow", "glo"]);
+});
