@@ -148,6 +148,7 @@ export interface PiecePlan {
   missing: string[];  // ideal lines the piece doesn't have (and the game can give)
   unobtainable: string[]; // ideal lines the game can't give yet
   reset: { ideal: number; score: number } | null; // a reset's expected ideal lines and score (0..100)
+  lines: { line: string; worth: number; chance: number }[]; // the piece's lines: what each is worth and its % in the draw (the Info panel's example)
   add: { chance: number; worth: number } | null;  // a Philosopher's Stone line (when the piece can take one): its chance to be ideal, and the ideal's expected %
 }
 
@@ -212,7 +213,7 @@ export function planPiece(slot: string, lines: string[], allIdeal: Worth[], rese
     : null;
 
   return {
-    add,
+    add, lines: lines.map((l) => ({ line: l, worth: valueOf(l), chance: chanceOf(pool, l) })),
     score: best ? (100 * score) / best : 0,
     after: best ? (100 * (score + gained)) / best : 0,
     best, steps, tries, missing: missing.map((m) => m.stat), unobtainable,
