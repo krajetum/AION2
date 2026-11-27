@@ -134,7 +134,7 @@ UI (`Players.svelte`): row 1 `Input` with a search icon, `NativeSelect` region, 
 
 **Tasks**
 - [x] **T2.1** `players.ts` + tests — files: `src/domain/players.ts`, `src/domain/players.test.ts` — proves: the cases above
-- [ ] **T2.2** Search bar, status line, folded/paged results, Recent — files: `src/ui/pages/Players.svelte` — proves: browser pane
+- [x] **T2.2** Search bar, status line, folded/paged results, Recent — files: `src/ui/pages/Players.svelte` — proves: browser pane
 
 ### F3. Profile header, tabs, shared loader
 **Interfaces**
