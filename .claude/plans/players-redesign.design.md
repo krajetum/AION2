@@ -256,7 +256,7 @@ Summary line (to improve = `sheet.toImprove` of total pieces, ≈ tries for all 
 
 **Tasks**
 - [x] **T7.1** UpgradeCards rewritten as the queue; Upgrades tab badge = `toImprove` — files: `src/ui/parts/UpgradeCards.svelte`, `src/ui/pages/Players.svelte` — proves: browser pane
-- [ ] **T7.2** Styles no longer referenced removed (old `.ups` / `.up` rules, `eq-*` rules moved or dropped) — files: `src/ui/parts/UpgradeCards.svelte`, `src/style.css` — proves: `npm run check`, `npm test` (`design.test.ts`)
+- [x] **T7.2** Styles no longer referenced removed (old `.ups` / `.up` rules, `eq-*` rules moved or dropped) — files: `src/ui/parts/UpgradeCards.svelte`, `src/style.css` — proves: `npm run check`, `npm test` (`design.test.ts`)
 
 ### F8. Docs
 **Tasks**
