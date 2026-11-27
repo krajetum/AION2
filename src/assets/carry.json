@@ -1,0 +1,1219 @@
+{
+ "source": "kisk.app",
+ "sourceUrl": "https://kisk.app",
+ "captured": "2026-11-27",
+ "note": "What the top players of each class in Korea carry on each slot (the share carrying each line, most carried first), transcribed by hand from the player's screenshots of kisk.app. Skill lines are not in it: they are each player's own choice.",
+ "players": {
+  "Gladiator": 838,
+  "Templar": 727,
+  "Assassin": 792,
+  "Ranger": 1158,
+  "Sorcerer": 774,
+  "Spiritmaster": 528,
+  "Cleric": 856,
+  "Chanter": 656,
+  "Fighter": 578
+ },
+ "classes": {
+  "Gladiator": {
+   "Weapon": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 99,
+    "Precision": 94,
+    "Multi-hit Chance": 94,
+    "Attack": 82,
+    "Status Effect Accuracy": 11
+   },
+   "Off-hand": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Multi-hit Chance": 99,
+    "Precision": 94,
+    "Attack": 83,
+    "Status Effect Accuracy": 11
+   },
+   "Torso": {
+    "Damage Boost": 100,
+    "Perfect Chance": 95,
+    "Attack": 94,
+    "Accuracy": 18,
+    "Defense increase": 15,
+    "Dexterity": 11,
+    "Status Effect Resist": 9,
+    "Critical Hit": 8,
+    "Weapon Damage Tolerance": 7,
+    "Endurance": 5
+   },
+   "Pants": {
+    "Attack increase": 99,
+    "Perfect Chance": 94,
+    "Damage Tolerance": 87,
+    "Attack": 84,
+    "Status Effect Resist": 5,
+    "Dexterity": 5,
+    "Accuracy": 4,
+    "Endurance": 3
+   },
+   "Helmet": {
+    "Attack increase": 99,
+    "Double Chance": 99,
+    "Attack": 91,
+    "Incoming Heal": 20,
+    "Weapon Damage Tolerance": 7,
+    "Accuracy": 5,
+    "Dexterity": 4,
+    "Endurance": 3,
+    "Critical Hit": 2
+   },
+   "Shoulders": {
+    "Critical Damage Boost": 100,
+    "Double Chance": 100,
+    "Attack": 96,
+    "Accuracy": 19,
+    "Defense increase": 14,
+    "Dexterity": 9,
+    "Critical Hit": 8,
+    "Endurance": 4,
+    "Status Effect Resist": 2
+   },
+   "Gloves": {
+    "Combat Speed": 100,
+    "Perfect Chance": 95,
+    "Attack": 91,
+    "Defense increase": 10,
+    "Accuracy": 8,
+    "Critical Hit": 4,
+    "Dexterity": 3
+   },
+   "Boots": {
+    "Move Speed": 100,
+    "Perfect Chance": 95,
+    "Attack": 91,
+    "Defense increase": 11,
+    "Accuracy": 9,
+    "Dexterity": 4,
+    "Critical Hit": 3,
+    "Status Effect Resist": 1
+   },
+   "Cape": {
+    "Double Chance": 100,
+    "Attack increase": 99,
+    "Perfect Chance": 94,
+    "Attack": 67,
+    "Critical Damage Tolerance": 12,
+    "Weapon Damage Tolerance": 7,
+    "Accuracy": 2,
+    "Dexterity": 1
+   },
+   "Necklace": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 94,
+    "Accuracy": 63,
+    "Critical Hit": 42,
+    "Block": 12
+   },
+   "Earring": {
+    "Move Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 94,
+    "Accuracy": 70,
+    "Critical Hit": 47,
+    "Block": 13
+   },
+   "Ring": {
+    "Might": 100,
+    "Attack": 99,
+    "Precision": 94,
+    "Accuracy": 55,
+    "Critical Hit": 46,
+    "Block": 12,
+    "Defense": 1
+   },
+   "Bracelet": {
+    "Destruction [Zikel]": 100,
+    "Time [Siel]": 100,
+    "Wisdom [Lumiel]": 99,
+    "Illusion [Kaisinel]": 99,
+    "Justice [Nezekan]": 88,
+    "Freedom [Vaizel]": 61,
+    "Death [Triniel]": 37,
+    "Space [Israphel]": 26
+   }
+  },
+  "Templar": {
+   "Weapon": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 99,
+    "Precision": 98,
+    "Multi-hit Chance": 92,
+    "Attack": 80,
+    "Status Effect Accuracy": 11
+   },
+   "Off-hand": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Weapon Damage Boost": 100,
+    "Damage Boost": 99,
+    "Multi-hit Chance": 98,
+    "Precision": 98,
+    "Attack": 82,
+    "Status Effect Accuracy": 11
+   },
+   "Torso": {
+    "Damage Boost": 100,
+    "Perfect Chance": 93,
+    "Attack": 93,
+    "Dexterity": 52,
+    "Block": 42,
+    "Defense increase": 27,
+    "Endurance": 22,
+    "Accuracy": 21,
+    "Critical Hit": 19,
+    "Weapon Damage Tolerance": 6
+   },
+   "Pants": {
+    "Attack increase": 99,
+    "Perfect Chance": 93,
+    "Damage Tolerance": 91,
+    "Attack": 84,
+    "Dexterity": 18,
+    "Endurance": 14,
+    "Block": 7,
+    "Critical Hit": 6
+   },
+   "Helmet": {
+    "Double Chance": 100,
+    "Attack increase": 99,
+    "Attack": 92,
+    "Dexterity": 32,
+    "Incoming Heal": 30,
+    "Endurance": 15,
+    "Block": 14,
+    "Critical Hit": 10,
+    "Weapon Damage Tolerance": 6
+   },
+   "Shoulders": {
+    "Critical Damage Boost": 100,
+    "Double Chance": 100,
+    "Attack": 95,
+    "Dexterity": 50,
+    "Block": 35,
+    "Defense increase": 24,
+    "Accuracy": 23,
+    "Critical Hit": 22,
+    "Endurance": 17
+   },
+   "Gloves": {
+    "Combat Speed": 100,
+    "Attack": 94,
+    "Perfect Chance": 93,
+    "Dexterity": 29,
+    "Defense increase": 20,
+    "Critical Hit": 15,
+    "Block": 11,
+    "Accuracy": 11
+   },
+   "Boots": {
+    "Move Speed": 100,
+    "Attack": 94,
+    "Perfect Chance": 94,
+    "Dexterity": 24,
+    "Defense increase": 22,
+    "Critical Hit": 15,
+    "Block": 12,
+    "Accuracy": 12
+   },
+   "Cape": {
+    "Attack increase": 100,
+    "Double Chance": 100,
+    "Perfect Chance": 94,
+    "Attack": 78,
+    "Critical Damage Tolerance": 14,
+    "Dexterity": 9,
+    "Weapon Damage Tolerance": 6,
+    "Critical Hit": 5
+   },
+   "Necklace": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 98,
+    "Accuracy": 88,
+    "Critical Hit": 86,
+    "Block": 63,
+    "Defense": 3
+   },
+   "Earring": {
+    "Move Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 98,
+    "Accuracy": 93,
+    "Critical Hit": 89,
+    "Block": 64,
+    "Defense": 4
+   },
+   "Ring": {
+    "Might": 100,
+    "Precision": 98,
+    "Attack": 98,
+    "Block": 53,
+    "Critical Hit": 51,
+    "Accuracy": 50,
+    "Defense": 2
+   },
+   "Bracelet": {
+    "Destruction [Zikel]": 100,
+    "Time [Siel]": 100,
+    "Wisdom [Lumiel]": 97,
+    "Illusion [Kaisinel]": 94,
+    "Justice [Nezekan]": 83,
+    "Space [Israphel]": 54,
+    "Freedom [Vaizel]": 38,
+    "Death [Triniel]": 34
+   }
+  },
+  "Assassin": {
+   "Weapon": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Multi-hit Chance": 97,
+    "Precision": 93,
+    "Attack": 90,
+    "Status Effect Accuracy": 6
+   },
+   "Off-hand": {
+    "Damage Boost": 100,
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Multi-hit Chance": 99,
+    "Precision": 94,
+    "Attack": 91,
+    "Status Effect Accuracy": 4
+   },
+   "Torso": {
+    "Damage Boost": 100,
+    "Attack": 98,
+    "Perfect Chance": 94,
+    "Critical Hit": 18,
+    "Defense increase": 17,
+    "Accuracy": 16,
+    "Status Effect Resist": 6,
+    "Weapon Damage Tolerance": 4,
+    "Constitution": 3,
+    "Willpower": 3
+   },
+   "Pants": {
+    "Attack increase": 100,
+    "Damage Tolerance": 95,
+    "Perfect Chance": 93,
+    "Attack": 89,
+    "Accuracy": 3,
+    "Status Effect Resist": 3,
+    "Critical Hit": 2,
+    "Constitution": 1
+   },
+   "Helmet": {
+    "Attack increase": 100,
+    "Double Chance": 100,
+    "Attack": 93,
+    "Incoming Heal": 23,
+    "Weapon Damage Tolerance": 4,
+    "Accuracy": 3,
+    "Critical Hit": 2,
+    "Status Effect Resist": 1
+   },
+   "Shoulders": {
+    "Critical Damage Boost": 100,
+    "Double Chance": 99,
+    "Attack": 98,
+    "Defense increase": 15,
+    "Critical Hit": 15,
+    "Accuracy": 10,
+    "Endurance Penetration": 3,
+    "Endurance": 2,
+    "Status Effect Resist": 1
+   },
+   "Gloves": {
+    "Combat Speed": 100,
+    "Attack": 96,
+    "Perfect Chance": 93,
+    "Defense increase": 6,
+    "Critical Hit": 6,
+    "Accuracy": 3
+   },
+   "Boots": {
+    "Move Speed": 100,
+    "Attack": 96,
+    "Perfect Chance": 95,
+    "Defense increase": 5,
+    "Critical Hit": 4,
+    "Accuracy": 4
+   },
+   "Cape": {
+    "Attack increase": 100,
+    "Double Chance": 99,
+    "Perfect Chance": 93,
+    "Attack": 75,
+    "Critical Damage Tolerance": 7,
+    "Weapon Damage Tolerance": 4,
+    "Critical Hit": 2,
+    "Accuracy": 2
+   },
+   "Necklace": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 93,
+    "Critical Hit": 69,
+    "Accuracy": 41
+   },
+   "Earring": {
+    "Move Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 93,
+    "Critical Hit": 75,
+    "Accuracy": 47
+   },
+   "Ring": {
+    "Might": 100,
+    "Attack": 99,
+    "Precision": 93,
+    "Critical Hit": 47,
+    "Accuracy": 24
+   },
+   "Bracelet": {
+    "Destruction [Zikel]": 100,
+    "Illusion [Kaisinel]": 100,
+    "Time [Siel]": 100,
+    "Wisdom [Lumiel]": 99,
+    "Justice [Nezekan]": 84,
+    "Death [Triniel]": 69,
+    "Freedom [Vaizel]": 41,
+    "Space [Israphel]": 14
+   }
+  },
+  "Ranger": {
+   "Weapon": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Precision": 99,
+    "Multi-hit Chance": 98,
+    "Attack": 86,
+    "Status Effect Accuracy": 10
+   },
+   "Off-hand": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Multi-hit Chance": 99,
+    "Precision": 98,
+    "Attack": 89,
+    "Status Effect Accuracy": 3
+   },
+   "Torso": {
+    "Damage Boost": 100,
+    "Attack": 97,
+    "Perfect Chance": 94,
+    "Critical Hit": 86,
+    "Accuracy": 67,
+    "Defense increase": 30,
+    "Status Effect Resist": 12,
+    "Weapon Damage Tolerance": 10,
+    "Constitution": 8,
+    "Endurance": 7
+   },
+   "Pants": {
+    "Attack increase": 100,
+    "Damage Tolerance": 97,
+    "Perfect Chance": 94,
+    "Attack": 93,
+    "Critical Hit": 40,
+    "Accuracy": 13,
+    "Status Effect Resist": 5,
+    "Endurance": 3
+   },
+   "Helmet": {
+    "Double Chance": 100,
+    "Attack increase": 99,
+    "Attack": 96,
+    "Critical Hit": 59,
+    "Incoming Heal": 54,
+    "Accuracy": 24,
+    "Weapon Damage Tolerance": 10,
+    "Endurance": 4,
+    "Constitution": 2
+   },
+   "Shoulders": {
+    "Critical Damage Boost": 100,
+    "Double Chance": 100,
+    "Attack": 98,
+    "Critical Hit": 87,
+    "Accuracy": 64,
+    "Defense increase": 26,
+    "Endurance Penetration": 6,
+    "Endurance": 6,
+    "Constitution": 4
+   },
+   "Gloves": {
+    "Combat Speed": 100,
+    "Attack": 97,
+    "Perfect Chance": 95,
+    "Critical Hit": 70,
+    "Accuracy": 32,
+    "Defense increase": 21,
+    "Endurance Penetration": 3,
+    "Status Effect Resist": 1
+   },
+   "Boots": {
+    "Move Speed": 100,
+    "Attack": 97,
+    "Perfect Chance": 94,
+    "Critical Hit": 69,
+    "Accuracy": 29,
+    "Defense increase": 21,
+    "Constitution": 2,
+    "Status Effect Resist": 2
+   },
+   "Cape": {
+    "Double Chance": 100,
+    "Attack increase": 99,
+    "Perfect Chance": 95,
+    "Attack": 87,
+    "Critical Hit": 28,
+    "Critical Damage Tolerance": 23,
+    "Weapon Damage Tolerance": 10,
+    "Accuracy": 7
+   },
+   "Necklace": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Critical Hit": 99,
+    "Precision": 99,
+    "Accuracy": 97,
+    "Defense": 6,
+    "HP": 4,
+    "Evasion": 1
+   },
+   "Earring": {
+    "Move Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Critical Hit": 100,
+    "Precision": 99,
+    "Accuracy": 99,
+    "Defense": 7,
+    "HP": 5,
+    "Intelligence": 2,
+    "Evasion": 1
+   },
+   "Ring": {
+    "Might": 100,
+    "Precision": 99,
+    "Attack": 96,
+    "Critical Hit": 54,
+    "Accuracy": 21
+   },
+   "Bracelet": {
+    "Destruction [Zikel]": 100,
+    "Time [Siel]": 100,
+    "Illusion [Kaisinel]": 100,
+    "Wisdom [Lumiel]": 98,
+    "Justice [Nezekan]": 85,
+    "Death [Triniel]": 79,
+    "Freedom [Vaizel]": 33,
+    "Space [Israphel]": 14
+   }
+  },
+  "Sorcerer": {
+   "Weapon": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Multi-hit Chance": 99,
+    "Precision": 98,
+    "Attack": 85,
+    "Status Effect Accuracy": 13
+   },
+   "Off-hand": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Multi-hit Chance": 99,
+    "Precision": 95,
+    "Attack": 88,
+    "Status Effect Accuracy": 3
+   },
+   "Torso": {
+    "Damage Boost": 100,
+    "Attack": 97,
+    "Perfect Chance": 94,
+    "Critical Hit": 75,
+    "Accuracy": 72,
+    "Defense increase": 58,
+    "Constitution": 34,
+    "Weapon Damage Tolerance": 27,
+    "Endurance": 23,
+    "Status Effect Resist": 22
+   },
+   "Pants": {
+    "Attack increase": 100,
+    "Damage Tolerance": 100,
+    "Attack": 96,
+    "Perfect Chance": 94,
+    "Critical Hit": 46,
+    "Accuracy": 35,
+    "Constitution": 20,
+    "Endurance": 16
+   },
+   "Helmet": {
+    "Double Chance": 100,
+    "Attack increase": 100,
+    "Attack": 98,
+    "Incoming Heal": 72,
+    "Critical Hit": 59,
+    "Accuracy": 44,
+    "Weapon Damage Tolerance": 27,
+    "Endurance": 17,
+    "Constitution": 17
+   },
+   "Shoulders": {
+    "Critical Damage Boost": 100,
+    "Double Chance": 100,
+    "Attack": 99,
+    "Critical Hit": 82,
+    "Accuracy": 70,
+    "Defense increase": 55,
+    "Constitution": 25,
+    "Endurance": 16,
+    "Endurance Penetration": 8
+   },
+   "Gloves": {
+    "Combat Speed": 100,
+    "Attack": 99,
+    "Perfect Chance": 94,
+    "Critical Hit": 71,
+    "Accuracy": 58,
+    "Defense increase": 45,
+    "Constitution": 17,
+    "Status Effect Resist": 4
+   },
+   "Boots": {
+    "Move Speed": 100,
+    "Attack": 98,
+    "Perfect Chance": 93,
+    "Critical Hit": 70,
+    "Accuracy": 54,
+    "Defense increase": 48,
+    "Constitution": 16,
+    "Regeneration": 4
+   },
+   "Cape": {
+    "Double Chance": 100,
+    "Attack increase": 100,
+    "Perfect Chance": 95,
+    "Attack": 95,
+    "Critical Damage Tolerance": 48,
+    "Critical Hit": 33,
+    "Weapon Damage Tolerance": 27,
+    "Accuracy": 19
+   },
+   "Necklace": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Critical Hit": 99,
+    "Precision": 98,
+    "Accuracy": 98,
+    "HP": 10,
+    "Defense": 10,
+    "Intelligence": 3
+   },
+   "Earring": {
+    "Move Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Critical Hit": 100,
+    "Accuracy": 99,
+    "Precision": 98,
+    "Defense": 14,
+    "HP": 12,
+    "Intelligence": 4,
+    "Critical Hit Resist": 2
+   },
+   "Ring": {
+    "Might": 100,
+    "Precision": 98,
+    "Attack": 86,
+    "Critical Hit": 11,
+    "Accuracy": 3
+   },
+   "Bracelet": {
+    "Destruction [Zikel]": 100,
+    "Time [Siel]": 100,
+    "Illusion [Kaisinel]": 100,
+    "Wisdom [Lumiel]": 99,
+    "Justice [Nezekan]": 83,
+    "Death [Triniel]": 73,
+    "Freedom [Vaizel]": 31,
+    "Space [Israphel]": 22
+   }
+  },
+  "Spiritmaster": {
+   "Weapon": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Precision": 99,
+    "Multi-hit Chance": 97,
+    "Attack": 76,
+    "Status Effect Accuracy": 18
+   },
+   "Off-hand": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Precision": 99,
+    "Multi-hit Chance": 97,
+    "Attack": 85,
+    "Status Effect Accuracy": 4
+   },
+   "Torso": {
+    "Damage Boost": 100,
+    "Perfect Chance": 97,
+    "Attack": 96,
+    "Accuracy": 36,
+    "Critical Hit": 31,
+    "Defense increase": 24,
+    "Status Effect Resist": 7,
+    "Constitution": 7,
+    "Weapon Damage Tolerance": 5,
+    "Endurance": 5
+   },
+   "Pants": {
+    "Attack increase": 99,
+    "Damage Tolerance": 98,
+    "Perfect Chance": 96,
+    "Attack": 85,
+    "Accuracy": 8,
+    "Critical Hit": 7,
+    "Status Effect Resist": 5,
+    "Endurance": 4
+   },
+   "Helmet": {
+    "Attack increase": 100,
+    "Double Chance": 100,
+    "Attack": 90,
+    "Incoming Heal": 38,
+    "Accuracy": 10,
+    "Critical Hit": 9,
+    "Weapon Damage Tolerance": 5,
+    "Endurance": 4,
+    "Status Effect Resist": 3
+   },
+   "Shoulders": {
+    "Critical Damage Boost": 100,
+    "Double Chance": 99,
+    "Attack": 97,
+    "Accuracy": 33,
+    "Critical Hit": 30,
+    "Defense increase": 20,
+    "Constitution": 3,
+    "Endurance": 3,
+    "Endurance Penetration": 3
+   },
+   "Gloves": {
+    "Combat Speed": 100,
+    "Perfect Chance": 97,
+    "Attack": 94,
+    "Critical Hit": 17,
+    "Defense increase": 15,
+    "Accuracy": 14,
+    "Endurance Penetration": 1,
+    "Status Effect Resist": 1
+   },
+   "Boots": {
+    "Move Speed": 100,
+    "Perfect Chance": 96,
+    "Attack": 93,
+    "Accuracy": 16,
+    "Critical Hit": 15,
+    "Defense increase": 15,
+    "Regeneration": 1
+   },
+   "Cape": {
+    "Attack increase": 99,
+    "Double Chance": 99,
+    "Perfect Chance": 97,
+    "Attack": 76,
+    "Critical Damage Tolerance": 12,
+    "Accuracy": 5,
+    "Weapon Damage Tolerance": 5,
+    "Critical Hit": 3
+   },
+   "Necklace": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 99,
+    "Accuracy": 87,
+    "Critical Hit": 83
+   },
+   "Earring": {
+    "Move Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 99,
+    "Accuracy": 89,
+    "Critical Hit": 89,
+    "HP": 1
+   },
+   "Ring": {
+    "Might": 100,
+    "Precision": 99,
+    "Attack": 97,
+    "Critical Hit": 34,
+    "Accuracy": 25
+   },
+   "Bracelet": {
+    "Destruction [Zikel]": 100,
+    "Illusion [Kaisinel]": 100,
+    "Time [Siel]": 100,
+    "Wisdom [Lumiel]": 98,
+    "Justice [Nezekan]": 90,
+    "Freedom [Vaizel]": 59,
+    "Death [Triniel]": 51,
+    "Space [Israphel]": 20
+   }
+  },
+  "Cleric": {
+   "Weapon": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Precision": 98,
+    "Multi-hit Chance": 97,
+    "Attack": 85,
+    "Status Effect Accuracy": 6
+   },
+   "Off-hand": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Multi-hit Chance": 98,
+    "Precision": 98,
+    "Attack": 83,
+    "Status Effect Accuracy": 3
+   },
+   "Torso": {
+    "Damage Boost": 100,
+    "Attack": 93,
+    "Perfect Chance": 90,
+    "Critical Hit": 57,
+    "Defense increase": 55,
+    "Accuracy": 48,
+    "Endurance": 21,
+    "Weapon Damage Tolerance": 19,
+    "Constitution": 15,
+    "Regeneration": 13
+   },
+   "Pants": {
+    "Attack increase": 98,
+    "Damage Tolerance": 98,
+    "Attack": 90,
+    "Perfect Chance": 89,
+    "Critical Hit": 26,
+    "Endurance": 18,
+    "Accuracy": 14,
+    "Constitution": 6
+   },
+   "Helmet": {
+    "Double Chance": 99,
+    "Attack increase": 99,
+    "Attack": 93,
+    "Incoming Heal": 76,
+    "Critical Hit": 32,
+    "Accuracy": 20,
+    "Weapon Damage Tolerance": 19,
+    "Endurance": 17,
+    "Constitution": 7
+   },
+   "Shoulders": {
+    "Critical Damage Boost": 100,
+    "Double Chance": 99,
+    "Attack": 95,
+    "Critical Hit": 62,
+    "Accuracy": 49,
+    "Defense increase": 49,
+    "Endurance": 18,
+    "Constitution": 10,
+    "Regeneration": 10
+   },
+   "Gloves": {
+    "Combat Speed": 100,
+    "Attack": 95,
+    "Perfect Chance": 89,
+    "Defense increase": 44,
+    "Critical Hit": 43,
+    "Accuracy": 32,
+    "Regeneration": 9,
+    "Constitution": 6
+   },
+   "Boots": {
+    "Move Speed": 100,
+    "Attack": 93,
+    "Perfect Chance": 91,
+    "Defense increase": 46,
+    "Critical Hit": 40,
+    "Accuracy": 29,
+    "Regeneration": 8,
+    "Constitution": 7
+   },
+   "Cape": {
+    "Double Chance": 99,
+    "Attack increase": 98,
+    "Perfect Chance": 90,
+    "Attack": 84,
+    "Critical Damage Tolerance": 39,
+    "Weapon Damage Tolerance": 19,
+    "Critical Hit": 18,
+    "Accuracy": 12
+   },
+   "Necklace": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Attack": 99,
+    "Precision": 98,
+    "Critical Hit": 93,
+    "Accuracy": 91,
+    "HP": 4,
+    "Defense": 4,
+    "Block": 2
+   },
+   "Earring": {
+    "Move Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 98,
+    "Critical Hit": 96,
+    "Accuracy": 95,
+    "Defense": 6,
+    "HP": 6,
+    "Block": 2
+   },
+   "Ring": {
+    "Might": 100,
+    "Precision": 98,
+    "Attack": 81,
+    "Critical Hit": 17,
+    "Accuracy": 8
+   },
+   "Bracelet": {
+    "Illusion [Kaisinel]": 100,
+    "Time [Siel]": 100,
+    "Destruction [Zikel]": 100,
+    "Wisdom [Lumiel]": 99,
+    "Justice [Nezekan]": 77,
+    "Death [Triniel]": 68,
+    "Space [Israphel]": 39,
+    "Freedom [Vaizel]": 29
+   }
+  },
+  "Chanter": {
+   "Weapon": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 99,
+    "Precision": 97,
+    "Multi-hit Chance": 93,
+    "Attack": 82,
+    "Status Effect Accuracy": 8
+   },
+   "Off-hand": {
+    "Weapon Damage Boost": 100,
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 100,
+    "Precision": 97,
+    "Multi-hit Chance": 97,
+    "Attack": 87,
+    "Status Effect Accuracy": 8
+   },
+   "Torso": {
+    "Damage Boost": 100,
+    "Attack": 96,
+    "Perfect Chance": 95,
+    "Defense increase": 32,
+    "Accuracy": 27,
+    "Critical Hit": 19,
+    "Weapon Damage Tolerance": 10,
+    "Endurance": 9,
+    "Status Effect Resist": 7,
+    "Regeneration": 5
+   },
+   "Pants": {
+    "Attack increase": 99,
+    "Damage Tolerance": 96,
+    "Perfect Chance": 94,
+    "Attack": 85,
+    "Accuracy": 6,
+    "Endurance": 5,
+    "Status Effect Resist": 4,
+    "Critical Hit": 3
+   },
+   "Helmet": {
+    "Double Chance": 100,
+    "Attack increase": 100,
+    "Attack": 88,
+    "Incoming Heal": 53,
+    "Weapon Damage Tolerance": 10,
+    "Accuracy": 8,
+    "Endurance": 6,
+    "Critical Hit": 5,
+    "Status Effect Resist": 1
+   },
+   "Shoulders": {
+    "Critical Damage Boost": 100,
+    "Double Chance": 100,
+    "Attack": 94,
+    "Defense increase": 28,
+    "Accuracy": 24,
+    "Critical Hit": 18,
+    "Endurance": 6,
+    "Regeneration": 3,
+    "Status Effect Resist": 2
+   },
+   "Gloves": {
+    "Combat Speed": 100,
+    "Perfect Chance": 95,
+    "Attack": 92,
+    "Defense increase": 19,
+    "Accuracy": 13,
+    "Critical Hit": 8,
+    "Regeneration": 2,
+    "Endurance Penetration": 1
+   },
+   "Boots": {
+    "Move Speed": 100,
+    "Perfect Chance": 96,
+    "Attack": 92,
+    "Defense increase": 21,
+    "Accuracy": 12,
+    "Critical Hit": 9,
+    "Regeneration": 2,
+    "Constitution": 1
+   },
+   "Cape": {
+    "Attack increase": 100,
+    "Double Chance": 100,
+    "Perfect Chance": 95,
+    "Attack": 76,
+    "Critical Damage Tolerance": 19,
+    "Weapon Damage Tolerance": 10,
+    "Accuracy": 4,
+    "Critical Hit": 2
+   },
+   "Necklace": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 97,
+    "Accuracy": 76,
+    "Critical Hit": 60
+   },
+   "Earring": {
+    "Move Speed": 100,
+    "Might": 100,
+    "Attack": 100,
+    "Precision": 97,
+    "Accuracy": 85,
+    "Critical Hit": 66
+   },
+   "Ring": {
+    "Might": 100,
+    "Precision": 97,
+    "Attack": 97,
+    "Accuracy": 38,
+    "Critical Hit": 37
+   },
+   "Bracelet": {
+    "Time [Siel]": 100,
+    "Destruction [Zikel]": 100,
+    "Wisdom [Lumiel]": 100,
+    "Illusion [Kaisinel]": 99,
+    "Justice [Nezekan]": 85,
+    "Death [Triniel]": 57,
+    "Freedom [Vaizel]": 48,
+    "Space [Israphel]": 23
+   }
+  },
+  "Fighter": {
+   "Weapon": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 98,
+    "Precision": 92,
+    "Weapon Damage Boost": 75,
+    "Multi-hit Chance": 64,
+    "Attack": 48,
+    "Status Effect Accuracy": 10
+   },
+   "Off-hand": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Damage Boost": 99,
+    "Precision": 93,
+    "Weapon Damage Boost": 74,
+    "Multi-hit Chance": 65,
+    "Attack": 48,
+    "Front Attack": 6
+   },
+   "Torso": {
+    "Damage Boost": 100,
+    "Perfect Chance": 95,
+    "Attack": 92,
+    "Accuracy": 49,
+    "Critical Hit": 40,
+    "Defense increase": 12,
+    "Dexterity": 8,
+    "Block": 6,
+    "Endurance": 6,
+    "Weapon Damage Tolerance": 5
+   },
+   "Pants": {
+    "Attack increase": 99,
+    "Damage Tolerance": 98,
+    "Perfect Chance": 94,
+    "Attack": 80,
+    "Endurance": 4,
+    "Status Effect Resist": 3,
+    "Dexterity": 3,
+    "Accuracy": 2
+   },
+   "Helmet": {
+    "Attack increase": 99,
+    "Double Chance": 99,
+    "Attack": 88,
+    "Endurance": 35,
+    "Incoming Heal": 19,
+    "Dexterity": 6,
+    "Weapon Damage Tolerance": 5,
+    "Critical Hit": 3,
+    "Accuracy": 3
+   },
+   "Shoulders": {
+    "Critical Damage Boost": 100,
+    "Double Chance": 99,
+    "Attack": 91,
+    "Accuracy": 44,
+    "Critical Hit": 40,
+    "Defense increase": 12,
+    "Dexterity": 8,
+    "Endurance": 7,
+    "Block": 7
+   },
+   "Gloves": {
+    "Combat Speed": 100,
+    "Perfect Chance": 96,
+    "Attack": 86,
+    "Critical Hit": 35,
+    "Defense increase": 8,
+    "Dexterity": 6,
+    "Accuracy": 4,
+    "Block": 2
+   },
+   "Boots": {
+    "Move Speed": 100,
+    "Perfect Chance": 94,
+    "Attack": 82,
+    "Defense increase": 48,
+    "Dexterity": 4,
+    "Critical Hit": 4,
+    "Accuracy": 3,
+    "Block": 3
+   },
+   "Cape": {
+    "Double Chance": 100,
+    "Attack increase": 99,
+    "Attack": 71,
+    "Perfect Chance": 54,
+    "Accuracy": 32,
+    "Critical Damage Tolerance": 7,
+    "Weapon Damage Tolerance": 5,
+    "Dexterity": 3
+   },
+   "Necklace": {
+    "Combat Speed": 100,
+    "Might": 100,
+    "Attack": 97,
+    "Precision": 92,
+    "Accuracy": 71,
+    "Critical Hit": 64,
+    "Block": 11,
+    "MP": 2,
+    "Critical Hit Resist": 2,
+    "HP": 2,
+    "Natural MP Regen": 1
+   },
+   "Earring": {
+    "Move Speed": 100,
+    "Might": 100,
+    "Attack": 98,
+    "Precision": 92,
+    "Accuracy": 74,
+    "Critical Hit": 66,
+    "Block": 13,
+    "Natural HP Regen": 4,
+    "Defense": 3,
+    "HP": 3,
+    "MP": 3
+   },
+   "Ring": {
+    "Might": 100,
+    "Precision": 92,
+    "Attack": 67,
+    "Accuracy": 21,
+    "Critical Hit": 19,
+    "Block": 5,
+    "HP": 3,
+    "Critical Hit Resist": 3,
+    "Natural HP Regen": 3,
+    "MP": 2
+   },
+   "Bracelet": {
+    "Destruction [Zikel]": 100,
+    "Time [Siel]": 100,
+    "Wisdom [Lumiel]": 99,
+    "Illusion [Kaisinel]": 74,
+    "Freedom [Vaizel]": 67,
+    "Justice [Nezekan]": 46,
+    "Death [Triniel]": 29,
+    "Space [Israphel]": 15
+   }
+  }
+ }
+}

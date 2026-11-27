@@ -8,7 +8,8 @@
   import { setBis } from "../../app/bis.ts";
   import { equipmentOf, itemOf } from "../../infra/armory.ts";
   import { gearStats, gearText } from "../../domain/gearstats.ts";
-  import { planPiece, rankPlans } from "../../domain/reroll.ts";
+  import { ARMOUR_SLOTS, armourPassives, planPiece, rankPlans, statNamesOf, worthLines } from "../../domain/reroll.ts";
+  import carryFile from "../../assets/carry.json";
   import UpgradeCards from "./UpgradeCards.svelte";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Fold from "$lib/components/app/Fold.svelte";
@@ -45,9 +46,14 @@
   const linesOf = (slot: string | null) => (slot ? bisLines(BUNDLED, ui.data.bis, className, slot) : null);
   const customOf = (slot: string | null) => !!slot && !!ui.data.bis[className]?.[slot];
   // Upgrades: every read piece with a known draw and ideal lines, the most score per expected try first.
+  const CARRY = carryFile as { classes: Record<string, Record<string, Record<string, number>>>; source: string; sourceUrl: string; captured: string; players: Record<string, number> };
+  const STAT_NAMES = statNamesOf(CARRY.classes);
   const plans = $derived(rankPlans(all.flatMap((p) => {
-    const slot = bisSlot(p.slotName), d = details[p.slot], ideal = linesOf(slot);
-    if (!slot || !d || !ideal || !d.random) return [];
+    const slot = bisSlot(p.slotName), d = details[p.slot];
+    if (!slot || !d || !d.random) return [];
+    const jewel = slot === "Necklace" || slot === "Earring" || ARMOUR_SLOTS.includes(slot);
+    const ideal = worthLines(CARRY.classes[className]?.[slot], linesOf(slot), STAT_NAMES,
+      jewel ? armourPassives(ARMOUR_SLOTS.map((s) => linesOf(s)), STAT_NAMES) : []);
     const canAdd = ![...d.sub, ...d.skills].some((x) => x.added);
     const plan = planPiece(slot, [...d.sub.map((x) => x.name), ...d.skills.map((x) => x.name)], ideal, 4000, canAdd);
     return plan ? [{ p, plan, ideal }] : [];
@@ -73,7 +79,7 @@
 {:else if eq}
   <div class="mt-4 mb-2 flex items-center gap-3"><h3 class="m-0 text-sm font-semibold">{upgrades ? "Best upgrades" : "Gear"}</h3>
     <button class="bis-btn" title="Which lines to reroll, piece by piece, and which piece first" aria-pressed={upgrades} onclick={() => { upgrades = !upgrades; }}>{upgrades ? "Gear" : "Best upgrades"}</button></div>
-  {#if upgrades}<UpgradeCards {plans} reading={readCount < all.length} />
+  {#if upgrades}<UpgradeCards {plans} reading={readCount < all.length} {className} players={CARRY.players[className] ?? 0} source={CARRY} />
   {:else}{@render cards(eq.gear)}
   <h3 class="mt-4 mb-2 text-sm font-semibold">Accessories</h3>{@render cards(eq.accessories)}
   <h3 class="mt-4 mb-2 text-sm font-semibold">Arcana</h3>{#if eq.arcana.length}{@render cards(eq.arcana)}{:else}<p class="hint">No arcana equipped: the official profile lists none for this character.</p>{/if}{/if}

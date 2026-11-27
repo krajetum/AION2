@@ -12,7 +12,8 @@ test("every slot's draw adds up to 100% (stats + the class's skills)", () => {
 test("one try's chance: the ideal lines missing over the draw without the piece's own lines", () => {
   // kisk.app's earrings (screenshot 2026-11-27): Critical Hit Resist, Intelligence, HP, Defense; six stats and two
   // passive skills wanted: (1.6×3 + 4.8×3 + 2×2) / (100 − 7.2 − 1.6 − 7.2 − 4.8) = 23.2 / 79.2 = 29.3%, its "29% a try".
-  const ideal = ["Might", "Precision", "Attack", "Move Speed", "Critical Hit", "Accuracy", "Empyrean Lord's Grace", "Earth's Grace"].map((stat) => ({ stat, value: "", pct: 100 }));
+  const ideal = [...["Might", "Precision", "Attack", "Move Speed", "Critical Hit", "Accuracy"].map((stat) => ({ stat, pct: 100 })),
+    ...["Empyrean Lord's Grace", "Earth's Grace"].map((stat) => ({ stat, pct: 100, skill: true }))];
   const p = planPiece("Earring", ["Critical Hit Resist", "Intelligence", "HP", "Defense"], ideal, 0)!;
   assert.equal(p.steps.length, 4);
   assert.equal(Math.round(p.steps[0].chance * 1000), 293);
@@ -60,4 +61,23 @@ test("a Philosopher's Stone line: once per piece, drawn without the piece's own 
   assert.equal(planPiece("Ring", ["HP", "MP"], ideal, 0, false)!.add, null);
   const b = [{ stat: "Wisdom [Lumiel]", value: "", pct: 100 }];
   assert.equal(planPiece("Bracelet", ["Justice [Nezekan]"], b, 0, true)!.add, null);
+});
+
+test("kisk's tiers: the player's earrings (Attack, Natural MP Regen, MP, Might) land 33% a try", () => {
+  // kisk.app 2026-11-27: Best Precision, Move Speed, Accuracy; Good Critical Hit and three skills; Fine Block: 33% a try.
+  const ideal = [
+    ...Object.entries({ "Move Speed": 100, Might: 100, Attack: 100, Precision: 98, Accuracy: 93, "Critical Hit": 89, Block: 64, Defense: 4 }).map(([stat, pct]) => ({ stat, pct })),
+    ...["Fury", "Impact Hit", "Insulting Roar"].map((stat) => ({ stat, pct: 80, skill: true })),
+  ];
+  const p = planPiece("Earring", ["Attack", "Natural MP Regen", "MP", "Might"], ideal, 0)!;
+  assert.deepEqual(p.steps.map((s) => s.line), ["MP", "Natural MP Regen"]); // the least likely first
+  assert.equal(Math.round(p.steps[0].chance * 100), 33);
+});
+
+test("a line the slot's draw doesn't hold counts for the score but isn't aimed at", () => {
+  const ideal = [{ stat: "Perfect Chance", pct: 94 }, { stat: "Attack", pct: 78 }, { stat: "Double Chance", pct: 100 }];
+  const p = planPiece("Cape", ["Attack", "HP"], ideal, 0)!;
+  assert.deepEqual(p.missing, ["Double Chance"]);
+  assert.deepEqual(p.unobtainable, ["Perfect Chance"]);
+  assert.deepEqual(p.steps.map((s) => s.line), ["HP"]);
 });
