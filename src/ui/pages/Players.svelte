@@ -4,7 +4,6 @@
   import { isTauri } from "@tauri-apps/api/core";
   import { Input } from "$lib/components/ui/input/index.js";
   import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
-  import * as Table from "$lib/components/ui/table/index.js";
   import Panel from "$lib/components/app/Panel.svelte";
   // Player search: the official character search and profiles (infra/armory.ts), as on NCSOFT's site.
   import { onDestroy } from "svelte";
@@ -32,7 +31,7 @@
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Clock from "@lucide/svelte/icons/clock";
-  import { num } from "../format.ts";
+  import { hm, num } from "../format.ts";
   import DaevanionBoards from "../parts/DaevanionBoards.svelte";
   import GearTab from "../parts/GearTab.svelte";
   import StatsTab from "../parts/StatsTab.svelte";
@@ -206,9 +205,9 @@
 {#if error}<p class="hint error">The search could not be read ({error}).</p>{/if}
 
 {#if pickingCompare}<p class="hint mt-0 mb-2 flex items-center gap-2">Pick the character to compare with: search, then open them.
-  <Button size="xs" variant="ghost" onclick={() => { pickingCompare = false; }}>Cancel</Button></p>{/if}
+  <Button size="xs" variant="ghost" onclick={() => { pickingCompare = false; resultsOpen = false; }}>Cancel</Button></p>{/if}
 {#if found && (!open || resultsOpen || pickingCompare)}<div class="mb-4 rounded-lg border bg-card p-2">
-  {#if listed.length}<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-1">
+  {#if listed.length}<div class="grid gap-1 sm:grid-cols-2">
     {#each shownPage.items as c (c.characterId + c.serverId)}{@const on = !!open && sameCharacter(c, open)}{@const icon = on && profile ? classIcon(profile.className) : undefined}
       <Button variant="ghost" class="h-auto justify-start gap-2.5 px-2 py-1.5 text-left {on ? 'bg-accent' : ''}" onclick={() => show(c)}>
         <span class="grid size-8 shrink-0 place-items-center rounded-md bg-muted">{#if icon}<img class="size-6 object-contain" src={icon} alt="">{:else}<UserIcon class="text-muted-foreground" />{/if}</span>
@@ -229,7 +228,7 @@
   {#snippet head()}<span class="flex min-w-0 items-center gap-3">
     <span class="grid size-11 shrink-0 place-items-center rounded-lg bg-muted">{#if profile && classIcon(profile.className)}<img class="size-8 object-contain" src={classIcon(profile.className)} alt="">{:else}<UserIcon class="text-muted-foreground" />{/if}</span>
     <span class="flex min-w-0 flex-col"><span class="flex items-center gap-2 text-lg font-semibold">{open!.name}{#if !isTauri()}<Badge variant="secondary" title="Browser preview: demo data, not the official site">Demo</Badge>{/if}</span>
-      <span class="text-xs font-normal text-muted-foreground">{profile ? `${profile.className} · ` : ""}{open!.serverName}{profile?.level != null ? ` · Lv ${profile.level}` : ""}</span></span></span>{/snippet}
+      <span class="text-xs font-normal text-muted-foreground">{profile ? `${profile.className} · ` : ""}{open!.serverName}{profile?.level != null ? ` · Lv ${profile.level}` : ""}{profile ? ` · read ${hm(profile.atMs)}` : ""}</span></span></span>{/snippet}
   {#snippet actions()}
     {#if profile}<Button size="sm" variant="outline" onclick={() => openTab("compare")}><ArrowLeftRight />Compare</Button>{/if}
     <Button size="icon-sm" variant="ghost" href={profilePage(open!.characterId, open!.serverId)} target="_blank" rel="noopener" aria-label="Official profile" title="Official profile"><ExternalLink /></Button>
