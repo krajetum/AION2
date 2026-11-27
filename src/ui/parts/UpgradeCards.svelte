@@ -79,7 +79,7 @@
   {#if up.todo.length}<ol class="m-0 flex list-none flex-col gap-2 p-0">
     {#each up.todo as x, i (x.p.slot)}{@const plan = x.plan}{@const want = lacking(x)}{@const key = `g:${x.p.slot}`}{@const on = opened === key}{@const slot = bisSlot(x.p.slotName)}
       <li class="up grade-edge-{x.p.grade} rounded-lg border bg-card" class:next={i === 0}>
-        <button type="button" class="flex w-full items-center gap-3 px-3 py-2.5 text-left" aria-expanded={on} onclick={() => toggle(key)}>
+        <button type="button" data-slot="row" class="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/40" aria-expanded={on} onclick={() => toggle(key)}>
           <span class="w-5 shrink-0 text-center text-xs font-bold tabular-nums {i === 0 ? 'text-[var(--star)]' : 'text-muted-foreground'}">{i + 1}</span>
           {@render icon(x.p)}
           <span class="flex min-w-0 flex-1 flex-col gap-1">
@@ -114,7 +114,7 @@
   {#if arcanaTodo.length}<ol class="m-0 flex list-none flex-col gap-2 p-0">
     {#each arcanaTodo as x (x.p.slot)}{@const plan = x.plan}{@const kind = ARCANA_KINDS[x.slot] ?? "arcana"}{@const key = `a:${x.p.slot}`}{@const on = opened === key}
       <li class="up grade-edge-{x.p.grade} rounded-lg border bg-card">
-        <button type="button" class="flex w-full items-center gap-3 px-3 py-2.5 text-left" aria-expanded={on} onclick={() => toggle(key)}>
+        <button type="button" data-slot="row" class="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/40" aria-expanded={on} onclick={() => toggle(key)}>
           <span class="w-5 shrink-0"></span>
           {@render icon(x.p)}
           <span class="flex min-w-0 flex-1 flex-col gap-0.5">
