@@ -9,6 +9,7 @@ import {
   daevanionUrl, equipmentUrl, infoUrl, itemUrl, parseBoard, parseEquipment, parseInfo, parseItem, parseSearch, pickFound, searchUrl,
   type Board, type Equipment, type Found, type ItemDetail, type Piece, type Profile,
 } from "../domain/armory.ts";
+import { demoJson } from "./armory-demo.ts";
 import { serversIn } from "../domain/servers.ts";
 
 const SEARCH_MS = 60_000, PROFILE_MS = 10 * 60_000, FAILED_MS = 60_000, SEARCH_FAILED_MS = 5_000;
@@ -41,7 +42,8 @@ export const siteDown = () => Date.now() < downUntil;
 const DOWN_TEXT = "the official site is not answering (maintenance?)";
 
 async function getJson(url: string, first = false): Promise<any> {
-  if (!isTauri()) throw new Error("only in the desktop app");
+  // The browser preview: the demo characters (armory-demo.ts), through the queue as the site's answers.
+  if (!isTauri()) { const done = await slot(first); try { return demoJson(url); } finally { done(); } }
   if (!first && siteDown()) throw new Error(DOWN_TEXT);
   const done = await slot(first);
   if (!first && siteDown()) { done(); throw new Error(DOWN_TEXT); }

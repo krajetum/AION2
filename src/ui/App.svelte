@@ -1,4 +1,5 @@
 <script lang="ts">
+  import logo from "../assets/logo.png";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Checkbox } from "$lib/components/ui/checkbox/index.js";
   import { NativeSelect, NativeSelectOption } from "$lib/components/ui/native-select/index.js";
@@ -199,7 +200,7 @@
 
 <div class="shell" class:no-inspector={wide}>
   <nav class="side" aria-label="Pages">
-    <div class="brand" translate="no"><span class="logo">A2</span><b>AION 2</b><span>Companion</span></div>
+    <div class="brand" translate="no"><img class="logo" src={logo} alt="" width="24" height="24"><b>AION 2</b><span>Companion</span></div>
     {@render tab("home")}
     {#each GROUPS as [name, tabs]}<details open={isOpen(name, tabs)} ontoggle={(e) => toggled(name, tabs, e)}><summary class="label"><ICON.chevron />{name}</summary>
       {#each tabs as t}{@render tab(t)}{/each}
