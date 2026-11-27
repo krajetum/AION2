@@ -81,3 +81,13 @@ test("a line the slot's draw doesn't hold counts for the score but isn't aimed a
   assert.deepEqual(p.unobtainable, ["Perfect Chance"]);
   assert.deepEqual(p.steps.map((s) => s.line), ["HP"]);
 });
+
+test("rank tables: tier values, a little less down a tier, skills worth B, slots left out", async () => {
+  const { rankTable, rankSkills } = await import("./reroll.ts");
+  const file = { tiers: { S: 100, A: 80, B: 60, C: 20 }, slots: { Torso: [["Damage Boost", "S"], ["Attack", "A"], ["Critical Hit", "B", "depends"], ["Accuracy", "C"]] as [string, string, string?][] } };
+  const t = rankTable(file, "Torso")!;
+  assert.deepEqual(t.worth, { "Damage Boost": 100, Attack: 80, "Critical Hit": 60, Accuracy: 20 });
+  assert.deepEqual(t.ranked["Critical Hit"], { rank: "B", note: "depends" });
+  assert.equal(rankTable(file, "Ring"), null);
+  assert.deepEqual(rankSkills(file, [{ stat: "Fury", pct: 79 }, { stat: "Block Pain", pct: 2 }]), [{ stat: "Fury", pct: 60 }, { stat: "Block Pain", pct: 2 }]);
+});

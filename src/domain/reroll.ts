@@ -70,6 +70,25 @@ export function worthLines(carry: Record<string, number> | undefined, bis: { sta
   for (const l of [...(bis ?? []), ...passives]) if (!statNames.has(norm(l.stat)) && !out.some((o) => norm(o.stat) === norm(l.stat))) out.push({ stat: l.stat, pct: l.pct ?? 100, skill: true });
   return out;
 }
+/** The static's rank tables (`src/assets/ranks.json`): per slot, lines with a rank S / A / B / C and a note. */
+export interface RankFile { tiers: Record<string, number>; slots: Record<string, [string, string, string?][]> }
+export interface RankedLine { rank: string; note?: string }
+/** A slot's ranks as worth (a carry table's shape): the tier's value, a little less for each line ranked before it
+ *  in the same tier (their order); null for a slot the tables leave out (rings: skills only). */
+export function rankTable(file: RankFile, slot: string): { worth: Record<string, number>; ranked: Record<string, RankedLine> } | null {
+  const rows = file.slots[slot];
+  if (!rows) return null;
+  const worth: Record<string, number> = {}, ranked: Record<string, RankedLine> = {}, seen: Record<string, number> = {};
+  for (const [stat, rank, note] of rows) {
+    const i = seen[rank] = (seen[rank] ?? -1) + 1;
+    worth[stat] = (file.tiers[rank] ?? 0) - i;
+    ranked[stat] = note ? { rank, note } : { rank };
+  }
+  return { worth, ranked };
+}
+/** Skill lines under the rank tables: which ones stay the best-in-slot's, each worth B ("Main Passive" in the tables). */
+export const rankSkills = (file: RankFile, lines: { stat: string; pct?: number }[]) =>
+  lines.map((l) => ({ stat: l.stat, pct: (l.pct ?? 100) >= KEEP ? file.tiers.B : l.pct ?? 0 }));
 /** Armour, necklaces and earrings draw the same passive skills: each is worth its most carried share over the class's
  *  best-in-slot armour lists (a list holds only its three most carried; kisk.app aims at all of them on every piece). */
 export const ARMOUR_SLOTS = ["Torso", "Pants", "Helmet", "Shoulders", "Gloves", "Boots", "Cape"];
