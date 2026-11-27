@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { diffRows, diffText, profileRows, skillRows, slotPairs, pieceText, boardRows } from "./compare.ts";
+import { diffRows, diffText, profileRows, skillRows, slotPairs, pieceLevel, pieceText, boardRows } from "./compare.ts";
 import type { Equipment, Piece, Profile } from "./armory.ts";
 
 const prof = (cp: number, il: number, stats: [string, number][]): Profile =>
@@ -31,6 +31,14 @@ test("equipment slot by slot, skills by name", () => {
     [["MainHand", "Enraged Kromede Sword", "Ebony Sword"], ["SubHand", null, "Guard"], ["Helmet", "Vakron Helm", null]]);
   assert.equal(pieceText(a.gear[0]), "+15(+2) Enraged Kromede Sword");
   assert.deepEqual(skillRows(a, b).map((x) => [x.name, x.diff]), [["Judgment", 5], ["Pummel", 19], ["Shield Rush", -3]]);
+});
+
+test("a slot empty on one side: a dash, and the Δ counts it as 0", () => {
+  const a = eq([piece(1, "MainHand", "Enraged Kromede Sword", 15, 2)], []), b = eq([], []);
+  const [s] = slotPairs(a, b);
+  assert.equal(pieceText(s.b), "—");
+  assert.equal(pieceLevel(s.a) - pieceLevel(s.b), 17);
+  assert.equal(pieceLevel(s.b) - pieceLevel(s.a), -17);
 });
 
 test("Daevanion totals of both sides", () => {
