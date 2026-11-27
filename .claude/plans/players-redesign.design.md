@@ -231,7 +231,7 @@ Rows over existing helpers, no new domain code: profile numbers (`profileRows`),
 - WHEN Other … compare against it, keep the opened profile → browser pane: on Demo Alt, Other, search "Demora", click → Demo Alt vs Demora, header still Demo Alt
 
 **Tasks**
-- [ ] **T6.1** PlayerCompare rewritten on two sheets, rows layout, local Swap — files: `src/ui/parts/PlayerCompare.svelte`, `src/domain/compare.test.ts` (empty-side case if missing) — proves: `npm test`, `npm run check`, browser pane
+- [x] **T6.1** PlayerCompare rewritten on two sheets, rows layout, local Swap — files: `src/ui/parts/PlayerCompare.svelte`, `src/domain/compare.test.ts` (empty-side case if missing) — proves: `npm test`, `npm run check`, browser pane
 - [ ] **T6.2** Compare tab wiring: default side B, Other picking mode (search keeps `open`/`sheet`), `compareB` lifecycle — files: `src/ui/pages/Players.svelte` — proves: browser pane
 
 ### F7. Upgrades tab redesign
@@ -278,6 +278,7 @@ None to features or criteria. Design-level choices made in review: the Upgrades 
 - 2026-11-27 · T3.4 · `CharacterSheet` also has `eqError` (the equipment read failed while the profile came) and `boardsError`, and a `className` getter (profile's, else the constructor's): the header keeps working when only the equipment fails, as today's two separate messages.
 - 2026-11-27 · T3.5 · Reads of "is this piece read" use `details[slot] !== undefined`, not `slot in details`: inside the class's `$derived`, `in` on the `$state` record never re-ran for keys added later ("reading 0 / 9" stuck). Same in `Equipment.svelte`.
 - 2026-11-27 · T3.5 · Until F6 the Compare tab holds today's compare flow (Compare with you / Compare with…, `PlayerCompare` on two `Found`); `show()` keeps the Compare tab while a first side is kept.
+- 2026-11-27 · T6.1 · `PlayerCompare` also takes `onretry` (side B failed → a new sheet for it): the design's "Try again" needs a way back to Players. T6.1 already wires the default side B (your character when the Compare tab opens) so its commit builds; T6.2 adds "Other".
 
 ## Open questions
 None.

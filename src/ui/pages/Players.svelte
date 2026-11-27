@@ -125,8 +125,8 @@
     if (run === runs) searching = false;
   }
   function show(c: Found) {
-    open = c; resultsOpen = false;
-    if (!first) tab = "overview";
+    open = c; resultsOpen = false; tab = "overview";
+    compareB?.dispose(); compareB = null; compareError = "";
     remember(c);
     openSheet(c);
   }
@@ -145,21 +145,30 @@
     void search();
   }
   $effect(() => { if (me && !touched) openMe(); });
-  // Compare: the character kept as the first side; the one opened next (searched, or yours) is the second.
-  let first = $state<Found | null>(null), compareError = $state("");
-  const comparing = $derived(!!first && !!open && open.characterId !== first.characterId);
+  // Compare: the opened character against a second one, your character by default (read when the tab opens).
+  let compareB = $state<CharacterSheet | null>(null), compareError = $state("");
   const isMe = (c: Found | null) => !!c && !!me && c.serverId === me.serverId && c.name.toLowerCase() === me.name.toLowerCase();
-  function startCompare() { first = open; compareError = ""; }
+  function compareWith(c: Found) {
+    compareB?.dispose();
+    compareB = new CharacterSheet(c);
+    compareB.load();
+  }
   async function compareWithMe() {
-    if (!me || !open) return;
+    if (!me || !open || isMe(open)) return;
+    const was = open;
     compareError = "";
     try {
       const mine = pickFound(await searchPlayers(me.name, me.serverId), me.name, me.serverId);
+      if (!open || !sameCharacter(open, was) || compareB) return;
       if (!mine) { compareError = `${me.name} not found on the official search`; return; }
-      first = mine;
+      compareWith(mine);
     } catch (e) { compareError = e instanceof Error ? e.message : String(e); }
   }
-  function swap() { if (first && open) { const was = first; first = open; void show(was); } }
+  function openTab(v: TabId) {
+    tab = v;
+    if (v === "compare" && !compareB) void compareWithMe();
+  }
+  onDestroy(() => compareB?.dispose());
 
   // Your Genus Insight, read in game: only for your own characters (kept by name; the game sends no one else's).
   const genus = $derived(open && sheet?.profile ? ui.data.genus?.[open.name] ?? Object.entries(ui.data.genus ?? {}).find(([n]) => n.toLowerCase() === open!.name.toLowerCase())?.[1] ?? null : null);
@@ -210,7 +219,7 @@
     <span class="flex min-w-0 flex-col"><span class="flex items-center gap-2 text-lg font-semibold">{open!.name}{#if !isTauri()}<Badge variant="secondary" title="Browser preview: demo data, not the official site">Demo</Badge>{/if}</span>
       <span class="text-xs font-normal text-muted-foreground">{profile ? `${profile.className} · ` : ""}{open!.serverName}{profile?.level != null ? ` · Lv ${profile.level}` : ""}</span></span></span>{/snippet}
   {#snippet actions()}
-    {#if profile}<Button size="sm" variant="outline" onclick={() => { tab = "compare"; }}><ArrowLeftRight />Compare</Button>{/if}
+    {#if profile}<Button size="sm" variant="outline" onclick={() => openTab("compare")}><ArrowLeftRight />Compare</Button>{/if}
     <Button size="icon-sm" variant="ghost" href={profilePage(open!.characterId, open!.serverId)} target="_blank" rel="noopener" aria-label="Official profile" title="Official profile"><ExternalLink /></Button>
     {#if gearUrl(open!.name, open!.serverId)}<Button size="sm" variant="ghost" href={gearUrl(open!.name, open!.serverId)} target="_blank" rel="noopener">shugo.gg</Button>{/if}{/snippet}
   {#if sheet.loading}<p class="hint mt-0">Reading the profile…</p>
@@ -227,7 +236,7 @@
 </Panel>
 
 {#if profile}
-  <div class="mb-3"><UnderlineTabs label="Profile" items={tabs} value={tab} onchange={(v) => { tab = v; }} /></div>
+  <div class="mb-3"><UnderlineTabs label="Profile" items={tabs} value={tab} onchange={openTab} /></div>
   {#if tab === "stats"}
     <StatsTab {sheet} />
   {:else if tab === "overview"}
@@ -244,11 +253,7 @@
   {:else if tab === "dae"}
     {#if profile.boards?.length}<DaevanionBoards boards={profile.boards} read={sheet.boards} failed={sheet.boardsError} />{:else}<p class="hint">No Daevanion board read.</p>{/if}
   {:else if tab === "compare"}
-    {#if first && !comparing}<p class="hint mt-0 mb-3">Comparing with <b>{first.name}</b>: search and open the other character.
-      <Button size="sm" variant="ghost" onclick={() => { first = null; }}>Cancel</Button></p>{/if}
     {#if compareError}<p class="hint error">Compare: {compareError}</p>{/if}
-    {#if comparing}<PlayerCompare a={first!} b={open!} onswap={swap} onclose={() => { first = null; }} />
-    {:else if !first}<div class="flex gap-2">{#if me && !isMe(open)}<Button size="sm" variant="outline" onclick={compareWithMe}>Compare with {me.name}</Button>{/if}
-      <Button size="sm" variant="outline" onclick={startCompare}>Compare with…</Button></div>{/if}
+    <PlayerCompare a={sheet} b={compareB} onother={() => {}} onretry={() => compareB && compareWith(compareB.found)} />
   {/if}
 {/if}{/if}
