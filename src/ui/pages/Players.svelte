@@ -39,7 +39,7 @@
   import GearTab from "../parts/GearTab.svelte";
   import StatsTab from "../parts/StatsTab.svelte";
   import Overview from "../parts/Overview.svelte";
-  import GenusInsight from "../parts/GenusInsight.svelte";
+  import SkillsTab from "../parts/SkillsTab.svelte";
   import PlayerCompare from "../parts/PlayerCompare.svelte";
   import Kpi from "../parts/Kpi.svelte";
   import { ui } from "../state.svelte.ts";
@@ -235,14 +235,7 @@
   {:else if tab === "gear"}
     <GearTab {sheet} />
   {:else if tab === "skills"}
-    <!-- Temporary until T5.1 (SkillsTab). -->
-    {#if sheet.eq}{#each [["Active skills", sheet.eq.active, false], ["Passive skills", sheet.eq.passive, false], ["Stigma", sheet.eq.stigma, true]] as const as [title, list, stigma] (title)}
-      {#if list.length}<h3 class="mt-4 mb-2 text-sm font-semibold">{title}</h3><div class="eq-skills">
-        {#each list as s (s.id)}<span class="eq-skill" class:locked={s.level === 0} title="{s.name}{s.level ? ` · level ${s.level}` : ' · not learned'}{stigma && s.equipped ? ' · equipped' : ''}">
-          {#if s.icon}<img src={s.icon} alt="" width="40" height="40" loading="lazy">{/if}
-          {#if stigma && s.equipped}<i class="eq-e">E</i>{/if}{#if s.level}<small>Lv {s.level}</small>{:else}<small>🔒</small>{/if}</span>{/each}
-      </div>{/if}{/each}{/if}
-    {#if tab === "skills"}<div class="mt-4">{#if genus}<GenusInsight g={genus} />{:else if me && open.name.toLowerCase() === me.name.toLowerCase()}<p class="hint m-0">Genus Insight: the game sends it when you enter the world. Log in (or change character) with the companion open to see it here.</p>{/if}</div>{/if}
+    <SkillsTab {sheet} {genus} mine={isMe(open)} />
   {:else if tab === "upgrades"}
     <div class="mb-3 flex items-center gap-2"><Button size="sm" variant="ghost" aria-pressed={info} onclick={() => { info = !info; }}><Info />How it's scored</Button></div>
     {#if info}<UpgradeInfo example={sheet.upgrades.plans.find((x) => x.plan.steps.length) ?? null} ranked={sheet.upgrades.plans.some((x) => x.ranked)} />{/if}

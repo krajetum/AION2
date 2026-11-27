@@ -212,7 +212,7 @@ Active / Passive / Stigma grids (today's `eq-skill` look, a Lucide lock instead 
 - WHILE someone else's → skills only → browser pane on Demora
 
 **Tasks**
-- [ ] **T5.1** SkillsTab; the temporary skills block removed — files: `src/ui/parts/SkillsTab.svelte`, `Players.svelte` — proves: browser pane
+- [x] **T5.1** SkillsTab; the temporary skills block removed — files: `src/ui/parts/SkillsTab.svelte`, `Players.svelte` — proves: browser pane
 
 ### F6. Compare tab, slot by slot
 **Interfaces**
