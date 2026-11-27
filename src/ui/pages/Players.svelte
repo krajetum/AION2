@@ -38,6 +38,7 @@
   import DaevanionBoards from "../parts/DaevanionBoards.svelte";
   import Equipment from "../parts/Equipment.svelte";
   import GearTab from "../parts/GearTab.svelte";
+  import StatsTab from "../parts/StatsTab.svelte";
   import GenusInsight from "../parts/GenusInsight.svelte";
   import PlayerCompare from "../parts/PlayerCompare.svelte";
   import Kpi from "../parts/Kpi.svelte";
@@ -227,7 +228,9 @@
 
 {#if profile}
   <div class="mb-3"><UnderlineTabs label="Profile" items={tabs} value={tab} onchange={(v) => { tab = v; }} /></div>
-  {#if tab === "overview" || tab === "stats"}
+  {#if tab === "stats"}
+    <StatsTab {sheet} />
+  {:else if tab === "overview"}
     {#if profile.stats?.length}<Table.Root>
       <Table.Header><Table.Row class="hover:bg-transparent"><Table.Head>Stat</Table.Head><Table.Head class="text-right">Value</Table.Head><Table.Head>Gives</Table.Head></Table.Row></Table.Header>
       <Table.Body>{#each profile.stats as s (s.name)}<Table.Row><Table.Cell>{s.name}</Table.Cell><Table.Cell class="text-right">{num(s.value)}</Table.Cell><Table.Cell class="whitespace-normal text-muted-foreground">{s.effects.join(" · ")}</Table.Cell></Table.Row>{/each}</Table.Body>
