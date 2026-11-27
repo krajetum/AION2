@@ -155,7 +155,7 @@
   main { min-width: 0; padding: 0 24px 48px; }
 
   .brand { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px; margin-bottom: 10px; }
-  .brand .logo { display: grid; place-items: center; width: 24px; height: 24px; border-radius: var(--radius-md); background: var(--primary); color: var(--primary-foreground); font-size: var(--fs-xs); font-weight: 700; }
+  .brand .logo { width: 24px; height: 24px; flex: none; }
   .brand b { font-size: var(--fs-lg); font-weight: 600; }
   .brand span:last-child { color: var(--muted-foreground); font-size: var(--fs-sm); }
 
