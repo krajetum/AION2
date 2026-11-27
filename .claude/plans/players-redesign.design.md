@@ -260,7 +260,7 @@ Summary line (to improve = `sheet.toImprove` of total pieces, ≈ tries for all 
 
 ### F8. Docs
 **Tasks**
-- [ ] **T8.1** CLAUDE.md: Players entries (tabs, sheet, `upgrades.ts`, `players.ts`, demo, Recent), the `reroll.ts` entry's UI part — files: `CLAUDE.md` — proves: review
+- [x] **T8.1** CLAUDE.md: Players entries (tabs, sheet, `upgrades.ts`, `players.ts`, demo, Recent), the `reroll.ts` entry's UI part — files: `CLAUDE.md` — proves: review
 
 ## Risks
 - Demo fixture drifts from the site → written from the parsers, `armory-demo.test.ts` runs them; real answers checked in `npm run tauri dev`.
