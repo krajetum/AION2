@@ -109,7 +109,8 @@
         const list = await within(searchPlayers(n, want));
         if (run !== runs) return;
         const hit = exactIn(list).find((c) => c.serverId === want);
-        if (hit) { found = list; progress = null; show(hit); searching = false; return; }
+        // Not over a character opened meanwhile (a Recent chip, a result) or as Compare's side B.
+        if (hit) { found = list; progress = null; if (!open) show(hit); searching = false; return; }
       }
       const r = await searchRegion(n, region, (part) => {
         if (run !== runs) return;
