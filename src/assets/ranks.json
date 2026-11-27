@@ -1,0 +1,20 @@
+{
+  "source": "the player's static",
+  "captured": "2026-11-27",
+  "note": "Rank tables the player sent (2026-11-27): S best, A good, B fine, the rest rerolled; the same for every class. 'Main Passive' rows are left out: skill lines keep their best-in-slot choice, worth B. Notes as written.",
+  "tiers": { "S": 100, "A": 80, "B": 60, "C": 20 },
+  "slots": {
+    "Weapon": [["Combat Speed", "S"], ["Weapon Damage Boost", "S"], ["Damage Boost", "S"], ["Might", "A"], ["Attack", "A"], ["Multi-hit Chance", "C", "for PvP, better Status Effect"]],
+    "Off-hand": [["Combat Speed", "S"], ["Weapon Damage Boost", "S"], ["Damage Boost", "S"], ["Might", "A"], ["Attack", "A"], ["Multi-hit Chance", "C", "for PvP, better Status Effect"]],
+    "Necklace": [["Combat Speed", "S"], ["Might", "S"], ["Attack", "A"], ["Precision", "A", "priority depends on the class"]],
+    "Torso": [["Damage Boost", "S"], ["Attack", "A"], ["Critical Hit", "B", "priority depends on your stats"], ["Perfect Chance", "C", "could be a priority next seasons"], ["Accuracy", "C", "not worth a Philosopher's Stone"]],
+    "Shoulders": [["Critical Damage Boost", "S"], ["Double Chance", "A"], ["Attack", "A"], ["Critical Hit", "B", "priority depends on your stats"]],
+    "Earring": [["Might", "S"], ["Attack", "A"], ["Move Speed", "A"], ["Precision", "A"], ["Critical Hit", "C", "not worth a Philosopher's Stone"]],
+    "Helmet": [["Double Chance", "S"], ["Attack increase", "S"], ["Attack", "A"], ["Critical Hit", "B", "priority depends on your stats"]],
+    "Pants": [["Attack increase", "S"], ["Damage Tolerance", "S", "the strongest tolerance stat at the moment"], ["Attack", "A"], ["Perfect Chance", "B", "a priority next seasons"]],
+    "Gloves": [["Combat Speed", "S"], ["Attack", "A"], ["Critical Hit", "B", "priority depends on your stats"], ["Accuracy", "B"]],
+    "Cape": [["Double Chance", "S"], ["Attack increase", "S"], ["Attack", "A"], ["Critical Hit", "B", "priority depends on your stats"], ["Accuracy", "C"]],
+    "Boots": [["Move Speed", "S"], ["Attack", "A"], ["Critical Hit", "B", "priority depends on your stats"], ["Perfect Chance", "C"]],
+    "Bracelet": [["Wisdom [Lumiel]", "S", "Double Chance"], ["Destruction [Zikel]", "S", "Attack increase"], ["Illusion [Kaisinel]", "S", "cooldown, huge depending on the class"], ["Time [Siel]", "S", "Combat Speed, priority depending on the class"], ["Death [Triniel]", "B", "Critical Hit"], ["Justice [Nezekan]", "B", "Perfect Chance"]]
+  }
+}
