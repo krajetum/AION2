@@ -18,6 +18,10 @@
  * (5-10: 46.67 / 25.46 / 13.89 / 7.58 / 4.14 / 2.26%) is not counted either. `UNOBTAINABLE` = best-in-slot lines the
  * game can't give yet (Time [Siel] on bracelets): left out of the plan and named under it.
  *
+ * Adding a line (`ADD_LINE`, the player 2026-11-27): 2 Philosopher's Stones + 1,000,000 Kina, once per piece, any
+ * piece but bracelets; drawn like a reroll (never a line the piece has), rerollable after; lost when the piece is
+ * transferred to a new one. The official site marks it (`added: true` on the line, the game's purple one).
+ *
  * Our own score, not kisk.app's: a line is worth its best-in-slot % (bis.json, the player's list over it), 0 when it
  * is not one of the class's ideal lines; a piece's score = what its lines are worth over the best its line count could
  * hold, 0-100. The plan rerolls a piece's worthless lines while ideal lines are missing, the least likely line first
@@ -45,6 +49,8 @@ const JEWEL: Record<string, number> = {
 };
 
 export interface SlotPool { stats: Record<string, number>; skills: { count: number; pct: number } }
+
+export const ADD_LINE = { stones: 2, kina: 1_000_000 };
 
 /** Best-in-slot lines the game can't give yet (the player, 2026-11-27). */
 export const UNOBTAINABLE = ["Time [Siel]"];
@@ -89,13 +95,14 @@ export interface PiecePlan {
   missing: string[];  // ideal lines the piece doesn't have (and the game can give)
   unobtainable: string[]; // ideal lines the game can't give yet
   reset: { ideal: number; score: number } | null; // a reset's expected ideal lines and score (0..100)
+  add: { chance: number; worth: number } | null;  // a Philosopher's Stone line (when the piece can take one): its chance to be ideal, and the ideal's expected %
 }
 
 /**
  * The plan for one piece: `lines` = its bonus lines and skills by name, `ideal` = the class's lines for the slot with
  * their best-in-slot %. Null when the slot has no known draw or no ideal lines.
  */
-export function planPiece(slot: string, lines: string[], allIdeal: BisLine[], resetDraws = 4000): PiecePlan | null {
+export function planPiece(slot: string, lines: string[], allIdeal: BisLine[], resetDraws = 4000, canAdd = false): PiecePlan | null {
   const pool = REROLL_POOLS[slot];
   const gone = new Set(UNOBTAINABLE.map(norm));
   const ideal = allIdeal.filter((l) => !gone.has(norm(l.stat)));
@@ -141,7 +148,15 @@ export function planPiece(slot: string, lines: string[], allIdeal: BisLine[], re
     states = next;
   }
 
+  // A line added now: drawn over the slot without every line the piece has.
+  const own = lines.reduce((s, l) => s + chanceOf(pool, l), 0);
+  const want = missing.reduce((s, m) => s + chanceOf(pool, m.stat), 0);
+  const add = canAdd && slot !== "Bracelet" && want > 0
+    ? { chance: want / (100 - own), worth: missing.reduce((s, m) => s + chanceOf(pool, m.stat) * (m.pct ?? 100), 0) / want }
+    : null;
+
   return {
+    add,
     score: best ? (100 * score) / best : 0,
     after: best ? (100 * (score + gained)) / best : 0,
     best, steps, tries, missing: missing.map((m) => m.stat), unobtainable,

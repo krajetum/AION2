@@ -165,10 +165,11 @@ export const itemUrl = (p: Piece, characterId: string, serverId: number) =>
 export interface ItemDetail {
   name: string; grade: string; category: string; level: number | null; maxEnchant: number | null;
   main: { id: string; name: string; value: string; extra: string; exceed: boolean }[]; // value + extra (the enchant's); exceed = from the levels past the cap
-  sub: { id: string; name: string; value: string }[];
+  sub: { id: string; name: string; value: string; added?: boolean }[]; // added = the line a Philosopher's Stone added (the game's purple one)
   manastones: { id: string; name: string; value: string; grade: string }[];
   godstones: { name: string; desc: string; grade: string }[];
-  skills: { name: string; level: number | null }[]; // an arcana's skill levels
+  skills: { name: string; level: number | null; added?: boolean }[]; // an arcana's skill levels, a piece's skill lines
+  random?: boolean; // the bonus lines can be rerolled (the site's subStatRandom: false on old bracelets, belts, runes)
   set: { name: string; equipped: number; bonuses: { pieces: number; text: string[] }[] } | null;
 }
 
@@ -180,10 +181,11 @@ export function parseItem(json: any): ItemDetail | null {
   return {
     name: plain(json.name), grade: str(json.grade), category: plain(json.categoryName), level: num(json.level), maxEnchant: num(json.maxEnchantLevel),
     main: arr(json.mainStats).map((s) => ({ id: str(s.id), name: plain(s.name), value: str(s.value), extra: str(s.extra), exceed: s.exceed === true })),
-    sub: arr(json.subStats).map((s) => ({ id: str(s.id), name: plain(s.name), value: str(s.value) })),
+    sub: arr(json.subStats).map((s) => ({ id: str(s.id), name: plain(s.name), value: str(s.value), added: s.added === true })),
     manastones: arr(json.magicStoneStat).map((s) => ({ id: str(s.id), name: plain(s.name), value: str(s.value), grade: str(s.grade) })),
     godstones: arr(json.godStoneStat).map((s) => ({ name: plain(s.name), desc: str(s.desc), grade: str(s.grade) })),
-    skills: arr(json.subSkills).map((s) => ({ name: plain(s.name), level: num(s.level) })),
+    skills: arr(json.subSkills).map((s) => ({ name: plain(s.name), level: num(s.level), added: s.added === true })),
+    random: json.subStatRandom === true,
     set: set && typeof set.name === "string" ? { name: plain(set.name), equipped: num(set.equippedCount) ?? 0,
       bonuses: arr(set.bonuses).map((b) => ({ pieces: num(b.degree) ?? 0, text: arr(b.descriptions).map(str) })) } : null,
   };

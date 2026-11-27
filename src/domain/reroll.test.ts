@@ -50,3 +50,14 @@ test("a bracelet: 4 of 8 Soul Binding lines, the other four at 25% when one is r
   assert.deepEqual(p.unobtainable, ["Time [Siel]"]);
   assert.equal(Math.round(p.score), 75);
 });
+
+test("a Philosopher's Stone line: once per piece, drawn without the piece's own lines; never on bracelets", () => {
+  const ideal = [{ stat: "Might", value: "", pct: 100 }, { stat: "Attack", value: "", pct: 50 }];
+  const p = planPiece("Ring", ["HP", "MP"], ideal, 0, true)!;
+  // (1.6 + 4.8) / (100 - 7.6 - 7.6); the ideal one is Might a quarter of the time
+  assert.equal(Math.round(p.add!.chance * 10000), Math.round((6.4 / 84.8) * 10000));
+  assert.equal(p.add!.worth, (1.6 * 100 + 4.8 * 50) / 6.4);
+  assert.equal(planPiece("Ring", ["HP", "MP"], ideal, 0, false)!.add, null);
+  const b = [{ stat: "Wisdom [Lumiel]", value: "", pct: 100 }];
+  assert.equal(planPiece("Bracelet", ["Justice [Nezekan]"], b, 0, true)!.add, null);
+});
