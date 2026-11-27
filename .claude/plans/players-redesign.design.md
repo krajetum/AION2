@@ -195,7 +195,7 @@ Header (profile `Panel`): class icon, name, class · server · level, Demo badge
 **Tasks**
 - [x] **T4.1** GearTab — files: `src/ui/parts/GearTab.svelte`, `Players.svelte` — proves: browser pane
 - [x] **T4.2** StatsTab — files: `src/ui/parts/StatsTab.svelte`, `Players.svelte` — proves: browser pane
-- [ ] **T4.3** Overview — files: `src/ui/parts/Overview.svelte`, `Players.svelte` — proves: browser pane
+- [x] **T4.3** Overview — files: `src/ui/parts/Overview.svelte`, `Players.svelte` — proves: browser pane
 - [ ] **T4.4** DaevanionBoards on the sheet's boards; `Equipment.svelte` deleted (skills block kept in Players until T5.1) — files: `src/ui/parts/DaevanionBoards.svelte`, `src/ui/parts/Equipment.svelte`, `Players.svelte` — proves: browser pane, `npm run check`
 
 ### F5. Skills tab
