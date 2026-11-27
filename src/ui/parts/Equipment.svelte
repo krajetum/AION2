@@ -13,6 +13,7 @@
   import { arcanaPlan } from "../../domain/arcana.ts";
   import carryFile from "../../assets/carry.json";
   import UpgradeCards from "./UpgradeCards.svelte";
+  import UpgradeInfo from "./UpgradeInfo.svelte";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Fold from "$lib/components/app/Fold.svelte";
   import { act } from "../actions.ts";
@@ -77,7 +78,7 @@
   }).sort((a, b) => Number(b.plan.craft) - Number(a.plan.craft) || b.plan.missing.length - a.plan.missing.length));
   const notUnique = $derived((eq?.arcana ?? []).filter((p) => p.grade !== "Unique").map((p) => p.name));
   // "Best upgrades" shows the reroll plans in place of the cards.
-  let upgrades = $state(false);
+  let upgrades = $state(false), info = $state(false);
   const saveOf = (slot: string | null) => (lines: BisLine[] | null) => { if (slot) act(() => setBis(ui.data, className, slot, lines)); };
 </script>
 
@@ -96,7 +97,9 @@
 {:else if failed}<p class="hint">Equipment not read ({failed}).</p>
 {:else if eq}
   <div class="mt-4 mb-2 flex items-center gap-3"><h3 class="m-0 text-sm font-semibold">{upgrades ? "Best upgrades" : "Gear"}</h3>
-    <button class="bis-btn" title="Which lines to reroll, piece by piece, and which piece first" aria-pressed={upgrades} onclick={() => { upgrades = !upgrades; }}>{upgrades ? "Gear" : "Best upgrades"}</button></div>
+    <button class="bis-btn" title="Which lines to reroll, piece by piece, and which piece first" aria-pressed={upgrades} onclick={() => { upgrades = !upgrades; }}>{upgrades ? "Gear" : "Best upgrades"}</button>
+    {#if upgrades}<button class="bis-btn" title="How this page works, with the formulas" aria-pressed={info} onclick={() => { info = !info; }}>ⓘ Info</button>{/if}</div>
+  {#if upgrades && info}<UpgradeInfo example={plans.find((x) => x.plan.steps.length) ?? null} ranked={plans.some((x) => x.ranked)} />{/if}
   {#if upgrades}<UpgradeCards {plans} ranks={RANKS} {totals} {arcana} {notUnique} reading={readCount < all.length} {className} players={CARRY.players[className] ?? 0} source={CARRY} />
   {:else}{@render cards(eq.gear)}
   <h3 class="mt-4 mb-2 text-sm font-semibold">Accessories</h3>{@render cards(eq.accessories)}
