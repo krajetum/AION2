@@ -15,7 +15,7 @@ const SEARCH_MS = 60_000, PROFILE_MS = 10 * 60_000, FAILED_MS = 60_000, SEARCH_F
 /** Requests in flight at once, and the least time between two starts. A request takes ~1 s to answer, so one at a time
  *  made a profile's ~25 pieces take half a minute (the player's video, 2026-11-06). */
 const MAX_AT_ONCE = 4, START_GAP_MS = 150;
-const cache = new Map<string, { until: number; p: Promise<any> }>();
+const cache = new Map<string, { until: number; p: Promise<any>; first: boolean; done: boolean }>();
 let inFlight = 0, lastStart = 0;
 /** Requests waiting for a slot: the page being looked at first, background lookups after. The Arena's kill history
  *  asks for every player's profile: put first, they made a profile's pieces wait (the player: "the gear loads too
@@ -64,12 +64,16 @@ export function within<T>(p: Promise<T>, ms = 25_000): Promise<T> {
   return Promise.race([p, new Promise<T>((_, no) => setTimeout(() => no(new Error(DOWN_TEXT)), ms))]);
 }
 
-function kept<T>(key: string, keepMs: number, make: () => Promise<T>, failedMs = FAILED_MS): Promise<T> {
+/** One answer per key while it is fresh. A request asked first (a card the player opened) while the same one still
+ *  waits as a background lookup is made again, first: a card opened in the Arena waited behind the whole match's and
+ *  kill history's lookups (the player, 2026-11-27). */
+function kept<T>(key: string, keepMs: number, make: () => Promise<T>, failedMs = FAILED_MS, first = true): Promise<T> {
   const now = Date.now(), k = cache.get(key);
-  if (k && now < k.until) return k.p;
+  if (k && now < k.until && (k.done || k.first || !first)) return k.p;
   const p = make();
-  cache.set(key, { until: now + keepMs, p });
-  p.catch(() => cache.set(key, { until: Date.now() + failedMs, p }));
+  const entry = { until: now + keepMs, p, first, done: false };
+  cache.set(key, entry);
+  p.then(() => { entry.done = true; }, () => { entry.done = true; entry.until = Date.now() + failedMs; });
   return p;
 }
 
@@ -81,7 +85,7 @@ export function searchPlayers(name: string, serverId: number, first = true): Pro
     // One retry: a server whose search failed once was left out of the region's results for a minute (the player
     // was "not found" on it).
     try { return parseSearch(await getJson(url, first)); } catch { await new Promise((r) => setTimeout(r, 400)); return parseSearch(await getJson(url, first)); }
-  }, SEARCH_FAILED_MS);
+  }, SEARCH_FAILED_MS, first);
 }
 
 /** Exact names first, then by level, then by name; one row per character. */
@@ -115,13 +119,14 @@ export async function searchRegion(name: string, region: string, onPart?: (s: Re
 
 /** A character's profile, by the id the search gave. */
 export function profileOf(characterId: string, serverId: number, first = true): Promise<Profile | null> {
-  return kept(`p|${serverId}|${characterId}`, PROFILE_MS, async () => parseInfo(await getJson(infoUrl(characterId, serverId), first), Date.now()));
+  return kept(`p|${serverId}|${characterId}`, PROFILE_MS, async () => parseInfo(await getJson(infoUrl(characterId, serverId), first), Date.now()), FAILED_MS, first);
 }
 
-/** The profile of exactly that name on that server, or null when not found: a background lookup (after the Players page's). */
-export async function officialProfile(name: string, serverId: number): Promise<Profile | null> {
-  const hit = pickFound(await searchPlayers(name, serverId, false), name, serverId);
-  return hit ? profileOf(hit.characterId, serverId, false) : null;
+/** The profile of exactly that name on that server (one search, on that server only), or null when not found: a
+ *  background lookup (after the Players page's), or `first` for a card the player opened. */
+export async function officialProfile(name: string, serverId: number, first = false): Promise<Profile | null> {
+  const hit = pickFound(await searchPlayers(name, serverId, first), name, serverId);
+  return hit ? profileOf(hit.characterId, serverId, first) : null;
 }
 
 /** A character's equipment, arcana, pet, wings and skills, by the id the search gave. */

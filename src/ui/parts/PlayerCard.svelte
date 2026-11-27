@@ -20,7 +20,7 @@
     if (!name || !server) { official = { state: "none" }; return; }
     let live = true;
     official = { state: "loading" };
-    officialProfile(name, server).then((v) => { if (live) official = { state: "done", v }; },
+    officialProfile(name, server, true).then((v) => { if (live) official = { state: "done", v }; },
       (e) => { if (live) official = { state: "failed", why: e instanceof Error ? e.message : String(e) }; });
     return () => { live = false; };
   });
