@@ -133,7 +133,7 @@ UI (`Players.svelte`): row 1 `Input` with a search icon, `NativeSelect` region, 
 - WHEN a profile opens THE results SHALL fold; THE search SHALL behave as today → browser pane (Demo Alt auto-opens; "Demo" lists 10 names over two pages: the search fixture adds 7 search-only names "Demo 1"…"Demo 7", whose profiles fail like Demo Broken)
 
 **Tasks**
-- [ ] **T2.1** `players.ts` + tests — files: `src/domain/players.ts`, `src/domain/players.test.ts` — proves: the cases above
+- [x] **T2.1** `players.ts` + tests — files: `src/domain/players.ts`, `src/domain/players.test.ts` — proves: the cases above
 - [ ] **T2.2** Search bar, status line, folded/paged results, Recent — files: `src/ui/pages/Players.svelte` — proves: browser pane
 
 ### F3. Profile header, tabs, shared loader
