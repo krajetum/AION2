@@ -27,7 +27,10 @@
   import { BIS, type CharacterSheet } from "./sheet.svelte.ts";
 
   let { a, b, onother, onretry }: { a: CharacterSheet; b: CharacterSheet | null; onother: () => void; onretry: () => void } = $props();
-  let swapped = $state(false);
+  // Swapped for this side B only: a new one starts unswapped.
+  let swappedFor = $state<string | null>(null);
+  const keyOf = (s: CharacterSheet) => `${s.found.serverId}|${s.found.characterId}`;
+  const swapped = $derived(!!b && swappedFor === keyOf(b));
   const L = $derived(swapped && b ? b : a), R = $derived(swapped && b ? a : b);
 
   const pieces = (s: CharacterSheet) => s.all.map((p) => ({ piece: p, detail: s.details[p.slot] }));
@@ -75,12 +78,13 @@
     {@render who(L)}
     {#if R}<span class="text-muted-foreground">vs</span>{@render who(R)}{/if}
     <span class="ml-auto flex gap-2">
-      {#if R}<Button size="sm" variant="outline" onclick={() => { swapped = !swapped; }}><ArrowLeftRight />Swap</Button>{/if}
+      {#if R}<Button size="sm" variant="outline" onclick={() => { swappedFor = swapped || !b ? null : keyOf(b); }}><ArrowLeftRight />Swap</Button>{/if}
       <Button size="sm" variant="outline" onclick={onother}><UserSearch />Other</Button></span>
   </div>
   {#if !R}<p class="hint m-0">Pick a character to compare with: Other, then search and open them.</p>
   {:else}
     <p class="hint m-0">Δ = {L.found.name} minus {R.found.name}: green where {L.found.name} is ahead.</p>
+    {#if L.eqError || R.eqError}<p class="hint error m-0">Equipment not read for {[L, R].filter((s) => s.eqError).map((s) => `${s.found.name} (${s.eqError})`).join(", ")}: no slots or skills to compare.</p>{/if}
     {#if b?.error}<p class="hint error m-0">{b.found.name}'s profile could not be read ({b.error}). <Button variant="link" size="sm" class="px-1" onclick={onretry}>Try again</Button></p>
     {:else if !ready}<p class="hint m-0">Reading both profiles…</p>
     {:else}
