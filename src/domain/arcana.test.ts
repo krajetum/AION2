@@ -18,12 +18,23 @@ test("chalice: 2 picked, the other 2 from 20; better than 2 of 4 only when one m
   assert.equal(two.crystals, 15);
 });
 
-test("golden arcana: farmed, no transmute; levels that went to the wrong skills", () => {
-  const parch = arcanaPlan("Arcana2", [{ name: "Vicious Strike", level: 2 }, { name: "Judgment", level: 4 }, { name: "Punishment", level: 2 }, { name: "Annihilate", level: 1 }],
-    [{ stat: "Vicious Strike", value: "+4" }, { stat: "Judgment", value: "+3" }, { stat: "Punishment", value: "+1" }, { stat: "Annihilate", value: "+1" }])!;
+test("golden arcana: farmed, no transmute", () => {
+  const parch = arcanaPlan("Arcana2", h("Vicious Strike", "Poach"), [{ stat: "Vicious Strike" }, { stat: "Judgment" }, { stat: "Punishment" }, { stat: "Annihilate" }])!;
   assert.equal(parch.craft, false);
   assert.equal(parch.options.length, 0);
-  assert.deepEqual(parch.wrong, [{ name: "Judgment", level: 4, wanted: 3 }, { name: "Punishment", level: 2, wanted: 1 }]);
+  assert.deepEqual(parch.missing, ["Judgment", "Punishment", "Annihilate"]);
+});
+
+test("actives at 20 elsewhere aren't wanted here; levels past 20 or on skills not wanted are wasted", () => {
+  // Randronirk 2026-11-27: Judgment 21 = 14 + Chalice 2 + Parchment 4 + ring 1.
+  const totals = { Judgment: { level: 21, passive: false }, "Vicious Strike": { level: 15, passive: false }, Fury: { level: 18, passive: true }, "Impact Hit": { level: 17, passive: true } };
+  const chalice = arcanaPlan("Arcana1", [{ name: "Judgment", level: 2 }, { name: "Punishment", level: 2 }, { name: "Pummel", level: 2 }, { name: "Poach", level: 3 }], TEMPLAR_CHALICE, totals)!;
+  assert.deepEqual(chalice.covered, []); // 21 - 2 = 19: still needed here
+  assert.deepEqual(chalice.wasted.map((w) => [w.name, w.levels, w.why]), [["Judgment", 1, "over"], ["Punishment", 1, "other"], ["Pummel", 1, "other"], ["Poach", 2, "other"]]);
+  const parch = arcanaPlan("Arcana2", [{ name: "Judgment", level: 4 }], [{ stat: "Judgment" }, { stat: "Vicious Strike" }], { Judgment: { level: 24, passive: false } })!;
+  assert.deepEqual(parch.covered, ["Judgment"]);
+  assert.deepEqual(parch.missing, ["Vicious Strike"]);
+  assert.deepEqual(parch.wasted, [{ name: "Judgment", levels: 4, why: "over" }]);
 });
 
 test("an arcana with every ideal skill has nothing to transmute; a shorter list is all of it", () => {
