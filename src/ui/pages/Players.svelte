@@ -13,7 +13,6 @@
   import { searchPlayers, searchRegion, within } from "../../infra/armory.ts";
   import { CharacterSheet, CARRY, RANKS } from "../parts/sheet.svelte.ts";
   import UpgradeCards from "../parts/UpgradeCards.svelte";
-  import UpgradeInfo from "../parts/UpgradeInfo.svelte";
   import UnderlineTabs from "$lib/components/app/UnderlineTabs.svelte";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import Shirt from "@lucide/svelte/icons/shirt";
@@ -23,7 +22,6 @@
   import Zap from "@lucide/svelte/icons/zap";
   import ArrowLeftRight from "@lucide/svelte/icons/arrow-left-right";
   import ExternalLink from "@lucide/svelte/icons/external-link";
-  import Info from "@lucide/svelte/icons/info";
   import { classIcon } from "../classes.ts";
   import { cleanRecent, pageOf, pageWith, pushRecent, sameCharacter } from "../../domain/players.ts";
   import SearchIcon from "@lucide/svelte/icons/search";
@@ -64,7 +62,7 @@
   let sheet = $state<CharacterSheet | null>(null);
   const profile = $derived(sheet?.profile ?? null);
   type TabId = "overview" | "gear" | "upgrades" | "stats" | "dae" | "skills" | "compare";
-  let tab = $state<TabId>("overview"), info = $state(false);
+  let tab = $state<TabId>("overview");
   const tabs = $derived([
     ["overview", "Overview", LayoutDashboard], ["gear", "Gear", Shirt],
     ["upgrades", "Upgrades", CircleArrowUp, sheet?.reading ? undefined : sheet?.toImprove || undefined],
@@ -259,10 +257,7 @@
   {:else if tab === "skills"}
     <SkillsTab {sheet} {genus} mine={isMe(open)} />
   {:else if tab === "upgrades"}
-    <div class="mb-3 flex items-center gap-2"><Button size="sm" variant="ghost" aria-pressed={info} onclick={() => { info = !info; }}><Info />How it's scored</Button></div>
-    {#if info}<UpgradeInfo example={sheet.upgrades.plans.find((x) => x.plan.steps.length) ?? null} ranked={sheet.upgrades.plans.some((x) => x.ranked)} />{/if}
-    <UpgradeCards plans={sheet.upgrades.plans} ranks={RANKS} totals={sheet.upgrades.totals} arcana={sheet.upgrades.arcana} notUnique={sheet.upgrades.notUnique}
-      reading={!!sheet.reading} className={sheet.className} players={CARRY.players[sheet.className] ?? 0} source={CARRY} />
+    <UpgradeCards up={sheet.upgrades} reading={sheet.reading} className={sheet.className} players={CARRY.players[sheet.className] ?? 0} source={CARRY} ranks={RANKS} />
   {:else if tab === "dae"}
     {#if profile.boards?.length}<DaevanionBoards boards={profile.boards} read={sheet.boards} failed={sheet.boardsError} />{:else}<p class="hint">No Daevanion board read.</p>{/if}
   {:else if tab === "compare"}

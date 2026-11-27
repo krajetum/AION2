@@ -255,7 +255,7 @@ Summary line (to improve = `sheet.toImprove` of total pieces, ≈ tries for all 
 - `reroll.test.ts`, `arcana.test.ts` green
 
 **Tasks**
-- [ ] **T7.1** UpgradeCards rewritten as the queue; Upgrades tab badge = `toImprove` — files: `src/ui/parts/UpgradeCards.svelte`, `src/ui/pages/Players.svelte` — proves: browser pane
+- [x] **T7.1** UpgradeCards rewritten as the queue; Upgrades tab badge = `toImprove` — files: `src/ui/parts/UpgradeCards.svelte`, `src/ui/pages/Players.svelte` — proves: browser pane
 - [ ] **T7.2** Styles no longer referenced removed (old `.ups` / `.up` rules, `eq-*` rules moved or dropped) — files: `src/ui/parts/UpgradeCards.svelte`, `src/style.css` — proves: `npm run check`, `npm test` (`design.test.ts`)
 
 ### F8. Docs
@@ -280,6 +280,7 @@ None to features or criteria. Design-level choices made in review: the Upgrades 
 - 2026-11-27 · T3.5 · Until F6 the Compare tab holds today's compare flow (Compare with you / Compare with…, `PlayerCompare` on two `Found`); `show()` keeps the Compare tab while a first side is kept.
 - 2026-11-27 · T6.1 · `PlayerCompare` also takes `onretry` (side B failed → a new sheet for it): the design's "Try again" needs a way back to Players. T6.1 already wires the default side B (your character when the Compare tab opens) so its commit builds; T6.2 adds "Other".
 - 2026-11-27 · T6.2 · Two guards ADR-4 left open: picking the opened character itself does nothing, and opening (normally) the character that is side B drops side B (else a kept "Other" side came back as the same character on both sides, found in the browser check).
+- 2026-11-27 · T7.1 · `UpgradeCards` takes the "How it's scored" toggle and `UpgradeInfo` inside it (the summary line is its own); one row open at a time. "Already good" is "Already ideal": item icons whose `title` / `aria-label` carry today's card text (score, the good lines with their rank, an arcana's skills); "Skills at 20" became one line of text under it.
 
 ## Open questions
 None.
