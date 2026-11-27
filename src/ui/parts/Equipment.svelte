@@ -8,7 +8,7 @@
   import { setBis } from "../../app/bis.ts";
   import { equipmentOf, itemOf } from "../../infra/armory.ts";
   import { gearStats, gearText } from "../../domain/gearstats.ts";
-  import { planPiece, rankPlans, REROLL_CHECKED } from "../../domain/reroll.ts";
+  import { ADD_LINE, planPiece, rankPlans, REROLL_CHECKED } from "../../domain/reroll.ts";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Fold from "$lib/components/app/Fold.svelte";
   import { act } from "../actions.ts";
@@ -46,8 +46,9 @@
   // Upgrades: every read piece with a known draw and ideal lines, the most score per expected try first.
   const plans = $derived(rankPlans(all.flatMap((p) => {
     const slot = bisSlot(p.slotName), d = details[p.slot], ideal = linesOf(slot);
-    if (!slot || !d || !ideal) return [];
-    const plan = planPiece(slot, [...d.sub.map((x) => x.name), ...d.skills.map((x) => x.name)], ideal);
+    if (!slot || !d || !ideal || !d.random) return [];
+    const canAdd = ![...d.sub, ...d.skills].some((x) => x.added);
+    const plan = planPiece(slot, [...d.sub.map((x) => x.name), ...d.skills.map((x) => x.name)], ideal, 4000, canAdd);
     return plan ? [{ p, plan }] : [];
   })));
   const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -82,15 +83,16 @@
     </div>
     <p class="hint mb-0">Every piece's lines added up: main stats with their enchant, bonus lines, manastones and the arcana. Before the game's percentages (Might's Attack increase and the like), and without Daevanion, Genus, pets or titles: not the Stat Info total. Click a stat for the pieces that give it.</p>
   </Fold></div>
-  <div class="mt-4"><Fold title="Upgrades" note={plans.some((x) => x.plan.steps.length) ? `${plans.filter((x) => x.plan.steps.length).length} pieces to reroll` : readCount < all.length ? "reading the pieces…" : "nothing to reroll"}>
+  <div class="mt-4"><Fold title="Upgrades" note={plans.some((x) => x.plan.steps.length || x.plan.add) ? `${plans.filter((x) => x.plan.steps.length || x.plan.add).length} pieces to improve` : readCount < all.length ? "reading the pieces…" : "nothing to reroll"}>
     <ol class="m-0 grid list-none gap-3 p-0">
-      {#each plans.filter((x) => x.plan.steps.length) as { p, plan }, i (p.slot)}<li class="rounded-lg border p-3 text-sm {i === 0 ? 'border-primary' : ''}">
+      {#each plans.filter((x) => x.plan.steps.length || x.plan.add) as { p, plan }, i (p.slot)}<li class="rounded-lg border p-3 text-sm {i === 0 ? 'border-primary' : ''}">
         <div class="flex flex-wrap items-baseline gap-x-2">{#if i === 0}<span class="rounded bg-primary px-1.5 text-xs text-primary-foreground">Up next</span>{/if}
           <b>{p.name}</b><span class="text-muted-foreground">{Math.round(plan.score)} → ≈{Math.round(plan.after)} / 100 · ≈{Math.ceil(plan.tries)} tries</span></div>
         <ol class="m-0 mt-2 grid list-none gap-1 p-0">{#each plan.steps as s, k (k)}<li class="flex flex-wrap gap-x-2"><span class="text-muted-foreground">{k + 1}.</span>Reroll <b>{s.line}</b>
           <span class="ml-auto tabular-nums text-muted-foreground">{pct(s.chance)} a try</span></li>{/each}</ol>
         <p class="mb-0 mt-2 text-xs text-muted-foreground">Ideal lines it lacks: {plan.missing.join(", ")}.
           {#if plan.unobtainable.length}{plan.unobtainable.join(", ")}: in the best-in-slot list, but the game doesn't give it yet.{/if}
+          {#if plan.add}<br>Room for a Philosopher's Stone line ({ADD_LINE.stones} stones + {ADD_LINE.kina.toLocaleString()} Kina): {pct(plan.add.chance)} it lands an ideal one. It is lost when the piece is transferred to a new one.<br>{/if}
           {#if plan.reset}A reset (300 Kina + 3 Soul Codex: Reset) would give ≈{plan.reset.ideal.toFixed(1)} ideal lines, ≈{Math.round(plan.reset.score)} / 100 on average.{/if}</p>
       </li>{/each}
     </ol>
