@@ -9,6 +9,7 @@
   import { equipmentOf, itemOf } from "../../infra/armory.ts";
   import { gearStats, gearText } from "../../domain/gearstats.ts";
   import { ARMOUR_SLOTS, armourPassives, planPiece, rankPlans, statNamesOf, worthLines } from "../../domain/reroll.ts";
+  import { arcanaPlan } from "../../domain/arcana.ts";
   import carryFile from "../../assets/carry.json";
   import UpgradeCards from "./UpgradeCards.svelte";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
@@ -58,6 +59,14 @@
     const plan = planPiece(slot, [...d.sub.map((x) => x.name), ...d.skills.map((x) => x.name)], ideal, 4000, canAdd);
     return plan ? [{ p, plan, ideal }] : [];
   })));
+  // Arcana: a Transmute plan for each Unique one read (domain/arcana.ts), easiest gain first.
+  const arcana = $derived((eq?.arcana ?? []).flatMap((p) => {
+    const slot = bisSlot(p.slotName), d = details[p.slot], ideal = linesOf(slot);
+    if (!slot || !d || !ideal || p.grade !== "Unique") return [];
+    const plan = arcanaPlan(slot, d.skills.map((x) => x.name), ideal);
+    return plan ? [{ p, slot, plan, ideal }] : [];
+  }).sort((a, b) => (b.plan.options.at(-1)?.better ?? -1) - (a.plan.options.at(-1)?.better ?? -1)));
+  const notUnique = $derived((eq?.arcana ?? []).filter((p) => p.grade !== "Unique").map((p) => p.name));
   // "Best upgrades" shows the reroll plans in place of the cards.
   let upgrades = $state(false);
   const saveOf = (slot: string | null) => (lines: BisLine[] | null) => { if (slot) act(() => setBis(ui.data, className, slot, lines)); };
@@ -79,7 +88,7 @@
 {:else if eq}
   <div class="mt-4 mb-2 flex items-center gap-3"><h3 class="m-0 text-sm font-semibold">{upgrades ? "Best upgrades" : "Gear"}</h3>
     <button class="bis-btn" title="Which lines to reroll, piece by piece, and which piece first" aria-pressed={upgrades} onclick={() => { upgrades = !upgrades; }}>{upgrades ? "Gear" : "Best upgrades"}</button></div>
-  {#if upgrades}<UpgradeCards {plans} reading={readCount < all.length} {className} players={CARRY.players[className] ?? 0} source={CARRY} />
+  {#if upgrades}<UpgradeCards {plans} {arcana} {notUnique} reading={readCount < all.length} {className} players={CARRY.players[className] ?? 0} source={CARRY} />
   {:else}{@render cards(eq.gear)}
   <h3 class="mt-4 mb-2 text-sm font-semibold">Accessories</h3>{@render cards(eq.accessories)}
   <h3 class="mt-4 mb-2 text-sm font-semibold">Arcana</h3>{#if eq.arcana.length}{@render cards(eq.arcana)}{:else}<p class="hint">No arcana equipped: the official profile lists none for this character.</p>{/if}{/if}
