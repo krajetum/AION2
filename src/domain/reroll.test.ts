@@ -38,3 +38,15 @@ test("a reset's odds are simulated the same each time", () => {
   assert.deepEqual(a, b);
   assert.ok(a.ideal > 0 && a.ideal < 0.1);
 });
+
+test("a bracelet: 4 of 8 Soul Binding lines, the other four at 25% when one is rebound; Time [Siel] left out", () => {
+  // The player's screenshot 2026-11-27: Illusion, Destruction, Justice, Freedom on the bracelet; rebinding shows
+  // Life, Death, Wisdom, Destiny at 25% each.
+  const ideal = ["Time [Siel]", "Destruction [Zikel]", "Wisdom [Lumiel]", "Illusion [Kaisinel]", "Justice [Nezekan]"].map((stat) => ({ stat, value: "", pct: 100 }));
+  const p = planPiece("Bracelet", ["Illusion [Kaisinel]", "Destruction [Zikel]", "Justice [Nezekan]", "Freedom [Vaizel]"], ideal, 0)!;
+  assert.deepEqual(p.steps.map((s) => s.line), ["Freedom [Vaizel]"]);
+  assert.equal(p.steps[0].chance, 0.25);
+  assert.deepEqual(p.missing, ["Wisdom [Lumiel]"]);
+  assert.deepEqual(p.unobtainable, ["Time [Siel]"]);
+  assert.equal(Math.round(p.score), 75);
+});
