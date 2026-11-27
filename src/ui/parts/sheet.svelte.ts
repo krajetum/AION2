@@ -71,7 +71,7 @@ export class CharacterSheet {
       this.profile = p;
       if (!p) { this.error = "the site sent no profile"; return; }
       for (const b of p.boards ?? []) if (b.id) boardOf(id, server, b.id).then(
-        (v) => { if (this.#live) this.boards[b.id] = v; }, (e) => { if (this.#live) this.boardsError = text(e); });
+        (v) => { if (this.#live) this.boards[b.id] = v; }, (e) => { if (this.#live) { this.boards[b.id] = null; this.boardsError = text(e); } });
     }, (e) => { if (this.#live) this.error = text(e); }).finally(() => { if (this.#live) this.loading = false; });
     equipmentOf(id, server).then((v) => {
       if (!this.#live) return;
