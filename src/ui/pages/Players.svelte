@@ -97,7 +97,9 @@
   async function search() {
     const n = name.trim();
     if (!n || !region) return;
-    searching = true; error = ""; open = null; sheet?.dispose(); sheet = null; found = []; progress = null; term = n; containing = false; page = 0;
+    searching = true; error = ""; found = [];
+    // Picking the second side of Compare: the opened character stays.
+    if (!pickingCompare) { open = null; sheet?.dispose(); sheet = null; } progress = null; term = n; containing = false; page = 0;
     const run = ++runs;
     // An exact match opens by itself: the one on the server asked for (a card's "Full profile", your character) as soon
     // as that server answers, else the only one once every server has.
@@ -125,8 +127,14 @@
     if (run === runs) searching = false;
   }
   function show(c: Found) {
-    open = c; resultsOpen = false; tab = "overview";
-    compareB?.dispose(); compareB = null; compareError = "";
+    if (pickingCompare) {
+      pickingCompare = false; resultsOpen = false; tab = "compare";
+      if (open && sameCharacter(c, open)) return; // not against itself
+      compareFromOther = true; compareWith(c); remember(c); return;
+    }
+    open = c; resultsOpen = false; tab = "overview"; compareError = "";
+    // The second side stays when it came from "Other", unless it is the character now opened.
+    if (!compareFromOther || (compareB && sameCharacter(compareB.found, c))) { compareB?.dispose(); compareB = null; compareFromOther = false; }
     remember(c);
     openSheet(c);
   }
@@ -147,6 +155,9 @@
   $effect(() => { if (me && !touched) openMe(); });
   // Compare: the opened character against a second one, your character by default (read when the tab opens).
   let compareB = $state<CharacterSheet | null>(null), compareError = $state("");
+  // "Other": the next character opened from the search becomes the second side (kept when another one is opened).
+  let pickingCompare = $state(false), compareFromOther = false;
+  function pickOther() { pickingCompare = true; resultsOpen = true; compareError = ""; }
   const isMe = (c: Found | null) => !!c && !!me && c.serverId === me.serverId && c.name.toLowerCase() === me.name.toLowerCase();
   function compareWith(c: Found) {
     compareB?.dispose();
@@ -166,7 +177,7 @@
   }
   function openTab(v: TabId) {
     tab = v;
-    if (v === "compare" && !compareB) void compareWithMe();
+    if (v === "compare" && !compareB && !isMe(open)) void compareWithMe();
   }
   onDestroy(() => compareB?.dispose());
 
@@ -195,7 +206,9 @@
 </div>
 {#if error}<p class="hint error">The search could not be read ({error}).</p>{/if}
 
-{#if found && (!open || resultsOpen)}<div class="mb-4 rounded-lg border bg-card p-2">
+{#if pickingCompare}<p class="hint mt-0 mb-2 flex items-center gap-2">Pick the character to compare with: search, then open them.
+  <Button size="xs" variant="ghost" onclick={() => { pickingCompare = false; }}>Cancel</Button></p>{/if}
+{#if found && (!open || resultsOpen || pickingCompare)}<div class="mb-4 rounded-lg border bg-card p-2">
   {#if listed.length}<div class="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-1">
     {#each shownPage.items as c (c.characterId + c.serverId)}{@const on = !!open && sameCharacter(c, open)}{@const icon = on && profile ? classIcon(profile.className) : undefined}
       <Button variant="ghost" class="h-auto justify-start gap-2.5 px-2 py-1.5 text-left {on ? 'bg-accent' : ''}" onclick={() => show(c)}>
@@ -254,6 +267,6 @@
     {#if profile.boards?.length}<DaevanionBoards boards={profile.boards} read={sheet.boards} failed={sheet.boardsError} />{:else}<p class="hint">No Daevanion board read.</p>{/if}
   {:else if tab === "compare"}
     {#if compareError}<p class="hint error">Compare: {compareError}</p>{/if}
-    <PlayerCompare a={sheet} b={compareB} onother={() => {}} onretry={() => compareB && compareWith(compareB.found)} />
+    <PlayerCompare a={sheet} b={compareB} onother={pickOther} onretry={() => compareB && compareWith(compareB.found)} />
   {/if}
 {/if}{/if}
