@@ -71,7 +71,8 @@ export function worthLines(carry: Record<string, number> | undefined, bis: { sta
   return out;
 }
 /** The static's rank tables (`src/assets/ranks.json`): per slot, lines with a rank S / A / B / C and a note. */
-export interface RankFile { tiers: Record<string, number>; slots: Record<string, [string, string, string?][]> }
+export interface RankFile { tiers: Record<string, number>; slots: Record<string, [string, string, string?][]>;
+  skillRank?: Record<string, string> } // a slot whose skill lines are every active of the class at that rank (rings: A)
 export interface RankedLine { rank: string; note?: string }
 /** A slot's ranks as worth (a carry table's shape): the tier's value, a little less for each line ranked before it
  *  in the same tier (their order); null for a slot the tables leave out (rings: skills only). */

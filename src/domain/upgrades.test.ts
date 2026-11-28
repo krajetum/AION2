@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import type { Equipment, ItemDetail, Piece } from "./armory.ts";
 import { buildUpgrades, type Tables } from "./upgrades.ts";
 
@@ -60,4 +61,10 @@ test("everything ideal: todo empty, done full", () => {
   assert.equal(up.todo.length, 0);
   assert.equal(up.done.length, 1);
   assert.deepEqual(buildUpgrades(null, {}, "Gladiator", T), { plans: [], todo: [], done: [], arcana: [], notUnique: [], totals: {} });
+});
+
+test("ranks.json: rings ranked Might S, Precision B, Attack B, every active skill A", () => {
+  const file = JSON.parse(readFileSync(new URL("../assets/ranks.json", import.meta.url), "utf8"));
+  assert.deepEqual(file.slots.Ring.map((r: string[]) => [r[0], r[1]]), [["Might", "S"], ["Precision", "B"], ["Attack", "B"]]);
+  assert.deepEqual(file.skillRank, { Ring: "A" });
 });
