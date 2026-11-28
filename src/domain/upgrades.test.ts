@@ -68,3 +68,22 @@ test("ranks.json: rings ranked Might S, Precision B, Attack B, every active skil
   assert.deepEqual(file.slots.Ring.map((r: string[]) => [r[0], r[1]]), [["Might", "S"], ["Precision", "B"], ["Attack", "B"]]);
   assert.deepEqual(file.skillRank, { Ring: "A" });
 });
+
+const TR: Tables = { ...T, ranks: { ...T.ranks, slots: { ...T.ranks.slots, Ring: [["Might", "S"], ["Precision", "B"], ["Attack", "B"]] }, skillRank: { Ring: "A" } } };
+
+test("rings: the static's ranks, Block and Critical Hit rerolled, every active worth A", () => {
+  const ring = piece(14, "Ring1");
+  const up = buildUpgrades(eqOf([], [ring], []), { 14: detail(["Natural MP Regen", "Attack", "Block"], [["Overhead Slam", 1]]) }, "Gladiator", TR);
+  const r = up.plans[0];
+  assert.deepEqual(r.plan.missing.sort(), ["Attack Preparation", "Might", "Precision"]); // no Block / Critical Hit among the hits
+  assert.deepEqual(r.plan.steps.map((s) => s.line).sort(), ["Block", "Natural MP Regen"]);
+  assert.equal(r.plan.lines.find((l) => l.line === "Overhead Slam")!.worth, 80);
+  assert.equal(r.ranked!["Overhead Slam"].rank, "A");
+  assert.equal(r.ranked!.Might.rank, "S");
+});
+
+test("rings: no actives in the profile, the best-in-slot ring skills at A", () => {
+  const ring = piece(14, "Ring1"), eq = { ...eqOf([], [ring], []), active: [] };
+  const r = buildUpgrades(eq, { 14: detail(["Natural MP Regen", "Attack", "Might"]) }, "Gladiator", TR).plans[0];
+  assert.ok(r.ideal.some((l) => l.stat === "Overhead Slam" && l.pct === 80));
+});

@@ -29,7 +29,7 @@ export interface RankFile { tiers: Record<string, number>; slots: Record<string,
 
 **Tasks**
 - [x] **T1.0** test reading `src/assets/ranks.json` (readFileSync): `slots.Ring` and `skillRank.Ring` — files: `src/domain/upgrades.test.ts` — proves: the real asset, not the test literal
-- [ ] **T1.1** failing test with a Templar ring (Natural MP Regen, Attack, Block, two actives) — files: `src/domain/upgrades.test.ts` — proves: the test above (red)
+- [x] **T1.1** failing test with a Templar ring (Natural MP Regen, Attack, Block, two actives) — files: `src/domain/upgrades.test.ts` — proves: the test above (red)
 - [x] **T1.2** `Ring` table + `skillRank` in `ranks.json`, `RankFile.skillRank` — files: `src/assets/ranks.json`, `src/domain/reroll.ts` — proves: the Block / Critical Hit half goes green
 
 ### F2. Ring skills worth A
@@ -49,7 +49,7 @@ export const rankSkills: (file: RankFile, lines: { stat: string; pct?: number }[
 - IF the profile lists no actives THEN fall back to best-in-slot → "rings: no actives in the profile, the best-in-slot ring skills at A"
 
 **Tasks**
-- [ ] **T2.1** `rankSkills` rank parameter + actives for `skillRank` slots in `buildUpgrades` — files: `src/domain/reroll.ts`, `src/domain/upgrades.ts` — proves: both ring tests green; the existing "rings: carry shares" test (`upgrades.test.ts` ~349, ranked null) rewritten for ranks, the others still green
+- [x] **T2.1** `rankSkills` rank parameter + actives for `skillRank` slots in `buildUpgrades` — files: `src/domain/reroll.ts`, `src/domain/upgrades.ts` — proves: both ring tests green; the existing "rings: carry shares" test (`upgrades.test.ts` ~349, ranked null) rewritten for ranks, the others still green
 
 ### F3. Order and texts
 **Tests** (EARS → test):

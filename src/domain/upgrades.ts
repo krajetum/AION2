@@ -23,13 +23,17 @@ export function buildUpgrades(eq: Equipment | null, details: Record<number, Item
     const jewel = slot === "Necklace" || slot === "Earring" || ARMOUR_SLOTS.includes(slot);
     // The static's ranks where they have the slot (skill lines: the best-in-slot's, worth B), else kisk's carry shares.
     const ranks = rankTable(t.ranks, slot), passives = jewel ? armourPassives(ARMOUR_SLOTS.map((s) => linesOf(s)), statNames) : [];
+    // A slot with a skill rank (rings): every active of the class at that rank (the player's own pick), else the best-in-slot's.
+    const skillRank = t.ranks.skillRank?.[slot];
+    const skills = ranks ? rankSkills(t.ranks, skillRank && eq.active.length ? eq.active.map((s) => ({ stat: s.name })) : linesOf(slot) ?? [], skillRank) : [];
     const ideal = ranks
-      ? worthLines(ranks.worth, rankSkills(t.ranks, linesOf(slot) ?? []), statNames, rankSkills(t.ranks, passives))
+      ? worthLines(ranks.worth, skills, statNames, rankSkills(t.ranks, passives))
       : worthLines(t.carry[className]?.[slot], linesOf(slot), statNames, passives);
+    const ranked = ranks && skillRank ? { ...ranks.ranked, ...Object.fromEntries(skills.map((s) => [s.stat, { rank: skillRank }])) } : ranks?.ranked ?? null;
     const canAdd = ![...d.sub, ...d.skills].some((x) => x.added);
     const lines = [...d.sub.map((x) => x.name), ...d.skills.map((x) => x.name)];
     const plan = planPiece(slot, lines, ideal, 4000, canAdd);
-    return plan ? [{ p, plan, ideal, lines, ranked: ranks?.ranked ?? null }] : [];
+    return plan ? [{ p, plan, ideal, lines, ranked }] : [];
   }));
   // Every skill's level with its bonuses (the profile's), for what the arcana still need.
   const totals: SkillTotals = Object.fromEntries([...eq.active.map((s) => [s.name, { level: s.level ?? 0, passive: false }]),

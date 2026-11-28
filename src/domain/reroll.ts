@@ -88,8 +88,8 @@ export function rankTable(file: RankFile, slot: string): { worth: Record<string,
   return { worth, ranked };
 }
 /** Skill lines under the rank tables: which ones stay the best-in-slot's, each worth B ("Main Passive" in the tables). */
-export const rankSkills = (file: RankFile, lines: { stat: string; pct?: number }[]) =>
-  lines.map((l) => ({ stat: l.stat, pct: (l.pct ?? 100) >= KEEP ? file.tiers.B : l.pct ?? 0 }));
+export const rankSkills = (file: RankFile, lines: { stat: string; pct?: number }[], rank?: string) =>
+  lines.map((l) => ({ stat: l.stat, pct: rank ? file.tiers[rank] ?? 0 : (l.pct ?? 100) >= KEEP ? file.tiers.B : l.pct ?? 0 }));
 /** Armour, necklaces and earrings draw the same passive skills: each is worth its most carried share over the class's
  *  best-in-slot armour lists (a list holds only its three most carried; kisk.app aims at all of them on every piece). */
 export const ARMOUR_SLOTS = ["Torso", "Pants", "Helmet", "Shoulders", "Gloves", "Boots", "Cape"];
